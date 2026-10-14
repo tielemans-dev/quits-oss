@@ -88,13 +88,14 @@ vi.mock("../../trpc/client", () => ({
     },
     runtime: {
       capabilities: {
-        query: vi.fn(),
+        query: vi.fn(async () => ({})),
       },
     },
   },
 }))
 
 import { authClient } from "../../lib/auth-client"
+import { trpc } from "../../trpc/client"
 
 import { Route } from "../_app/onboarding"
 import { asMockedRoute } from "../../test-utils/mocked-route"
@@ -199,6 +200,25 @@ describe("OnboardingPage org selection", () => {
     expect(screen.getByText("Contoso")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Create organization" })).toBeTruthy()
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+  })
+
+  it("sends a hosted user with no organization into onboarding v2 instead of the v1 lookup card", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.runtime.capabilities.query).mockResolvedValueOnce({ onboardingV2: { enabled: true } } as never)
+    vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
+    vi.mocked(authClient.organization.create).mockResolvedValue({ data: { id: "org_created" }, error: null } as never)
+    setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
+    render(<RoutePage />)
+    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByRole("button", { name: "auth.onboarding.lookup.manualBack" })).toBeNull()
+    fireEvent.change(name, { target: { value: "Nordlys ApS" } })
+    fireEvent.submit(name.closest("form")!)
+    await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
+    // The new organization continues in the v2 wizard (lookup, review, confirm), not the app.
+    expect(loadPage).toHaveBeenCalledWith("/onboarding")
   })
 
   it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {

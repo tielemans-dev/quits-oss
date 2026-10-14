@@ -108,7 +108,7 @@ describe("OnboardingPage cloud flow", () => {
     let resolveStatus!: (value: unknown) => void
     onboardingStatusQuery.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
     render(<RouteComponent />)
-    const companyName = screen.getByLabelText("Company name") as HTMLInputElement
+    const companyName = await screen.findByLabelText("Company name") as HTMLInputElement
     expect(companyName.matches(":disabled")).toBe(true)
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).matches(":disabled")).toBe(true)
     resolveStatus({ isComplete: false, missing: [], values: { companyName: "Saved company", locale: "en-US" } })
@@ -116,6 +116,20 @@ describe("OnboardingPage cloud flow", () => {
     expect(companyName.value).toBe("Saved company")
     fireEvent.change(companyName, { target: { value: "Reviewed company" } })
     expect(companyName.value).toBe("Reviewed company")
+  })
+
+  it("shows neither the legacy setup form nor v2 until v2 availability resolves", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    let resolveAvailability!: (value: unknown) => void
+    vi.mocked(trpc.cvr.available.query).mockImplementationOnce(() => new Promise((resolve) => { resolveAvailability = resolve }) as never)
+    render(<RouteComponent />)
+    expect(await screen.findByRole("status")).toBeTruthy()
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    resolveAvailability({ enabled: false, suggestions: false })
+    await waitFor(() => expect(screen.queryByRole("status")?.textContent).not.toBe("Loading onboarding state…"))
   })
 
   it("persists the selected CVR company after loading the newly selected organization", async () => {

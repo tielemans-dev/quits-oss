@@ -146,6 +146,19 @@ function OnboardingPageContent() {
     return () => { cancelled = true }
   }, [isCloud, hasActiveOrg])
 
+  // Before an organization exists, the public runtime capabilities decide whether onboarding v2
+  // applies. v2 then only needs a name to create the organization; the CVR lookup, review and
+  // confirmation happen in the v2 wizard instead of the v1 card creating a finished organization.
+  const [noOrgV2, setNoOrgV2] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!isCloud || hasActiveOrg) return
+    let cancelled = false
+    trpc.runtime.capabilities.query()
+      .then(capabilities => { if (!cancelled) setNoOrgV2((capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true) })
+      .catch(() => { if (!cancelled) setNoOrgV2(false) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg])
+
   const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
@@ -462,7 +475,7 @@ function OnboardingPageContent() {
     }
     // Loads a new page acting for the new organization.
     const switched = await switchActiveOrganization(created.id, {
-      destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+      destination: isCloud && (target || noOrgV2) ? loginReturnOnboarding(search) : returnDestination,
     })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
@@ -563,7 +576,7 @@ function OnboardingPageContent() {
   }
 
   if (!hasActiveOrg) {
-    if (orgAccessLoading) {
+    if (orgAccessLoading || (isCloud && orgAccessState.kind === 'create' && noOrgV2 === null)) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <Card className="w-full max-w-sm">
@@ -622,18 +635,19 @@ function OnboardingPageContent() {
       )
     }
 
+    const nameOnly = entryMode === 'manual' || noOrgV2 === true
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-2xl">
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
             </CardTitle>
             <CardDescription>
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          {entryMode === 'manual' ? (
+          {nameOnly ? (
             <form onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
@@ -657,7 +671,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && <Button
+                {isCloud && !noOrgV2 && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -752,6 +766,20 @@ function OnboardingPageContent() {
               {t('auth.onboarding.configured.continue')}
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
+  // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
+  if (hasActiveOrg && v2Availability === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="status">{t('auth.onboarding.loading')}</CardDescription>
+          </CardHeader>
         </Card>
       </div>
     )
