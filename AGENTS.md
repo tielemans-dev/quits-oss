@@ -1,82 +1,134 @@
 # AGENTS.md
 
-## GitHub communication
+Quits OSS is the public, self-hostable Quits core under FSL. It also publishes
+`@quits/oss`, the app artifact used by the hosted service. Never describe Quits
+as open source.
 
-Never @-mention Ines, Mira, Noah, Lumi, or Kai on GitHub, regardless of case, including in PR bodies,
-comments, review comments, and issues. Write the name plainly, e.g. "Ines: please review". Those
-handles ping unrelated real GitHub users; the bots have no GitHub accounts.
+## Non-negotiables
 
-## Product UX
+- Preserve self-host viability. Hosted-only billing and infrastructure enforcement
+  belong in the hosted lane. Stop and route that work there before writing code.
+- Keep general features here behind runtime extension interfaces or capability
+  patches; the hosted lane wires them up after an OSS release. Never include
+  private repository names, code, or infrastructure identifiers in this public repo.
+- Preserve public exports unless the task explicitly changes the release contract.
+  During file moves, preserve behavior first and improve structure second.
+- Keep every user-facing flow inside the app, including onboarding and Settings.
+  Hosted-only requirements use cloud flags and extension points. Self-hosters get
+  no hosted gates.
+- Prefer correctness and the smallest maintainable change. Make structural
+  improvements explicit; share duplicated logic rather than add local variants.
 
-Every user-facing flow lives inside the app's own screens (onboarding, Settings), never on a separate standalone page. Cloud-only requirements show only on hosted, through cloud flags and extension points in the OSS UI. Self-hosted gets no gates.
+## Glossary
 
-## Task Completion Requirements
+- OSS means the self-hostable runtime, not a claim about the license.
+- Hosted means the managed service consuming the published app artifact.
+- `apps/oss` is the TanStack Start app and published `@quits/oss` package.
+- `packages/contracts` holds schemas, branded identifiers, and DTOs only, with no
+  runtime side effects. `packages/shared` exposes helpers through explicit subpaths.
+- `scripts` holds shared repository automation and verification.
+- A ready head is a commit with green CI and enough verification for review.
 
-- `bun run lint` must pass before considering work complete.
-- `bun run typecheck` must pass before considering work complete.
-- `bun run typecheck` covers the whole application; `bun run typecheck:app` checks only the app sources for a faster loop.
-- `bun run test` must pass before considering behavior work complete.
-- Run targeted browser verification when changing setup, auth, public document, payment, or document-sending flows.
+## Ways to hurt yourself
 
-## Project Snapshot
+- Work only in your T3-created worktree on your own branch. Respect the issue's
+  named files and protected work. Do not edit another contributor's checkout.
+- Never read `.env` files or print secrets. Do not reset shared databases or run
+  migrations against live services. Use an isolated development database.
+- Never merge, deploy, release, tag, enable auto-merge, push to main, or delete
+  shared resources. Kai lands changes.
+- Never @-mention Ines, Mira, Noah, Lumi, or Kai on GitHub, regardless of case.
+  This includes PR bodies, comments, reviews, and issues. Write their names plainly;
+  those handles ping unrelated people and the bots have no GitHub accounts.
+- Read `~/Projects/fleet/dotfiles/projects-AGENTS.md` before tooling or workspace
+  changes. Fleet manages skills, MCP servers, agent config, and dotfiles across
+  machines. Before changing those, read `~/Projects/fleet/AGENTS.md` and use the
+  fleet-managed commands; local config edits can propagate to every machine.
 
-Quits OSS is the self-deployable runtime baseline for Quits. This repository also produces the versioned app artifact consumed by hosted cloud builds.
+## Hit every surface
 
-## Core Priorities
+Before calling work done, identify which entries apply and verify the changed
+behavior on those entries. Coverage does not require unrelated tests.
 
-1. Preserve OSS/cloud boundaries.
-2. Prefer correctness over convenience.
-3. Keep the published `@quits/oss` surface stable while refactoring internals.
-4. Make maintainability improvements explicit instead of hiding them in local shortcuts.
+- App UI, onboarding, Settings, and public document/payment pages; account for
+  self-hosted and hosted capability states and supported languages.
+- Document emails, PDFs, and exports; keep amounts, taxes, bank details, and line
+  ordering consistent with the UI and persisted document data.
+- Agent API and app API; preserve permissions, validation, and DTO contracts.
+- Runtime extension interfaces, capability patches, and published package exports;
+  keep the default self-hosted behavior usable without hosted integrations.
+- Reverse states; when adding a way in, provide a way out and a way to see the
+  current state. Check cancellation, failure, retry, and empty states as relevant.
 
-## Package Roles
+## Dev
 
-- `apps/oss`: The TanStack Start application package and published `@quits/oss` artifact.
-- `packages/contracts`: Shared schemas, branded identifiers, and DTO contracts only. No runtime side effects.
-- `packages/shared`: Shared helpers with explicit subpath exports.
-- `scripts`: Shared repository automation and verification scripts.
+- Read `~/Projects/fleet/docs/PROJECT_TOOLS.md` for setup checks, development
+  commands, logs, and MCP recovery. Read `~/Projects/workspace-AGENTS.md` before
+  naming or registering a Projects entry.
+- Run `bun run dev` from this worktree. It starts the self-hosted app on port 3000;
+  its predev hook generates Prisma and runs bootstrap. Confirm isolation before
+  starting it, and avoid ports used by another task. Stop only processes you started,
+  using the PIDs you tracked.
+- Reuse existing UI components. When a task requires adding a shadcn component,
+  follow its current CLI instructions within the authorized dependency scope.
 
-## Which Repository?
+## Verifying
 
-Quits has two repositories. This one, `quits-oss`, is public. `quits-cloud` is private and runs the
-hosted service on top of this repository's published packages. Before changing code, decide where
-the request belongs.
+Use the fast loop locally. CI owns the full lint, typecheck, test, build, and browser
+suites. Do not run a full suite or build to prove a small change.
 
-- **Here:** anything self-hosters would also get. That covers invoicing, quotes, credit notes,
-  payments, reminders, recurring invoices, contacts, exports, the agent API, the UI, settings, the
-  app database schema, and the runtime extension points the hosted service plugs into.
-- **In `quits-cloud`:** only what the hosted service alone needs:
-  - Stripe billing for the hosted plan and its limits;
-  - Cloudflare, deploy and runtime configuration;
-  - edge auth and the hosted gateway;
-  - managed email domains and webhooks;
-  - cloud-only operational tables.
+- For docs-only changes, run `git diff --check` and inspect the complete diff,
+  pointers, required sections, and changed-line budget. No runtime checks needed.
+- For behavior changes, run the smallest relevant failing test first, then only
+  touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
+  bunx vitest run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
+  `vitest.global.config.ts` instead when that config owns the test.
+- Lint changed source files with `bunx oxlint --deny-warnings
+  --report-unused-disable-directives <changed-files>` from the owning workspace.
+  For app types, use `bun run typecheck:app` from the root. For contracts, shared
+  helpers, or scripts, use `bun run --cwd <workspace> typecheck`. The root
+  `bun run typecheck` covers all workspaces and belongs in CI.
+- Verify setup, auth, public document, payment, and document-sending changes with
+  targeted browser checks when needed to prove the changed flow. On Omarchy,
+  ask the parent orchestrator to schedule heavy verification. Launch blockers
+  take priority; do not run heavy checks alongside their work.
+- On Omarchy, read `~/Projects/fleet/docs/OMARCHY_LOAD.md` before heavy commands.
+  Wrap only the outermost command with `fleet-heavy --`, use one test worker,
+  and wait for completion. Never nest queue wrappers.
+- For packaging or CI changes, verify the affected local script and workflow
+  command paths. Report actual checks, omissions, and CI status separately.
 
-If a request belongs in `quits-cloud`, stop before writing code. Tell the person it belongs there,
-say why, and suggest continuing in the `quits-cloud` project. Use the `quits` project if the work
-spans both repositories.
+## PR rules
 
-If a feature needs both repositories, build the general part here behind a runtime extension
-interface or capability patch. The hosted part is wired up in `quits-cloud` after an OSS release.
+- Use conventional commit titles in plain language. One issue is one focused PR.
+  Keep additions plus deletions at or below 400 lines, excluding generated files,
+  lockfiles, and migrations. Split larger work before pushing it for review.
+- Commit and push only your own branch when authorized. Open a draft PR and keep
+  it draft until CI is green. Never bypass failing checks to declare work ready.
+- Follow `.github/pull_request_template.md`: Problem, Change, Linear,
+  Verification, Risk, and Agent. Use `Fixes QUI-<issue number>` for the issue.
+  Agent ends the body with Model, Harness, Orchestrator, and Thread metadata.
+  Never add AI coauthor trailers or generated-by attribution to commits or PRs.
+- UI changes need before/after images; motion needs a short video. Upload PR-only
+  assets to GitHub rather than committing them.
+- The parent orchestrator schedules review with Claude Sonnet or Opus for a Codex
+  implementer. The reviewer model must differ from the implementer. Implementers
+  do not request or perform their own review. Review once per ready head, not
+  after every push, with at most three rounds.
+- A clean rebase that retains the patch ID retains its review verdict. After a
+  conflict resolution, verify the conflict delta and review changed behavior;
+  do not restart unrelated verification or review without a reason.
+- Link the PR to the implementing thread and parent. Once pushed and CI starts,
+  send the parent a concise status with PR, head, worktree, actual verification,
+  and risks. Use T3's PR watch for updates and end the turn; do not poll.
 
-## OSS/Cloud Boundary
+## Docs rules
 
-- Hosted-only billing lifecycle behavior and cloud infrastructure enforcement stay outside this repository.
-- Use runtime extension interfaces and capability patches for cloud-specific behavior.
-- Do not weaken self-host viability to make hosted behavior easier.
-- Never reference private cloud code, names or infrastructure here: this repository is public.
-
-## Migration Rules
-
-- When moving files, preserve behavior first and improve structure second.
-- Keep public exports stable unless the task explicitly changes the release surface.
-- Prefer extracting duplicated logic into a shared module over adding one-off local variants.
-
-## Verification Expectations
-
-- For documentation-only changes, verify the diff is scoped correctly.
-- For runtime changes, run the smallest relevant failing test first, then the targeted suite, then broader verification.
-- For packaging or CI changes, verify both local scripts and workflow command paths.
+- Do not hardcode version strings in prose; use package metadata as the authority.
+- Keep plans, evidence dumps, research notes, scratch files, and PR-only assets
+  out of git. The issue and merged PR hold the implementation record.
+- Document decisions, cross-cutting constraints, and traps the code does not
+  reveal. Rewrite or remove stale guidance rather than append a second account.
 
 <!-- BEGIN:turborepo-agent-rules -->
 
@@ -88,10 +140,3 @@ Read `docs/README.md` inside that installed package first, then read the relevan
 
 This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
 <!-- END:turborepo-agent-rules -->
-
-## User-facing flows
-
-Every user-facing flow lives inside the app's own screens, including onboarding and Settings,
-never on a separate standalone page. Cloud-only requirements appear only on hosted, through cloud
-flags and extension points in the OSS UI. Self-hosted installations get no confirmation or other
-hosted gates.
