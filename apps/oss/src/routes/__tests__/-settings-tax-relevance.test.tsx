@@ -51,6 +51,11 @@ vi.mock("../../components/settings/email-delivery-card", () => ({
   EmailDeliveryCard: () => <div>email-delivery-card</div>,
 }))
 
+// MOCK: payment details have their own tests and API, outside this VAT route fixture.
+vi.mock("../../components/settings/payment-details-card", () => ({
+  PaymentDetailsCard: () => <div>payment-details-card</div>,
+}))
+
 vi.mock("../../lib/i18n/react", () => {
   const i18n = {
     locale: "da-DK",
@@ -275,6 +280,8 @@ describe("Settings tax relevance", () => {
     settingsUpdate.mockClear()
     fireEvent.submit(container.querySelector("form")!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(screen.getByRole("radio", { name: "vatStatus.yes" }).matches(":disabled")).toBe(false))
+    if (stored === true) fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
     fireEvent.click(screen.getByRole("radio", { name: "vatStatus.yes" }))
     fireEvent.submit(container.querySelector("form")!)
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true, sellerVatConfirmationToken: "signed" })))
@@ -550,12 +557,16 @@ describe("Settings hosted VAT persistence", () => {
     if (failure === "prepare") prepareConfirmation.mockRejectedValueOnce(new Error("Confirmation failed"))
     else settingsUpdate.mockRejectedValueOnce(new Error("Save failed"))
     submitSettingsForm()
-    await screen.findByRole("alert")
+    expect((await screen.findByRole("alert")).textContent).toBe(failure === "prepare" ? "Confirmation failed" : "Save failed")
     expect(screen.queryByRole("status")).toBeNull()
     expectChoice(false)
+    expect(settingsUpdate).toHaveBeenCalledTimes(failure === "prepare" ? 0 : 1)
     submitSettingsForm()
     await screen.findByRole("status")
+    expect(screen.queryByRole("alert")).toBeNull()
     expectChoice(false)
+    expect(prepareConfirmation).toHaveBeenCalledTimes(2)
+    expect(settingsUpdate).toHaveBeenCalledTimes(failure === "prepare" ? 1 : 2)
     expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: "signed" }))
   })
 

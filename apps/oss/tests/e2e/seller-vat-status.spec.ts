@@ -75,12 +75,10 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
     await expect(page.locator("#taxRate")).toHaveValue("0")
     await page.reload()
-    if (hosted) {
-      // Hosted evidence requires a fresh operator choice; financial truth persists.
-      await expect(yes).not.toBeChecked()
-      await expect(no).not.toBeChecked()
-    } else {
-      await expect(no).toBeChecked()
+    await waitForClientReady(page)
+    await expect(yes).not.toBeChecked()
+    await expect(no).toBeChecked()
+    if (!hosted) {
       await expect(page.getByRole("button", { name: translate("vatStatus.withdraw", locale), exact: true })).toHaveCount(0)
     }
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })).momsRegistered).toBe(false)
@@ -184,6 +182,8 @@ for (const source of ["settings", "onboarding"] as const) {
       expect(saved.taxRate?.toNumber()).toBe(registered ? 25 : 0)
       await page.goto("/settings")
       await waitForClientReady(page)
+      await expect(page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", danishLocale.locale), exact: true })).toBeChecked()
+      await expect(page.getByRole("radio", { name: translate(registered ? "vatStatus.no" : "vatStatus.yes", danishLocale.locale), exact: true })).not.toBeChecked()
       await expect(page.locator("#taxRate")).toHaveValue(registered ? "25" : "0")
       const member = await prisma.member.findFirstOrThrow({ where: { organizationId, role: { in: ["owner", "admin"] } } })
       const actor = await resolveUserActor({ organizationId, userId: member.userId })
