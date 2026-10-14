@@ -1,4 +1,7 @@
 import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
+import { withoutNonVatStatement } from "./documents/non-vat-presentation"
+import { nonVatStatement } from "./documents/non-vat-note"
+import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import type { DocumentTaxId } from "@quits/contracts/documents"
 import {
   Document,
@@ -200,6 +203,8 @@ const styles = StyleSheet.create({
 
 export type OrgSettingsForPdf = {
   taxIds?: DocumentTaxId[]
+  /** Frozen for future non-VAT invoices. Historical render inputs keep their original CVR label. */
+  cvrLabel?: string
   companyName?: string | null
   companyEmail?: string | null
   companyPhone?: string | null
@@ -225,6 +230,8 @@ export type InvoiceForPdf = {
    * whose items are gross; those keep their plain column headers.
    */
   pricesIncludeTax?: boolean
+  taxRegime?: string
+  momsRegistered?: boolean | null
   /** The date of supply, as `YYYY-MM-DD`. Absent when the invoice has none. */
   supplyDate?: string | null
   /** VAT by rate. Absent on inputs frozen before they carried it; the VAT row is then the single `taxAmount`. */
@@ -255,6 +262,7 @@ export type InvoiceForPdf = {
   /** Unit price and total are the stored amounts on the document's price basis; never derive one from the other. */
   items: Array<{
     description: string
+    taxRate?: number
     quantity: number
     unitPrice: number
     total: number
@@ -268,6 +276,8 @@ export function InvoicePdfDocument({
   invoice: InvoiceForPdf
   org?: OrgSettingsForPdf
 }) {
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
+  const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
   const contact = invoice.contact
   const fromName = org.companyName ?? ""
   const locale = org.locale
@@ -280,7 +290,7 @@ export function InvoicePdfDocument({
     vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
   })
   const paymentDetails = buildPaymentDetailsBlock(
-    { bankAccount: invoice.bankAccount, note: invoice.paymentNote },
+    { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
     locale
   )
@@ -328,7 +338,7 @@ export function InvoicePdfDocument({
             {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
             {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
             {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-            {invoiceTaxIds(org.taxIds).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {invoiceTaxIds(org.taxIds, org.cvrLabel, momsRegistered).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
           </View>
 
           {/* Bill To */}
@@ -356,7 +366,10 @@ export function InvoicePdfDocument({
           </View>
           {invoice.items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={styles.colDescription}>{item.description}</Text>
+              <View style={styles.colDescription}>
+                <Text>{item.description}</Text>
+                {sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
+              </View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>
                 {formatCurrency(item.unitPrice, invoice.currency, locale)}
@@ -385,6 +398,8 @@ export function InvoicePdfDocument({
         </View>
 
         {/* Payment details */}
+        {momsRegistered === false && <Text style={[styles.notesText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
+
         {paymentDetails && (
           <View style={styles.paymentBox} wrap={false}>
             <Text style={styles.sectionTitle}>{paymentDetails.title}</Text>
@@ -405,10 +420,10 @@ export function InvoicePdfDocument({
         )}
 
         {/* Notes */}
-        {invoice.notes && (
+        {notes && (
           <View style={styles.notes}>
             <Text style={styles.sectionTitle}>{translate("pdf.notes", locale)}</Text>
-            <Text style={styles.notesText}>{invoice.notes}</Text>
+            <Text style={styles.notesText}>{notes}</Text>
           </View>
         )}
         <Text style={styles.footer} fixed>quits.</Text>

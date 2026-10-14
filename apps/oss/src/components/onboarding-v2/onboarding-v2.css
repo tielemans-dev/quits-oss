@@ -1,0 +1,429 @@
+.ob-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 28px 88px;
+  color: var(--foreground);
+}
+.ob-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 650;
+  margin-bottom: 48px;
+}
+.ob-square {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+}
+.ob-steps {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 48px;
+}
+.ob-steps ol {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ob-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.ob-steps li[aria-current] {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.ob-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  font:
+    12px "Geist Mono Variable",
+    monospace;
+}
+.ob-current {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.ob-mobile-step {
+  display: none;
+}
+.ob-shell h1 {
+  font-size: clamp(28px, 4vw, 36px);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  text-wrap: balance;
+  margin: 0 0 16px;
+}
+.ob-shell p {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0 20px;
+  max-width: 65ch;
+}
+.ob-shell h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+.ob-shell h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+.ob-search-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 32px 0 12px;
+}
+.ob-search-input input {
+  height: 48px;
+  font-size: 16px;
+}
+.ob-search-input:has([aria-invalid="true"]) {
+  color: var(--destructive);
+}
+.ob-shell input[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+.ob-shell .ob-error {
+  color: var(--destructive);
+  font-size: 13px;
+}
+.ob-shell .ob-source {
+  font-size: 12px;
+}
+.ob-matches {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.ob-match {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.ob-match:hover {
+  background: var(--muted);
+}
+.ob-match-meta {
+  grid-column: 1;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  white-space: pre-line;
+}
+.ob-match .ob-tag {
+  grid-column: 2;
+  grid-row: 1;
+}
+.ob-continue {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.ob-tag {
+  font:
+    10px "Geist Mono Variable",
+    monospace;
+  letter-spacing: 0.05em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  padding: 4px 6px;
+  white-space: nowrap;
+  width: max-content;
+}
+.ob-tasks {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0 24px;
+}
+.ob-tasks li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.ob-tasks li > span:last-child {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font:
+    12px "Geist Mono Variable",
+    monospace;
+}
+.ob-notice {
+  background: light-dark(#fffbeb, #32280f);
+  color: light-dark(#713f12, #fde68a);
+  border: 1px solid light-dark(#fcd34d, #80652c);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ob-notice p {
+  color: inherit;
+  margin-bottom: 8px;
+}
+.ob-danger {
+  background: light-dark(#fff1f2, #341a20);
+  color: light-dark(#9f1239, #fecdd3);
+  border-color: light-dark(#fda4af, #9f1239);
+}
+.ob-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ob-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 24px 0;
+  padding: 24px;
+}
+.ob-card > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.ob-field {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 20px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.ob-field-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+.ob-field .ob-tag {
+  font-size: 9px;
+}
+.ob-shell select,
+.ob-shell textarea {
+  width: 100%;
+  border: 1px solid var(--input);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--foreground);
+  background: var(--background);
+  font-size: 14px;
+}
+.ob-shell textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.ob-shell input,
+.ob-shell select,
+.ob-shell textarea {
+  caret-color: var(--primary);
+}
+.ob-shell :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.ob-shell :is(input, select, textarea):disabled {
+  opacity: 0.65;
+}
+.ob-number {
+  display: block;
+  font:
+    14px "Geist Mono Variable",
+    monospace;
+  text-align: right;
+  margin: 8px 0 16px;
+}
+.ob-suggestion-slot {
+  height: 408px;
+  margin: 24px 0;
+}
+.ob-suggestion-slot > .ob-card {
+  height: 100%;
+  margin: 0;
+}
+.ob-suggestions {
+  border-style: dashed;
+  background: var(--muted);
+}
+.ob-suggestions > p {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ob-suggestion-content {
+  overflow-y: auto;
+  height: 232px;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+.ob-suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.ob-suggestion-row button {
+  min-width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ob-suggestion-row button:hover {
+  background: var(--background);
+}
+.ob-bank-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 16px;
+}
+.ob-bank-fields label {
+  font-size: 13px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.ob-bank-fields input {
+  font-family: "Geist Mono Variable", monospace;
+}
+.ob-unsaved {
+  padding: 24px 0;
+}
+.ob-unsaved h2 {
+  font-size: 14px;
+}
+.ob-confirm {
+  position: sticky;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--background);
+  z-index: 1;
+}
+.ob-confirm > span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ob-edit {
+  display: none;
+}
+.ob-spin {
+  animation: ob-spin 1s linear infinite;
+}
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-spin {
+    animation: none;
+  }
+}
+@media (max-width: 520px) {
+  .ob-shell {
+    padding: 24px 20px 48px;
+  }
+  .ob-brand {
+    margin-bottom: 28px;
+  }
+  .ob-steps {
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+  }
+  .ob-mobile-step {
+    display: block;
+    font:
+      11px "Geist Mono Variable",
+      monospace;
+    color: var(--muted-foreground);
+    margin-bottom: 16px;
+  }
+  .ob-steps ol {
+    gap: 18px;
+  }
+  .ob-steps li {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .ob-marker {
+    width: 18px;
+    height: 18px;
+  }
+  .ob-card {
+    padding: 20px 16px;
+  }
+  .ob-field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .ob-field-label {
+    justify-content: space-between;
+  }
+  .ob-field input,
+  .ob-field select,
+  .ob-field textarea,
+  .ob-bank-fields input {
+    font-size: 16px;
+  }
+  .ob-bank-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  }
+  .ob-confirm {
+    flex-direction: column;
+    align-items: stretch;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .ob-confirm > span {
+    text-align: center;
+  }
+  .ob-confirm button {
+    min-height: 44px;
+  }
+  .ob-edit {
+    display: block;
+  }
+  .ob-match {
+    padding: 16px;
+  }
+}
+
+.ob-card,
+.ob-field > *,
+.ob-bank-fields > * {
+  min-width: 0;
+}

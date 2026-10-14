@@ -1,13 +1,17 @@
+import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
+import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
+import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { trpc } from "../../../trpc/client"
+import { retainDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
@@ -51,6 +55,7 @@ type LineItem = {
 
 function NewInvoicePage() {
   const { t, locale } = useI18n()
+  const bankNudge = useFirstInvoiceBankNudge()
   const currency = useOrgCurrency()
   const [issuance, setIssuance] = useState(initialIssuanceValues)
   const [baseCurrency, setBaseCurrency] = useState<string>()
@@ -60,13 +65,14 @@ function NewInvoicePage() {
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState("")
-  const [dueDate, setDueDate] = useState("")
+  const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useState("0")
+  const [taxRate, setTaxRate] = useDocumentTaxRate()
   const [items, setItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
   const [saving, setSaving] = useState(false)
+  const submitPending = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [loadingCatalog, setLoadingCatalog] = useState(true)
@@ -229,6 +235,7 @@ function NewInvoicePage() {
   }
 
   async function handleSubmit(sendImmediately: boolean) {
+    if (submitPending.current) return
     setError(null)
 
     if (!contactId) {
@@ -244,13 +251,15 @@ function NewInvoicePage() {
       return
     }
 
+    submitPending.current = true
     setSaving(true)
     try {
+      let settingsRequested = false
       // The draft exists once created: whatever happens to the send, show it rather than keep
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
-        create: () =>
-          trpc.invoices.createV2.mutate({
+        create: async () => {
+          const draft = await trpc.invoices.createV2.mutate({
             contactId,
             dueDate,
             supplyDate: issuance.supplyDate,
@@ -263,12 +272,23 @@ function NewInvoicePage() {
               unitPrice: String(item.unitPrice),
               vat: item.vat,
             })),
-          }),
-        send: (id) => trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) }),
+          })
+          retainDraftValuation(draft.id, currency, baseCurrency, issuance)
+          return draft
+        },
+        beforeSend: async () => {
+          return bankNudge.beforeSend(() => { settingsRequested = true })
+        },
+        send: async (id) => {
+          const result = await trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) })
+          clearDraftValuation(id, currency, baseCurrency)
+          return result
+        },
         sendImmediately,
         sendFailedMessage: t("invoices.detail.error.sendFailed"),
       })
 
+      if (settingsRequested) return
       navigate({
         to: "/invoices/$invoiceId",
         params: { invoiceId: target.id },
@@ -280,12 +300,14 @@ function NewInvoicePage() {
           ? err.message
           : t("invoices.new.error.createFailed")
       )
+      submitPending.current = false
       setSaving(false)
     }
   }
 
   return (
     <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
       <Card>
         <CardHeader>
           <CardTitle>{t("invoices.new.title")}</CardTitle>

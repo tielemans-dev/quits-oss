@@ -1,3 +1,4 @@
+import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import { actionBlock, composeMessage, escapeHtml, layout, sanitizeHeader } from "../../lib/email"
 import { documentColors as C } from "../../lib/brand/document-colors"
@@ -22,6 +23,7 @@ export function composeAgreementEmail(input: {
   const title = translate(input.accepted ? "agreements.email.offerAcceptedTitle" : "agreements.email.offerTitle", locale)
   const link = translate(input.accepted ? "agreements.email.readAcceptedOffer" : "agreements.email.reviewOffer", locale)
   const snapshot = input.snapshot
+  const vat = agreementVatPresentation(snapshot, locale)
   // The same total the agreement page shows, including a v2 offer's payable rounding.
   const totals = agreementOfferTotals(snapshot)
   const total = formatCurrency(Number(totals.gross), snapshot.currency, locale)
@@ -36,6 +38,8 @@ export function composeAgreementEmail(input: {
         <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${escapeHtml(total)}</td>
       </tr>
     </table>
+    ${vat.status != null ? `<p>${escapeHtml(vat.taxLabel)}: ${escapeHtml(formatCurrency(Number(totals.tax), snapshot.currency, locale))}</p>` : ""}
+    ${vat.statement ? `<p>${escapeHtml(vat.statement)}</p>` : ""}
     ${actionBlock({ href: input.url, label: link, fallbackLabel: translate("agreements.email.linkFallback", locale) })}
     <p style="margin:16px 0 0;font-size:14px;"><a href="${escapeHtml(input.url)}/pdf" style="color:${C.ink};">${escapeHtml(translate("agreements.email.downloadPdf", locale))}</a></p>
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid ${C.hairline};color:${C.body};font-size:14px;">${sanitizeAgreementHtml(snapshot.termsHtml)}</div>

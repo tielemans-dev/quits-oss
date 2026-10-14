@@ -1,4 +1,9 @@
 // @vitest-environment jsdom
+import { AgreementPdf } from "../../../lib/agreement-pdf"
+import { composeAgreementEmail } from "../../../domain/documents/agreement-email"
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { isValidElement, type ReactNode } from "react"
+import { Text } from "@react-pdf/renderer"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -191,5 +196,60 @@ describe("public deliverable page", () => {
 
     expect(html).toContain('src="/a/fixture/logo"')
     expect(html).toContain("Acme ApS")
+  })
+})
+
+function agreementPdfText(node: ReactNode): string[] {
+  if (node == null || typeof node === "boolean") return []
+  if (typeof node === "string" || typeof node === "number") return [String(node)]
+  if (Array.isArray(node)) return node.flatMap(agreementPdfText)
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    const children = agreementPdfText(node.props.children)
+    return node.type === Text ? [children.join("")] : children
+  }
+  return []
+}
+
+describe("frozen agreement VAT presentation", () => {
+  it.each(["da-DK", "en-US"])("shows non-registration once across the public offer, PDF and email in %s", locale => {
+    const offer: AgreementOfferSnapshot = {
+      ...snapshot, locale, sellerSnapshot: { ...snapshot.sellerSnapshot, momsRegistered: false },
+      taxRate: "0.00", subtotalNet: "1000.00", totalTax: "0.00", totalGross: "1000.00",
+      deliverables: snapshot.deliverables.map(line => ({ ...line, taxRate: "0.00", lineTax: "0.00", unitPriceGross: line.unitPriceNet, lineGross: line.lineNet })),
+      offerFormatVersion: 2, calculationVersion: "v2",
+      serviceTotal: { net: "1000.00", tax: "0.00", gross: "1000.00", payableRounding: "0.00", vatBasis: "net" },
+      paymentSchedule: [{ title: "Synthetic advance", sortOrder: 1, amount: "100.00", vatGroupKey: "synthetic-zero", net: "100.00", tax: "0.00", gross: "100.00", vatBasis: "net", trigger: "on_agreement_acceptance" }],
+    }
+    const before = JSON.stringify(offer)
+    const outputs = (value: AgreementOfferSnapshot) => [
+      agreementPage(locale, { ...document, snapshot: value }),
+      agreementPdfText(AgreementPdf({ snapshot: value, number: "AGR-1" })).join(" "),
+      composeAgreementEmail({ snapshot: value, number: "AGR-1", locale, recipient: "buyer@example.test", url: "https://example.test/a/synthetic",
+        settings: { companyName: "Changed seller", companyEmail: "billing@example.test", locale: "en-US", documentSendingDomain: null, documentSendingDomainStatus: null } as never }).html,
+    ]
+    for (const output of outputs(offer)) {
+      expect(output).toContain(locale === "da-DK" ? "Ingen moms" : "No moms")
+      expect(output.split(nonVatStatement(locale))).toHaveLength(2)
+      expect(output).not.toMatch(/ekskl. moms|eksklusive moms|excluding VAT|including VAT/)
+    }
+    // Sellers may already put the same shared statement into their terms.
+    for (const output of outputs({ ...offer, termsHtml: `<p>${nonVatStatement(locale)}</p>` }))
+      expect(output.split(nonVatStatement(locale))).toHaveLength(2)
+    expect(JSON.stringify(offer)).toBe(before)
+  })
+  it.each(["custom", "us_sales_tax"])("preserves taxed agreement presentation under %s despite remembered non-registration", taxRegime => {
+    const offer = { ...snapshot, taxRegime, sellerSnapshot: { ...snapshot.sellerSnapshot, momsRegistered: false } }
+    const publicHtml = agreementPage("da-DK", { ...document, snapshot: offer })
+    const pdf = agreementPdfText(AgreementPdf({ snapshot: offer })).join(" ")
+    for (const output of [publicHtml, pdf]) {
+      expect(output).not.toContain("Ingen moms")
+      expect(output).not.toContain(nonVatStatement("da-DK"))
+      expect(output).toContain("250")
+    }
+  })
+  it("shows the registered agreement line's actual rate and preserves legacy unknown status", () => {
+    expect(agreementPage("da-DK", { ...document, snapshot: { ...snapshot, sellerSnapshot: { momsRegistered: true } } })).toContain("25 % moms")
+    expect(agreementPage("da-DK")).not.toContain("25 % moms")
+    expect(agreementPage("da-DK", { ...document, snapshot: { ...snapshot, sellerSnapshot: { momsRegistered: true }, deliverables: snapshot.deliverables.map(line => ({ ...line, taxRate: "7.00" })) } })).not.toContain("25 % moms")
   })
 })

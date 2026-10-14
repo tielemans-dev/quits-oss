@@ -38,6 +38,7 @@ export const documentViewBankAccountSchema = z.strictObject({
 })
 
 export const documentViewSellerSchema = z.strictObject({
+  momsRegistered: z.boolean().nullable().optional(),
   name: nullableString,
   email: nullableString,
   phone: nullableString,

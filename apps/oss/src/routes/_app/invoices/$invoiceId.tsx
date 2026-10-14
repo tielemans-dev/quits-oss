@@ -1,3 +1,8 @@
+import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
+import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
@@ -149,6 +154,8 @@ type Invoice = {
   contact: Contact
   items: InvoiceItem[]
   pricesIncludeTax?: boolean
+  taxRegime?: string
+  momsRegistered?: boolean | null
   priceBasis?: PriceBasis
   vatRows?: VatRow[]
   rounding?: string
@@ -192,6 +199,7 @@ async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
 
 function InvoiceDetailPage() {
   const { t, locale } = useI18n()
+  const bankNudge = useFirstInvoiceBankNudge()
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
   const { invoiceId } = Route.useParams()
@@ -260,7 +268,8 @@ function InvoiceDetailPage() {
       .then(([data, settings]) => {
         if (!isCurrent()) return
         setInvoice(data as unknown as Invoice)
-        setIssuance({ ...initialIssuanceValues(), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
+        if (data.status !== "draft") clearDraftValuation(data.id, data.currency, settings.baseCurrency)
+        setIssuance({ ...initialIssuanceValues(), ...(data.status === "draft" ? readDraftValuation(data.id, data.currency, settings.baseCurrency) : {}), ...(data.supplyDate ? { supplyDate: new Date(data.supplyDate).toISOString().slice(0, 10) } : {}) })
         setPaymentLinkUrl((data as unknown as Invoice).publicPaymentUrl ?? null)
         setOrgSettings({
           companyName: settings.companyName,
@@ -397,12 +406,15 @@ function InvoiceDetailPage() {
     setError(null)
     setActing(true)
     try {
+      retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
+      if (!await bankNudge.beforeSend()) return
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
         allowSendWithoutEmail,
         acknowledgeDisputed,
         ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
       })
+      clearDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency)
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
       if (result.emailSkipReason) {
@@ -534,6 +546,7 @@ function InvoiceDetailPage() {
 
     return (
       <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -736,6 +749,7 @@ function InvoiceDetailPage() {
   }
 
   // View mode
+  const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
   const contact = invoice.contact
   const emailAttempt = readEmailDeliveryAttempt({
     lastEmailAttemptAt: invoice.lastEmailAttemptAt
@@ -810,6 +824,7 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl">
+      {bankNudge.dialog}
       {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>
         <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>
@@ -1082,7 +1097,7 @@ function InvoiceDetailPage() {
                 <TableBody>
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                       <TableCell className="text-right num">{item.quantity}</TableCell>
                       <TableCell className="text-right num">
                         {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
@@ -1095,6 +1110,8 @@ function InvoiceDetailPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {momsRegistered === false && <p className="text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
 
             {/* Totals */}
             <div className="flex justify-end">
@@ -1126,12 +1143,12 @@ function InvoiceDetailPage() {
             <InvoicePaymentInstructions status={invoice.status} sellerSnapshot={invoice.sellerSnapshot} issuanceSnapshot={invoice.issuanceSnapshot} number={invoice.number} paymentReference={invoice.paymentReference} balanceDue={invoice.balanceDue} currency={invoice.currency} dueDate={invoice.dueDate} />
 
             {/* Notes */}
-            {invoice.notes && (
+            {withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime) && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.notes")}
                 </h3>
-                <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
+                <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)}</p>
               </div>
             )}
           </CardContent>

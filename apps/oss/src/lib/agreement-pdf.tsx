@@ -1,3 +1,4 @@
+import { agreementVatPresentation } from "./agreements/vat-presentation"
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import sanitizeHtml from "sanitize-html"
@@ -34,6 +35,7 @@ export type AgreementPdfInput = {
   acceptance?: PublicAgreementDto["acceptance"]
 }
 export function AgreementPdf({ snapshot, number, issueDate, acceptance }: AgreementPdfInput) {
+  const vat = agreementVatPresentation(snapshot)
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   return (
     <Document title={snapshot.title} creationDate={new Date(issueDate ?? 0)} modificationDate={new Date(issueDate ?? 0)}>
@@ -64,6 +66,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
             <Text>
               {line.quantity} × {line.unitPriceGross} = {line.lineGross} {snapshot.currency}
             </Text>
+            {vat.lineLabel(line.taxRate) && <Text>{vat.lineLabel(line.taxRate)}</Text>}
             {line.agreedDate && <Text>Agreed date: {line.agreedDate.slice(0, 10)}</Text>}
           </View>
         ))}
@@ -72,7 +75,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
             Subtotal: {v2?.serviceTotal.net ?? snapshot.subtotalNet} {snapshot.currency}
           </Text>
           <Text>
-            Tax: {v2?.serviceTotal.tax ?? snapshot.totalTax} {snapshot.currency}
+            {vat.status == null ? "Tax" : vat.taxLabel}: {v2?.serviceTotal.tax ?? snapshot.totalTax} {snapshot.currency}
           </Text>
           {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <Text>Payable rounding: {v2.serviceTotal.payableRounding} {snapshot.currency}</Text>}
           <Text>
@@ -87,10 +90,11 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
         {v2 && <View style={styles.section}>
           <Text style={styles.heading}>Payment schedule</Text>
           {v2.paymentSchedule.map(line => <View key={line.sortOrder} style={styles.row}>
-            <Text>{line.title}: {line.amount} {snapshot.currency} ({line.vatBasis === "gross" ? "including VAT" : "excluding VAT"})</Text>
+            <Text>{line.title}: {line.amount} {snapshot.currency} ({vat.status == null ? line.vatBasis === "gross" ? "including VAT" : "excluding VAT" : vat.scheduleBasis(line.vatBasis)})</Text>
             <Text>On agreement acceptance</Text>
           </View>)}
         </View>}
+        {vat.statement && <Text style={styles.section}>{vat.statement}</Text>}
         <Text style={styles.heading}>Terms</Text>
         <Text style={styles.section}>{agreementTermsText(snapshot.termsHtml)}</Text>
         {acceptance && (

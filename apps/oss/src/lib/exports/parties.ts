@@ -14,7 +14,7 @@ import {
  * IDs) into what an EN 16931 / Peppol document needs.
  */
 
-export type TaxIdLike = { scheme?: string | null; value: string; countryCode?: string | null }
+export type TaxIdLike = { scheme?: string | null; value: string; countryCode?: string | null; isPrimary?: boolean }
 
 export type ElectronicAddress = { scheme: string; id: string }
 
@@ -127,7 +127,7 @@ export function parseFreeTextAddress(value: string | null | undefined, countryCo
   return address
 }
 
-const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+const VAT_SCHEMES = new Set(["vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw", "dk_vat"])
 
 /** VAT prefixes that differ from the ISO country code. */
 const VAT_PREFIX: Record<string, string> = { GR: "EL" }
@@ -142,11 +142,13 @@ function compact(value: string) {
  * accepted in its own country.
  */
 export function vatIdentifier(taxIds: readonly TaxIdLike[], countryCode: string | null): string | null {
-  for (const taxId of taxIds) {
+  // A primary flag wins over storage order. Rows without one keep their given order.
+  const ordered = [...taxIds].sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary)))
+  for (const taxId of ordered) {
     const scheme = taxId.scheme?.trim().toLowerCase() ?? ""
     const value = compact(taxId.value)
     if (!value) continue
-    const country = (taxId.countryCode?.trim().toUpperCase() || countryCode) ?? null
+    const country = scheme === "dk_vat" ? "DK" : (taxId.countryCode?.trim().toUpperCase() || countryCode) ?? null
     const prefix = country ? (VAT_PREFIX[country] ?? country) : null
     const hasPrefix = /^[A-Z]{2}[0-9A-Z]{2,13}$/.test(value)
 

@@ -100,6 +100,7 @@ export const createQuoteDraft = defineCommand({
       yield* requireDraftCurrency(currency)
       const calculated = yield* priceCurrentDraft({
         items: input.items,
+        vatDefaults: { ...settings, buyerCountry: contact.country },
         vatEvidence: input.vatEvidence,
         taxRate: input.taxRate,
         pricesIncludeTax: settings.pricesIncludeTax,
@@ -199,8 +200,11 @@ export const updateQuoteDraft = defineCommand({
       const pricedItems = input.taxRate === undefined ? items : items.map((item) => ({ ...item, vat: undefined }))
       const storedEvidence = draftVatEvidenceSchema.safeParse(existing.vatEvidence ?? {})
       const evidence = input.vatEvidence ?? (storedEvidence.success ? storedEvidence.data : {})
+      const { settings: currentSettings } = yield* loadDocumentContext
+      const pricingContact = input.contactId ? yield* findContact(input.contactId) : existing.contact
       const priced = yield* priceCurrentDraft({
         items: input.items ?? pricedItems,
+        vatDefaults: { ...currentSettings, taxRegime: existing.taxRegime, countryCode: existing.countryCode, buyerCountry: pricingContact.country },
         taxRate: input.taxRate ?? impliedTaxRate(existing),
         pricesIncludeTax: existing.pricesIncludeTax,
         currency,
@@ -278,7 +282,13 @@ const quoteEmailApprovalContext = (id: string, action: "send" | "resend") =>
     yield* lockDocument("quote", id)
     const found = yield* findQuote(id)
     // Lock the contact before reading the address, so the approved recipient cannot change.
-    const quote = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
+    const effectiveSeller = action === "send"
+      ? yield* Effect.gen(function* () {
+          const { settings, sellerTaxIds } = yield* loadDocumentContext
+          return buildSellerSnapshot(settings, sellerTaxIds)
+        })
+      : found.sellerSnapshot
+    const quote = { ...found, sellerSnapshot: effectiveSeller, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = quote.contact.email?.trim() || null
     const total = `${quote.totalGross.toFixed(2)} ${quote.currency}`
     return {
@@ -328,12 +338,13 @@ export const sendQuote = defineCommand({
         return yield* new InvalidState({ message: "Only draft quotes can be sent", code: "not_draft" })
       }
       yield* refuseWhileSending("quote", found)
-      // The number is taken here, in the issuing transaction: if any later check fails, the
-      // transaction rolls back and the number goes back with it.
-      const quote = { ...found, number: yield* numberForIssuance("quote", found) }
-      yield* requireVatIssuance(quote)
-
       const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
+      // Accepted quotes supply invoice identities. Validate the identities actually sent,
+      // including registration and tax IDs changed after the draft was created.
+      const identities = { sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(found.contact) }
+      yield* requireVatIssuance({ ...found, ...identities })
+      // Only allocate a number after validating the refreshed identities.
+      const quote = { ...found, ...identities, number: yield* numberForIssuance("quote", found) }
       const compliance = assessCompliance(profile, sellerTaxIds, impliedTaxRate(quote))
       if (compliance.blocking.length > 0) {
         return yield* new InvalidState({
@@ -350,9 +361,6 @@ export const sendQuote = defineCommand({
         publicAccessIssuedAt,
         publicAccessKeyVersion: quote.publicAccessKeyVersion,
       })
-      // Accepted quotes later supply invoice identities. Freeze the identities actually sent,
-      // including tax IDs added after the draft was created.
-      const identities = { sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds), buyerSnapshot: buildBuyerSnapshot(quote.contact) }
       const emailContext = resolveQuoteEmailContext(settings)
       const recipient = yield* requireRecipientEmail(quote.contact)
 

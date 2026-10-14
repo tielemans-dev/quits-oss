@@ -101,11 +101,12 @@ function AppLayoutContent() {
     initializeRequestOrganizationId(loadedOrgId)
   }, [loadedOrgId])
 
+  const hasOrganization = Boolean(loadedOrgId)
   return (
     <SidebarProvider>
-      <AppSidebar />
+      {hasOrganization ? <AppSidebar /> : null}
       <TrialAccessProvider>
-        <AppMain banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
+        <AppMain sidebar={hasOrganization} banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
           {organizationReady ? <TrialRouteGate pathname={pathname}><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
         </AppMain>
       </TrialAccessProvider>
