@@ -602,7 +602,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               {TT("warning", { status: TT(`statusPhrase.${draft.company.status}`) })}
             </StateNotice>
           ) : null}
-          {draft.values.momsRegistered === false && draft.source === "cvr" ? (
+          {/* Only a registry fact of "not registered" may claim CVR said so; a user answer to an unknown status may not. */}
+          {draft.values.momsRegistered === false && draft.source === "cvr" && draft.company?.momsRegistered === false ? (
             <StateNotice>{TT("noVat.notice")}</StateNotice>
           ) : null}
           <p className="ob-edit">{TT("review.edit")}</p>
