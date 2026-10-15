@@ -193,17 +193,53 @@ async function setup() {
     expect(pdf.number).toBe("INV-0002")
   })
 
-  it("keeps an invoice's number after the email provider refuses it, and reuses it on the retry", async () => {
+  it("gives the number back when the email provider refuses the send, so the retry takes the same number", async () => {
     const { draft, counters, issueArgs, numberOf } = await setup()
     const invoice = await draft()
     vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "refused"))
     await issueDocument(issueArgs(invoice.id))
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).status).toBe("draft")
-    // The refused email was rendered and queued with this number, so the draft holds on to it.
-    expect(await numberOf(invoice.id)).toBe("INV-0001")
-    expect(await counters()).toEqual({ invoice: 2, quote: 1 })
+    // Nothing reached the customer, so the failed send consumed no number.
+    expect(await numberOf(invoice.id)).toBeNull()
+    expect(await counters()).toEqual({ invoice: 1, quote: 1 })
     expect(await issueDocument(issueArgs(invoice.id, "retry"))).toMatchObject({ status: "completed", result: { number: "INV-0001" } })
     expect(await counters()).toEqual({ invoice: 2, quote: 1 })
+  })
+
+  it("leaves no gap when a refused send is followed by issuing another invoice", async () => {
+    const { draft, counters, issueArgs } = await setup()
+    const refused = await draft()
+    const next = await draft()
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "refused"))
+    await issueDocument(issueArgs(refused.id))
+    expect(await issueDocument(issueArgs(next.id))).toMatchObject({ status: "completed", result: { number: "INV-0001" } })
+    expect(await counters()).toEqual({ invoice: 2, quote: 1 })
+  })
+
+  it("keeps the number of a refused send when another invoice was numbered meanwhile", async () => {
+    const { org, draft, counters, issueArgs, numberOf } = await setup()
+    const invoice = await draft()
+    vi.mocked(deliver).mockImplementationOnce(async () => {
+      // Another invoice takes INV-0002 while this delivery is in flight.
+      await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { invoiceNextNum: 3 } })
+      throw new EmailSendError("validation_error", "refused")
+    })
+    await issueDocument(issueArgs(invoice.id))
+    expect(await numberOf(invoice.id)).toBe("INV-0001")
+    expect(await counters()).toEqual({ invoice: 3, quote: 1 })
+    expect(await issueDocument(issueArgs(invoice.id, "retry"))).toMatchObject({ status: "completed", result: { number: "INV-0001" } })
+    expect(await counters()).toEqual({ invoice: 3, quote: 1 })
+  })
+
+  it("keeps the number of a legacy draft after its send is refused", async () => {
+    const { org, draft, counters, issueArgs, numberOf } = await setup()
+    const legacy = await draft()
+    await prisma.invoice.update({ where: { id: legacy.id }, data: { number: "INV-0007" } })
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { invoiceNextNum: 8 } })
+    vi.mocked(deliver).mockRejectedValueOnce(new EmailSendError("validation_error", "refused"))
+    await issueDocument(issueArgs(legacy.id))
+    expect(await numberOf(legacy.id)).toBe("INV-0007")
+    expect(await counters()).toEqual({ invoice: 8, quote: 1 })
   })
 
   it("numbers a recurring invoice when its automatic send issues it, not when it is generated", async () => {
