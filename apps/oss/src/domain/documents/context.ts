@@ -6,11 +6,22 @@ import {
   type CountryProfile,
   type TaxId,
 } from "../../lib/compliance"
+import type { Prisma } from "../../../generated/prisma/client"
 import { Command, Db } from "../services"
 
 /** Primary tax id first, then older rows. Document VAT resolution follows this order. */
 export function orderedDocumentTaxIds<T extends { isPrimary?: boolean; createdAt?: Date }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary)) || (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0))
+}
+
+/** The organization's own tax ids in document order, for a seller snapshot. */
+export async function loadSellerTaxIds(db: Pick<Prisma.TransactionClient, "organizationTaxId">, organizationId: string): Promise<TaxId[]> {
+  const rows = await db.organizationTaxId.findMany({
+    where: { organizationId },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+    select: { scheme: true, value: true, countryCode: true, isPrimary: true, createdAt: true },
+  })
+  return orderedDocumentTaxIds(rows).map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode }))
 }
 
 /** Organization settings, seller tax ids, and the country profile documents are built with. */
@@ -21,14 +32,7 @@ export const loadDocumentContext = Effect.gen(function* () {
   const settings = yield* Effect.promise(() =>
     db.orgSettings.upsert({ where: { organizationId }, create: { organizationId }, update: {} })
   )
-  const sellerTaxIds: TaxId[] = yield* Effect.promise(async () => {
-    const rows = await db.organizationTaxId.findMany({
-      where: { organizationId },
-      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-      select: { scheme: true, value: true, countryCode: true, isPrimary: true, createdAt: true },
-    })
-    return orderedDocumentTaxIds(rows).map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode }))
-  })
+  const sellerTaxIds = yield* Effect.promise(() => loadSellerTaxIds(db, organizationId))
 
   return { settings, sellerTaxIds, profile: resolveCountryProfile(settings.countryCode) }
 })

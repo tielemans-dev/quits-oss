@@ -9,7 +9,8 @@ import { computeSettlement } from "./documents/settlement"
 import { InvalidState, NotFound, type DomainError } from "./errors"
 import { documentRef } from "./documents/numbering"
 import { Command, Db } from "./services"
-import { buildBuyerSnapshot } from "./documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot } from "./documents/snapshots"
+import type { TaxId } from "../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../lib/payment-details"
 
 /**
@@ -112,22 +113,27 @@ function buyerReviewSnapshot(contact: Parameters<typeof buildBuyerSnapshot>[0]) 
   }
 }
 
-/** The organization's payment details as a send would freeze them onto the invoice. */
-export type ReviewedPaymentDetails = Partial<PaymentDetailsColumns> | null | undefined
+/** The organization's seller identity, VAT registration, tax ids and payment details as a send would freeze them onto the invoice. */
+export type ReviewedSeller = {
+  settings: Parameters<typeof buildSellerSnapshot>[0] & Partial<PaymentDetailsColumns>
+  sellerTaxIds: TaxId[]
+}
 
 /**
- * Bind a human send confirmation to the draft, its current recipient identity and the payment details
- * the send will freeze: a bank account changed in Settings after the review is a changed review.
+ * Bind a human send confirmation to the draft, its current recipient identity and the seller the send
+ * will freeze: a company name, VAT registration, tax id or bank account changed in Settings after the
+ * review is a changed review.
  */
 export function invoiceSendReviewVersion(invoice: Parameters<typeof documentFingerprint>[0] & {
   dueDate: Date
   supplyDate: Date | null
   disputedRevision?: number
   contact: Parameters<typeof buildBuyerSnapshot>[0]
-}, payment: ReviewedPaymentDetails) {
+}, seller: ReviewedSeller) {
   return fingerprint([
     documentFingerprint(invoice, invoice.contact.email?.trim() || null, [invoice.dueDate, invoice.supplyDate]),
-    buyerReviewSnapshot(invoice.contact), invoice.disputedRevision ?? 0, paymentSnapshotFromColumns(payment),
+    buyerReviewSnapshot(invoice.contact), invoice.disputedRevision ?? 0,
+    buildSellerSnapshot(seller.settings, seller.sellerTaxIds), paymentSnapshotFromColumns(seller.settings),
   ])
 }
 
@@ -144,8 +150,8 @@ export function requireReviewedRecipient(contact: Parameters<typeof buildBuyerSn
   return reviewedRecipient && recipientReviewVersion(contact) !== reviewedRecipient ? Effect.fail(changedSinceReview()) : Effect.void
 }
 
-export function requireInvoiceSendReview(invoice: Parameters<typeof invoiceSendReviewVersion>[0], payment: ReviewedPaymentDetails, reviewedVersion?: string) {
-  return reviewedVersion && invoiceSendReviewVersion(invoice, payment) !== reviewedVersion
+export function requireInvoiceSendReview(invoice: Parameters<typeof invoiceSendReviewVersion>[0], seller: ReviewedSeller, reviewedVersion?: string) {
+  return reviewedVersion && invoiceSendReviewVersion(invoice, seller) !== reviewedVersion
     ? Effect.fail(changedSinceReview())
     : Effect.void
 }

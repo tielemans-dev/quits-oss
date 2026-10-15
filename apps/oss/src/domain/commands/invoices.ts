@@ -174,7 +174,7 @@ export const buildInvoiceDraft = (
       type: "invoice.draft_created",
       payload: { number: invoice.number, contactId: contact.id, totalGross: priced.totalGross },
     })
-    return { ...invoice, reviewedVersion: invoiceSendReviewVersion({ ...invoice, contact }, settings) }
+    return { ...invoice, reviewedVersion: invoiceSendReviewVersion({ ...invoice, contact }, { settings, sellerTaxIds }) }
   })
 
 export const createInvoiceDraft = defineCommand({
@@ -274,8 +274,8 @@ export const updateInvoiceDraft = defineCommand({
         type: "invoice.draft_updated",
         payload: { fields: Object.keys(input).filter((key) => key !== "id") },
       })
-      const { settings: reviewSettings } = yield* loadDocumentContext
-      return { ...invoice, reviewedVersion: invoiceSendReviewVersion(invoice, reviewSettings) }
+      const reviewSeller = yield* loadDocumentContext
+      return { ...invoice, reviewedVersion: invoiceSendReviewVersion(invoice, reviewSeller) }
     }),
 })
 
@@ -397,7 +397,7 @@ export const sendInvoice = defineCommand({
       if (input.reviewedVersion) {
         yield* lockDocument("contact", found.contactId, { strength: "no_key_update" })
         found = yield* findInvoice(input.id)
-        yield* requireInvoiceSendReview(found, (yield* loadDocumentContext).settings, input.reviewedVersion)
+        yield* requireInvoiceSendReview(found, yield* loadDocumentContext, input.reviewedVersion)
       }
       yield* requireDepositInvoiceEnabled(found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
