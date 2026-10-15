@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.revision == 'baseline' && 'main' || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ matrix.revision == 'baseline' && (github.event.pull_request.base.sha || github.sha) || github.event.pull_request.head.sha || github.sha }}
       - name: Install the test-only baseline harness from the PR
         if: matrix.revision == 'baseline'
         run: |

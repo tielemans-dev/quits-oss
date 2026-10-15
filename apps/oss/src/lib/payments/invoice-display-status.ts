@@ -9,7 +9,8 @@ import { formatIsoDate } from "../exports/format"
 export function invoiceDisplayStatus(
   invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
   timezone?: string | null,
-  now: Date = new Date(),
+  // Lists pass their shared YYYY-MM-DD to avoid formatting the same zoned date for every row.
+  now: Date | string = new Date(),
   reminderSent = false
 ) {
   const status = lifecycleDisplayStatus(invoice, timezone, now)
@@ -20,14 +21,15 @@ export function invoiceDisplayStatus(
 function lifecycleDisplayStatus(
   invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
   timezone: string | null | undefined,
-  now: Date
+  now: Date | string
 ) {
   const collectible = ["sent", "viewed", "overdue"].includes(invoice.status)
   if (collectible && invoice.paymentStatus === "paid") return "paid"
   // Due dates are calendar dates stored at UTC midnight. Compare calendar days, not instants.
   if (collectible && invoice.balanceDue > 0 && invoice.dueDate) {
     const dueDate = new Date(invoice.dueDate)
-    if (Number.isFinite(dueDate.getTime()) && dueDate.toISOString().slice(0, 10) < formatIsoDate(now, timezone)) {
+    const today = typeof now === "string" ? now : formatIsoDate(now, timezone)
+    if (Number.isFinite(dueDate.getTime()) && dueDate.toISOString().slice(0, 10) < today) {
       return "overdue"
     }
   }

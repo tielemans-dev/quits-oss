@@ -22,7 +22,6 @@ describe("stripe payment configuration state", () => {
     const settings = { companyName: "Acme", companyEmail: null, locale: "en-US", timezone: "UTC", stripePublishableKey: "pk_saved", stripeSecretKeyEnc: "saved", stripeWebhookSecretEnc: "saved", stripeAccountStatus: status }
     expect(getStripePaymentConfigurationState(settings).configured).toBe(status === "active")
     expect(resolveInvoiceEmailContext(settings).stripeConfigured).toBe(status === "active")
-    vi.unstubAllEnvs()
   })
 
   it("requires all Stripe BYOK fields before payment links are considered configured", () => {

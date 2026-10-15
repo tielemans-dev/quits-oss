@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
+import { useCalendarDate } from "../../../hooks/use-calendar-date"
 import { trpc } from "../../../trpc/client"
 import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
@@ -72,6 +73,7 @@ function InvoicesListPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
+  const today = useCalendarDate(timezone)
   const [deleting, setDeleting] = useState<string | null>(null)
   const reminded = remindedInvoiceIds(useReminderJobs())
   // Rows whose pill changes together fade one after another, top to bottom.
@@ -234,7 +236,7 @@ function InvoicesListPage() {
                   </ListCell>
                   <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                     <SwappingStatusBadge
-                      status={invoiceDisplayStatus(invoice, timezone, undefined, reminded.has(invoice.id))}
+                      status={invoiceDisplayStatus(invoice, timezone, today, reminded.has(invoice.id))}
                       delay={Math.min(stagger.get(invoice.id) ?? 0, 5) * PILL_STAGGER_MS}
                     />
                   </ListCell>

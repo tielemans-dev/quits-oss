@@ -80,11 +80,12 @@ describe("invoice view-mode bank nudge", () => {
   })
 })
 
-// Payment-link availability follows checkout readiness, never the presence of saved keys.
-it.each([[true, false], [false, true]])("uses checkout readiness=%s with saved BYOK=%s", async (ready, byok) => {
-  api.get.mockResolvedValue({ ...draft, number: "INV-1", status: "sent", total: 100, balanceDue: 100, amountPaid: 0, amountCredited: 0 })
-  api.settings.mockResolvedValue({ locale: "en-GB", stripePaymentsEnabled: ready, stripeByokConfigured: byok })
-  render(<I18nProvider locale="en-GB"><Detail /></I18nProvider>)
-  await screen.findByRole("button", { name: "Mark as Paid" })
-  expect(screen.queryByRole("button", { name: "Create Payment Link" }) !== null).toBe(ready)
+describe("invoice payment-link availability", () => {
+  it.each([[true, false], [false, true]])("uses checkout readiness=%s with saved BYOK=%s", async (ready, byok) => {
+    api.get.mockResolvedValue({ ...draft, number: "INV-1", status: "sent", total: 100, balanceDue: 100, amountPaid: 0, amountCredited: 0 })
+    api.settings.mockResolvedValue({ locale: "en-GB", stripePaymentsEnabled: ready, stripeByokConfigured: byok })
+    render(<I18nProvider locale="en-GB"><Detail /></I18nProvider>)
+    await screen.findByRole("button", { name: "Mark as Paid" })
+    expect(screen.queryByRole("button", { name: "Create Payment Link" }) !== null).toBe(ready)
+  })
 })

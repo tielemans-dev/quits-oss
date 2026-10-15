@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { invoiceDisplayStatus } from "../payments/invoice-display-status"
 
@@ -6,6 +6,17 @@ const now = new Date("2026-10-12T10:00:00Z")
 const invoice = { balanceDue: 100, status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11T00:00:00Z" }
 
 describe("invoiceDisplayStatus", () => {
+  it("uses the list's shared calendar day without constructing a formatter per row", () => {
+    const formatter = vi.spyOn(Intl, "DateTimeFormat")
+    try {
+      for (let row = 0; row < 100; row++) {
+        expect(invoiceDisplayStatus(invoice, "Europe/Copenhagen", "2026-10-12")).toBe("overdue")
+      }
+      expect(invoiceDisplayStatus(invoice, "Europe/Copenhagen", "2026-10-11")).toBe("sent")
+      expect(formatter).not.toHaveBeenCalled()
+    } finally { formatter.mockRestore() }
+  })
+
   it.each(["sent", "viewed"])("shows a past-due %s invoice as overdue before the scheduler runs", status => {
     expect(invoiceDisplayStatus({ ...invoice, status }, "Europe/Copenhagen", now)).toBe("overdue")
   })
