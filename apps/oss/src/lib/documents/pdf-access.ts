@@ -49,12 +49,26 @@ export async function documentPdf(kind: ArtifactDocumentKind, id: string, organi
   return renderPdfResponse(renderInput, issued)
 }
 export async function privateDocumentPdf(request: Request, kind: string, id: string) {
-  if (!["invoice", "creditNote", "agreement"].includes(kind)) return new Response("Document not found", { status: 404 })
+  if (!["invoice", "creditNote", "agreement", "quote"].includes(kind)) return new Response("Document not found", { status: 404 })
   const session = await auth.api.getSession({ headers: request.headers })
   const organizationId = session?.session.activeOrganizationId
   if (!session || !organizationId) return new Response("Unauthorized", { status: 401 })
   const actor = await resolveUserActor({ organizationId, userId: session.user.id })
   if (!actor || !actorCan(actor, `${kind}:read` as Permission)) return new Response("Forbidden", { status: 403 })
+  if (kind === "quote") {
+    const quote = await prisma.quote.findFirst({ where: { id, organizationId }, include: {
+      contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } },
+      organization: { select: { settings: { select: {
+        companyLogo: true, companyName: true, companyEmail: true, companyAddress: true,
+      } } } },
+    } })
+    if (!quote) return new Response("Document not found", { status: 404 })
+    const { renderQuotePdf } = await import("../quote-pdf")
+    // Quotes have no archived issuance artifact. Render their persisted data and identities.
+    return new Response(new Uint8Array(await renderQuotePdf(quote)), {
+      headers: headers("live", quote.number ?? "draft"),
+    })
+  }
   return documentPdf(kind as ArtifactDocumentKind, id, organizationId)
 }
 export async function publicInvoicePdf(token: string) {

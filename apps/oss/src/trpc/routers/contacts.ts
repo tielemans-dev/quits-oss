@@ -1,9 +1,8 @@
 import { z } from "zod"
 import {
-  contactCreateInputSchema,
   contactUpdateInputSchema,
 } from "@quits/contracts/contacts"
-import { createContact, deleteContact, resumeContactReminders, updateContact } from "../../domain/commands/contacts"
+import { createContact, deleteContact, resumeContactReminders, updateContact, undoCreateContact } from "../../domain/commands/contacts"
 import { actorCan } from "../../domain/actor"
 import { normalizeReminderRecipient } from "../../lib/reminders/unsubscribe-token"
 import { executeCommand } from "../../domain/execute"
@@ -39,9 +38,15 @@ export const contactsRouter = router({
     ),
 
   create: authorizedProcedure("contact:create")
-    .input(contactCreateInputSchema)
+    .input(createContact.input)
     .mutation(async ({ ctx, input }) =>
       unwrapOutcome(await executeCommand(createContact, input, { actor: ctx.actor }))
+    ),
+
+  undoCreate: authorizedProcedure("contact:create")
+    .input(undoCreateContact.input)
+    .mutation(async ({ ctx, input }) =>
+      unwrapOutcome(await executeCommand(undoCreateContact, input, { actor: ctx.actor }))
     ),
 
   update: authorizedProcedure("contact:update")

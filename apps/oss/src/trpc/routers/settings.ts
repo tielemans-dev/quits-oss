@@ -23,6 +23,7 @@ import {
 } from "../../lib/document-email-sending"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import { tryParseSenderAddress } from "../../lib/email-sender"
+import { VAT_PERIODS } from "../../lib/vat-deadline"
 import {
   AI_PROVIDER_KINDS,
   isAiEndpointHostAllowed,
@@ -129,6 +130,7 @@ const timezoneSchema = z
 export const settingsUpdateSchema = z.object({
   currency: z.string().trim().regex(/^[A-Z]{3}$/).optional(),
   momsRegistered: z.boolean().nullable().optional(),
+  vatPeriod: z.enum(VAT_PERIODS).nullable().optional(),
   paymentTermsDays: z.number().int().min(0).max(3650).optional(),
   sellerVatConfirmationToken: z.string().max(2048).optional(),
   taxRate: z.number().min(0).max(100).nullable().optional(),
@@ -185,6 +187,7 @@ const orgSettingsReadSelect = {
   paymentTermsDays: true,
   taxRate: true,
   momsRegistered: true,
+  vatPeriod: true,
   companyName: true,
   companyAddress: true,
   companyEmail: true,
@@ -305,6 +308,7 @@ export const settingsRouter = router({
       paymentTermsDays: settings.paymentTermsDays,
       taxRate: settings.taxRate?.toNumber() ?? null,
       momsRegistered: settings.momsRegistered,
+      vatPeriod: VAT_PERIODS.find((period) => period === settings.vatPeriod) ?? null,
       companyName: settings.companyName,
       companyAddress: settings.companyAddress,
       companyEmail: settings.companyEmail,

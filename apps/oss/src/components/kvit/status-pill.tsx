@@ -50,7 +50,7 @@ export function StatusPill({
           aria-hidden
           className={cn(
             "size-1.5 shrink-0 rounded-full",
-            tone === "muted" ? "border-[1.5px] border-current" : tone === "success" ? "bg-settled rounded-[1px]" : "bg-current"
+            tone === "muted" ? "border-[1.5px] border-current" : tone === "success" ? "bg-current rounded-[1px]" : "bg-current"
           )}
         />
       ) : null}

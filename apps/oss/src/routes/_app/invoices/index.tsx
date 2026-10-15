@@ -1,6 +1,7 @@
 import { InvoiceFlow, InvoiceDetailPanel } from "../../../components/invoices/flow"
 import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
 import { createFileRoute, Link } from "@tanstack/react-router"
+import { InvoiceListSummary } from "../../../components/invoices/list-summary"
 import { useState, useEffect } from "react"
 import { useCalendarDate } from "../../../hooks/use-calendar-date"
 import { trpc } from "../../../trpc/client"
@@ -83,6 +84,7 @@ function InvoicesListPage() {
     setFresh(target.id)
     await loadInvoices()
   }
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof trpc.dashboard.summary.query>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
   const today = useCalendarDate(timezone)
@@ -112,6 +114,7 @@ function InvoicesListPage() {
 
   useEffect(() => {
     loadInvoices()
+    void trpc.dashboard.summary.query().then(setSummary).catch(() => {})
   }, [])
 
   async function handleDelete(id: string) {
@@ -152,8 +155,9 @@ function InvoicesListPage() {
         {notice.paymentUrl && <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(notice.paymentUrl!).catch(() => {}) }}>{t("invoices.flow.copyLink")}</Button>}
         <Button variant="ghost" onClick={() => setNotice(null)}>{t("ui.close")}</Button>
       </div>}
-      <PageHeader title={t("invoices.title")} actions={newInvoice(t("invoices.action.new"))} />
+      <PageHeader title={t("invoices.title")} actions={invoices.length ? newInvoice(t("invoices.action.new")) : null} />
 
+      {summary ? <InvoiceListSummary summary={summary} /> : null}
       {invoices.length === 0 ? (
         <ListEmpty
           title={t("invoices.empty.title")}

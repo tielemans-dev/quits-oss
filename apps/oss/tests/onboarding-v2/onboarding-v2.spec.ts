@@ -302,6 +302,24 @@ test("organization creation hands off to a registry-prefilled review", async ({ 
   await expect(page.getByRole("textbox", { name: "Adresse", exact: true })).toHaveValue("Nørrebrogade 12, 2. tv.\n2200 København N")
 })
 
+for (const locale of ["en-US", "da-DK"]) for (const width of [1280, 390]) {
+  test(`CVR contact fallback notice in ${locale} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(`/?locale=${locale}`)
+    await page.getByRole("textbox").fill("Nordlys")
+    await page.getByRole("button", { name: /Nordlys Studio ApS/ }).click()
+    const note = page.getByRole("note")
+    await note.scrollIntoViewIfNeeded()
+    await expect(note).toBeVisible()
+    await expect(note).toContainText("billing@example.com")
+    await expect(note).toContainText(locale === "da-DK" ? "reklamebeskyttet" : "advertising-protected")
+    await expect(note).toContainText(locale === "da-DK" ? "Indstillinger" : "Settings")
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.reload()
+    await expect(note).toHaveCount(1)
+  })
+}
+
 test.describe("hosted card payments step", () => {
   async function toPaymentsStep(page: Page, locale = "") {
     await page.route("**/confirm", (route) => route.fulfill({ json: { status: "complete" } }))

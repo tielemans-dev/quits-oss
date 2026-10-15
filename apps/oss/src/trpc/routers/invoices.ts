@@ -40,6 +40,7 @@ import {
 } from "../../domain/commands/invoices"
 import { markInvoicePaid, undoInvoiceMarkPaid } from "../../domain/commands/paid-moment"
 import { invoicePaidMomentResultSchema } from "@quits/contracts/invoices"
+import { clearLearnedPaymentTerms, loadLearnedPaymentTerms, restoreLearnedPaymentTerms } from "../../domain/documents/learned-defaults-store"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { executeCommand } from "../../domain/execute"
@@ -139,6 +140,12 @@ export const invoicesRouter = router({
       taxRate: settings.taxRate?.toString() ?? (settings.countryCode === "DK" ? "25" : "0"),
       pricesIncludeTax: settings.pricesIncludeTax, baseCurrency: settings.baseCurrency, countryCode: settings.countryCode }
   }),
+  /** Payment terms a customer's last invoices agree on, for the card's "som sidst" hint. Counted by code, never a model. */
+  learnedDefaults: authorizedProcedure("invoice:read").input(z.object({ contactId: z.string().min(1) })).query(async ({ ctx, input }) => ({
+    paymentTerms: await loadLearnedPaymentTerms(ctx.organizationId, input.contactId),
+  })),
+  clearLearnedDefault: authorizedProcedure("invoice:create").input(z.object({ contactId: z.string().min(1) })).mutation(({ ctx, input }) => clearLearnedPaymentTerms(ctx.organizationId, input.contactId)),
+  restoreLearnedDefault: authorizedProcedure("invoice:create").input(z.object({ contactId: z.string().min(1) })).mutation(({ ctx, input }) => restoreLearnedPaymentTerms(ctx.organizationId, input.contactId)),
   view: authorizedProcedure("invoice:read").input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
     const result = await loadDocumentView(ctx.actor, "invoice", input.id)
     if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" })

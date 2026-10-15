@@ -3,6 +3,7 @@ import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createAgreementDraft } from "../../domain/commands/agreements"
 import { issueAgreement, sendAgreement } from "../../domain/commands/agreement-lifecycle"
+import type { AnyCommandDefinition } from "../../domain/command"
 import { executeCommand, type CommandOutcome } from "../../domain/execute"
 import { setRuntimeExtensions } from "../../lib/runtime/extensions"
 import { resetRuntimeServices, setRuntimeServices } from "../../lib/runtime/services"
@@ -55,7 +56,7 @@ async function business(organizationId: string) {
     const before = await business(ctx.org.organizationId)
     disabled()
     if (path.startsWith("API")) await expect(path.endsWith("issue") ? ctx.caller.agreements.issue({ id: ctx.draft.id }) : ctx.caller.agreements.send({ id: ctx.draft.id })).rejects.toThrow("disabled")
-    else expect(await executeIssuanceCommand(path.endsWith("issue") ? issueAgreement : sendAgreement, { id: ctx.draft.id }, { actor: ctx.actor, clientRequestId: path })).toMatchObject({ status: "failed", error: { code: "deposits_disabled" } })
+    else expect(await executeIssuanceCommand((path.endsWith("issue") ? issueAgreement : sendAgreement) as AnyCommandDefinition, { id: ctx.draft.id }, { actor: ctx.actor, clientRequestId: path })).toMatchObject({ status: "failed", error: { code: "deposits_disabled" } })
     expect(await business(ctx.org.organizationId)).toEqual(before)
     expect(render).not.toHaveBeenCalled()
     expect(put).not.toHaveBeenCalled()

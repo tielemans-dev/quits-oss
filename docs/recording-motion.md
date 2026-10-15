@@ -30,7 +30,8 @@ node scripts/record-motion.mjs /login --before-url http://localhost:3101 --after
 
 Without a baseline URL both sides record the same app. The output directory must
 be new. A sibling temporary directory is renamed into place after verification;
-failures remove it, so the same command can be retried. `--help` lists all options.
+capture/encoding failures remove it, so the same command can be retried. Frame-check
+failures preserve the finished directory and exit 1 for inspection. `--help` lists all options.
 On workstations with a heavy-command queue, wrap the recorder command in `fleet-heavy --`.
 
 Outputs are `1x.mp4`, `0.25x.mp4`, `reduced-motion.mp4`, `before-1x.mp4`,
@@ -90,3 +91,22 @@ bunx oxlint --deny-warnings --report-unused-disable-directives scripts/record-mo
 Optional local smoke check: `node --test scripts/record-motion.smoke.mjs` covers
 readiness/scenario hooks, frame cleanup, retention, and retries. Wrap it in
 `fleet-heavy --` where required; it is excluded from required CI tests.
+
+Every recording automatically checks all captured samples, including baseline and
+reduced motion. `after-checks.md`, `before-checks.md` when a separate baseline is
+captured, and `reduced-checks.md` list failures with thumbnails and zero-based sample
+numbers and app timestamps. Matching JSON reports include thresholds and values.
+At 240Hz, sample N appears at N/4 in the 1x video and N in the quarter-speed video.
+Reports and thumbnails survive default raw-frame cleanup.
+
+Configure `--check-blank` for minimum grayscale standard deviation, default 2;
+`--check-jump` for the fraction of pixels changing by more than 24 gray levels,
+default 0.35; `--check-layout` for a Chromium layout-shift entry score, default 0.05;
+and `--check-flicker` for a return-to-baseline window in milliseconds, default 100.
+Blank and pixel checks use 64x36 grayscale images to suppress rendering noise.
+Pop-in and flicker checks are heuristics; intentional large changes may need tuned
+thresholds. Tiny or equal-luminance color changes can be missed. Layout checks
+include input-related shifts, but exclude transform-only motion. Set blank to 0,
+jump/layout to 1, or flicker to 0 to disable that check. Ines's visual sign-off is
+still required. `node scripts/check-motion.mjs` enforces token use and named
+transition properties through the scripts workspace lint command in CI.

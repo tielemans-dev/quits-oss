@@ -58,7 +58,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
-import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-react"
+import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
@@ -184,6 +184,7 @@ function QuoteDetailPage() {
         : null
   )
   const [acting, setActing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sendWithoutEmailOpen, setSendWithoutEmailOpen] = useState(false)
 
@@ -744,12 +745,28 @@ function QuoteDetailPage() {
   return (
     <div className="p-6 max-w-3xl">
       {/* Back button and actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/quotes" })}>
           <ArrowLeft className="size-4" />
           {t("quotes.detail.action.back")}
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" disabled={downloading} onClick={async () => {
+            const isCurrent = beginRequest(quote.id)
+            setDownloading(true)
+            setError(null)
+            try {
+              const { downloadDocumentPdf } = await import("../../../lib/documents-download")
+              await downloadDocumentPdf("quote", quote.id, quote.number)
+            } catch {
+              if (isCurrent()) setError(t("quotes.detail.error.downloadFailed"))
+            } finally {
+              setDownloading(false)
+            }
+          }}>
+            <Download className="size-4" />
+            {downloading ? t("quotes.detail.action.downloading") : t("quotes.detail.action.downloadPdf")}
+          </Button>
           {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
           {quote.status === "draft" && !emailSending && (
             <>

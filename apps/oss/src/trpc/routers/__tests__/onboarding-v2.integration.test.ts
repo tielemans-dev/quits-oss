@@ -443,7 +443,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it.each([[0, ""], [1, ""], [0, "-13"], [0, "-1001"], [55, ""]] as const)("moves a name-derived slug to the confirmed company name past %s taken slugs, placeholder suffix %j (QUI-56)", async (taken, suffix) => {
     const id = await organization()
     const tag = id.slice(0, 8)
-    await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}${suffix}` } })
+    await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}${suffix}`, metadata: JSON.stringify({ onboardingAutoSlug: `placeholder-${tag}${suffix}` }) } })
     for (let n = 1; n <= taken; n++) {
       const otherId = randomUUID()
       ids.push(otherId)
@@ -459,10 +459,29 @@ async function caller(id: string, requestedOrganizationId?: string) {
     await api.onboarding.confirmV2(summary())
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Synthetic Test ApS", slug: `qui56-${id}` })
   })
+  it.each([null, "{}", "invalid", JSON.stringify({ onboardingAutoSlug: "old-slug" })])("keeps a chosen name-derived slug with metadata %s", async metadata => {
+    const id = await organization()
+    const name = `Chosen ${id}`
+    const slug = `chosen-${id}`
+    await prisma.organization.update({ where: { id }, data: { name, slug, metadata } })
+    await (await caller(id)).onboarding.confirmV2(summary())
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Synthetic Test ApS", slug })
+  })
+  it("warns without rolling back confirmed settings when slug rename fails", async () => {
+    const id = await organization()
+    await prisma.organization.update({ where: { id }, data: { metadata: JSON.stringify({ onboardingAutoSlug: `qui56-${id}` }) } })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const rename = vi.spyOn(prisma.organization, "updateMany").mockRejectedValueOnce(new Error("private DB error"))
+    try {
+      expect(await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(summary()), "signup@example.test")).toMatchObject({ status: "complete" })
+      expect(rename).toHaveBeenCalledOnce()
+      expect(warn).toHaveBeenCalledExactlyOnceWith("Onboarding slug rename failed")
+    } finally { rename.mockRestore(); warn.mockRestore() }
+  })
   it.each([
     ["an unprotected registry lookup", false, true],
     ["a protected registry lookup", true, false],
-    ["a failed registry lookup", undefined, false],
+    ["a registry lookup without protection metadata", undefined, false],
   ] as const)("keeps CVR contacts only after %s (QUI-56)", async (_label, advertisingProtected, kept) => {
     const id = await organization()
     const api = await caller(id)
@@ -474,6 +493,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       await api.onboarding.confirmV2({ ...summary(), source: "cvr", companyEmail: "public@example.test", companyPhone: "40486480" })
     } finally { services.resetRuntimeServices() }
     expect(get).toHaveBeenCalledWith("24256790", expect.objectContaining({ userId: `qui56-${id}`, organizationId: id }))
+    expect(get).toHaveBeenCalledOnce()
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject(kept
       ? { companyEmail: "public@example.test", companyPhone: "40486480" }
       : { companyEmail: "signup@example.test", companyPhone: null })

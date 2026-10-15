@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react"
 
+import { DURATION } from "../../lib/motion"
 import { StatusBadge } from "../status-badge"
 
 /** Delay between rows whose pill changes together. */
 export const PILL_STAGGER_MS = 90
-const PILL_SWAP_MS = 300
+const PILL_SWAP_MS = DURATION.base
 
 /**
  * An invoice status pill that crossfades when its status changes (Overdue → Reminder sent) and

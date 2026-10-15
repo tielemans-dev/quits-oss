@@ -139,7 +139,9 @@ export function buildQuitsAuthOptions(input: {
         } catch {
           // Settings/tax IDs rolled back; deleting the new org cascades its member.
           // Better Auth sets the active organization only after this hook succeeds.
-          await input.prisma.organization.delete({ where: { id: organization.id } })
+          await input.prisma.organization.delete({ where: { id: organization.id } }).catch(() => {
+            console.warn("Onboarding organization cleanup failed")
+          })
           throw new APIError("BAD_REQUEST", { code: "cvr.unavailable", message: "cvr.unavailable" })
         }
       },

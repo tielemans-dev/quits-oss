@@ -35,7 +35,7 @@ export function DoubleRule({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeDasharray="1 1"
         strokeDashoffset={drawn ? 0 : 1}
-        className="transition-[stroke-dashoffset] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+        className="transition-[stroke-dashoffset] duration-(--duration-base) ease-enter motion-reduce:transition-none"
       />
     </svg>
   )

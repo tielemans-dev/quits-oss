@@ -54,6 +54,7 @@ export function DashboardView({
   onRemindersSettled,
   userName,
   commandBar,
+  morningCard,
   newInvoiceId,
 }: {
   summary: Summary
@@ -62,6 +63,8 @@ export function DashboardView({
   userName?: string | null
   /** The command bar, under the greeting. The page does not know how requests are answered. */
   commandBar?: ReactNode
+  /** Today at a glance, under the command bar. It reads its own lists; the page only places it. */
+  morningCard?: ReactNode
   sendReminder: SendReminder
   /** Queues a reminder job for several invoices at once; the tracker toast follows it. */
   sendReminderBatch?: (invoiceIds: string[]) => Promise<unknown>
@@ -94,6 +97,7 @@ export function DashboardView({
         className={commandBar ? "mb-4" : undefined}
       />
       {commandBar ? <div className="mb-6">{commandBar}</div> : null}
+      {morningCard}
 
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.

@@ -98,7 +98,7 @@ export function ListRow({ className, children, ...props }: ComponentProps<"div">
       role="row"
       data-slot="list-row"
       className={cn(
-        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-4 py-3 transition-colors duration-150 last:border-b-0 @4xl:grid-cols-(--list-cols-compact) @4xl:py-2.5 @5xl:grid-cols-(--list-cols)",
+        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-4 py-3 transition-colors duration-(--duration-fade) last:border-b-0 @4xl:grid-cols-(--list-cols-compact) @4xl:py-2.5 @5xl:grid-cols-(--list-cols)",
         "hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset",
         className
       )}
@@ -137,7 +137,7 @@ export const listRowLinkClass =
  * cannot (phones, tablets). Sits above the stretched row link.
  */
 export const rowActionsClass =
-  "relative z-10 flex justify-end [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-150"
+  "relative z-10 flex justify-end [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-(--duration-fade)"
 
 /** Placeholder rows while the first load runs; the caller supplies the label read to screen readers. */
 export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number }) {

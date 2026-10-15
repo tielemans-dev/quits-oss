@@ -41,6 +41,9 @@ export const daQuotesMessages = {
   "quotes.detail.warning.emailSkipped":
     "Tilbud markeret som sendt — e-mail ikke leveret: {reason}",
   "quotes.detail.error.notFound": "Tilbud blev ikke fundet",
+  "quotes.detail.error.downloadFailed": "Kunne ikke hente PDF. Prøv igen.",
+  "quotes.detail.action.downloadPdf": "Hent PDF",
+  "quotes.detail.action.downloading": "Henter PDF...",
   "quotes.detail.error.updateFailed": "Kunne ikke opdatere tilbud",
   "quotes.detail.error.sendFailed": "Kunne ikke sende tilbud",
   "quotes.detail.error.rejectFailed": "Kunne ikke afvise tilbud",

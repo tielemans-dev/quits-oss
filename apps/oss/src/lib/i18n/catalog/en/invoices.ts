@@ -26,6 +26,10 @@ export const enInvoicesMessages = {
   "invoices.flow.linkCopied": "Payment link copied",
   "invoices.flow.detail": "Invoice details",
   "invoices.flow.scheduleAction": "Create schedule",
+  "invoices.summary.outstanding": "Outstanding",
+  "invoices.summary.overdue": "Overdue",
+  "invoices.summary.paidThisMonth": "Paid this month",
+  "invoices.summary.count": "{count} invoices",
 
   "invoices.issuance.supplyDate": "Supply date",
   "invoices.issuance.confirmDates": "Confirm the supply date before issuing. A supply before the issue date requires accountant review for posting.",

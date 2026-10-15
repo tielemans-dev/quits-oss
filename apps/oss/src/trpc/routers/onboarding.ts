@@ -265,6 +265,7 @@ export const onboardingRouter = router({
         cloud: isCloudDistribution,
         userId: ctx.user.id,
         lookup: getCvrLookupProvider(),
+        signal: ctx.request?.signal,
       }),
     ),
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {

@@ -1,10 +1,11 @@
 import { useNavigate } from "@tanstack/react-router"
 import { documentLineV2InputSchema, quantityDecimalSchema } from "@quits/contracts/invoices"
 import { previewDraft } from "@quits/shared/pricing"
-import { Check } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { useInvoiceDueDate } from "../../hooks/use-invoice-due-date"
+import { useLearnedPaymentTerms } from "../../hooks/use-learned-payment-terms"
 import { useOrgCurrency } from "../../hooks/use-org-currency"
 import type { CatalogItemOption } from "../../lib/catalog"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
@@ -12,22 +13,25 @@ import { useI18n } from "../../lib/i18n/react"
 import { defaultDocumentTaxRate } from "../../lib/invoice-defaults"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import { localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../lib/invoice-quantity"
+import { DURATION, EASE_ENTER } from "../../lib/motion"
 import { parseRequest, type RequestCustomer } from "../../lib/request-parser"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../lib/request-handoff"
 import { submitInvoice } from "../../lib/submit-invoice"
 import { cn } from "../../lib/utils"
 import { trpc } from "../../trpc/client"
+import { tCount } from "../dashboard/i18n"
 import { initialIssuanceValues } from "../invoices/issuance-fields"
+import { LocalizedDateField } from "../localized-date-field"
 import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { announceRequestDone } from "./request-events"
-import { MORPH_EASING, useMorph } from "./use-morph"
+import { useMorph } from "./use-morph"
 
-const SHRINK_MS = 400
+const SHRINK_MS = DURATION.card
 const HOLD_MS = 1500
-const LEAVE_MS = 250
+const LEAVE_MS = DURATION.leave
 /** The check's content arrives this long into the shrink, once the surface has made room. */
 const CHECK_DELAY_MS = 90
 
@@ -38,7 +42,7 @@ type Readiness = Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>>
  * fills in what was said; moms, totals and the dates come from the same code the form uses. Nothing
  * is created until Send faktura is pressed, and that goes through the form's own create-and-send.
  */
-export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
+export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: RequestCardProps & { initialContactId?: string }) {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const currency = useOrgCurrency()
@@ -46,10 +50,11 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const [back] = useState(() => readHandoff("card"))
   useEffect(clearHandoff, [])
   const [ownDueDate] = useInvoiceDueDate()
-  const dueDate = back?.dueDate || ownDueDate
+  // A date typed on the card wins over what was learned, which wins over the organization's terms.
+  const [typedDueDate, setTypedDueDate] = useState<string | null>(null)
   const [issuance] = useState(() => back?.issuance ?? initialIssuanceValues())
   const [known, setKnown] = useState<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] } | null>(null)
-  const [picked, setPicked] = useState("")
+  const [picked, setPicked] = useState(initialContactId ?? "")
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -73,6 +78,15 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const match = draft?.customer
   const contactId = picked || back?.contactId || (match?.status === "matched" ? match.candidates[0]!.id : "")
   const customerName = known?.customers.find(customer => customer.id === contactId)?.name
+  const terms = useLearnedPaymentTerms(contactId)
+  // The learned date only pre-fills the field; the card sends whatever the field holds when Send faktura is clicked.
+  const learnedShown = !back?.dueDate && typedDueDate === null ? terms.learned : null
+  const dueDate = back?.dueDate || (typedDueDate ?? learnedShown?.dueDate ?? ownDueDate)
+
+  async function changeLearned(action: () => Promise<void>) {
+    setError(null)
+    try { await action() } catch { setError(t("shell.request.invoice.asLastError")) }
+  }
 
   useEffect(() => {
     if (!known) return
@@ -164,7 +178,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         ref={morph.ref}
         role="status"
         className={cn("request-stagger flex items-center gap-3 overflow-hidden p-6", leaving && "scale-90 opacity-0 transition-[opacity,transform] motion-reduce:scale-100")}
-        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: MORPH_EASING }) } as CSSProperties}
+        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: EASE_ENTER }) } as CSSProperties}
       >
         <span {...stagger(0)} className="bg-tone-success/15 text-tone-success flex size-9 shrink-0 items-center justify-center rounded-full">
           <Check className="size-5" aria-hidden="true" />
@@ -204,9 +218,32 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         <div className="flex justify-between"><dt className="text-muted-foreground">{t("docForm.summary.tax")}{readiness ? ` ${taxRate} %` : ""}</dt><dd>{money(preview.result?.tax)}</dd></div>
         <div className="flex justify-between font-semibold"><dt>{t("docForm.summary.total")}</dt><dd>{total}</dd></div>
       </dl>
-      <p {...stagger(3)} className="text-muted-foreground text-sm">
-        {t("invoices.new.field.dueDate")} {dueDate ? formatDate(dueDate, locale) : "—"} · {t("invoices.issuance.supplyDate")} {formatDate(issuance.supplyDate, locale)}
-      </p>
+      <div {...stagger(3)} className="grid gap-1.5 text-sm">
+        <label htmlFor="request-due-date" className="text-muted-foreground">{t("invoices.new.field.dueDate")}</label>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <LocalizedDateField id="request-due-date" value={dueDate} onChange={setTypedDueDate} locale={locale} placeholder={t("docForm.selectDate")} clearLabel={t("docForm.clear")} required />
+          </div>
+          {learnedShown && (
+            <span title={t("shell.request.invoice.asLastWhy", { count: learnedShown.count })} className="bg-muted text-muted-foreground flex shrink-0 items-center gap-1 rounded-full py-0.5 pr-1 pl-2.5 text-xs">
+              {tCount(t, "shell.request.invoice.asLast", learnedShown.days)}
+              <button
+                type="button"
+                aria-label={t("shell.request.invoice.asLastClear")}
+                onClick={() => void changeLearned(terms.clear)}
+                className="hover:bg-foreground/10 focus-visible:ring-ring flex size-5 items-center justify-center rounded-full transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:outline-none"
+              ><X className="size-3" aria-hidden="true" /></button>
+            </span>
+          )}
+        </div>
+        {terms.cleared && !back?.dueDate && typedDueDate === null && (
+          <p role="status" className="text-muted-foreground flex items-center gap-2 text-xs">
+            {t("shell.request.invoice.asLastCleared")}
+            <button type="button" onClick={() => void changeLearned(terms.restore)} className="text-foreground rounded-sm font-medium underline underline-offset-2 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">{t("shell.request.invoice.asLastUndo")}</button>
+          </p>
+        )}
+        <p className="text-muted-foreground">{t("invoices.issuance.supplyDate")} {formatDate(issuance.supplyDate, locale)}</p>
+      </div>
       {note && <p role="alert" className="text-sm text-destructive">{note}</p>}
       <div {...stagger(4)} className="flex justify-end gap-2">
         {/* The shadcn default animates every property; name the ones that change. */}

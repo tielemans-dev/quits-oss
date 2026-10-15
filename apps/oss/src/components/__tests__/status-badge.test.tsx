@@ -80,7 +80,7 @@ describe("StatusBadge", () => {
     expect(badge.className).toContain("text-tone-success")
     expect(badge.className).toContain("bg-settled-soft")
     const dot = badge.querySelector("[aria-hidden]")
-    expect(dot?.className).toContain("bg-settled")
+    expect(dot?.className).toContain("bg-current")
     expect(dot?.className).toContain("rounded-[1px]")
     expect(dot?.className).not.toContain("rounded-full")
   })

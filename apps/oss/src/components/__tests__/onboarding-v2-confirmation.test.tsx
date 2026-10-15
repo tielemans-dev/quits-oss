@@ -172,6 +172,15 @@ describe("production v2 seller confirmation", () => {
 })
 
 describe("CVR VAT notice", () => {
+  it.each(["da-DK", "en-US"])("explains contact replacement only for CVR review in %s", async locale => {
+    const draft = newDraft({ cvr: "24256790", name: "Test", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: true }, "signup@example.test", false)
+    storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
+    render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
+    expect((await screen.findByRole("note")).textContent).toBe(translate("onboardingV2.review.contacts", locale, { email: "signup@example.test" }))
+    fireEvent.click(screen.getByRole("button", { name: translate("onboardingV2.cancel", locale) }))
+    fireEvent.click(screen.getByRole("button", { name: translate("onboardingV2.search.manual", locale) }))
+    expect(screen.queryByRole("note")).toBeNull()
+  })
   const company = { cvr: "24256790", name: "Synthetic Studio ApS", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active" } as const
   const notice = /According to CVR, the company isn't VAT registered/
   it.each([[false, true], [null, false]] as const)("registry VAT %s with the user choosing not registered shows the CVR notice: %s", async (fact, shown) => {
@@ -296,12 +305,12 @@ describe("review page CVR errors (QUI-39)", () => {
     expect(api.confirm).not.toHaveBeenCalled()
   })
 
-  it("points a server-side CVR rejection at the CVR field instead of failing silently or generically", async () => {
-    const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error("cvr.invalid") }) }
+  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable"] as const)("shows the localized server rejection %s at the CVR field", async reason => {
+    const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error(reason) }) }
     const { cvr, form } = await review("da-DK", client)
     fireEvent.change(cvr, { target: { value: "24256790" } })
     fireEvent.submit(form)
-    expect(await screen.findByText("Et CVR-nummer har 8 cifre")).toBeTruthy()
+    expect(await screen.findByText(translate(reason === "cvr.invalid" ? "validation.cvr.invalid" : reason, "da-DK"))).toBeTruthy()
     expect(client.confirm).toHaveBeenCalledOnce()
     expect(cvr.getAttribute("aria-invalid")).toBe("true")
     expect(screen.queryByText(translate("onboardingV2.saveFailed.title", "da-DK"))).toBeNull()

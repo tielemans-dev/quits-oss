@@ -193,6 +193,7 @@ model OrgSettings {
   companyAddress                     String?
   companyEmail                       String?
   momsRegistered                     Boolean?
+  vatPeriod                          String?
   paymentTermsDays                    Int?
   onboardingV2Key                    String?
   onboardingV2Result                 Json?
@@ -273,6 +274,7 @@ model Contact {
   quotes               Quote[]
   creditNotes          CreditNote[]
   recurringInvoices    RecurringInvoice[]
+  learnedDefaultClears LearnedDefaultClear[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -1190,4 +1192,20 @@ model RecipientReminderPreference {
 
   @@unique([organizationId, recipient])
   @@map("recipient_reminder_preference")
+}
+
+/// A person cleared a default learned from a customer's past invoices. It stays cleared for that
+/// learned value; a different value learned later is suggested again. Fortryd deletes the row.
+model LearnedDefaultClear {
+  id             String   @id @default(cuid())
+  organizationId String
+  contactId      String
+  contact        Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  field          String
+  clearedValue   Int
+  createdAt      DateTime @default(now())
+
+  @@unique([contactId, field])
+  @@index([organizationId])
+  @@map("learned_default_clear")
 }

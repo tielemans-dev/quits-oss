@@ -5,7 +5,7 @@ import { registerProductScenarios } from './scenarios.mjs'
 // Locator assertions poll until their deadline; timeout 0 leaves only the test deadline.
 // The outer retry cannot interrupt an awaited locator assertion.
 // No server, account, database or provider is contacted by these tests.
-function signInFixture(status = 200, reset: 'Email' | 'Password' = 'Email', persistent = false) {
+function signInFixture(status = 200, reset: 'Email' | 'Password' = 'Email', persistent = false, delayedHydration = false) {
   let elapsed = 0
   const testDeadline = 30_000
   let beforeEach: (fixtures: unknown) => Promise<void> = async () => {}
@@ -14,11 +14,14 @@ function signInFixture(status = 200, reset: 'Email' | 'Password' = 'Email', pers
   })
   const values = { Email: '', Password: '' }
   let fills = 0
+  let hydrated = false
   const click = vi.fn(async () => {
+    if (delayedHydration && !hydrated) values.Email = ''
     if (!values.Email || !values.Password) throw new Error('Native validation prevented sign-in POST')
   })
   const page = {
     goto: vi.fn(),
+    locator: () => ({ waitFor: async () => { hydrated = true } }),
     getByLabel: (label: keyof typeof values) => ({
       fill: async (value: string) => {
         values[label] = value
@@ -88,4 +91,10 @@ test.each(['Email', 'Password'] as const)('shared sign-in stops persistent %s re
   expect(fixture.elapsed()).toBe(15_000)
   expect(fixture.fills()).toBeGreaterThan(2)
   expect(fixture.click).not.toHaveBeenCalled()
+})
+
+test('shared sign-in waits when hydration would reset credentials after both reads', async () => {
+  const fixture = signInFixture(200, 'Email', false, true)
+  await expect(fixture.run()).resolves.toBeUndefined()
+  expect(fixture.click).toHaveBeenCalledTimes(1)
 })

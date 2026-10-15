@@ -117,7 +117,7 @@ export function AttentionList({
             return (
               <li
                 key={`${item.kind}-${item.documentId}-${item.reason}`}
-                className="group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative flex gap-3 border-t px-4 py-3 transition-colors duration-150 first:border-t-0"
+                className="group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative flex gap-3 border-t px-4 py-3 transition-colors duration-(--duration-fade) first:border-t-0"
               >
                 <span
                   aria-hidden="true"

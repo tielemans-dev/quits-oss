@@ -50,7 +50,7 @@ test("classification errors and missing work fail closed", () => {
   }
 })
 
-test("prose and workflow PRs skip browsers while other jobs must succeed", () => {
+test("documentation and GitHub metadata PRs skip browsers while other jobs must succeed", () => {
   const mixed = { ...results("success"), "shared-browser-worker": "skipped" }
   assert.equal(accepts("pull_request", "true", mixed, "success", "false"), true)
   for (const event of ["push", "merge_group"]) {
