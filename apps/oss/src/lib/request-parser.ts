@@ -52,7 +52,7 @@ export function near(a: string, b: string): boolean {
   return edits + a.length - i + b.length - j <= 1
 }
 
-function matchCustomer(query: string, customers: readonly RequestCustomer[]): CustomerMatch {
+export function matchCustomer(query: string, customers: readonly RequestCustomer[]): CustomerMatch {
   const key = normalize(query)
   const digits = cvrDigits(query.replace(/^cvr\s*:?\s*/i, ""))
   const byCvr = /^\d{8}$/.test(digits)

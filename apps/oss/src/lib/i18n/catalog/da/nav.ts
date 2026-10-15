@@ -70,6 +70,7 @@ export const daNavMessages = {
   "shell.request.overdue.limit": "Der kan højst sendes 100 rykkere ad gangen.",
   "shell.request.overdue.error.load": "Kunne ikke hente de forfaldne fakturaer.",
   "shell.request.overdue.error.send": "Rykkerne blev ikke sat i gang.",
+  "shell.request.suggested": "Foreslåede felter. Gennemgå og rediger, før du bekræfter.",
   "shell.request.invoice.edit": "Rediger",
   "shell.request.invoice.sent": "Faktura sendt",
   "shell.request.invoice.gap": "Mangler: {field}",

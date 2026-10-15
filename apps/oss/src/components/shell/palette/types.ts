@@ -28,6 +28,7 @@ export type PaletteActions = {
 export type PaletteContext = {
   /** What the person typed, as typed. Empty when the palette has just opened. */
   query: string
+  requestFallbackEnabled?: boolean
   /** Whether the person may do the action, by the organization's role. */
   can: (action: PaletteCapability) => boolean
   /** Whether this deployment has billing, which decides whether Billing is offered. */

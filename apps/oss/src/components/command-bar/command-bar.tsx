@@ -16,15 +16,22 @@ import { useMorph } from "./use-morph"
  * grows into the card slot in place. Anything else does nothing here; search stays in the top bar
  * and ⌘K. Closing the card puts the cursor back in the pill.
  */
-export function CommandBar({ recognize, className }: { recognize: RequestRecognizer; className?: string }) {
+export function CommandBar({ recognize, suggest, className }: { recognize: RequestRecognizer; suggest?: (input: string, signal: AbortSignal) => Promise<RequestIntent | null>; className?: string }) {
   const { t } = useI18n()
   // Back from the form with an edited invoice, the card opens again for the request it began with.
-  const [returned] = useState(() => readHandoff("card")?.input)
-  const [value, setValue] = useState(returned ?? "")
-  const [intent, setIntent] = useState<RequestIntent | null>(() => (returned ? recognize(returned) : null))
+  const [returned] = useState(() => readHandoff("card"))
+  const [value, setValue] = useState(returned?.input ?? "")
+  const [intent, setIntent] = useState<RequestIntent | null>(() => (returned ? recognize(returned.input, returned.suggested) : null))
   const inputRef = useRef<HTMLInputElement>(null)
   const morph = useMorph<HTMLFormElement>(DURATION.base)
-  const recognized = recognize(value)
+  const [suggestion, setSuggestion] = useState<RequestIntent | null>(null)
+  const recognized = recognize(value) ?? (suggestion?.input === value ? suggestion : null)
+  useEffect(() => {
+    if (!suggest || intent || recognize(value)) return
+    const run = new AbortController()
+    suggest(value, run.signal).then(result => { if (!run.signal.aborted) setSuggestion(result) })
+    return () => run.abort()
+  }, [value, intent, recognize, suggest])
   const open = useRef(intent !== null)
   open.current = intent !== null
 

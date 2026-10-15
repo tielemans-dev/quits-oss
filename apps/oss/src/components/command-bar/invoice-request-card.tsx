@@ -23,6 +23,7 @@ import { tCount } from "../dashboard/i18n"
 import { initialIssuanceValues } from "../invoices/issuance-fields"
 import { LocalizedDateField } from "../localized-date-field"
 import { Button } from "../ui/button"
+import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
@@ -74,7 +75,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
     return () => { cancelled = true }
   }, [t])
 
-  const draft = useMemo(() => known && parseRequest(intent.input, { customers: known.customers, catalogItems: known.catalogItems }), [known, intent.input])
+  const draft = useMemo(() => intent.suggested ?? (known && parseRequest(intent.input, { customers: known.customers, catalogItems: known.catalogItems })), [known, intent.input, intent.suggested])
   const match = draft?.customer
   const contactId = picked || back?.contactId || (match?.status === "matched" ? match.candidates[0]!.id : "")
   const customerName = known?.customers.find(customer => customer.id === contactId)?.name
@@ -97,8 +98,9 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
     return () => { cancelled = true }
   }, [known, contactId, currency, t])
 
+  const [editedItems, setEditedItems] = useState<InvoiceHandoff["items"] | null>(null)
   const parsed = draft?.items[0]
-  const items: InvoiceHandoff["items"] = back?.items ?? (parsed ? [{ description: (parsed.description || draft?.remainder || "").trim(), quantity: parsed.quantity ?? "1", unitPrice: parsed.unitPrice ?? "" }] : [])
+  const items: InvoiceHandoff["items"] = editedItems ?? back?.items ?? (intent.suggested ? intent.suggested.items.map(line => ({ description: line.description, quantity: line.quantity ?? "1", unitPrice: line.unitPrice ?? "" })) : parsed ? [{ description: (parsed.description || draft?.remainder || "").trim(), quantity: parsed.quantity ?? "1", unitPrice: parsed.unitPrice ?? "" }] : [])
   const lines = items.map(item => normalizeInvoiceQuantity(item, locale))
   const taxRate = back?.taxRate ?? (readiness ? defaultDocumentTaxRate(readiness) : "0")
   const pricesIncludeTax = back?.pricesIncludeTax ?? (readiness && readiness.standardVatRate == null ? readiness.pricesIncludeTax : false)
@@ -151,7 +153,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
 
   function edit() {
     handOff("form", {
-      input: intent.input, contactId, dueDate, issuance, taxRate, pricesIncludeTax, vatEvidence: back?.vatEvidence ?? {}, notes: back?.notes ?? "",
+      input: intent.input, suggested: intent.suggested, contactId, dueDate, issuance, taxRate, pricesIncludeTax, vatEvidence: back?.vatEvidence ?? {}, notes: back?.notes ?? "",
       items: lines.map(item => ({ ...item, quantity: localizeInvoiceQuantity(item.quantity, locale) })),
     })
     void navigate({ to: "/invoices/new" })
@@ -196,19 +198,26 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       <div {...stagger(0)} className="grid gap-1.5 text-sm">
         <span className="text-muted-foreground">{t("docForm.contact")}</span>
         {!known ? <span className="text-muted-foreground">{t("docForm.loadingContacts")}</span>
-          : match?.status === "matched" || picked ? <span className="font-semibold">{customerName}</span>
+          : !intent.suggested && (match?.status === "matched" || picked) ? <span className="font-semibold">{customerName}</span>
           : (
-            <Select value={picked} onValueChange={setPicked}>
+            <Select value={intent.suggested ? contactId : picked} onValueChange={setPicked}>
               <SelectTrigger aria-label={t("docForm.contact")} className="w-full"><SelectValue placeholder={t("docForm.selectContact")} /></SelectTrigger>
-              <SelectContent>{(match?.candidates.length ? match.candidates : known.customers).map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{(intent.suggested ? known.customers : match?.candidates.length ? match.candidates : known.customers).map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent>
             </Select>
           )}
       </div>
       {lines.map((line, index) => (
         <div key={index} {...stagger(1)} className="flex items-baseline justify-between gap-3 text-sm">
           <div className="min-w-0">
-            <p className="truncate font-semibold">{line.description}</p>
-            <p className="text-muted-foreground tabular-nums">{localizeInvoiceQuantity(line.quantity, locale)} × {line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
+            {intent.suggested ? <div className="grid grid-cols-2 gap-2">
+              {(["description", "quantity", "unitPrice"] as const).map(field => <label key={field} className={cn("grid min-w-0 gap-1", field === "description" && "col-span-2")}>
+                <span className="text-muted-foreground text-xs">{t(field === "description" ? "docForm.column.description" : field === "quantity" ? "docForm.column.qty" : "docForm.column.unitPrice")}</span>
+                <Input type={field === "unitPrice" ? "number" : "text"} inputMode={field === "quantity" ? "decimal" : undefined} min={field === "unitPrice" ? "0" : undefined} step={field === "unitPrice" ? "0.0001" : undefined} value={items[index]![field]} onChange={event => setEditedItems(items.map((item, i) => i === index ? { ...item, [field]: event.target.value } : item))} />
+              </label>)}
+            </div> : <>
+              <p className="truncate font-semibold">{line.description}</p>
+              <p className="text-muted-foreground tabular-nums">{localizeInvoiceQuantity(line.quantity, locale)} × {line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
+            </>}
           </div>
           <span className="tabular-nums">{money(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"])}</span>
         </div>
