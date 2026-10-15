@@ -1,12 +1,7 @@
 name: QUI-52 main dark evidence
 
 on:
-  push:
-    branches: [fix/qui-52-email-payment-block]
-    paths:
-      - .github/workflows/qui52-baseline-capture.yml
-      - apps/oss/e2e/qui52-capture.mjs
-      - apps/oss/tests/shared/invoice-payment-capture.spec.ts
+  workflow_dispatch:
 
 permissions:
   contents: read

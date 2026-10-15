@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
+  merge_group:
 
 concurrency:
   # Unique non-PR groups also prevent replacement of pending push/tag runs.
@@ -16,6 +19,7 @@ jobs:
       contents: read
     outputs:
       run-expensive: ${{ steps.classify.outputs.run-expensive }}
+      run-browser: ${{ steps.classify.outputs.run-browser }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,6 +38,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           run_expensive=true
+          run_browser=true
           if [ "$EVENT_NAME" = pull_request ]; then
             git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
             # An empty or unreadable diff must not bypass verification.
@@ -47,6 +52,17 @@ jobs:
               done < "$RUNNER_TEMP/changed-paths"
             fi
           fi
+          # Browser suites may also skip prose and workflow-only PRs. Other checks still run.
+          if [ "$EVENT_NAME" = pull_request ] && [ -s "$RUNNER_TEMP/changed-paths" ]; then
+            run_browser=false
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                docs/*|*.md|.github/*) ;;
+                *) run_browser=true; break ;;
+              esac
+            done < "$RUNNER_TEMP/changed-paths"
+          fi
+          echo "run-browser=$run_browser" >> "$GITHUB_OUTPUT"
           echo "run-expensive=$run_expensive" >> "$GITHUB_OUTPUT"
 
   lint:
@@ -187,17 +203,21 @@ jobs:
         run: bun run build
 
       - name: Install Playwright browser
+        if: needs.paths.outputs.run-browser != 'false'
         working-directory: apps/oss
         run: bunx playwright install --with-deps chromium
 
       - name: Verify onboarding review choices and draft persistence
+        if: needs.paths.outputs.run-browser != 'false'
         working-directory: apps/oss
         run: bunx playwright test --config playwright.onboarding-v2.config.ts --workers=1
 
       - name: Run browser smoke tests
+        if: needs.paths.outputs.run-browser != 'false'
         run: bun run test:e2e
 
       - name: Verify credit note email and PDF with Mailpit
+        if: needs.paths.outputs.run-browser != 'false'
         env:
           EMAIL_PROVIDER: smtp
           SMTP_HOST: 127.0.0.1
@@ -208,6 +228,7 @@ jobs:
         run: bun run test:e2e credit-note-detail.spec.ts --workers=1
 
       - name: Capture QUI-64 before and after screenshots
+        if: needs.paths.outputs.run-browser != 'false'
         env:
           EMAIL_PROVIDER: smtp
           SMTP_HOST: 127.0.0.1
@@ -255,7 +276,7 @@ jobs:
   shared-browser-worker:
     name: Shared product browser execution
     needs: paths
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-browser != 'false') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
