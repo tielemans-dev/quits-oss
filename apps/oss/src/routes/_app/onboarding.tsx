@@ -152,20 +152,24 @@ function OnboardingPageContent() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
+  // Hosted onboarding picks its flow (v2, v2 company setup, legacy manual) from two reads: CVR
+  // availability and runtime capabilities. Neither may decide alone, so both start unknown and the
+  // flow only mounts once both are known. A failed read stays unknown (with a retry): reading it as
+  // "disabled" would mount a flow without seller-VAT confirmation. A retry starts both reads over, so
+  // no flow can mount from a mix of old and new results and then be replaced when the other read lands.
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
-  // A failed availability lookup stays unknown (with a retry) instead of reading as "v2 disabled",
-  // which would let an organization created for v2 fall through to the legacy setup form.
   const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
-  const [v2AvailabilityAttempt, setV2AvailabilityAttempt] = useState(0)
+  const [discoveryAttempt, setDiscoveryAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
-    // Each attempt starts unknown, so a stale success can't mount v2 after this attempt fails.
     setV2Availability(null)
     setV2AvailabilityFailed(false)
-    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
+    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      .then(result => { if (!cancelled) setV2Availability(result) })
+      .catch(() => { if (!cancelled) { setV2Availability(null); setV2AvailabilityFailed(true) } })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
+  }, [isCloud, hasActiveOrg, discoveryAttempt])
 
   // Before an organization exists, cvr.setupAvailable (same predicate as cvr.available) decides
   // whether onboarding v2 applies. v2 then only needs a name to create the organization; the CVR lookup, review and
@@ -391,6 +395,7 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilities(null)
     setRuntimeCapabilitiesFailed(false)
 
     withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
@@ -412,8 +417,7 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-    // The v2 retry also re-reads capabilities: v2 needs them for seller-VAT confirmation.
-  }, [hasActiveOrg, isCloud, v2AvailabilityAttempt])
+  }, [hasActiveOrg, isCloud, discoveryAttempt])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -856,30 +860,21 @@ function OnboardingPageContent() {
     )
   }
 
-  // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
-  // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
-  const v2CapabilitiesMissing = v2Availability?.enabled === true && runtimeCapabilities === null
-  if (hasActiveOrg && ((v2Availability === null && v2AvailabilityFailed) || (v2CapabilitiesMissing && runtimeCapabilitiesFailed))) {
+  // Until both reads are known, render no flow: a legacy form that flashes up would be replaced (and
+  // its input lost) once the other read picks v2, and v2 without capabilities has confirmation off.
+  if (isCloud && hasActiveOrg && (v2Availability === null || runtimeCapabilities === null)) {
+    const failed = v2AvailabilityFailed || runtimeCapabilitiesFailed
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+            <CardDescription role={failed ? 'alert' : 'status'}>{t(failed ? 'auth.onboarding.loadError' : 'auth.onboarding.loading')}</CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button type="button" className="w-full" onClick={() => setV2AvailabilityAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
-  if (hasActiveOrg && (v2Availability === null || v2CapabilitiesMissing)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardDescription role="status">{t('auth.onboarding.loading')}</CardDescription>
-          </CardHeader>
+          {failed && (
+            <CardFooter>
+              <Button type="button" className="w-full" onClick={() => setDiscoveryAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+            </CardFooter>
+          )}
         </Card>
       </div>
     )
