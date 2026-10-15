@@ -19,4 +19,13 @@ apps/oss/test-results/
 **/generated/prisma/
 
 apps/oss/data/artifacts/
+
+# Local and CI review evidence belongs in ignored output directories.
+/.artifacts/
+/artifacts/
+/docs/qa/**
+!/docs/qa/ci-postgres-image.md
+!/docs/qa/oss-cloud-split-qa.md
+/docs/verification/
+/.github/assets/*/
 artifacts/motion/

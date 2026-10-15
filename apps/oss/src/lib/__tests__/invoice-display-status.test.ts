@@ -76,4 +76,26 @@ describe("invoiceDisplayStatus", () => {
     }
     expect(invoiceDisplayStatus({ status: "overdue", paymentStatus: "partially_paid", balanceDue: 100 }, "UTC", now)).toBe("overdue")
   })
+
+  describe("reminder sent", () => {
+    const tz = "Europe/Copenhagen"
+
+    it("derives reminder_sent for an overdue invoice whose reminder succeeded", () => {
+      expect(invoiceDisplayStatus(invoice, tz, now, true)).toBe("reminder_sent")
+      expect(invoiceDisplayStatus({ ...invoice, status: "overdue" }, tz, now, true)).toBe("reminder_sent")
+    })
+
+    it("leaves invoices without a succeeded reminder step alone", () => {
+      expect(invoiceDisplayStatus(invoice, tz, now, false)).toBe("overdue")
+      expect(invoiceDisplayStatus(invoice, tz, now)).toBe("overdue")
+    })
+
+    it.each([
+      ["paid", { paymentStatus: "paid" }],
+      ["credited", { status: "credited" }],
+      ["sent", { balanceDue: 0 }],
+    ])("shows %s, not reminder_sent, once the invoice is not overdue", (expected, change) => {
+      expect(invoiceDisplayStatus({ ...invoice, ...change }, tz, now, true)).toBe(expected)
+    })
+  })
 })

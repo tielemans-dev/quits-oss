@@ -4,6 +4,7 @@ export const enStatusMessages = {
   "status.viewed": "Viewed",
   "status.paid": "Paid",
   "status.overdue": "Overdue",
+  "status.reminder_sent": "Reminder sent",
   "status.partially_paid": "Partially paid",
   "status.credited": "Credited",
   "status.issued": "Issued",
