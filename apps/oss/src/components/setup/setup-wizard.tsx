@@ -1,4 +1,3 @@
-import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
@@ -19,7 +18,6 @@ const LEGACY_WIZARD_STORAGE_KEY = "yaip.setup.wizard.v1"
 
 const DEFAULT_SETUP_STATE: SetupWizardState = {
   instanceProfile: "smb",
-  organizationCvr: "",
   organizationName: "",
   organizationSlug: "",
   adminName: "",
@@ -59,7 +57,6 @@ export function buildSetupInitializePayload(state: SetupWizardState) {
   return {
     instanceProfile: state.instanceProfile,
     organization: {
-      cvr: state.organizationCvr.trim() || undefined,
       name: state.organizationName.trim(),
       slug: state.organizationSlug.trim(),
     },
@@ -109,7 +106,6 @@ function isStepValid(step: number, state: SetupWizardState) {
   }
   if (step === 2) {
     return Boolean(
-      (!state.organizationCvr.trim() || isValidDanishCvr(state.organizationCvr.trim())) &&
       state.organizationName.trim() &&
         state.organizationSlug.trim() &&
         state.adminName.trim() &&
@@ -228,8 +224,6 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
 
         {step === 2 ? (
           <AdminOrgStep
-            organizationCvr={setupState.organizationCvr}
-            onOrganizationCvrChange={(organizationCvr) => setSetupState(prev => ({ ...prev, organizationCvr }))}
             organizationName={setupState.organizationName}
             organizationSlug={setupState.organizationSlug}
             adminName={setupState.adminName}

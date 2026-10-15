@@ -12,7 +12,6 @@ export type SetupStatus = {
 
 export type SetupWizardState = {
   instanceProfile: "freelancer" | "smb" | "enterprise"
-  organizationCvr: string
   organizationName: string
   organizationSlug: string
   adminName: string

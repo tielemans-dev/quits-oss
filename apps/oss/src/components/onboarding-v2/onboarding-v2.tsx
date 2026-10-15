@@ -18,7 +18,6 @@ import {
   type ReviewValues,
 } from "./draft"
 import type { OnboardingV2Client } from "./client"
-import { readSelectedCompany, clearSelectedCompany } from "../../lib/onboarding/selected-company"
 import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
 
@@ -159,20 +158,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       setDraft(saved)
       setScreen("review")
       setRestored(true)
-    }
-    const staged = !saved ? readSelectedCompany(userId, organizationId) : null
-    if (staged?.cvr) {
-      const controller = new AbortController()
-      request.current = controller
-      setQuery(staged.cvr)
-      const run = epoch.current
-      const timeout = setTimeout(() => controller.abort(), 10_000)
-      client.get(staged.cvr, controller.signal).then(company => {
-        if (controller.signal.aborted || run !== epoch.current || !company || company.cvr !== staged.cvr || company.status !== "active" || company.statusClass !== "active") return
-        setDraft(newDraft(company, signupEmail, Boolean(client.suggestions)))
-        setScreen("review")
-        clearSelectedCompany(userId, organizationId)
-      }).catch(() => { /* Keep the lookup available for retry. */ }).finally(() => clearTimeout(timeout))
     }
     const startingPath = window.location.pathname
     function clearOnLeave() {
@@ -327,7 +312,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         setSearched(true)
         setScreen("search")
       } else if (
-        facts.statusClass !== "active" || facts.status !== "active"
+        facts.statusClass === "blocked" ||
+        ["ceased", "dissolved", "bankrupt"].includes(facts.status)
       ) {
         suggestionRequest.current?.abort()
         setSelected(facts)
@@ -521,7 +507,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <section className="ob-search">
           <h1>{TT("search.heading")}</h1>
           <p>{TT("search.sub")}</p>
-          <p>{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
           <label className="ob-search-input">
             <Search size={20} aria-hidden="true" />
             <Input
@@ -531,7 +516,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               placeholder={TT("search.placeholder")}
               value={query}
               maxLength={120}
-              onChange={(event) => { epoch.current++; request.current?.abort(); setQuery(event.target.value) }}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </label>
           {invalid ? (
@@ -647,7 +632,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
-          <p>{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
           {restored ? (
             <p className="ob-notice" role="status">
               {TT("restored")}

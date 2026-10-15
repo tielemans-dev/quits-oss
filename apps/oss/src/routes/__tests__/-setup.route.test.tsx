@@ -20,7 +20,6 @@ describe("setup route helpers", () => {
   it("builds initialize payload with normalized values", () => {
     const payload = buildSetupInitializePayload({
       instanceProfile: "smb",
-      organizationCvr: "24256790",
       organizationName: "  Acme ApS ",
       organizationSlug: "acme-aps ",
       adminName: "  Jane Doe ",
@@ -38,7 +37,6 @@ describe("setup route helpers", () => {
     expect(payload).toEqual({
       instanceProfile: "smb",
       organization: {
-        cvr: "24256790",
         name: "Acme ApS",
         slug: "acme-aps",
       },
