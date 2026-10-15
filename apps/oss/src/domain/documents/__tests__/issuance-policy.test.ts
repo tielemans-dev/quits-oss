@@ -97,6 +97,16 @@ describe("optional invoice issuance policy", () => {
       { code: "currency.unsupported", field: "currency", params: { currencies: "DKK, EUR" } },
     ] } })
   })
+  it("keeps the readable policy sentence next to the field issues, since API clients and agents read the message", async () => {
+    setRuntimeExtensions([{ id: "synthetic", resolveInvoiceIssuancePolicy: () => policy }])
+    const mixed = { ...document, items: [document.items[0]!, { ...document.items[0]!, taxRate: "0", vatRateInput: "0", vatTreatment: "exempt" }] }
+    const refused = await Effect.runPromise(Effect.either(requireInvoiceIssuancePolicy("test", mixed)))
+    expect(refused).toMatchObject({ _tag: "Left", left: {
+      code: "invoice_issuance_policy",
+      message: "Only ordinary domestic sales with 25% VAT are supported. Exempt, mixed, foreign and special VAT cases need a supported invoicing service.",
+      fieldIssues: [{ code: "vat.unsupported", field: "items.1.vat", params: { rate: "25" } }],
+    } })
+  })
   it("holds back an unpaid-for invoice only when the adopter requires payment details", async () => {
     const unpaid = { ...document, paymentAvailable: false }
     expect(invoicePolicyIssues(unpaid, policy)).toEqual([])
