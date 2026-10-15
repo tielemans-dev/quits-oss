@@ -200,7 +200,7 @@ export function CreditNotePdfDocument({
         <View style={styles.totalsContainer}>
           {totals.lines.map((row, index) => (
             <View key={index} style={styles.totalsRow}>
-              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text style={styles.totalLabel}>{row.label}{row.reason ? `\n${row.reason}` : ""}</Text>
               <Text>{money(Number(row.amount))}</Text>
             </View>
           ))}
@@ -212,6 +212,7 @@ export function CreditNotePdfDocument({
 
         {momsRegistered === false && <Text style={[styles.reasonText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
 
+        {totals.note && <Text style={styles.reason}>{totals.note}</Text>}
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
           <Text style={styles.reasonText}>{reason}</Text>
