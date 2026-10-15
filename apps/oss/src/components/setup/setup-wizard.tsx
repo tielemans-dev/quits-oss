@@ -22,10 +22,10 @@ const DEFAULT_SETUP_STATE: SetupWizardState = {
   adminEmail: "",
   adminPassword: "",
   authMode: "local_only",
-  locale: "en-US",
-  countryCode: "US",
-  timezone: "UTC",
-  currency: "USD",
+  locale: "da-DK",
+  countryCode: "DK",
+  timezone: "Europe/Copenhagen",
+  currency: "DKK",
   emailFromName: "",
   emailReplyTo: "",
 }
@@ -123,12 +123,16 @@ function isStepValid(step: number, state: SetupWizardState) {
 }
 
 export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
-  const { t } = useI18n()
+  const { t, setLocale } = useI18n()
   const [setupState, setSetupState] = useState<SetupWizardState>(loadDraftState)
   const [step, setStep] = useState<number>(deriveInitialStep(initialStatus.stage))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [slugTouched, setSlugTouched] = useState(false)
+
+  useEffect(() => {
+    setLocale(setupState.locale)
+  }, [setupState.locale, setLocale])
 
   useEffect(() => {
     setStep(deriveInitialStep(initialStatus.stage))
@@ -160,9 +164,8 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
       // Setup is done: drop the root route's kept installation answer along with the draft.
       forgetInstallationStatus()
       onCompleted()
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t("setup.error.generic")
-      setError(message)
+    } catch {
+      setError(t("setup.error.generic"))
     } finally {
       setSubmitting(false)
     }

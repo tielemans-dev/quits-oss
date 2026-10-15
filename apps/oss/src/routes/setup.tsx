@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { SetupWizard } from "../components/setup/setup-wizard"
 import { Card, CardContent } from "../components/ui/card"
 import { resolveRuntimeDistribution } from "../lib/runtime-distribution"
-import { useI18n } from "../lib/i18n/react"
+import { I18nProvider, useI18n } from "../lib/i18n/react"
 import { trpc } from "../trpc/client"
 import type { SetupStatus } from "../components/setup/types"
 
@@ -18,6 +18,10 @@ export const Route = createFileRoute("/setup")({
 })
 
 function SetupPage() {
+  return <I18nProvider initialLocale="da-DK"><SetupPageContent /></I18nProvider>
+}
+
+function SetupPageContent() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [status, setStatus] = useState<SetupStatus | null>(null)
