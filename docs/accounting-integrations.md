@@ -1,8 +1,8 @@
 # Accounting integrations
 
-QUI-77 includes pure e-conomic and Dinero payload preparation and an injectable
-delivery step. There is no live transport, credential storage, connection record
-or UI yet. It is available to the self-hostable runtime without hosted gates.
+QUI-77 includes pure e-conomic and Dinero payload preparation, persisted encrypted
+connections and scheduled delivery through injectable adapters. There is no live
+transport or UI yet. It is available to the self-hostable runtime without hosted gates.
 Billy follows e-conomic and Dinero.
 
 ## Provider boundary
@@ -11,7 +11,7 @@ Billy follows e-conomic and Dinero.
 a versioned money event, its stable outbox delivery ID and resolved settings.
 It returns a prepared payload with expected decimal totals, or an explicit refusal.
 The adapter never reads current document rows, recalculates historical prices or
-owns transport. The delivery step handles request state; live connections and
+owns transport. The delivery step handles request state; live authorization and
 multi-operation remote bookkeeping remain follow-ups.
 
 Use `invoice.issued` v1 and postable `credit_note.issued` v2, not email or cumulative
@@ -116,9 +116,9 @@ as failed until corrected or explicitly skipped with an audit reason.
 ## Injectable delivery step
 
 `domain/accounting/delivery.ts` exposes `deliverAccounting`. Callers supply an
-`AccountingConnections` lookup and `AccountingTransport`; neither has a live
-implementation or automatic scheduler registration yet. A missing connection
-pauses without scanning. Connection keys must identify immutable remote-account
+`AccountingConnections` lookup and `AccountingTransport`. `accountingConnections`
+implements the persisted lookup; transport remains injectable. A missing or
+disconnected connection pauses without scanning. Connection keys identify immutable remote-account
 generations, and settings must supply frozen event-specific evidence. The lookup
 selects the existing pure adapter and converts its prepared result to a relative
 HTTP path/body. No credentials may enter that stored request.
@@ -146,15 +146,30 @@ automatic requeue or skip policy in this slice.
 
 ## Per-organization connections
 
-Later persist provider, remote agreement/organization ID, connection generation,
-status, mapping revision, sync start position and last safe error per organization.
-Store token material encrypted server-side, separately from mapping settings.
-Settings hold customer links, layout, dueDate payment term, product/VAT mappings,
-receivable and bank/clearing accounts. Pin them for retries. Disconnect pauses
-delivery and revokes authorization; reconnect to another agreement creates a new
-generation and requires reconciliation rather than replaying history automatically.
-Use e-conomic's agreement-grant redirect and Dinero's Visma Connect authorization
-code flow, with no pasted keys. Authenticated configuration stays inside the app.
+`AccountingConnection` stores one provider, remote account ID, generation, status,
+mapping revision and encrypted credential per organization. `connectAccounting`
+encrypts before writing with the existing server secret helper and starts a new
+generation on each authorization. `disconnectAccounting` pauses delivery and
+clears local credentials idempotently. The lookup selects the pure provider and
+returns metadata without reading credentials. Remote revocation remains OAuth work.
+
+`RuntimeServices.accountingDelivery` supplies the transport factory and immutable
+event-specific settings resolver. Settings include customer links, layout, dueDate
+payment term, product/VAT mappings, receivable and bank/clearing accounts. Requests
+pin resolved settings for retries. Configuration remains server-only in this slice.
+
+`scheduler-tasks.ts` registers accounting with the existing cron tick, after
+recurring generation. It uses the scheduler's persisted organization claims and
+budget, scopes discovery to connected organizations with credentials and processes
+one event per organization. Without a configured runtime it returns disabled before
+scanning or claiming events. Self-hosted and hosted runtimes use the same optional
+interface. There are no default network calls or hosted gates.
+
+Before enabling live delivery, add sync start positions and reconciliation across
+connection generations so reconnecting cannot replay history automatically. Add
+remote revocation through e-conomic's agreement-grant redirect and Dinero's Visma
+Connect authorization code flow, with no pasted keys. Authenticated configuration
+stays inside the app.
 
 ## Official references
 
@@ -174,8 +189,8 @@ code flow, with no pasted keys. Authenticated configuration stays inside the app
 ## Follow-ups
 
 - Richer frozen payment events with date, base valuation and settlement evidence.
-- OAuth/agreement-grant connection flow and per-org credential storage.
+- OAuth/agreement-grant authorization and remote revocation.
 - Live transport/reconciliation, remote total checks, booking operation records,
   invoice dependency resolution, sync start positions and audited requeue/skip.
-- Scheduler wiring after connection lookup and live delivery safeguards exist.
+- Persisted settings resolution and live delivery safeguards before enabling transport.
 - Settings UI for connection status, account/VAT mapping, failures and disconnect.

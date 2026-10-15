@@ -122,8 +122,34 @@ model Organization {
   settings                OrgSettings?
   vatPeriodEntries        VatPeriodEntry[]
   cvrVerification         OrganizationCvrVerification?
+  accountingConnection    AccountingConnection?
 
   @@map("organization")
+}
+
+enum AccountingProviderId {
+  economic
+  dinero
+}
+
+enum AccountingConnectionStatus {
+  connected
+  disconnected
+}
+
+model AccountingConnection {
+  organizationId  String                     @id
+  organization    Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generation      String                     @default(uuid())
+  provider        AccountingProviderId
+  status          AccountingConnectionStatus @default(disconnected)
+  remoteAccountId String
+  credentialEnc   String?
+  mappingRevision String
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([status, provider])
+  @@map("accounting_connection")
 }
 
 // ISO reporting dates identify the period independently of its deadline or timezone.
