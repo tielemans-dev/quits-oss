@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import type { OrgSettings } from "../../../../generated/prisma/client"
+import type { OrgSettingsForPdf } from "../../invoice-pdf"
 import { creditNotePdfParties } from "../pdf-parties"
 
 const sellerSnapshot = {
+  momsRegistered: true,
   companyName: "Acme ApS",
   companyEmail: "billing@acme.dk",
   companyAddress: "Vesterbrogade 1, 1620 København V",
@@ -54,16 +56,39 @@ describe("credit note PDF parties", () => {
 
   it("renders seller and buyer tax identifiers", () => {
     const { seller, buyer } = creditNotePdfParties(issued, {})
-    expect(seller.taxIds).toEqual(["VAT no.: DK12345678", "CVR no.: 12345678"])
-    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(seller.taxIds).toEqual(["VAT no. DK12345678"])
+    expect(buyer.taxIds).toEqual(["VAT no. DE123456789"])
+  })
+
+  it.each([
+    ["da-DK", "CVR-nr. 12345678", "Momsnr. DK12345678"],
+    ["en-US", "CVR no. 12345678", "VAT no. DK12345678"],
+  ])("uses frozen buyer country and registration for seller IDs in %s", (locale, domestic, foreign) => {
+    for (const momsRegistered of [false, true, null]) {
+      for (const country of ["DK", "DE"]) {
+        const frozen = { ...sellerSnapshot, momsRegistered }
+        const current: Pick<OrgSettings, "companyName" | "momsRegistered"> & Pick<OrgSettingsForPdf, "taxIds"> = {
+          companyName: "Acme Holding A/S",
+          momsRegistered: !momsRegistered,
+          taxIds: [{ scheme: "vat", value: "DK87654321" }],
+        }
+        const { seller } = creditNotePdfParties({
+          ...issued, locale, sellerSnapshot: frozen,
+          buyerSnapshot: { ...buyerSnapshot, country },
+          contact: { ...contact, country: country === "DK" ? "DE" : "DK" },
+        }, current)
+        expect(seller.taxIds).toEqual([country === "DK" || !momsRegistered ? domestic : foreign])
+        expect(frozen.taxIds).toEqual(sellerSnapshot.taxIds)
+      }
+    }
   })
 
   it("suppresses retained VAT IDs for the frozen nonregistered seller without changing legal IDs or buyer IDs", () => {
     const frozen = { ...sellerSnapshot, momsRegistered: false, taxIds: [...sellerSnapshot.taxIds, { scheme: "lei", value: "LEGAL-ID" }] }
     const before = JSON.stringify(frozen)
     const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, { taxIds: [{ scheme: "vat", value: "DK87654321" }] })
-    expect(seller.taxIds).toEqual(["CVR no.: 12345678", "LEI: LEGAL-ID"])
-    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(seller.taxIds).toEqual(["CVR no. 12345678", "LEI: LEGAL-ID"])
+    expect(buyer.taxIds).toEqual(["VAT no. DE123456789"])
     expect(JSON.stringify(frozen)).toBe(before)
   })
 
@@ -87,24 +112,30 @@ describe("credit note PDF parties", () => {
     }
     const { seller, buyer } = creditNotePdfParties({ ...issued, sellerSnapshot: frozen }, current)
     expect(seller.taxIds).toEqual([
-      "CVR no.: 12345678",
+      "CVR no. 12345678",
       "LEI: LEGAL-ID",
       "Tax ID: UNSPECIFIED-ID",
       "Tax ID: BLANK-SCHEME-ID",
     ])
-    expect(buyer.taxIds).toEqual(["VAT no.: DE123456789"])
+    expect(buyer.taxIds).toEqual(["VAT no. DE123456789"])
     expect(JSON.stringify(frozen)).toBe(before)
     const currentNonregistered: Pick<OrgSettings, "companyName" | "momsRegistered"> = {
       ...current,
       momsRegistered: false,
     }
     expect(creditNotePdfParties({ ...issued, sellerSnapshot: { ...frozen, momsRegistered: true } }, currentNonregistered).seller.taxIds)
-      .toEqual(expect.arrayContaining(["VAT no.: DK12345678", "VAT no.: DK24256790"]))
+      .toEqual(expect.arrayContaining(["VAT no. DK12345678", "VAT no. DK24256790"]))
+  })
+
+  it.each([undefined, { invalid: true }])("uses the fallback buyer country when the snapshot is unusable: %s", buyerSnapshot => {
+    const result = creditNotePdfParties({ ...issued, buyerSnapshot, contact: { ...contact, country: "SE" } }, {})
+    expect(result.seller.taxIds).toEqual(["VAT no. DK12345678"])
+    expect(result.buyer.lines).toContain("Sweden")
   })
 
   it("translates tax identifier labels", () => {
     const { seller } = creditNotePdfParties({ ...issued, locale: "da" }, {})
-    expect(seller.taxIds).toEqual(["Momsnr.: DK12345678", "CVR-nr.: 12345678"])
+    expect(seller.taxIds).toEqual(["Momsnr. DK12345678"])
   })
 
   it("renders the buyer from the issued snapshot", () => {
@@ -113,7 +144,7 @@ describe("credit note PDF parties", () => {
       name: "Jane Buyer",
       email: "jane@buyer.example",
       company: "Buyer GmbH",
-      lines: ["Hauptstraße 5", "Berlin, 10115", "DE"],
+      lines: ["Hauptstraße 5", "Berlin, 10115", "Germany"],
     })
   })
 
