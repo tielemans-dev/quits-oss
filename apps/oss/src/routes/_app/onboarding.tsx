@@ -37,6 +37,19 @@ import { createNamedOrganization } from '../../lib/organization-slug'
 import type { CvrLookupCompany } from '../../lib/onboarding/search-cvr'
 import { stageSelectedCompany, readSelectedCompany, clearSelectedCompany } from '../../lib/onboarding/selected-company'
 
+
+// A hung onboarding lookup must surface the retry card instead of a spinner that never ends.
+const ONBOARDING_LOOKUP_TIMEOUT_MS = 10_000
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('onboarding lookup timed out')), ms)
+    promise.then(
+      value => { clearTimeout(timer); resolve(value) },
+      error => { clearTimeout(timer); reject(error) },
+    )
+  })
+}
+
 export const Route = createFileRoute('/_app/onboarding')({
   validateSearch: loginReturnSearchSchema,
   component: OnboardingPage,
@@ -139,12 +152,36 @@ function OnboardingPageContent() {
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  // A failed availability lookup stays unknown (with a retry) instead of reading as "v2 disabled",
+  // which would let an organization created for v2 fall through to the legacy setup form.
+  const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
+  const [v2AvailabilityAttempt, setV2AvailabilityAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
-    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    // Each attempt starts unknown, so a stale success can't mount v2 after this attempt fails.
+    setV2Availability(null)
+    setV2AvailabilityFailed(false)
+    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg])
+  }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
+
+  // Before an organization exists, cvr.setupAvailable (same predicate as cvr.available) decides
+  // whether onboarding v2 applies. v2 then only needs a name to create the organization; the CVR lookup, review and
+  // confirmation happen in the v2 wizard instead of the v1 card creating a finished organization.
+  // A failed lookup stays unknown (with a retry) rather than falling back to v1.
+  const [noOrgV2, setNoOrgV2] = useState<boolean | null>(null)
+  const [noOrgV2Failed, setNoOrgV2Failed] = useState(false)
+  const [noOrgV2Attempt, setNoOrgV2Attempt] = useState(0)
+  useEffect(() => {
+    if (!isCloud || hasActiveOrg) return
+    let cancelled = false
+    setNoOrgV2Failed(false)
+    withTimeout(trpc.cvr.setupAvailable.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      .then(result => { if (!cancelled) setNoOrgV2(result?.enabled === true) })
+      .catch(() => { if (!cancelled) setNoOrgV2Failed(true) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg, noOrgV2Attempt])
 
   const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
@@ -288,10 +325,18 @@ function OnboardingPageContent() {
           }
           if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
-            try {
-              await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
-            } catch {
-              // The field already shows the current language. The next visit can store it.
+            // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
+            // draft. When capabilities are unknown, skip the write; the next visit can store it.
+            const v2Active = await withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+              .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
+              .catch(() => true)
+            if (cancelled) return
+            if (!v2Active) {
+              try {
+                await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
+              } catch {
+                // The field already shows the current language. The next visit can store it.
+              }
             }
           }
           setValues(parsed)
@@ -334,6 +379,7 @@ function OnboardingPageContent() {
     }
   }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
 
+  const [runtimeCapabilitiesFailed, setRuntimeCapabilitiesFailed] = useState(false)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
       setRuntimeCapabilities(null)
@@ -341,9 +387,9 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilitiesFailed(false)
 
-    trpc.runtime.capabilities
-      .query()
+    withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
@@ -354,6 +400,7 @@ function OnboardingPageContent() {
       .catch(() => {
         if (!cancelled) {
           setRuntimeCapabilities(null)
+          setRuntimeCapabilitiesFailed(true)
           setMethod('manual')
         }
       })
@@ -361,7 +408,8 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud])
+    // The v2 retry also re-reads capabilities: v2 needs them for seller-VAT confirmation.
+  }, [hasActiveOrg, isCloud, v2AvailabilityAttempt])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -453,7 +501,8 @@ function OnboardingPageContent() {
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    if (session?.user?.id) {
+    // v2 collects and confirms company details itself; staging would save a legacy draft first.
+    if (session?.user?.id && !noOrgV2) {
       try {
         stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
       } catch {
@@ -462,7 +511,7 @@ function OnboardingPageContent() {
     }
     // Loads a new page acting for the new organization.
     const switched = await switchActiveOrganization(created.id, {
-      destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+      destination: isCloud && (target || noOrgV2) ? loginReturnOnboarding(search) : returnDestination,
     })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
@@ -563,7 +612,21 @@ function OnboardingPageContent() {
   }
 
   if (!hasActiveOrg) {
-    if (orgAccessLoading) {
+    if (!orgAccessLoading && isCloud && orgAccessState.kind === 'create' && noOrgV2 === null && noOrgV2Failed) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button type="button" className="w-full" onClick={() => setNoOrgV2Attempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )
+    }
+    if (orgAccessLoading || (isCloud && orgAccessState.kind === 'create' && noOrgV2 === null)) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <Card className="w-full max-w-sm">
@@ -622,18 +685,19 @@ function OnboardingPageContent() {
       )
     }
 
+    const nameOnly = entryMode === 'manual' || noOrgV2 === true
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-2xl">
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
             </CardTitle>
             <CardDescription>
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          {entryMode === 'manual' ? (
+          {nameOnly ? (
             <form onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
@@ -657,7 +721,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && <Button
+                {isCloud && !noOrgV2 && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -752,6 +816,35 @@ function OnboardingPageContent() {
               {t('auth.onboarding.configured.continue')}
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
+  // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
+  const v2CapabilitiesMissing = v2Availability?.enabled === true && runtimeCapabilities === null
+  if (hasActiveOrg && ((v2Availability === null && v2AvailabilityFailed) || (v2CapabilitiesMissing && runtimeCapabilitiesFailed))) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button type="button" className="w-full" onClick={() => setV2AvailabilityAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+  if (hasActiveOrg && (v2Availability === null || v2CapabilitiesMissing)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="status">{t('auth.onboarding.loading')}</CardDescription>
+          </CardHeader>
         </Card>
       </div>
     )
