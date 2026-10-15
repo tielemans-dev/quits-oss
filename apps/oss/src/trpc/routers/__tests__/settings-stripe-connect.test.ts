@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { decryptSecret } from "../../../lib/secrets"
+import { decryptSecret, encryptSecret } from "../../../lib/secrets"
+import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
 import { settingsRouter } from "../settings"
 
@@ -97,8 +98,8 @@ function settingsRow(overrides: Record<string, unknown> = {}) {
     aiApiKeyEnc: null,
     aiModel: "openai/gpt-4o-mini",
     stripePublishableKey: "pk_test_123456789",
-    stripeSecretKeyEnc: "enc-secret",
-    stripeWebhookSecretEnc: "enc-webhook",
+    stripeSecretKeyEnc: encryptSecret("sk_test_12345678901234567890"),
+    stripeWebhookSecretEnc: encryptSecret("whsec_12345678901234567890"),
     stripeAccountId: null,
     stripeAccountStatus: "none",
     stripeAccountStatusAt: null,
@@ -134,6 +135,8 @@ describe("settings stripe account contract", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetRuntimeServices()
+    setRuntimeExtensions([])
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-at-least-16")
     mocks.paymentsManaged = false
     mocks.canUpdateSettings = true
     mocks.findFirst.mockResolvedValue(null)
@@ -219,6 +222,34 @@ describe("settings stripe account contract", () => {
     expect(settings.stripeConnectActions).toBe(false)
   })
 
+  describe.each(["none", "pending", "restricted", "active"] as const)("%s account", (status) => {
+    it.each([false, true])("reports checkout readiness with BYOK configured=%s", async (byok) => {
+      mocks.paymentsManaged = true
+      mocks.findUnique.mockResolvedValue(settingsRow({
+        stripeAccountId: status === "none" ? null : "acct_test",
+        stripeAccountStatus: status,
+        ...(!byok ? {
+          stripePublishableKey: null,
+          stripeSecretKeyEnc: null,
+          stripeWebhookSecretEnc: null,
+        } : {}),
+      }))
+
+      // Current self-hosted main has no Connect checkout target, even for active accounts.
+      expect((await createCaller().get()).stripePaymentsEnabled).toBe(byok)
+
+      setRuntimeExtensions([{
+        id: "test-connect-checkout",
+        resolveStripeCheckoutTarget: async () => status === "active" ? {
+          kind: "connect",
+          stripeAccount: "acct_test",
+          client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
+        } : null,
+      }])
+      expect((await createCaller().get()).stripePaymentsEnabled).toBe(byok || status === "active")
+    })
+  })
+
   it("reports Connect actions only when payments are managed and a handler is registered", async () => {
     mocks.findUnique.mockResolvedValue(settingsRow())
     const run = vi.fn(async () => {})
@@ -231,6 +262,16 @@ describe("settings stripe account contract", () => {
 
     mocks.canUpdateSettings = false
     expect((await createCaller().get()).stripeConnectActions).toBe(false)
+  })
+
+  it("keeps Settings usable when the checkout target cannot be resolved", async () => {
+    mocks.paymentsManaged = true
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeAccountStatus: "active" }))
+    setRuntimeExtensions([{
+      id: "test-unavailable-checkout",
+      resolveStripeCheckoutTarget: async () => { throw new Error("Checkout unavailable") },
+    }])
+    expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
   })
 
   it("calls the registered Connect handler and does not persist the account", async () => {
@@ -357,4 +398,6 @@ describe("settings stripe account contract", () => {
 
 afterEach(() => {
   resetRuntimeServices()
+  setRuntimeExtensions([])
+  vi.unstubAllEnvs()
 })

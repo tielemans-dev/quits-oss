@@ -44,11 +44,12 @@ const byokAccount: OrgStripeAccount = {
   statusAt: null,
 }
 
-function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false) {
+function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false, stripePaymentsEnabled = false) {
   return render(
     <StripePaymentsSection
       account={account}
       stripeByokConfigured={stripeByokConfigured}
+      stripePaymentsEnabled={stripePaymentsEnabled}
       stripePublishableKey={stripeByokConfigured ? "pk_test_123456789" : null}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
@@ -76,11 +77,13 @@ function LiveSection({
 }) {
   const [account, setAccount] = useState(initial)
   const [enabled, setEnabled] = useState(connectActions)
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true)
   return (
     <StripePaymentsSection
       account={account}
       connectActions={enabled}
       stripeByokConfigured={false}
+      stripePaymentsEnabled={paymentsEnabled}
       stripePublishableKey={null}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
@@ -89,6 +92,7 @@ function LiveSection({
       onConnectSettings={(next) => {
         setAccount(next.stripeAccount)
         setEnabled(next.stripeConnectActions)
+        setPaymentsEnabled(next.stripePaymentsEnabled)
       }}
     />
   )
@@ -101,6 +105,11 @@ afterEach(() => {
 })
 
 describe("StripePaymentsSection", () => {
+  it("passes checkout readiness to the Connect card independently of BYOK keys", () => {
+    renderSection(connectAccount("active"), false, true)
+    expect(screen.getByText("settings.payments.connect.payments.enabled")).toBeTruthy()
+  })
+
   it("keeps the raw key form for self-hosted installs", () => {
     renderSection(byokAccount, true)
 
@@ -171,10 +180,12 @@ describe("StripePaymentsSection", () => {
     api.get.mockResolvedValue({
       stripeAccount: connectAccount("none"),
       stripeConnectActions: true,
+      stripePaymentsEnabled: false,
     })
     render(<LiveSection initial={connectAccount("active")} connectActions />)
 
     expect(screen.getByText("settings.payments.connect.status.active")).toBeTruthy()
+    expect(screen.getByText("settings.payments.connect.payments.enabled")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: actionFor.active }))
     fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.disconnect.confirm" }))
 
@@ -183,6 +194,8 @@ describe("StripePaymentsSection", () => {
     })
     expect(screen.queryByText("settings.payments.connect.status.active")).toBeNull()
     expect(screen.queryByText("acct_test")).toBeNull()
+    expect(screen.getByText("settings.payments.connect.payments.unavailable")).toBeTruthy()
+    expect(screen.queryByText("settings.payments.connect.payments.enabled")).toBeNull()
     expect(api.run).toHaveBeenCalledWith({ action: "disconnect" })
     expect(api.get).toHaveBeenCalledOnce()
     expect((screen.getByRole("button", { name: actionFor.none }) as HTMLButtonElement).disabled).toBe(false)

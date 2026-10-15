@@ -150,6 +150,7 @@ type SettingsData = {
   aiModel: string
   aiByokConfigured: boolean
   stripeByokConfigured: boolean
+  stripePaymentsEnabled?: boolean
   stripePublishableKey: string | null
   stripeAccount?: OrgStripeAccount
   stripeConnectActions?: boolean
@@ -1303,6 +1304,7 @@ function SettingsPage() {
         <StripePaymentsSection
           account={settings.stripeAccount}
           stripeByokConfigured={settings.stripeByokConfigured}
+          stripePaymentsEnabled={settings.stripePaymentsEnabled}
           stripePublishableKey={settings.stripePublishableKey}
           clearStripeSecretKey={clearStripeSecretKey}
           clearStripeWebhookSecret={clearStripeWebhookSecret}
@@ -1317,6 +1319,7 @@ function SettingsPage() {
                     ...current,
                     stripeAccount: next.stripeAccount,
                     stripeConnectActions: next.stripeConnectActions,
+                    stripePaymentsEnabled: next.stripePaymentsEnabled,
                   }
                 : current,
             )
