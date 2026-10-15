@@ -15,7 +15,7 @@ describe("v2 offer rendering", () => {
     expect(agreementVatPresentation(v1).totals).toBeNull()
     expect(agreementVatPresentation(snapshot).totals?.lines).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Moms 25 %", amount: "0.01" })]))
     const zero = { ...snapshot, vatGroups: vatGroups.map(group => ({ ...group, rate: "0", treatment: "out_of_scope" as const, tax: "0" })) }
-    expect(agreementVatPresentation(zero, "en-US").totals?.lines[1]).toMatchObject({ label: "Tax 0%", reason: "Outside the scope of VAT" })
+    expect(agreementVatPresentation(zero, "en-US").totals?.lines[1]).toMatchObject({ label: "VAT 0%", reason: "Outside the scope of VAT" })
     expect(agreementVatPresentation(zero, "en-US").totals?.note).toBe("No VAT is charged. The supply is outside the scope of VAT.")
     expect(agreementVatPresentation(zero, "en-US").lineLabel("0")).toBe("0% tax")
   })
