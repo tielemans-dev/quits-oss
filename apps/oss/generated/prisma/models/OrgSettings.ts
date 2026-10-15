@@ -97,6 +97,9 @@ export type OrgSettingsMinAggregateOutputType = {
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
+  stripeAccountId: string | null
+  stripeAccountStatus: $Enums.StripeAccountStatus | null
+  stripeAccountStatusAt: Date | null
   documentSendingDomain: string | null
   documentSendingDomainProviderId: string | null
   documentSendingDomainStatus: string | null
@@ -157,6 +160,9 @@ export type OrgSettingsMaxAggregateOutputType = {
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
+  stripeAccountId: string | null
+  stripeAccountStatus: $Enums.StripeAccountStatus | null
+  stripeAccountStatusAt: Date | null
   documentSendingDomain: string | null
   documentSendingDomainProviderId: string | null
   documentSendingDomainStatus: string | null
@@ -219,6 +225,9 @@ export type OrgSettingsCountAggregateOutputType = {
   stripePublishableKey: number
   stripeSecretKeyEnc: number
   stripeWebhookSecretEnc: number
+  stripeAccountId: number
+  stripeAccountStatus: number
+  stripeAccountStatusAt: number
   documentSendingDomain: number
   documentSendingDomainProviderId: number
   documentSendingDomainStatus: number
@@ -304,6 +313,9 @@ export type OrgSettingsMinAggregateInputType = {
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
+  stripeAccountId?: true
+  stripeAccountStatus?: true
+  stripeAccountStatusAt?: true
   documentSendingDomain?: true
   documentSendingDomainProviderId?: true
   documentSendingDomainStatus?: true
@@ -364,6 +376,9 @@ export type OrgSettingsMaxAggregateInputType = {
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
+  stripeAccountId?: true
+  stripeAccountStatus?: true
+  stripeAccountStatusAt?: true
   documentSendingDomain?: true
   documentSendingDomainProviderId?: true
   documentSendingDomainStatus?: true
@@ -426,6 +441,9 @@ export type OrgSettingsCountAggregateInputType = {
   stripePublishableKey?: true
   stripeSecretKeyEnc?: true
   stripeWebhookSecretEnc?: true
+  stripeAccountId?: true
+  stripeAccountStatus?: true
+  stripeAccountStatusAt?: true
   documentSendingDomain?: true
   documentSendingDomainProviderId?: true
   documentSendingDomainStatus?: true
@@ -576,6 +594,9 @@ export type OrgSettingsGroupByOutputType = {
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
+  stripeAccountId: string | null
+  stripeAccountStatus: $Enums.StripeAccountStatus
+  stripeAccountStatusAt: Date | null
   documentSendingDomain: string | null
   documentSendingDomainProviderId: string | null
   documentSendingDomainStatus: string | null
@@ -662,6 +683,9 @@ export type OrgSettingsWhereInput = {
   stripePublishableKey?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  stripeAccountId?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFilter<"OrgSettings"> | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.DateTimeNullableFilter<"OrgSettings"> | Date | string | null
   documentSendingDomain?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   documentSendingDomainProviderId?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   documentSendingDomainStatus?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -726,6 +750,9 @@ export type OrgSettingsOrderByWithRelationInput = {
   stripePublishableKey?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeAccountId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeAccountStatus?: Prisma.SortOrder
+  stripeAccountStatusAt?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomain?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomainProviderId?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomainStatus?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -742,6 +769,7 @@ export type OrgSettingsOrderByWithRelationInput = {
 export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   organizationId?: string
+  stripeAccountId?: string
   AND?: Prisma.OrgSettingsWhereInput | Prisma.OrgSettingsWhereInput[]
   OR?: Prisma.OrgSettingsWhereInput[]
   NOT?: Prisma.OrgSettingsWhereInput | Prisma.OrgSettingsWhereInput[]
@@ -793,6 +821,8 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   stripePublishableKey?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFilter<"OrgSettings"> | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.DateTimeNullableFilter<"OrgSettings"> | Date | string | null
   documentSendingDomain?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   documentSendingDomainProviderId?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   documentSendingDomainStatus?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -804,7 +834,7 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"OrgSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"OrgSettings"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
-}, "id" | "organizationId">
+}, "id" | "organizationId" | "stripeAccountId">
 
 export type OrgSettingsOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -857,6 +887,9 @@ export type OrgSettingsOrderByWithAggregationInput = {
   stripePublishableKey?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrderInput | Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeAccountId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeAccountStatus?: Prisma.SortOrder
+  stripeAccountStatusAt?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomain?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomainProviderId?: Prisma.SortOrderInput | Prisma.SortOrder
   documentSendingDomainStatus?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -928,6 +961,9 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   stripePublishableKey?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   stripeSecretKeyEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   stripeWebhookSecretEnc?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  stripeAccountId?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusWithAggregatesFilter<"OrgSettings"> | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.DateTimeNullableWithAggregatesFilter<"OrgSettings"> | Date | string | null
   documentSendingDomain?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   documentSendingDomainProviderId?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   documentSendingDomainStatus?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
@@ -990,6 +1026,9 @@ export type OrgSettingsCreateInput = {
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
+  stripeAccountId?: string | null
+  stripeAccountStatus?: $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Date | string | null
   documentSendingDomain?: string | null
   documentSendingDomainProviderId?: string | null
   documentSendingDomainStatus?: string | null
@@ -1054,6 +1093,9 @@ export type OrgSettingsUncheckedCreateInput = {
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
+  stripeAccountId?: string | null
+  stripeAccountStatus?: $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Date | string | null
   documentSendingDomain?: string | null
   documentSendingDomainProviderId?: string | null
   documentSendingDomainStatus?: string | null
@@ -1116,6 +1158,9 @@ export type OrgSettingsUpdateInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1180,6 +1225,9 @@ export type OrgSettingsUncheckedUpdateInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1243,6 +1291,9 @@ export type OrgSettingsCreateManyInput = {
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
+  stripeAccountId?: string | null
+  stripeAccountStatus?: $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Date | string | null
   documentSendingDomain?: string | null
   documentSendingDomainProviderId?: string | null
   documentSendingDomainStatus?: string | null
@@ -1305,6 +1356,9 @@ export type OrgSettingsUpdateManyMutationInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1368,6 +1422,9 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1436,6 +1493,9 @@ export type OrgSettingsCountOrderByAggregateInput = {
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
+  stripeAccountId?: Prisma.SortOrder
+  stripeAccountStatus?: Prisma.SortOrder
+  stripeAccountStatusAt?: Prisma.SortOrder
   documentSendingDomain?: Prisma.SortOrder
   documentSendingDomainProviderId?: Prisma.SortOrder
   documentSendingDomainStatus?: Prisma.SortOrder
@@ -1508,6 +1568,9 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
+  stripeAccountId?: Prisma.SortOrder
+  stripeAccountStatus?: Prisma.SortOrder
+  stripeAccountStatusAt?: Prisma.SortOrder
   documentSendingDomain?: Prisma.SortOrder
   documentSendingDomainProviderId?: Prisma.SortOrder
   documentSendingDomainStatus?: Prisma.SortOrder
@@ -1568,6 +1631,9 @@ export type OrgSettingsMinOrderByAggregateInput = {
   stripePublishableKey?: Prisma.SortOrder
   stripeSecretKeyEnc?: Prisma.SortOrder
   stripeWebhookSecretEnc?: Prisma.SortOrder
+  stripeAccountId?: Prisma.SortOrder
+  stripeAccountStatus?: Prisma.SortOrder
+  stripeAccountStatusAt?: Prisma.SortOrder
   documentSendingDomain?: Prisma.SortOrder
   documentSendingDomainProviderId?: Prisma.SortOrder
   documentSendingDomainStatus?: Prisma.SortOrder
@@ -1642,6 +1708,10 @@ export type NullableIntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type EnumStripeAccountStatusFieldUpdateOperationsInput = {
+  set?: $Enums.StripeAccountStatus
+}
+
 export type OrgSettingsCreateWithoutOrganizationInput = {
   id?: string
   countryCode?: string
@@ -1692,6 +1762,9 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
+  stripeAccountId?: string | null
+  stripeAccountStatus?: $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Date | string | null
   documentSendingDomain?: string | null
   documentSendingDomainProviderId?: string | null
   documentSendingDomainStatus?: string | null
@@ -1754,6 +1827,9 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   stripePublishableKey?: string | null
   stripeSecretKeyEnc?: string | null
   stripeWebhookSecretEnc?: string | null
+  stripeAccountId?: string | null
+  stripeAccountStatus?: $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Date | string | null
   documentSendingDomain?: string | null
   documentSendingDomainProviderId?: string | null
   documentSendingDomainStatus?: string | null
@@ -1832,6 +1908,9 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1894,6 +1973,9 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   stripePublishableKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeSecretKeyEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   stripeWebhookSecretEnc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeAccountStatus?: Prisma.EnumStripeAccountStatusFieldUpdateOperationsInput | $Enums.StripeAccountStatus
+  stripeAccountStatusAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   documentSendingDomain?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainProviderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentSendingDomainStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1959,6 +2041,9 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
+  stripeAccountId?: boolean
+  stripeAccountStatus?: boolean
+  stripeAccountStatusAt?: boolean
   documentSendingDomain?: boolean
   documentSendingDomainProviderId?: boolean
   documentSendingDomainStatus?: boolean
@@ -2023,6 +2108,9 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
+  stripeAccountId?: boolean
+  stripeAccountStatus?: boolean
+  stripeAccountStatusAt?: boolean
   documentSendingDomain?: boolean
   documentSendingDomainProviderId?: boolean
   documentSendingDomainStatus?: boolean
@@ -2087,6 +2175,9 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
+  stripeAccountId?: boolean
+  stripeAccountStatus?: boolean
+  stripeAccountStatusAt?: boolean
   documentSendingDomain?: boolean
   documentSendingDomainProviderId?: boolean
   documentSendingDomainStatus?: boolean
@@ -2151,6 +2242,9 @@ export type OrgSettingsSelectScalar = {
   stripePublishableKey?: boolean
   stripeSecretKeyEnc?: boolean
   stripeWebhookSecretEnc?: boolean
+  stripeAccountId?: boolean
+  stripeAccountStatus?: boolean
+  stripeAccountStatusAt?: boolean
   documentSendingDomain?: boolean
   documentSendingDomainProviderId?: boolean
   documentSendingDomainStatus?: boolean
@@ -2163,7 +2257,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "momsRegistered" | "paymentTermsDays" | "onboardingV2Key" | "onboardingV2Result" | "companyPhone" | "companyLogo" | "bankAccountHolder" | "bankName" | "bankRegNumber" | "bankAccountNumber" | "bankIban" | "bankBic" | "paymentNote" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "momsRegistered" | "paymentTermsDays" | "onboardingV2Key" | "onboardingV2Result" | "companyPhone" | "companyLogo" | "bankAccountHolder" | "bankName" | "bankRegNumber" | "bankAccountNumber" | "bankIban" | "bankBic" | "paymentNote" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "stripeAccountId" | "stripeAccountStatus" | "stripeAccountStatusAt" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -2230,6 +2324,9 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     stripePublishableKey: string | null
     stripeSecretKeyEnc: string | null
     stripeWebhookSecretEnc: string | null
+    stripeAccountId: string | null
+    stripeAccountStatus: $Enums.StripeAccountStatus
+    stripeAccountStatusAt: Date | null
     documentSendingDomain: string | null
     documentSendingDomainProviderId: string | null
     documentSendingDomainStatus: string | null
@@ -2714,6 +2811,9 @@ export interface OrgSettingsFieldRefs {
   readonly stripePublishableKey: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly stripeSecretKeyEnc: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly stripeWebhookSecretEnc: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly stripeAccountId: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly stripeAccountStatus: Prisma.FieldRef<"OrgSettings", 'StripeAccountStatus'>
+  readonly stripeAccountStatusAt: Prisma.FieldRef<"OrgSettings", 'DateTime'>
   readonly documentSendingDomain: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly documentSendingDomainProviderId: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly documentSendingDomainStatus: Prisma.FieldRef<"OrgSettings", 'String'>

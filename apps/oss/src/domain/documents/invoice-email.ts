@@ -10,6 +10,7 @@ import {
 } from "../../lib/document-email-sending"
 import { buildInvoiceEmailContent, composeMessage } from "../../lib/email"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
+import type { StripeAccountStatus } from "@quits/contracts/payments"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
@@ -32,6 +33,7 @@ type OrgEmailSettings = {
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
+  stripeAccountStatus?: StripeAccountStatus | null
 } & Parameters<typeof readDocumentSendingDomainState>[0]
 
 export type InvoiceForEmail = {
@@ -112,6 +114,7 @@ export function resolveInvoiceEmailContext(settings: OrgEmailSettings) {
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
       stripeWebhookSecretEnc: settings.stripeWebhookSecretEnc,
+      stripeAccountStatus: settings.stripeAccountStatus,
     }).configured,
   }
 }
