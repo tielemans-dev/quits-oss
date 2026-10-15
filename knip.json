@@ -28,6 +28,7 @@
     "scripts": {
       "entry": [
         "check-*.mjs",
+        "record-motion{,.smoke}.mjs",
         "{i18n-*,update-tm-allowlist,predev-bootstrap,prepare-number-rollback,run-with-workspace-env}.mjs",
         "__tests__/**/*.test.{ts,mjs}"
       ],
