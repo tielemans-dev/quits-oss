@@ -67,7 +67,7 @@ export function totalsLabelKeys(basis: PriceBasis | undefined, hasVat = basis ==
 export function vatReasonKeys(row: VatRow): TranslationKey[] {
   return [...new Set(row.treatments ?? (row.treatment ? [row.treatment] : []))].flatMap<TranslationKey>(treatment => {
     if (treatment === "out_of_scope") return ["pdf.vatOutOfScope"]
-    if (["exempt", "reverse_charge_domestic", "intra_community"].includes(treatment)) return [`vat.treatment.${treatment}` as TranslationKey]
+    if (["exempt", "reverse_charge_domestic", "intra_community", "export", "zero_rated"].includes(treatment)) return [`vat.treatment.${treatment}` as TranslationKey]
     return []
   })
 }

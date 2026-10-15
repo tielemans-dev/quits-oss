@@ -80,6 +80,23 @@ describe("agreement email total", () => {
     expect(email.html).not.toContain("1.250,00")
   })
 
+  it("lists each VAT row and its classification, as the agreement page does", () => {
+    const [standard] = v2Snapshot.vatGroups
+    const exempt = { ...standard!, treatment: "exempt", rate: "0", key: "[\"exempt\",null,\"0\",null]", tax: "0.00", taxBase: "0.00", payableRounding: "0.00", payableRoundingBase: "0.00" }
+    const email = composeAgreementEmail({
+      snapshot: { ...v2Snapshot, vatGroups: [standard!, exempt] } as never,
+      number: "AGR-1",
+      locale: "da-DK",
+      settings: settings as never,
+      recipient: "buyer@example.com",
+      url: "https://app.example.test/a/token",
+    })
+
+    expect(email.html).toContain("Moms 25 % af")
+    expect(email.html).toContain("Moms 0 % af")
+    expect(email.html).toContain("Momsfritaget")
+  })
+
   it("shows the flat total of an older offer", () => {
     expect(compose("da-DK").html).toContain("1.250,50\u00a0kr.")
   })

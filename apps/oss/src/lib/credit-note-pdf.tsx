@@ -4,7 +4,7 @@ import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer"
-import { formatCurrency, formatDate } from "./i18n/format"
+import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { OrgSettingsForPdf } from "./invoice-pdf"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
@@ -191,7 +191,7 @@ export function CreditNotePdfDocument({
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <View style={styles.colDescription}><Text>{item.description}</Text>{deviationVatLabel(item.taxRate, creditNote.vatRows, creditNote.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: item.taxRate! })}</Text>}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
+              <View style={styles.colDescription}><Text>{item.description}</Text>{deviationVatLabel(item.taxRate, creditNote.vatRows, creditNote.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{money(item.unitPrice)}</Text>
               <Text style={styles.colTotal}>{money(item.total)}</Text>

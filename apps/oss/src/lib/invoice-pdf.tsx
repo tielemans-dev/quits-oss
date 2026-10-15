@@ -14,7 +14,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
-import { formatCurrency, formatDate } from "./i18n/format"
+import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
@@ -375,7 +375,7 @@ export function InvoicePdfDocument({
           {invoice.items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
               <View style={styles.colDescription}>
-                <Text>{item.description}</Text>{deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: item.taxRate! })}</Text>}
+                <Text>{item.description}</Text>{deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}
                 {sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
               </View>
               <Text style={styles.colQty}>{item.quantity}</Text>

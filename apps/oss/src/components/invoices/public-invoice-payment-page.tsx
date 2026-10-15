@@ -14,6 +14,7 @@ import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
 import { useDocumentFormat } from "../documents/use-document-format"
 import type { PublicSeller } from "../../lib/documents/public-presentation"
+import { formatNumber } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 
 type Decimalish = number | { toNumber(): number }
@@ -194,7 +195,7 @@ function PublicInvoiceDocument({
                       className="grid grid-cols-[1fr_auto] gap-4 border-b px-4 py-3 last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: toNumber(item.taxRate!) })}</p>}
+                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: formatNumber(toNumber(item.taxRate!), locale) })}</p>}
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),

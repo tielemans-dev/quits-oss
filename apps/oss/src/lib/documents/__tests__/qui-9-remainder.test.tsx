@@ -3,6 +3,7 @@ import { formatTaxIds, distinctCompany } from "../tax-ids"
 import { buildTotals } from "../totals"
 import { pdfBuyerAddress } from "../invoice-identity"
 import { deviationVatLabel, type VatRow } from "../line-amounts"
+import { agreementVatPresentation } from "../../agreements/vat-presentation"
 import { vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
 
 const ids = [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }]
@@ -45,5 +46,21 @@ describe("QUI-9 frozen legal presentation", () => {
     expect(rows[0]).toMatchObject({ net: "20.00", tax: "0.00", treatments: ["out_of_scope", "exempt"] })
     expect(totals(rows).note).toBeUndefined()
     expect(totals(rows).lines[1]?.reason).toBe("Uden for momsens anvendelsesområde · Momsfritaget")
+  })
+  it.each(["export", "zero_rated"])("retains a lone %s zero row with its classification", treatment => {
+    const result = totals([{ ...zero, treatment }], "en-US")
+    expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "VAT 0%"])
+    expect(result.lines[1]?.reason).toBe(treatment === "export" ? "Export" : "Zero-rated")
+  })
+  it("still drops a lone unclassified zero row", () => {
+    expect(totals([{ ...zero, treatment: "unclassified_zero" }], "en-US").lines.map(row => row.label)).toEqual(["Subtotal"])
+  })
+  it("treats Danish country names as domestic when labelling seller IDs", () => {
+    for (const country of ["DK", "dk", "Danmark", "Denmark", " Denmark "]) expect(formatTaxIds(ids, "da-DK", country)).toEqual(["CVR-nr. 12345678"])
+    expect(formatTaxIds(ids, "da-DK", "Sverige")).toEqual(["Momsnr. DK12345678"])
+  })
+  it("localizes a fractional line VAT rate", () => {
+    const snapshot = { offerFormatVersion: 2, locale: "da-DK", currency: "DKK", taxRate: "25", taxRegime: "eu_vat", sellerSnapshot: { momsRegistered: true }, vatGroups: [], serviceTotal: { net: "0", tax: "0", gross: "0", payableRounding: "0" } }
+    expect(agreementVatPresentation(snapshot as never).lineLabel("5.5")).toBe("5,5 % moms")
   })
 })

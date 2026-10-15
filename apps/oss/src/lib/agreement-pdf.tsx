@@ -48,10 +48,10 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           <Text>{snapshot.sellerSnapshot?.companyName}</Text>
           <Text>{snapshot.sellerSnapshot?.companyAddress}</Text>
           {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <Text key={id}>{id}</Text>)}
-          {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <Text key={id}>{id}</Text>)}
           <Text>
             Customer: {snapshot.buyerSnapshot?.name} {distinctCompany(snapshot.buyerSnapshot)}
           </Text>
+          {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <Text key={id}>{id}</Text>)}
           <Text>{snapshot.buyerSnapshot?.email}</Text>
           {issueDate && <Text>Issued: {issueDate.slice(0, 10)}</Text>}
           <Text>

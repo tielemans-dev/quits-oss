@@ -1,12 +1,13 @@
 import type { DocumentTaxId } from "@quits/contracts/documents"
 import { translate } from "../i18n/translate"
+import { toCountryCode } from "../exports/parties"
 import { sellerCvr, sellerPresentationTaxIds } from "./invoice-identity"
 
 /** Seller labels follow the buyer country; buyer identifiers keep their own scheme. */
 export function formatTaxIds(ids: readonly DocumentTaxId[] | undefined, locale?: string | null, buyerCountry?: string | null, momsRegistered?: boolean | null): string[] {
   ids = buyerCountry ? sellerPresentationTaxIds(ids, momsRegistered) : ids
   const cvr = sellerCvr(ids)
-  const national = cvr && buyerCountry ? [buyerCountry.toUpperCase() === "DK" || momsRegistered === false
+  const national = cvr && buyerCountry ? [toCountryCode(buyerCountry) === "DK" || momsRegistered === false
     ? `${translate("pdf.cvrNumber", locale)} ${cvr}`
     : `${translate("pdf.vatNumber", locale)} DK${cvr}`] : []
   return [...national, ...(ids ?? []).filter(id => id.value.trim() && !(national.length && sellerCvr([id]) === cvr)).map(id => {

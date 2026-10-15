@@ -71,11 +71,11 @@ export function PublicAgreementPage({
         <p>{snapshot.sellerSnapshot?.companyName}</p>
         <p>{snapshot.sellerSnapshot?.companyAddress}</p>
           {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <p key={id}>{id}</p>)}
-          {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <p key={id}>{id}</p>)}
         <p>
           {t("agreements.customer")}: {snapshot.buyerSnapshot?.name}{" "}
           {distinctCompany(snapshot.buyerSnapshot)}
         </p>
+        {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <p key={id}>{id}</p>)}
         <p className="whitespace-pre-wrap">{snapshot.summary}</p>
         <p>
           {t("agreements.validUntil")}: {calendarDate(snapshot.validUntil)} ({snapshot.timezone})
