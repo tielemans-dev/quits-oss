@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import { Prisma } from "../../../generated/prisma/client"
 import { accountFingerprint, reconnectReview } from "../accounting/sync-position"
@@ -7,6 +8,24 @@ import { defineCommand } from "../command"
 import { InvalidState, NotFound } from "../errors"
 import { advance } from "../events/consumers"
 import { Command, Db } from "../services"
+import { mappingsSchema } from "../accounting/mappings"
+
+export const saveAccountingMappings = defineCommand({
+  type: "accounting.saveMappings", permission: "settings:update", outwardFacing: false,
+  input: z.object({ provider: z.enum(["economic", "dinero"]), generation: z.string().min(1), mappingRevision: z.string().min(1), mappings: mappingsSchema }),
+  summarize: () => "Update accounting mappings",
+  handle: input => Effect.gen(function* () {
+    const db = yield* Db, command = yield* Command, revision = randomUUID()
+    const changed = yield* Effect.promise(() => db.accountingConnection.updateMany({
+      where: { organizationId: command.organizationId, provider: input.provider, generation: input.generation,
+        mappingRevision: input.mappingRevision, status: "connected", credentialEnc: { not: null } },
+      data: { mappings: input.mappings, mappingRevision: revision },
+    }))
+    if (!changed.count) return yield* Effect.fail(new InvalidState({ code: "accounting_mapping_stale", message: "Connection or mappings changed. Reload settings." }))
+    command.emit({ aggregateType: "organization", aggregateId: command.organizationId, type: "accounting.mappings_updated",
+      payload: { provider: input.provider, generation: input.generation, previousRevision: input.mappingRevision, revision } })
+  }),
+})
 
 export const disconnectAccountingCommand = defineCommand({
   type: "accounting.disconnect", permission: "settings:update", outwardFacing: false,

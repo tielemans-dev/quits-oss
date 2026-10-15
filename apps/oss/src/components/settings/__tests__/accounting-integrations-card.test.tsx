@@ -3,10 +3,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 
-const api = vi.hoisted(() => ({ status: vi.fn(), disconnect: vi.fn(), retry: vi.fn(), skip: vi.fn() }))
+const api = vi.hoisted(() => ({ status: vi.fn(), disconnect: vi.fn(), retry: vi.fn(), skip: vi.fn(), saveMappings: vi.fn() }))
 
 vi.mock("../../../trpc/client", () => ({
-  trpc: { accounting: { status: { query: api.status }, disconnect: { mutate: api.disconnect }, retry: { mutate: api.retry }, skip: { mutate: api.skip } } },
+  trpc: { accounting: { status: { query: api.status }, disconnect: { mutate: api.disconnect }, retry: { mutate: api.retry }, skip: { mutate: api.skip }, saveMappings: { mutate: api.saveMappings } } },
 }))
 vi.mock("../../../lib/auth-client", () => ({
   useSession: () => ({ data: { session: { activeOrganizationId: "org_a" } }, isPending: false }),
@@ -37,6 +37,42 @@ afterEach(() => {
 })
 
 describe("AccountingIntegrationsCard", () => {
+  it.each(["dinero", "economic"])("shows missing %s mappings, saves edits and keeps them after failure", async provider => {
+    const { defaultMappings } = await import("../../../domain/accounting/mappings")
+    const providers = [{ ...dinero(clean)[1], provider }]
+    Object.assign(providers[0]!, { generation: "g", mappingRevision: "1", mappings: defaultMappings() })
+    load(providers)
+    api.saveMappings.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ providers, canDisconnect: true })
+    render(<AccountingIntegrationsCard />)
+    expect(await screen.findByText(/Missing mapping for invoices and credit notes/)).toBeTruthy()
+    expect(screen.getByText(/Missing payment account/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText("Revenue account"), { target: { value: "1000" } })
+    fireEvent.change(screen.getByLabelText("VAT code"), { target: { value: "U25" } })
+    if (provider === "economic") expect(screen.getByLabelText("Product number")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
+    expect((await screen.findByRole("alert")).textContent).toBe("Could not save mappings. Reload settings and try again.")
+    expect((screen.getByLabelText("Revenue account") as HTMLInputElement).value).toBe("1000")
+    fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
+    await waitFor(() => expect(api.saveMappings).toHaveBeenCalledTimes(2))
+    expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ provider, generation: "g", mappingRevision: "1", mappings: expect.objectContaining({ rows: [expect.objectContaining({ revenueAccount: 1000, vatCode: "U25" })] }) }))
+  })
+  it("rejects duplicate VAT groups before saving and lets readers view mappings", async () => {
+    const { defaultMappings } = await import("../../../domain/accounting/mappings")
+    const providers = dinero(clean)
+    Object.assign(providers[1]!, { generation: "g", mappingRevision: "1", mappings: defaultMappings() })
+    load(providers)
+    render(<AccountingIntegrationsCard />)
+    fireEvent.click(await screen.findByRole("button", { name: "Add VAT group" }))
+    fireEvent.click(screen.getByRole("button", { name: "Add VAT group" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
+    expect(await screen.findByRole("alert")).toBeTruthy()
+    expect(api.saveMappings).not.toHaveBeenCalled()
+    cleanup()
+    load(providers, false)
+    render(<AccountingIntegrationsCard />)
+    expect((await screen.findByLabelText("Revenue account")).closest("fieldset")?.disabled).toBe(true)
+    expect(screen.queryByRole("button", { name: "Save mappings" })).toBeNull()
+  })
   const failed = { ...clean, failedCount: 1, failedDeliveryId: "delivery-1", lastErrorCode: "http_400" }
   it("shows the saved start and an explicit reconnect decision", async () => {
     const providers = dinero({ ...failed, lastErrorCode: "reconnect_review_required" }, "error")
@@ -93,13 +129,14 @@ describe("AccountingIntegrationsCard", () => {
   })
 
   it("shows failed deliveries and the last error in plain language", async () => {
-    load(dinero({ lastDeliveredAt: new Date("2026-10-14T09:30:00Z"), failedCount: 2, lastErrorCode: "missing_mapping" }, "error"))
+    load(dinero({ lastDeliveredAt: new Date("2026-10-14T09:30:00Z"), failedCount: 2, lastErrorCode: "missing_mapping", blockedDocument: "INV-1" }, "error"))
     render(<AccountingIntegrationsCard />)
 
     const row = (await screen.findByText("Error")).closest("[data-provider]") as HTMLElement
     expect(within(row).getByText("Account 1234")).toBeTruthy()
     expect(within(row).getByText(/Last delivered/)).toBeTruthy()
     expect(within(row).getByText("Failed deliveries: 2")).toBeTruthy()
+    expect(within(row).getByText("Missing mapping for INV-1.")).toBeTruthy()
     expect(within(row).getByText(/An account or VAT code is not mapped/)).toBeTruthy()
     expect(within(row).queryByText(/missing_mapping/)).toBeNull()
   })

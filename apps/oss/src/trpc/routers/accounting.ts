@@ -1,11 +1,15 @@
 import { actorCan } from "../../domain/actor"
-import { disconnectAccountingCommand, retryAccountingDelivery, skipAccountingDelivery, retryAccountingInput, skipAccountingInput } from "../../domain/commands/accounting"
+import { disconnectAccountingCommand, retryAccountingDelivery, skipAccountingDelivery, retryAccountingInput, skipAccountingInput, saveAccountingMappings } from "../../domain/commands/accounting"
 import { executeCommand } from "../../domain/execute"
 import { unwrapOutcome } from "../outcome"
 import { readAccountingStatus } from "../../domain/accounting/status"
 import { authorizedProcedure, router } from "../init"
 
 export const accountingRouter = router({
+  saveMappings: authorizedProcedure("settings:update").input(saveAccountingMappings.input).mutation(async ({ ctx, input }) => {
+    unwrapOutcome(await executeCommand(saveAccountingMappings, input, { actor: ctx.actor }))
+    return { providers: await readAccountingStatus(ctx.organizationId), canDisconnect: true }
+  }),
   /** Everyone who can read settings sees the state; only those who can change settings may disconnect. */
   status: authorizedProcedure("settings:read").query(async ({ ctx }) => ({
     providers: await readAccountingStatus(ctx.organizationId),

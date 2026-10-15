@@ -12,6 +12,7 @@ import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Input } from "../ui/input"
+import { AccountingMappingsEditor } from "./accounting-mappings"
 
 type Translate = ReturnType<typeof useI18n>["t"]
 type State = { providers: AccountingProviderStatus[]; canDisconnect: boolean }
@@ -70,8 +71,10 @@ export function AccountingIntegrationsCard() {
     try {
       const result = await action()
       if (latest.current === token) setState(result)
+      return latest.current === token
     } catch {
       if (latest.current === token) setError(failureMessage)
+      return false
     } finally {
       if (latest.current === token) setDisconnecting(false)
     }
@@ -129,6 +132,7 @@ export function AccountingIntegrationsCard() {
                   {item.syncStartAt ? <span>{t("accounting.syncStart", { date: formatDateTime(item.syncStartAt, locale) })}</span> : null}
                   <span>{delivery.lastDeliveredAt ? t("accounting.lastDelivered", { date: formatDateTime(delivery.lastDeliveredAt, locale) }) : t("accounting.neverDelivered")}</span>
                   <span>{t("accounting.failed", { count: delivery.failedCount })}</span>
+                  {delivery.blockedDocument ? <span className="text-destructive">{t("accounting.mappings.blockedDocument", { number: delivery.blockedDocument })}</span> : null}
                   {delivery.failedCount > 0 ? (
                     <span className="text-destructive">
                       {t("accounting.lastError", { message: describeAccountingError(delivery.lastErrorCode, name, t) })} {t("accounting.blocked")}
@@ -157,6 +161,8 @@ export function AccountingIntegrationsCard() {
                   ) : null}
                 </div>
               ) : null}
+              {item.mappings ? <AccountingMappingsEditor key={`${organizationId}:${item.generation}`} provider={item.provider} config={item.mappings} canEdit={canDisconnect} busy={disconnecting}
+                save={mappings => runAction(() => trpc.accounting.saveMappings.mutate({ provider: item.provider, generation: item.generation!, mappingRevision: item.mappingRevision!, mappings }), t("accounting.mappings.error"))} /> : null}
             </div>
           )
         })}

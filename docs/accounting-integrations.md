@@ -197,7 +197,18 @@ a no-op. The card targets the earliest failure. Connect stays disabled until OAu
 `RuntimeServices.accountingDelivery` supplies the transport factory and immutable
 event-specific settings resolver. Settings include customer links, layout, dueDate
 payment term, product/VAT mappings, receivable and bank/clearing accounts. Requests
-pin resolved settings for retries. Configuration remains server-only in this slice.
+pin resolved settings for retries. Settings now stores account/VAT mappings per
+connection with a revision. It starts
+with a Danish 25% group and leaves chart-specific accounts and VAT codes blank.
+Admins can add country-specific EU services/goods groups, remove groups and clear
+accounts. Missing sales fields identify blocked invoice/credit groups; a missing
+payment account is shown separately. Saves use the audited command path and reject
+stale revisions or connection generations. The command receipt retains the submitted
+configuration; `accounting.mappings_updated` records the old/new revision and actor.
+The resolver receives the saved configuration in `ConnectionInfo.mappings`; it must
+validate remote account/product/VAT relationships before producing provider settings.
+Saving does not requeue failures or replace prepared requests. Switching provider or
+remote account clears chart mappings; reconnecting the same account retains them.
 
 `scheduler-tasks.ts` registers accounting with the existing cron tick, after
 recurring generation. It uses the scheduler's persisted organization claims and
@@ -233,5 +244,4 @@ stays inside the app.
 - Live transport/reconciliation, remote total checks, booking operation records,
   and invoice dependency resolution.
 - Persisted settings resolution and provider-specific remote validation before enabling transport.
-- Settings UI for account/VAT mapping, a connect button that starts authorization,
-  and delivery history beyond the earliest failed delivery.
+- A connect button that starts authorization and delivery history beyond the earliest failed delivery.

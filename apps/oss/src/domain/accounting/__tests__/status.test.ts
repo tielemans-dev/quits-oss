@@ -25,7 +25,7 @@ describe("readAccountingStatus", () => {
   it("reads the connected generation's deliveries and never selects the credential", async () => {
     const done = new Date("2026-10-14T09:30:00Z")
     const db = fakeDb(dinero, done)
-    expect((await readAccountingStatus("org", db))[1]).toEqual({ provider: "dinero", status: "connected", remoteAccountId: "1234",
+    expect((await readAccountingStatus("org", db))[1]).toMatchObject({ provider: "dinero", status: "connected", remoteAccountId: "1234",
       delivery: { lastDeliveredAt: done, failedCount: 0, lastErrorCode: null, failedDeliveryId: null } })
     expect(db.eventConsumerDelivery.count).toHaveBeenCalledWith({ where: { organizationId: "org", consumerKey: "accounting:dinero:gen-2", status: "failed" } })
     expect(db.accountingConnection.findFirst.mock.calls[0]![0].select).not.toHaveProperty("credentialEnc")
@@ -40,6 +40,6 @@ describe("readAccountingStatus", () => {
   it("returns the earliest failure as the action target", async () => {
     const db = fakeDb(dinero, undefined, [{ id: "delivery-1", updatedAt: new Date(), error: { code: "http_400" } }])
     expect((await readAccountingStatus("org", db))[1]?.delivery).toMatchObject({ failedDeliveryId: "delivery-1", lastErrorCode: "http_400" })
-    expect(db.eventConsumerDelivery.findFirst).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { sequence: "asc" }, select: { id: true, error: true } }))
+    expect(db.eventConsumerDelivery.findFirst).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { sequence: "asc" }, select: { id: true, error: true, sequence: true } }))
   })
 })
