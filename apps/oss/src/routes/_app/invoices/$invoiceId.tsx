@@ -243,7 +243,7 @@ function InvoiceDetailPage() {
     locale?: string | null
     timezone?: string | null
     baseCurrency?: string
-    stripeByokConfigured?: boolean
+    stripePaymentsEnabled?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
   const paymentLinkDescriptionKey = invoice?.publicPaymentCardEnabled
@@ -309,7 +309,7 @@ function InvoiceDetailPage() {
           companyLogo: settings.companyLogo,
           locale: settings.locale,
           timezone: settings.timezone,
-          stripeByokConfigured: settings.stripeByokConfigured,
+          stripePaymentsEnabled: settings.stripePaymentsEnabled,
           baseCurrency: settings.baseCurrency,
         })
         setEmailDelivery(settings.emailDelivery)
@@ -1065,7 +1065,7 @@ function InvoiceDetailPage() {
           )}
           {(invoice.status === "sent" || invoice.status === "overdue") && (
             <div className="flex flex-wrap items-center gap-2">
-              {orgSettings.stripeByokConfigured && invoice.paymentStatus !== "paid" && (
+              {orgSettings.stripePaymentsEnabled && invoice.paymentStatus !== "paid" && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleCreatePaymentLink}>
                   {acting
                     ? t("invoices.detail.action.generatingPaymentLink")
