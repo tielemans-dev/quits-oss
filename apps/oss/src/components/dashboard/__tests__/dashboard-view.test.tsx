@@ -46,6 +46,31 @@ function renderView(
   )
 }
 
+describe("greeting and command bar", () => {
+  it("greets by first name with the date, and hosts the command bar under it", () => {
+    render(
+      <I18nProvider locale="da-DK">
+        <DashboardView
+          summary={activeSummary()}
+          sendReminder={async () => ({ delivery: "sent" })}
+          userName="Martin Tielemans"
+          commandBar={<div data-testid="bar" />}
+        />
+      </I18nProvider>
+    )
+
+    const heading = screen.getByRole("heading", { level: 1 })
+    expect(heading.textContent).toBe("God eftermiddag, Martin")
+    expect(heading.nextElementSibling?.textContent).toMatch(/^Torsdag 8\. okt\. 2026$/)
+    expect(heading.closest("header")?.nextElementSibling?.contains(screen.getByTestId("bar"))).toBe(true)
+  })
+
+  it("greets no one by name without one", () => {
+    renderView(activeSummary())
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("God eftermiddag")
+  })
+})
+
 describe("first run", () => {
   it("shows no figures at all, and one clear action", () => {
     const { container } = renderView(emptySummary())

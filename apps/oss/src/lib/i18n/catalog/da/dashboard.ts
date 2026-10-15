@@ -1,6 +1,14 @@
 export const daDashboardMessages = {
   "dashboard.loading": "Indlæser overblikket...",
   "dashboard.subtitle.start": "Her samles dine penge, så snart du har sendt en faktura.",
+  "dashboard.greeting.morning": "God morgen",
+  "dashboard.greeting.forenoon": "God formiddag",
+  "dashboard.greeting.afternoon": "God eftermiddag",
+  "dashboard.greeting.evening": "God aften",
+  "dashboard.greeting.named": "{greeting}, {name}",
+  "dashboard.commandBar.label": "Skriv en opgave til quits",
+  "dashboard.commandBar.placeholder": "Spørg quits, eller skriv en opgave …",
+  "dashboard.commandBar.submit": "Bed quits",
 
   "dashboard.error.title": "Overblikket kunne ikke indlæses",
   "dashboard.error.description": "Vi kunne ikke hente dine tal lige nu. Dine fakturaer er ikke berørt.",

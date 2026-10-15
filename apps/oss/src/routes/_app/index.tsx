@@ -5,6 +5,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
+import { CommandBar } from "../../components/command-bar/command-bar"
+import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
+import { useShellPermissions } from "../../components/shell/use-shell-permissions"
+import { useSession } from "../../lib/auth-client"
 import { trpc } from "../../trpc/client"
 
 export const Route = createFileRoute("/_app/")({
@@ -28,6 +32,8 @@ function DashboardPage() {
     return () => { cancelled = true }
   }, [isCloud])
   const { load, refresh, retry } = useDashboardSummary()
+  const { data: session } = useSession()
+  const { can } = useShellPermissions()
 
   if (load.status === "loading") {
     return (
@@ -49,5 +55,14 @@ function DashboardPage() {
     )
   }
 
-  return <DashboardView readyCompany={readyCompany} summary={load.summary} sendReminder={sendReminder} onRemindersSettled={refresh} />
+  return (
+    <DashboardView
+      readyCompany={readyCompany}
+      summary={load.summary}
+      sendReminder={sendReminder}
+      onRemindersSettled={refresh}
+      userName={session?.user.name}
+      commandBar={<CommandBar recognize={permittedRequest(recognizeRequest, can)} />}
+    />
+  )
 }
