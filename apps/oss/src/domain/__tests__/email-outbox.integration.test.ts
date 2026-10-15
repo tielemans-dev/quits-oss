@@ -537,7 +537,8 @@ describeIfDatabase("email outbox", () => {
     await makeDue(job.id)
     await runDueJobs({ organizationIds: [org.organizationId] })
 
-    expect(deliver).toHaveBeenCalledTimes(1)
+    // Paying the invoice also notifies the seller; only the customer's reminder is under test.
+    expect(vi.mocked(deliver).mock.calls.filter(([message]) => message.to === "billing@acme.test")).toHaveLength(1)
     const row = await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.result.reminderId } })
     expect(row.outcome).toBe("unconfirmed")
     expect(row.outcomeMessage).toContain("delivery not confirmed")
