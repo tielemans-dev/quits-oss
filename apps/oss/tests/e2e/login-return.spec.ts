@@ -32,7 +32,7 @@ for (const lang of ['da', 'en']) {
     await page.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Log in', exact: true }).click()
     await expect(page).toHaveURL(new URL(`/?lang=${lang}`, page.url()).href)
     // The destination retains lang; the dashboard's copy follows the saved organization locale.
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: lang === 'da' ? /^God (morgen|formiddag|eftermiddag|aften)/ : /^Good (morning|afternoon|evening)/ })).toBeVisible()
   })
 }
 

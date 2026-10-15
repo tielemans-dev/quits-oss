@@ -29,13 +29,16 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
   }
 
+  /** The dashboard opens with a greeting for the time of day, not a title. */
+  const greeting = /^Good (morning|afternoon|evening)/
+
   /**
-   * What a fresh organization sees on the dashboard: the page heading, the first-run explanation and
+   * What a fresh organization sees on the dashboard: the greeting heading, the first-run explanation and
    * its primary action. Roles and names only. The first-run text is the product's own copy, so this
    * proves the authenticated dashboard rendered, not just that the page loaded.
    */
   async function expectFirstRunDashboard(page) {
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: greeting })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'This is where your money comes into view', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toBeVisible()
   }
@@ -45,7 +48,7 @@ export function registerProductScenarios(test, expect) {
    * card offers to continue that draft, and no longer offers to create the first invoice.
    */
   async function expectDraftDashboard(page, draftURL) {
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: greeting })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Your first invoice is close', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Continue the draft', exact: true })).toHaveAttribute('href', new URL(draftURL).pathname)
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
