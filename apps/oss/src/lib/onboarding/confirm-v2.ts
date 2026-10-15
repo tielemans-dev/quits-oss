@@ -7,6 +7,26 @@ import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
+import { organizationSlugCandidates } from "../organization-slug"
+
+/**
+ * Onboarding creates the organization from a typed name before the CVR review. A slug still
+ * derived from that name follows the confirmed company name; a chosen slug stays. Best effort:
+ * nothing links to the slug before onboarding completes, and a taken slug keeps the old one.
+ */
+async function followConfirmedNameSlug(organizationId: string, previous: { name: string; slug: string }, companyName: string) {
+  const candidates = organizationSlugCandidates(companyName)
+  if (!organizationSlugCandidates(previous.name).includes(previous.slug) || candidates.includes(previous.slug)) return
+  const taken = new Set((await prisma.organization.findMany({ where: { slug: { in: candidates } }, select: { slug: true } })).map(org => org.slug))
+  for (const slug of candidates.filter(candidate => !taken.has(candidate))) {
+    try {
+      await prisma.organization.updateMany({ where: { id: organizationId, slug: previous.slug }, data: { slug } })
+      return
+    } catch {
+      // Taken meanwhile: try the next candidate.
+    }
+  }
+}
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
@@ -19,8 +39,9 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
   input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
-  return prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
+  let renamed = null as { name: string; slug: string } | null
+  const result = await prisma.$transaction(async tx => {
+    const [before] = await tx.$queryRaw<{ name: string; slug: string }[]>`SELECT name, slug FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     // Match the settings lock used by document issuance before checking/resetting its counters.
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
@@ -81,6 +102,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       onboardingV2Key: input.idempotencyKey,
       onboardingV2Result: result,
     }
+    renamed = before ?? null
     await tx.organization.update({ where: { id: organizationId }, data: { name: input.companyName } })
     await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...settings }, update: settings })
     // Identify Danish rows before replacing the pair. Countryless foreign VAT IDs
@@ -105,4 +127,6 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await billingProvider.startTrial?.(organizationId)
     return result
   }, { timeout: 60_000 })
+  if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {})
+  return result
 }

@@ -435,6 +435,25 @@ async function caller(id: string, requestedOrganizationId?: string) {
     await api.onboarding.confirmV2({ ...summary(), reklamebeskyttet, companyEmail: "protected@example.test", companyPhone: "12345678" })
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })
   })
+  it.each([false, true])("moves a name-derived slug to the confirmed company name when that slug is taken: %s (QUI-56)", async taken => {
+    const id = await organization()
+    const tag = id.slice(0, 8)
+    await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}` } })
+    const otherId = taken ? randomUUID() : null
+    if (otherId) {
+      ids.push(otherId)
+      await prisma.organization.create({ data: { id: otherId, name: "Other", slug: `synthetic-${tag}-aps`, createdAt: new Date() } })
+    }
+    const api = await caller(id)
+    await api.onboarding.confirmV2({ ...summary(), companyName: `Synthetic ${tag} ApS` })
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: `Synthetic ${tag} ApS`, slug: taken ? `synthetic-${tag}-aps-2` : `synthetic-${tag}-aps` })
+  })
+  it("keeps a slug that was not derived from the organization name", async () => {
+    const id = await organization()
+    const api = await caller(id)
+    await api.onboarding.confirmV2(summary())
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Synthetic Test ApS", slug: `qui56-${id}` })
+  })
   it("allows manually entered contacts", async () => {
     const id = await organization()
     const api = await caller(id)
