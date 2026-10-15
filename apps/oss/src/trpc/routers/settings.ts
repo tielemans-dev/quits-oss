@@ -254,9 +254,12 @@ export const settingsRouter = router({
       stripeAccountStatus: settings.stripeAccountStatus,
     })
     // Cached readiness alone does not supply the runtime's Connect checkout client.
-    const stripePaymentsEnabled = stripeState.configured && Boolean(
-      await resolveStripeCheckoutTarget({ organizationId: ctx.organizationId }).catch(() => null)
-    )
+    const stripeTarget = stripeState.configured
+      ? await resolveStripeCheckoutTarget({ organizationId: ctx.organizationId }).catch(() => {
+          console.warn("Settings could not resolve Stripe checkout target", { organizationId: ctx.organizationId })
+          return null
+        })
+      : null
     const runtimeCapabilities = getRuntimeCapabilities()
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
     const environment = getRuntimeEnv()
@@ -303,8 +306,9 @@ export const settingsRouter = router({
       aiProvider: isAiProviderKind(settings.aiProvider) ? settings.aiProvider : "openrouter",
       aiBaseUrl: settings.aiBaseUrl,
       aiModel: settings.aiModel,
-      stripeByokConfigured: stripeState.configured,
-      stripePaymentsEnabled,
+      stripeByokConfigured: getStripePaymentConfigurationState({ ...settings, stripeAccountStatus: null }).configured,
+      stripePaymentsEnabled: Boolean(stripeTarget),
+      stripeCheckoutKind: stripeTarget?.kind ?? null,
       stripePublishableKey: settings.stripePublishableKey,
       stripeAccount: readStripeAccount({
         managed: runtimeCapabilities.payments.managed,

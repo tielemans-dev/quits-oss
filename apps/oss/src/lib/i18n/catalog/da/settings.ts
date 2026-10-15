@@ -163,33 +163,6 @@ export const daSettingsMessages = {
   "settings.payments.removeSecret": "Fjern gemt secret key",
   "settings.payments.removeWebhook": "Fjern gemt webhook-secret",
   "settings.payments.undo": "Fortryd",
-  "settings.payments.connect.title": "Tilknyt Stripe",
-  "settings.payments.connect.description":
-    "Tilknyt din Stripe-konto for at modtage kortbetalinger.",
-  "settings.payments.connect.status.none": "Ikke tilknyttet",
-  "settings.payments.connect.status.pending": "Onboarding er ikke færdig",
-  "settings.payments.connect.status.active": "Aktiv",
-  "settings.payments.connect.status.restricted": "Begrænset",
-  "settings.payments.connect.help.none":
-    "Tilknyt din Stripe-konto.",
-  "settings.payments.connect.help.pending":
-    "Gør din konto færdig i Stripe.",
-  "settings.payments.connect.help.active":
-    "Stripe er tilknyttet. Stripe trækker behandlingsgebyrer på din konto.",
-  "settings.payments.connect.help.restricted":
-    "Stripe begrænser denne konto. Se, hvad der skal rettes i Stripe.",
-  "settings.payments.connect.account.label": "Stripe-konto",
-  "settings.payments.connect.payments.enabled": "Kortbetalinger er slået til.",
-  "settings.payments.connect.payments.unavailable": "Kortbetalinger er endnu ikke tilgængelige.",
-  "settings.payments.connect.action.connect": "Tilknyt Stripe",
-  "settings.payments.connect.action.resume": "Fortsæt onboarding",
-  "settings.payments.connect.action.fix": "Ret i Stripe",
-  "settings.payments.connect.action.disconnect": "Fjern tilknytning",
-  "settings.payments.connect.disconnect.title": "Fjern Stripe-tilknytning?",
-  "settings.payments.connect.disconnect.description":
-    "Den tilknyttede konto fjernes fra organisationen. Kontoen forbliver åben i Stripe.",
-  "settings.payments.connect.disconnect.confirm": "Fjern tilknytning",
-  "settings.payments.connect.disconnect.cancel": "Annuller",
   "settings.section.ai.title": "AI-fakturakladning",
   "settings.section.ai.description":
     "Vælg hvordan AI-fakturakladder genereres, og konfigurer forbindelsen.",

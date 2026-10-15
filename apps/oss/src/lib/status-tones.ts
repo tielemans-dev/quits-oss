@@ -120,13 +120,6 @@ export const statusTones = {
       labelKey: "settings.emailDelivery.status.managed_unavailable",
     },
   },
-  /** Cached Stripe Connect readiness on hosted settings. `none` means no account is linked. */
-  stripeAccount: {
-    none: { tone: "neutral", labelKey: "settings.payments.connect.status.none" },
-    pending: { tone: "warning", labelKey: "settings.payments.connect.status.pending" },
-    active: { tone: "success", labelKey: "settings.payments.connect.status.active" },
-    restricted: { tone: "danger", labelKey: "settings.payments.connect.status.restricted" },
-  },
   /** Setup of the organization's own sending domain (Settings). */
   documentSending: {
     not_configured: { tone: "neutral", labelKey: "settings.documentSending.status.not_configured" },
