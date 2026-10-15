@@ -7,6 +7,7 @@ import { serializePublicInvoiceSession } from "../../payments/public-session"
 import { serializePublicQuoteSession } from "../../quotes/public-session"
 import { vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
 import { buildTotals } from "../totals"
+import { creditNoteMainRate } from "../../../domain/documents/render-input"
 import { nominalLineTaxRate } from "../line-amounts"
 
 const decimal = (value: number) => ({ toNumber: () => value })
@@ -72,5 +73,11 @@ describe("QUI-9 round 2 legal presentation", () => {
     const output = text(InvoicePdfDocument({ invoice, org: seller })).join("\n")
     expect(output.match(/VAT no\. DK12345678/g)).toHaveLength(2)
     expect(output).not.toContain("CVR no.")
+  })
+
+  it("derives a credit note's main rate from credited lines when the invoice's is not among them", () => {
+    const invoice = { subtotalNet: decimal(200), totalTax: decimal(30), items: [{ taxRate: decimal(25) }, { taxRate: decimal(5) }] }
+    expect(creditNoteMainRate(invoice, [5])).toBe(5)
+    expect(creditNoteMainRate(invoice, [5, 25])).toBe(25)
   })
 })

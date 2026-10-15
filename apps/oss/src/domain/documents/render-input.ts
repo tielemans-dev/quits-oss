@@ -29,6 +29,12 @@ import { translate } from "../../lib/i18n/translate"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
 
+/** The invoice's main rate while a credited line still carries it; otherwise the credited lines' own. */
+export const creditNoteMainRate = (invoice: Parameters<typeof impliedTaxRate>[0], creditedRates: readonly number[]) => {
+  const invoiceRate = impliedTaxRate(invoice)
+  return creditedRates.includes(invoiceRate) ? invoiceRate : nominalLineTaxRate(creditedRates) ?? invoiceRate
+}
+
 export type ArtifactDocumentKind = "invoice" | "creditNote" | "agreement"
 type RenderIdentity = {
   kind: ArtifactDocumentKind
@@ -152,7 +158,7 @@ export const prospectiveRenderInput = (input: {
     const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
       number: input.number, issueDate: base.issuedAt, reason: withNonVatStatement(selection.reason, money.seller.momsRegistered, invoice.locale) ?? selection.reason,
-      taxRate: nominalLineTaxRate(built.lines.map(line => line.taxRate)) ?? impliedTaxRate(invoice), subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
+      taxRate: creditNoteMainRate(invoice, built.lines.map(line => line.taxRate)), subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, taxRegime: invoice.taxRegime, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },
