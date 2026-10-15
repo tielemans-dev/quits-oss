@@ -25,6 +25,14 @@ function cvrOnboardingEnabled() {
 }
 
 export const cvrRouter = router({
+  customer: authorizedProcedure("contact:create")
+    .input(z.object({ cvr: z.string().regex(/^\d{8}$/) }))
+    .output(cvrCompanySchema.nullable())
+    .query(({ ctx, input, signal }) => {
+      const lookup = getCvrLookupProvider()
+      if (!lookup) throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "CVR lookup is unavailable" })
+      return lookup.get(input.cvr, { userId: ctx.user.id, organizationId: ctx.organizationId, signal: lookupSignal(signal, ctx.request?.signal) })
+    }),
   available: authorizedProcedure("settings:read").query(() => ({
     enabled: cvrOnboardingEnabled(),
     suggestions: Boolean(getCvrLookupProvider()?.suggestions),

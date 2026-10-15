@@ -21,7 +21,7 @@ vi.mock("../../init", async () => {
 })
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); lookup.mockClear() })
 
-it.each(["search", "get", "suggestions"] as const)("cancels CVR %s on request and procedure cancellation and timeout", async method => {
+it.each(["search", "get", "suggestions", "customer"] as const)("cancels CVR %s on request and procedure cancellation and timeout", async method => {
   vi.useFakeTimers()
   vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
     const controller = new AbortController()
