@@ -11,7 +11,7 @@ export type ReadableIssue = {
   params?: { max: number }
 }
 
-type RawIssue = { path?: unknown; code?: unknown; message?: unknown; maximum?: unknown; format?: unknown }
+type RawIssue = { path?: unknown; code?: unknown; message?: unknown; maximum?: unknown; format?: unknown; origin?: unknown }
 
 /** Server-side custom issue messages that already are validation keys. */
 const KEYED_MESSAGES: Record<string, { field: ReadableField; key: TranslationKey }> = {
@@ -30,9 +30,10 @@ function looksStructured(message: string) {
 function rawIssues(message: string): RawIssue[] | null {
   try {
     const parsed: unknown = JSON.parse(message)
-    if (Array.isArray(parsed)) return parsed as RawIssue[]
-    const nested = (parsed as { issues?: unknown } | null)?.issues
-    return Array.isArray(nested) ? (nested as RawIssue[]) : null
+    const list = Array.isArray(parsed) ? parsed : (parsed as { issues?: unknown } | null)?.issues
+    if (!Array.isArray(list)) return null
+    // Entries come from the wire: skip anything that is not an object so mapping cannot throw.
+    return list.filter((entry): entry is RawIssue => typeof entry === "object" && entry !== null && !Array.isArray(entry))
   } catch {
     return null
   }
@@ -44,7 +45,7 @@ function mapIssue(issue: RawIssue): ReadableIssue {
   if (keyed) return keyed
   const path = Array.isArray(issue.path) ? issue.path : []
   const [head, index, leaf] = path
-  const tooLong = issue.code === "too_big" && typeof issue.maximum === "number"
+  const tooLong = issue.code === "too_big" && issue.origin === "string" && typeof issue.maximum === "number"
   const field: ReadableField = head === "contactId" ? "contact" : head === "dueDate" ? "dueDate" : head === "items" ? "items" : "form"
   const line = typeof index === "number" ? index : undefined
   const column = leaf === "description" || leaf === "quantity" || leaf === "unitPrice" ? leaf : undefined
@@ -54,7 +55,7 @@ function mapIssue(issue: RawIssue): ReadableIssue {
   if (field === "contact") return { ...at, key: "validation.customer.required" }
   if (field === "dueDate") return { ...at, key: "validation.date.invalid" }
   if (field === "items") {
-    if (line === undefined) return { ...at, key: "validation.lines.empty" }
+    if (line === undefined) return issue.code === "too_small" ? { ...at, key: "validation.lines.empty" } : { ...at, key: "validation.unknown" }
     if (column === "description") return { ...at, key: "validation.line.description.required" }
     if (column === "quantity") return { ...at, key: "validation.line.qty.invalid" }
     if (column === "unitPrice") return { ...at, key: "validation.line.price.invalid" }

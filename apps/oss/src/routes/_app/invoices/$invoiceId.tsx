@@ -341,6 +341,7 @@ function InvoiceDetailPage() {
         setCatalogItems(catalogData as CatalogItemOption[])
       }
     )
+    setEditIssues([])
     setEditing(true)
   }
 
@@ -399,6 +400,7 @@ function InvoiceDetailPage() {
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
       setEditing(false)
+      setEditIssues([])
     } catch (err) {
       const issues = readableIssues(err)
       if (issues) setEditIssues(issues)
@@ -754,6 +756,7 @@ function InvoiceDetailPage() {
               variant="outline"
               onClick={() => {
                 setEditing(false)
+                setEditIssues([])
                 setError(null)
               }}
             >

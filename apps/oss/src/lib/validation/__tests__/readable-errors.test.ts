@@ -38,6 +38,20 @@ describe("readableIssues", () => {
     expect(texts(zod({ message: '[{"raw":"json"}]' }), "en")[0]).not.toMatch(/[[{]/)
   })
 
+  it("only uses the character limit message for string issues", () => {
+    const tooBigItems = { path: ["items"], code: "too_big", maximum: 100, origin: "array" }
+    expect(texts(zod(tooBigItems), "en")).toEqual(["Check this field and try again"])
+    expect(texts(zod({ path: ["notes"], code: "too_big", maximum: 100, origin: "number" }), "en")).toEqual(["Check this field and try again"])
+  })
+
+  it("skips non-object entries instead of throwing", () => {
+    for (const message of ["[null]", '{"issues":[null]}', '[1,"x",[]]', '{"issues":[null,{"path":["contactId"]}]}']) {
+      expect(() => readableIssues(new Error(message))).not.toThrow()
+    }
+    expect(texts(new Error("[null]"), "en")).toEqual(["Check this field and try again"])
+    expect(texts(new Error('{"issues":[null,{"path":["contactId"]}]}'), "en")).toEqual(["Choose a customer"])
+  })
+
   it("reads issues nested under an issues key", () => {
     expect(texts(new Error(JSON.stringify({ issues: [{ path: ["contactId"] }] })), "en")).toEqual(["Choose a customer"])
   })

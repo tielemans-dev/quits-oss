@@ -947,12 +947,13 @@ function OnboardingPageContent() {
                   <Input
                     id="companyName"
                     aria-invalid={hasSubmitted && (!values.companyName.trim())}
+                    aria-describedby={hasSubmitted && !values.companyName.trim() ? 'companyName-error' : undefined}
                     value={values.companyName}
                     onChange={(e) => updateValue('companyName', e.target.value)}
                     required
                   />
                   {hasSubmitted && !values.companyName.trim() ? (
-                    <p className="text-sm text-destructive">{t('validation.required')}</p>
+                    <p id="companyName-error" className="text-sm text-destructive">{t('validation.required')}</p>
                   ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -975,12 +976,13 @@ function OnboardingPageContent() {
                   <Input
                     id="companyAddress"
                     aria-invalid={hasSubmitted && (!values.companyAddress.trim())}
+                    aria-describedby={hasSubmitted && !values.companyAddress.trim() ? 'companyAddress-error' : undefined}
                     value={values.companyAddress}
                     onChange={(e) => updateValue('companyAddress', e.target.value)}
                     required
                   />
                   {hasSubmitted && !values.companyAddress.trim() ? (
-                    <p className="text-sm text-destructive">{t('validation.required')}</p>
+                    <p id="companyAddress-error" className="text-sm text-destructive">{t('validation.required')}</p>
                   ) : null}
                 </div>
                 <div className="flex flex-col gap-2">

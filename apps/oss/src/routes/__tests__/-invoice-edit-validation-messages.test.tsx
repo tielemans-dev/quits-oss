@@ -38,8 +38,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe.each([
-  ["da-DK", { edit: "Rediger", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
-  ["en-GB", { edit: "Edit", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
+  ["da-DK", { edit: "Rediger", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
+  ["en-GB", { edit: "Edit", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
   async function openEditor() {
     render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
@@ -57,6 +57,17 @@ describe.each([
     fireEvent.change(screen.getByDisplayValue("Work"), { target: { value: "Consulting" } })
     expect(screen.queryByText(copy.description)).toBeNull()
     expect(screen.getByText(copy.qty)).toBeTruthy()
+  })
+
+  it("does not show the previous attempt's errors after cancelling and reopening", async () => {
+    api.update.mockRejectedValue(new Error(rawJson))
+    fireEvent.click(await openEditor())
+    await screen.findByText(copy.description)
+    fireEvent.click(screen.getByRole("button", { name: copy.cancel }))
+    fireEvent.click(await screen.findByRole("button", { name: copy.edit }))
+    await screen.findByRole("button", { name: copy.save })
+    expect(screen.queryByText(copy.description)).toBeNull()
+    expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
   it("keeps plain-text server messages and uses the save fallback for non-errors", async () => {

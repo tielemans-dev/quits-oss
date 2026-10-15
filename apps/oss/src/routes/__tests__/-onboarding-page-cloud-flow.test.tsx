@@ -453,6 +453,11 @@ describe.each([
     await renderIncomplete()
     submit()
     expect(screen.getByText(requiredEmail)).toBeTruthy()
+    for (const [input, id] of [[label.name, "companyName-error"], [label.address, "companyAddress-error"]]) {
+      expect(screen.getByLabelText(input).getAttribute("aria-invalid")).toBe("true")
+      expect(screen.getByLabelText(input).getAttribute("aria-describedby")).toBe(id)
+      expect(document.getElementById(id)?.textContent).toBe(required)
+    }
     expect(screen.getAllByText(required)).toHaveLength(2)
     fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
     expect(screen.getAllByText(required)).toHaveLength(1)
