@@ -3,14 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { ComponentType, ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), create: vi.fn(), send: vi.fn(), resend: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), get: vi.fn(), currency: "DKK" }))
+const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), create: vi.fn(), update: vi.fn(), send: vi.fn(), resend: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), get: vi.fn(), currency: "DKK" }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ invoiceId: "synthetic-invoice" }), useSearch: () => ({}) }),
   Link: ({ children, to, onClick }: { children: ReactNode; to: string; onClick?: () => void }) => <a href={to} onClick={event => { event.preventDefault(); onClick?.(); api.navigate({ to }) }}>{children}</a>,
   useNavigate: () => api.navigate,
 }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, createV2: { mutate: api.create }, send: { mutate: api.send }, resendEmail: { mutate: api.resend } },
+  invoices: { get: { query: api.get }, createV2: { mutate: api.create }, updateV2: { mutate: api.update }, send: { mutate: api.send }, resendEmail: { mutate: api.resend } },
   paymentDetails: { firstSendReadiness: { query: api.bankReadiness } },
   contacts: { list: { query: api.contacts } }, catalog: { list: { query: async () => [] } },
   ai: { generateInvoiceDraft: { mutate: api.generate } },
@@ -57,6 +57,28 @@ function fillDraft() {
   fireEvent.change(screen.getByPlaceholderText("docForm.column.description"), { target: { value: "Synthetic work" } })
 }
 describe("invoice review regressions", () => {
+  it("opens a draft without a delivery date with an empty field", async () => {
+    api.get.mockResolvedValue({ ...await api.get(), supplyDate: null })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit", exact: true }))
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe("")
+  })
+  it.each(["2026-10-07", null])("saves the draft delivery date as %s", async (supplyDate) => {
+    const stored = await api.get()
+    api.update.mockResolvedValue({ ...stored, supplyDate })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit", exact: true }))
+    const field = screen.getByLabelText("invoices.issuance.supplyDate")
+    expect((field as HTMLInputElement).value).toBe("2026-10-05")
+    fireEvent.change(field, { target: { value: supplyDate ?? "" } })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges", exact: true }))
+    await waitFor(() => expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate })))
+    await screen.findByRole("button", { name: "invoices.detail.action.edit", exact: true })
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(supplyDate ?? "")
+    fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.edit", exact: true }))
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(supplyDate ?? "")
+  })
+
   it("rejects exponent quantities before saving and permits one comma-normalized retry", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })

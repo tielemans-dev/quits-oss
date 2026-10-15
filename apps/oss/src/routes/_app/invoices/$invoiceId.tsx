@@ -253,6 +253,7 @@ function InvoiceDetailPage() {
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
   const [editDueDate, setEditDueDate] = useState("")
+  const [editSupplyDate, setEditSupplyDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
@@ -320,6 +321,7 @@ function InvoiceDetailPage() {
     if (readOnly) { setEditing(true); return }
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
+    setEditSupplyDate(invoice.supplyDate ? new Date(invoice.supplyDate).toISOString().slice(0, 10) : "")
     setEditNotes(invoice.notes ?? "")
     setEditTaxRate(invoice.agreementTaxRate ?? storedDocumentTaxRate(invoice.items))
     const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
@@ -382,6 +384,7 @@ function InvoiceDetailPage() {
         id: invoice.id,
         contactId: editContactId,
         dueDate: editDueDate,
+        supplyDate: editSupplyDate || null,
         notes: editNotes,
         ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
         vatEvidence: editVatEvidence,
@@ -395,6 +398,7 @@ function InvoiceDetailPage() {
       })
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
+      setIssuance(current => ({ ...current, supplyDate: editSupplyDate }))
       setEditing(false)
     } catch (err) {
       setError(
@@ -593,6 +597,18 @@ function InvoiceDetailPage() {
                   clearLabel={t("docForm.clear")}
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="editSupplyDate">{t("invoices.issuance.supplyDate")}</Label>
+              <LocalizedDateField
+                id="editSupplyDate"
+                value={editSupplyDate}
+                onChange={setEditSupplyDate}
+                locale={locale}
+                placeholder={t("docForm.selectDate")}
+                clearLabel={t("docForm.clear")}
+              />
             </div>
 
             {/* Line Items */}
