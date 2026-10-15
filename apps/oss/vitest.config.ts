@@ -7,6 +7,14 @@ import { configDefaults, defineConfig } from "vitest/config"
  */
 export const globalStateTests = "**/*.global.*"
 
+/** Browser suites are collected by their Playwright configs, not Vitest. */
+export const playwrightTests = [
+  "tests/e2e/**",
+  "tests/shared/**",
+  "tests/onboarding-v2/**",
+  "tests/quality/**",
+]
+
 export default defineConfig({
   test: {
     environment: "node",
@@ -20,6 +28,6 @@ export default defineConfig({
     // first use; vitest's 5s default times out under load (locally and on CI).
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    exclude: [...configDefaults.exclude, "tests/e2e/**", "tests/shared/**", "tests/onboarding-v2/**", globalStateTests],
+    exclude: [...configDefaults.exclude, ...playwrightTests, globalStateTests],
   },
 })
