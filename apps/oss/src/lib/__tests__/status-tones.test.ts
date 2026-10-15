@@ -51,8 +51,8 @@ describe("status tones", () => {
       const extra = Object.keys(statusTones[domain as StatusDomain]).filter(
         (status) => !statuses?.includes(status)
       )
-      // The invoice domain also holds `partially_paid`, derived from the payment status.
-      expect(extra, domain).toEqual(domain === "invoice" ? ["partially_paid"] : [])
+      // The invoice domain also holds statuses derived from payments and reminder jobs.
+      expect(extra, domain).toEqual(domain === "invoice" ? ["partially_paid", "reminder_sent"] : [])
     }
   })
 
