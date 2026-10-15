@@ -45,7 +45,7 @@ describe("full invoice legal fields", () => {
     ]
     for (const output of outputs) {
       const text = normalize(output)
-      expect(text).toContain(locale === "da-DK" ? "Moms (25 %)" : "Tax (25%)")
+      expect(text).toContain(locale === "da-DK" ? "Moms 25 %" : "Tax 25%")
       expect(text).toContain(locale === "da-DK" ? "0,00" : "0.00")
       expect(text).toContain(locale === "da-DK" ? "0,01" : "0.01")
     }
