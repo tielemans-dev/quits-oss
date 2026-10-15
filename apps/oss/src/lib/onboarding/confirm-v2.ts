@@ -5,6 +5,7 @@ import { onboardingV2ConfirmationResultSchema, type ConfirmOnboardingV2 } from "
 import { billingProvider } from "../billing"
 import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
+import { getCvrLookupProvider } from "../runtime/services"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { organizationSlugCandidates } from "../organization-slug"
@@ -28,6 +29,22 @@ async function followConfirmedNameSlug(organizationId: string, previous: { name:
   }
 }
 
+/**
+ * Registry-sourced contacts are kept only when the server's own CVR lookup says the company is not
+ * advertising-protected (reklamebeskyttet). No provider, a failed lookup or protection scrubs them.
+ */
+async function registryContactsAllowed(organizationId: string, input: ConfirmOnboardingV2, userId?: string) {
+  if (input.source !== "cvr") return input.reklamebeskyttet !== true
+  const provider = getCvrLookupProvider()
+  if (!provider || !userId || (!input.companyEmail && !input.companyPhone)) return false
+  try {
+    const company = await provider.get(input.cvr, { userId, organizationId, signal: AbortSignal.timeout(10_000) })
+    return company?.cvr === input.cvr && company.advertisingProtected === false
+  } catch {
+    return false
+  }
+}
+
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
   const sellerVatConfirmation = getSellerVatConfirmationService()
@@ -35,8 +52,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
   // Hosted confirmation must present a token before any settings, identity, or trial write.
   if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
   // Client-supplied protection metadata cannot attest to a trusted registry lookup.
-  // Until a server lookup supplies that trust, scrub all registry-sourced contacts.
-  input = { ...input, reklamebeskyttet: input.source === "cvr" || input.reklamebeskyttet === true }
+  input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId)) }
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
   let renamed = null as { name: string; slug: string } | null
