@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -302,5 +302,98 @@ describe("command palette", () => {
 
     expect(router.navigate).toHaveBeenCalledWith({ to: "/credit-notes" })
     expect(onNavigate).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("request mode", () => {
+  const optionLabels = () => screen.getAllByRole("option").map((option) => option.textContent)
+
+  it("leaves ordinary search as it is: no request row, same results", () => {
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+
+    fireEvent.change(input, { target: { value: "nordlys" } })
+    expect(screen.queryByRole("group", { name: "Opgave" })).toBeNull()
+    expect(screen.getByText("Ingen resultater for “nordlys”")).toBeTruthy()
+    fireEvent.change(input, { target: { value: "faktura" } })
+    expect(screen.queryByText(/Bed quits/)).toBeNull()
+    expect(optionLabels()).toEqual([expect.stringContaining("Ny faktura"), expect.stringContaining("Fakturaer"), expect.stringContaining("Gentagne fakturaer")])
+  })
+
+  it("offers the request ahead of the results for a recognised intent, and only then", () => {
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+
+    fireEvent.change(input, { target: { value: "vis forfaldne" } })
+    expect(screen.getByRole("group", { name: "Opgave" })).toBeTruthy()
+    expect(optionLabels()[0]).toBe("Bed quits: vis forfaldne")
+    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true")
+
+    fireEvent.change(input, { target: { value: "faktura til Nordlys 10 timer à 850" } })
+    expect(optionLabels()[0]).toBe("Bed quits: faktura til Nordlys 10 timer à 850")
+  })
+
+  it("does not offer an invoice request to someone who may not create invoices", () => {
+    render(<Harness can={(action) => action !== "invoice:create"} />)
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "faktura til Nordlys 10 timer à 850" } })
+    expect(screen.queryByText(/Bed quits/)).toBeNull()
+  })
+
+  it("moves onto the request with the arrow keys, and Enter expands the palette into the card slot", () => {
+    registerPaletteProvider({
+      id: "extra",
+      order: 300,
+      sections: () => [{ id: "extra", items: [{ id: "extra:1", label: "Andet", perform: () => undefined }] }],
+    })
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+    fireEvent.change(input, { target: { value: "faktura til Nordlys 5 timer" } })
+    fireEvent.keyDown(input, { key: "ArrowDown" })
+    expect(screen.getAllByRole("option")[1].getAttribute("aria-selected")).toBe("true")
+    fireEvent.keyDown(input, { key: "ArrowUp" })
+    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true")
+
+    fireEvent.keyDown(input, { key: "Enter" })
+    const slot = screen.getByRole("region", { name: "Opgave" })
+    expect(slot.textContent).toContain("faktura til Nordlys 5 timer")
+    expect(document.activeElement).toBe(slot)
+    // The card owns the keys now; the palette stays open.
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(screen.getByRole("combobox")).toBeTruthy()
+    expect(router.navigate).not.toHaveBeenCalled()
+  })
+
+  it("closes from the card's Annuller button", () => {
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox")
+    fireEvent.change(input, { target: { value: "vis forfaldne" } })
+    fireEvent.keyDown(input, { key: "Enter" })
+
+    fireEvent.click(screen.getByRole("button", { name: "Annuller" }))
+    expect(screen.queryByRole("combobox")).toBeNull()
+  })
+
+  it("returns focus to where it came from after the card closes", async () => {
+    function WithTrigger() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Åbn</button>
+          <CommandPalette open={open} onOpenChange={setOpen} can={everything} billingEnabled={false} />
+        </>
+      )
+    }
+    render(<WithTrigger />)
+    const trigger = screen.getByRole("button", { name: "Åbn" })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const input = screen.getByRole("combobox")
+    fireEvent.change(input, { target: { value: "vis forfaldne" } })
+    fireEvent.keyDown(input, { key: "Enter" })
+    fireEvent.keyDown(screen.getByRole("region", { name: "Opgave" }), { key: "Escape" })
+
+    expect(screen.queryByRole("combobox")).toBeNull()
+    // Radix hands focus back on a timer after unmounting.
+    await waitFor(() => expect(document.activeElement).toBe(trigger))
   })
 })

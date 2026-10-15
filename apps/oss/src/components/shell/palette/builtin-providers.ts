@@ -2,6 +2,7 @@ import { CornerDownRight, FilePen, FilePlus2, Handshake, UserPlus, type LucideIc
 
 import { visibleNavGroups } from '../nav-model'
 import { matchItems } from './match'
+import { requestProvider } from './request-provider'
 import type { PaletteCapability, PaletteContext, PaletteItem, PaletteProvider } from './types'
 import type { TranslationKey } from '../../../lib/i18n/messages'
 
@@ -100,7 +101,7 @@ export const createProvider: PaletteProvider = {
   },
 }
 
-export const builtinPaletteProviders: PaletteProvider[] = [createProvider, navigationProvider]
+export const builtinPaletteProviders: PaletteProvider[] = [requestProvider, createProvider, navigationProvider]
 
 /** Ids an extension may not take: its sections would duplicate the built-in ones. */
 export const reservedProviderIds: ReadonlySet<string> = new Set(builtinPaletteProviders.map((provider) => provider.id))

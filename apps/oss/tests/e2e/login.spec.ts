@@ -19,7 +19,7 @@ test("lets the initial admin sign in to the dashboard", async ({ page }) => {
   await loginAsAdmin(page)
 
   await expect(page).toHaveURL(new URL("/", page.url()).href)
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible()
 })
 
 test("blocks organization deletion through the authenticated browser API and keeps the session usable", async ({ page }) => {
@@ -32,7 +32,7 @@ test("blocks organization deletion through the authenticated browser API and kee
   expect(response.status()).toBe(404)
   expect(await response.json()).toMatchObject({ code: "ORGANIZATION_DELETION_DISABLED" })
   await page.reload()
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible()
 })
 
 test("lets a new user sign up and continue to onboarding", async ({ page }) => {

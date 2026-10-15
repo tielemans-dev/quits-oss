@@ -1,10 +1,11 @@
-import { useMemo } from "react"
+import { useMemo, type ReactNode } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
 import { PageHeader } from "../kvit/page-header"
 import { ActivityFeed } from "./activity-feed"
 import { AttentionList } from "./attention-list"
 import { formatLongDate, formatMonthName } from "./format-relative"
+import { firstName, greetingKey } from "./greeting"
 import { HeroCard } from "./hero-card"
 import { IncomingList } from "./incoming-list"
 import { ReceivedChart } from "./received-chart"
@@ -51,9 +52,15 @@ export function DashboardView({
   sendReminder,
   sendReminderBatch,
   onRemindersSettled,
+  userName,
+  commandBar,
 }: {
   summary: Summary
   readyCompany?: string
+  /** Who the greeting addresses; without one it greets no one by name. */
+  userName?: string | null
+  /** The command bar, under the greeting. The page does not know how requests are answered. */
+  commandBar?: ReactNode
   sendReminder: SendReminder
   /** Queues a reminder job for several invoices at once; the tracker toast follows it. */
   sendReminderBatch?: (invoiceIds: string[]) => Promise<unknown>
@@ -62,6 +69,10 @@ export function DashboardView({
   const { t, locale } = useI18n()
   const state = classifyDashboard(summary)
   const { states: reminders, remind } = useReminders(sendReminder, onRemindersSettled)
+
+  const name = firstName(userName)
+  const salutation = t(greetingKey(summary.asOf, summary.timezone))
+  const greeting = name ? t("dashboard.greeting.named", { greeting: salutation, name }) : salutation
 
   const hero = useMemo(() => presentHero(summary), [summary])
   const chart = useMemo(() => presentChart(summary), [summary])
@@ -74,7 +85,12 @@ export function DashboardView({
 
   return (
     <>
-      <DashboardHeader subtitle={dashboardSubtitle(state, summary, locale) ?? t("dashboard.subtitle.start")} />
+      <PageHeader
+        title={greeting}
+        subtitle={dashboardSubtitle(state, summary, locale) ?? t("dashboard.subtitle.start")}
+        className={commandBar ? "mb-4" : undefined}
+      />
+      {commandBar ? <div className="mb-6">{commandBar}</div> : null}
 
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.

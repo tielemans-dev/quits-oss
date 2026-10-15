@@ -42,5 +42,11 @@ export const enNavMessages = {
   "shell.palette.hint.select": "select",
   "shell.palette.hint.open": "open",
   "shell.palette.hint.close": "close",
+  "shell.palette.groupRequest": "Task",
+  "shell.palette.request.ask": "Ask quits: {request}",
+  "shell.request.slotLabel": "Task",
+  "shell.request.title.invoice": "Invoice",
+  "shell.request.title.overdue": "Overdue invoices",
+  "shell.request.dismiss": "Cancel",
   "shell.org.switch": "Switch organization",
 } as const

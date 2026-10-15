@@ -1,6 +1,14 @@
 export const enDashboardMessages = {
   "dashboard.loading": "Loading your overview...",
   "dashboard.subtitle.start": "Your money will gather here as soon as you send an invoice.",
+  "dashboard.greeting.morning": "Good morning",
+  "dashboard.greeting.forenoon": "Good morning",
+  "dashboard.greeting.afternoon": "Good afternoon",
+  "dashboard.greeting.evening": "Good evening",
+  "dashboard.greeting.named": "{greeting}, {name}",
+  "dashboard.commandBar.label": "Write a task for quits",
+  "dashboard.commandBar.placeholder": "Ask quits, or type a task …",
+  "dashboard.commandBar.submit": "Ask quits",
 
   "dashboard.error.title": "The overview could not be loaded",
   "dashboard.error.description": "We could not fetch your figures just now. Your invoices are not affected.",

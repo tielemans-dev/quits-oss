@@ -20,6 +20,8 @@ export type PaletteActions = {
   navigate: (to: string) => void
   /** Closes the palette without navigating, for items that act in place. */
   close: () => void
+  /** Grows the palette into `content` in place of the list, for items that answer with a card. */
+  expand: (content: ReactNode) => void
 }
 
 /** What a provider may look at to decide what to offer. */
