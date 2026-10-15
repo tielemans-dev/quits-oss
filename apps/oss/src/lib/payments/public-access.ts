@@ -1,6 +1,8 @@
+import type { StripeAccountStatus } from "@quits/contracts/payments"
+import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
-import { getStripePaymentConfigurationState } from "./stripe"
+import { assessCardCheckout, resolveStripeCheckoutTarget } from "./stripe"
 import {
   getInvoicePaymentState,
   verifyInvoicePaymentToken,
@@ -57,16 +59,38 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     return null
   }
 
-  const stripeState = getStripePaymentConfigurationState({
-    stripePublishableKey: invoice.organization.settings?.stripePublishableKey ?? null,
-    stripeSecretKeyEnc: invoice.organization.settings?.stripeSecretKeyEnc ?? null,
-    stripeWebhookSecretEnc: invoice.organization.settings?.stripeWebhookSecretEnc ?? null,
-    stripeAccountStatus: invoice.organization.settings?.stripeAccountStatus,
-  })
+  const settings = invoice.organization.settings
+  const balanceDue = computeSettlement(invoice).balanceDue
 
-  return {
+  const paymentState = getInvoicePaymentState(invoice)
+  const session = {
     invoice,
-    paymentState: getInvoicePaymentState(invoice),
-    stripeEnabled: stripeState.configured,
+    paymentState,
+    stripeEnabled: paymentState === "unpaid" && balanceDue.greaterThan(0) && assessCardCheckout({
+      configuration: {
+        stripePublishableKey: settings?.stripePublishableKey ?? null,
+        stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
+        stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
+        stripeAccountStatus: settings?.stripeAccountStatus,
+      },
+      amount: balanceDue.toNumber(),
+      currency: invoice.currency,
+    }).ready,
   }
+  return { ...session, stripeEnabled: Boolean(await resolvePublicInvoiceCheckoutTarget(session)) }
+}
+
+/** The page and checkout must agree on the target that can actually take this payment. */
+export async function resolvePublicInvoiceCheckoutTarget(session: {
+  stripeEnabled: boolean
+  invoice: {
+    organizationId: string
+    organization: { settings: { stripeAccountStatus?: StripeAccountStatus | null } | null }
+  }
+}) {
+  if (!session.stripeEnabled) return null
+  return resolveStripeCheckoutTarget(
+    { organizationId: session.invoice.organizationId },
+    { connectReady: session.invoice.organization.settings?.stripeAccountStatus === "active" },
+  )
 }

@@ -8,7 +8,7 @@ import type {
   StripeConnectCheckoutClient,
 } from "../runtime/stripe-checkout-target"
 import { decryptSecret } from "../secrets"
-import { toStripeMinorUnits } from "./stripe-amounts"
+import { isExactInCurrency, toStripeMinorUnits } from "./stripe-amounts"
 
 export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "../runtime/stripe-checkout-target"
 
@@ -37,6 +37,27 @@ export function getStripePaymentConfigurationState(
   }
 }
 
+export type CardCheckoutBlock = "card_checkout_not_ready" | "balance_not_representable_in_currency"
+
+/**
+ * Whether this balance can be charged by card. The organization must be configured
+ * (complete BYOK keys or an active Connect account) and the amount must be exact in
+ * the currency. /pay and the checkout endpoint both use this.
+ */
+export function assessCardCheckout(input: {
+  configuration: StripePaymentConfigurationSnapshot
+  amount: number
+  currency: string
+}): { ready: true } | { ready: false; reason: CardCheckoutBlock } {
+  if (!getStripePaymentConfigurationState(input.configuration).configured) {
+    return { ready: false, reason: "card_checkout_not_ready" }
+  }
+  if (!isExactInCurrency(input.amount, input.currency)) {
+    return { ready: false, reason: "balance_not_representable_in_currency" }
+  }
+  return { ready: true }
+}
+
 export function getStripePaymentCredentials(
   snapshot: StripePaymentConfigurationSnapshot
 ) {
@@ -63,15 +84,20 @@ void _sdkFitsConnectClient
 /**
  * The first extension that returns a target wins. Otherwise the organization's own
  * Stripe keys are used, and only when publishable key, secret key and webhook secret
- * are all stored.
+ * are all stored. A connect target is used for a new charge only when `connectReady`
+ * is not false, which checkout sets from an active card-payments status. Expiry leaves
+ * it unset so an open connect session can still be expired.
  */
 export async function resolveStripeCheckoutTarget(
-  context: StripeCheckoutTargetContext
+  context: StripeCheckoutTargetContext,
+  options?: { connectReady?: boolean }
 ): Promise<StripeCheckoutTarget | null> {
   for (const extension of getRuntimeExtensions()) {
     if (!extension.resolveStripeCheckoutTarget) continue
     const target = await extension.resolveStripeCheckoutTarget(context)
-    if (target) return target
+    if (!target) continue
+    if (target.kind === "connect" && options?.connectReady === false) continue
+    return target
   }
   return defaultByokStripeCheckoutTarget(context.organizationId)
 }
