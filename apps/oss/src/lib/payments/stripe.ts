@@ -39,17 +39,13 @@ export function getStripePaymentConfigurationState(
 
 export type CardCheckoutBlock = "card_checkout_not_ready" | "balance_not_representable_in_currency"
 
-/**
- * Whether this balance can be charged by card. The organization must be configured
- * (complete BYOK keys or an active Connect account) and the amount must be exact in
- * the currency. /pay and the checkout endpoint both use this.
- */
+/** Shared page/checkout gate: complete BYOK keys or active Connect, and an exact currency amount. */
 export function assessCardCheckout(input: {
-  configuration: StripePaymentConfigurationSnapshot
+  configuration: StripePaymentConfigurationSnapshot | null | undefined
   amount: number
   currency: string
 }): { ready: true } | { ready: false; reason: CardCheckoutBlock } {
-  if (!getStripePaymentConfigurationState(input.configuration).configured) {
+  if (!input.configuration || !getStripePaymentConfigurationState(input.configuration).configured) {
     return { ready: false, reason: "card_checkout_not_ready" }
   }
   if (!isExactInCurrency(input.amount, input.currency)) {

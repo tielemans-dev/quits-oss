@@ -2,7 +2,7 @@ import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
-import { loadPublicInvoiceByToken, resolvePublicInvoiceCheckoutTarget } from "./public-access"
+import { loadPublicInvoiceByToken } from "./public-access"
 import { getPublicInvoicePaymentSecret } from "./public"
 import {
   assessCardCheckout,
@@ -61,16 +61,11 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "paid" } as const
   }
 
-  // The page's card button uses the same predicate. Refuse before asking any Stripe
-  // account to open a session, including a connect target for an account that is not active.
-  if (!session.stripeEnabled) {
+  // Reuse the loader's target so the page and checkout cannot disagree.
+  const target = session.checkoutTarget
+  if (!target) {
     const readiness = assessCardCheckout({
-      configuration: {
-        stripePublishableKey: session.invoice.organization?.settings?.stripePublishableKey ?? null,
-        stripeSecretKeyEnc: session.invoice.organization?.settings?.stripeSecretKeyEnc ?? null,
-        stripeWebhookSecretEnc: session.invoice.organization?.settings?.stripeWebhookSecretEnc ?? null,
-        stripeAccountStatus: session.invoice.organization?.settings?.stripeAccountStatus,
-      },
+      configuration: session.invoice.organization?.settings,
       amount: balanceDue.toNumber(),
       currency: session.invoice.currency,
     })
@@ -85,17 +80,6 @@ async function openCheckoutSession(token: string) {
             currencyFractionDigits: currencyFractionDigits(session.invoice.currency),
             balanceDue: balanceDue.toFixed(),
           }),
-    })
-    return { url: null, status: "unavailable" } as const
-  }
-
-  const target = await resolvePublicInvoiceCheckoutTarget(session)
-
-  if (!target) {
-    paymentsLogger.warn("invoice.checkout.unavailable", {
-      invoiceId: session.invoice.id,
-      organizationId: session.invoice.organizationId,
-      reason: "stripe_not_configured",
     })
     return { url: null, status: "unavailable" } as const
   }

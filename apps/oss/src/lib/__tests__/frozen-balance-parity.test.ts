@@ -4,10 +4,8 @@ import fixture from "../../domain/events/__tests__/fixtures/invoice.issued.v1.js
 
 // MOCK: synthetic invoice row, Stripe and database seams, confined to this test.
 const mocks = vi.hoisted(() => ({ invoice: null as Record<string, unknown> | null, create: vi.fn() }))
-vi.mock("../payments/public-access", async importOriginal => ({
-  ...(await importOriginal<typeof import("../payments/public-access")>()),
-  loadPublicInvoiceByToken: async () => ({ invoice: mocks.invoice, paymentState: "unpaid", stripeEnabled: true }),
-}))
+vi.mock("../payments/public-access", () => ({ loadPublicInvoiceByToken: async () => ({ invoice: mocks.invoice,
+  paymentState: "unpaid", stripeEnabled: true, checkoutTarget: { kind: "byok", secretKey: "sk_test", webhookSecret: "wh" } }) }))
 vi.mock("../payments/public", () => ({ getPublicInvoicePaymentSecret: () => "secret" }))
 vi.mock("../db", () => ({
   prisma: {
@@ -18,10 +16,6 @@ vi.mock("../db", () => ({
 }))
 vi.mock("../payments/stripe", async importOriginal => ({
   ...(await importOriginal<typeof import("../payments/stripe")>()),
-  getStripePaymentCredentials: () => ({ secretKey: "sk_test", publishableKey: "pk_test", webhookSecret: "wh" }),
-  // The BYOK default reads credentials inside the module, so mocking the export above does not
-  // reach it. Resolve the checkout target directly, as an org with its own Stripe keys would.
-  resolveStripeCheckoutTarget: async () => ({ kind: "byok", secretKey: "sk_test", webhookSecret: "wh" }),
   expireOpenStripeCheckoutSession: vi.fn(),
   createStripeInvoiceCheckoutSession: mocks.create,
 }))
