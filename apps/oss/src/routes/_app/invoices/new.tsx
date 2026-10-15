@@ -1,13 +1,18 @@
+import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggle"
+import type { FieldIssue } from "@quits/contracts/agent"
+import { InvoiceLinesEditor } from "../../../components/invoices/lines-editor"
+import { OrganizationGaps } from "../../../components/invoices/organization-gaps"
+import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
+import { defaultDocumentTaxRate, reconcilePolicyVat } from "../../../lib/invoice-defaults"
+import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
-import type { DocumentLineInput } from "@quits/contracts/invoices"
+import { documentLineV2InputSchema, type DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
-import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
-import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect, useRef } from "react"
@@ -19,7 +24,6 @@ import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
 import { useOrgCurrency } from "../../../hooks/use-org-currency"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
 import {
@@ -36,16 +40,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card"
-import { Plus, Sparkles, Trash2 } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
 import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
-import { visibleFieldError, type FieldError } from "../../../lib/validation/field-error"
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoicePage,
 })
 
-type Contact = { id: string; name: string }
+type Contact = { id: string; name: string; email?: string | null }
 
 type LineItem = {
   description: string
@@ -61,24 +64,25 @@ function NewInvoicePage() {
   const currency = useOrgCurrency()
   const [issuance, setIssuance] = useState(initialIssuanceValues)
   const [baseCurrency, setBaseCurrency] = useState<string>()
-  useEffect(() => { trpc.settings.get.query().then(settings => setBaseCurrency(settings.baseCurrency)).catch(() => {}) }, [])
-  const { pricesIncludeTax } = useOrgPricingSettings()
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
+  const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
+  const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  const submitPending = useRef(false)
+  const priceBasisEdited = useRef(false)
+  const taxRateEdited = useRef(false)
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contactId, setContactId] = useState("")
   const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useDocumentTaxRate()
+  const [taxRate, setTaxRate] = useState("25")
   const [items, setItems] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
   const [saving, setSaving] = useState(false)
-  const submitPending = useRef(false)
   const [error, setError] = useState<string | null>(null)
-  const [fieldError, setFieldError] = useState<FieldError<"contact" | "dueDate" | "items"> | null>(null)
   const [loadingContacts, setLoadingContacts] = useState(true)
-  const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [aiCapabilities, setAiCapabilities] = useState<
     Pick<RuntimeCapabilities, "aiInvoiceDraft"> | null
@@ -107,7 +111,7 @@ function NewInvoicePage() {
       .query()
       .then((data) => setCatalogItems(data as CatalogItemOption[]))
       .catch(() => {})
-      .finally(() => setLoadingCatalog(false))
+
   }, [])
 
   useEffect(() => {
@@ -119,12 +123,6 @@ function NewInvoicePage() {
       .catch(() => {})
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
-
-  function updateItem(index: number, field: keyof LineItem, value: string) {
-    setItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
-    )
-  }
 
   function addItem() {
     setItems((prev) => [
@@ -147,12 +145,46 @@ function NewInvoicePage() {
     )
   }
 
-  const invalidFields = new Set<"contact" | "dueDate" | "items">()
-  if (!contactId) invalidFields.add("contact")
-  if (!dueDate) invalidFields.add("dueDate")
-  if (items.some((item) => !item.description.trim())) invalidFields.add("items")
-  const shownError = visibleFieldError(fieldError, invalidFields) ?? error
+  useEffect(() => {
+    let cancelled = false
+    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency }).then(state => {
+      if (cancelled) return
+      setReadiness(state)
+      setBaseCurrency(state.baseCurrency)
+      // A policy-fixed rate always wins, also over an earlier edit or an accepted AI rate; otherwise the default
+      // applies until the user edits it.
+      if (state.standardVatRate != null) {
+        setTaxRate(defaultDocumentTaxRate(state))
+        setItems(lines => reconcilePolicyVat(lines, state))
+      } else if (!taxRateEdited.current) setTaxRate(defaultDocumentTaxRate(state))
+      if (!priceBasisEdited.current) setPricesIncludeTax(state.standardVatRate != null ? false : state.pricesIncludeTax)
+    }).catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
+    return () => { cancelled = true }
+  }, [contactId, currency, t])
 
+  const fieldError = (field: string) => {
+    const issue = fieldIssues.find(issue => issue.field === field)
+    return issue ? <p role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p> : null
+  }
+  function validateForm() {
+    const issues: FieldIssue[] = []
+    const add = (code: string, field: string) => issues.push({ code, field, params: {} })
+    if (!contactId) add("customer.required", "contactId")
+    if (!dueDate) add("required", "dueDate")
+    if (!issuance.supplyDate) add("required", "supplyDate")
+    items.forEach((item, index) => {
+      if (!item.description.trim()) add("required", `items.${index}.description`)
+      else if (!documentLineV2InputSchema.shape.description.safeParse(item.description).success) add("descriptionTooLong", `items.${index}.description`)
+      if (!invoiceQuantityInput(locale).safeParse(item.quantity).success) add("quantityInvalid", `items.${index}.quantity`)
+      // The same format the server accepts: plain decimals, no exponent, within the cap.
+      if (item.unitPrice === "") add("required", `items.${index}.unitPrice`)
+      else if (!documentLineV2InputSchema.shape.unitPrice.safeParse(item.unitPrice).success) add("unitPriceInvalid", `items.${index}.unitPrice`)
+    })
+    setFieldIssues(issues)
+    return issues.length === 0
+  }
+  // An adopter policy fixes the rate and treatment; without one the full classification editor applies.
+  const restrictedVat = !!readiness?.standardVatRate
   const preview = previewDraft({ items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate: taxRate || "0", pricesIncludeTax, currency })
   const subtotal = Number(preview.result?.net ?? "0")
   const taxAmount = Number(preview.result?.tax ?? "0")
@@ -189,7 +221,9 @@ function NewInvoicePage() {
       if (draft.notes) {
         setNotes(draft.notes)
       }
-      if (typeof draft.taxRate === "number") {
+      // A policy-fixed rate stays; a model-supplied rate only applies where the user can see and correct it.
+      if (typeof draft.taxRate === "number" && !readiness?.standardVatRate) {
+        taxRateEdited.current = true
         setTaxRate(String(draft.taxRate))
       }
       if (draft.items.length > 0) {
@@ -246,26 +280,10 @@ function NewInvoicePage() {
   async function handleSubmit(sendImmediately: boolean) {
     if (submitPending.current) return
     setError(null)
-    setFieldError(null)
 
-    if (!contactId) {
-      setFieldError({ field: "contact", message: t("docForm.validation.contactRequired") })
-      return
-    }
-    if (!dueDate) {
-      setFieldError({ field: "dueDate", message: t("invoices.new.validation.dueDateRequired") })
-      return
-    }
-    if (items.some((item) => !item.description.trim())) {
-      setFieldError({ field: "items", message: t("docForm.validation.itemDescriptionRequired") })
-      return
-    }
-
-    if (items.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
-      setError(t("docForm.validation.quantityInvalid"))
-      return
-    }
-
+    // The VAT rate and price basis are placeholders until the organisation's configuration has loaded.
+    if (!readiness) return
+    if (submitPending.current || !validateForm()) return
     submitPending.current = true
     setSaving(true)
     try {
@@ -279,6 +297,7 @@ function NewInvoicePage() {
             dueDate,
             supplyDate: issuance.supplyDate,
             taxRate,
+            pricesIncludeTax,
             vatEvidence,
             notes: notes || undefined,
             items: items.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
@@ -310,27 +329,24 @@ function NewInvoicePage() {
         search: { emailWarning: target.emailWarning, sendError: target.sendError },
       })
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.new.error.createFailed")
-      )
-      submitPending.current = false
-      setSaving(false)
-    }
+      setError(err instanceof Error && err.message ? err.message : t("invoiceValidation.unknown"))
+      setFieldIssues(invoiceFieldIssues(err))
+    } finally { submitPending.current = false; setSaving(false) }
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-4 sm:p-6 max-w-5xl">
       {bankNudge.dialog}
       <Card>
         <CardHeader>
           <CardTitle>{t("invoices.new.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-6">
-          {shownError && (
+          <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
+          {readiness?.issues.filter(issue => issue.field === "currency").map(issue => <p key={issue.code} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+          {error && (
             <p className="text-sm text-destructive" role="alert">
-              {shownError}
+              {error}
             </p>
           )}
 
@@ -371,9 +387,9 @@ function NewInvoicePage() {
             {aiInfo && <p className="text-sm text-muted-foreground">{aiInfo}</p>}
           </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4">
               <div className="grid gap-2">
-              <Label>{t("docForm.contact")} *</Label>
+              <Label htmlFor="invoice-contact">{t("docForm.contact")} *</Label>
               {loadingContacts ? (
                 <p className="text-sm text-muted-foreground py-2">
                   {t("docForm.loadingContacts")}
@@ -383,8 +399,8 @@ function NewInvoicePage() {
                   {t("docForm.noContacts")}
                 </p>
               ) : (
-                <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger className="w-full">
+                <Select value={contactId} onValueChange={value => { setContactId(value); setFieldIssues(issues => issues.filter(issue => issue.field !== "contactId" && !issue.field.startsWith("customer."))) }}>
+                  <SelectTrigger id="invoice-contact" aria-invalid={!!fieldIssues.find(issue => issue.field === "contactId")} className="w-full">
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -396,122 +412,32 @@ function NewInvoicePage() {
                   </SelectContent>
                 </Select>
               )}
+              {fieldError("contactId")}
+              {fieldIssues.filter(issue => issue.field.startsWith("customer.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
             </div>
+            <IssuanceFields value={issuance} onChange={value => { setIssuance(value); setFieldIssues(issues => issues.filter(issue => !["supplyDate", "exchangeRate", "rateDate"].includes(issue.field))) }} currency={currency} baseCurrency={baseCurrency} showHint={false} errors={fieldIssues} />
             <div className="grid gap-2">
-              <IssuanceFields value={issuance} onChange={setIssuance} currency={currency} baseCurrency={baseCurrency} />
               <Label htmlFor="dueDate">{t("invoices.new.field.dueDate")} *</Label>
               <LocalizedDateField
                 id="dueDate"
                 value={dueDate}
-                onChange={setDueDate}
+                onChange={value => { setDueDate(value); setFieldIssues(issues => issues.filter(issue => issue.field !== "dueDate")) }}
                 locale={locale}
                 placeholder={t("docForm.selectDate")}
                 clearLabel={t("docForm.clear")}
                 required
               />
+              {fieldError("dueDate")}
             </div>
           </div>
 
-          {/* Line Items */}
-          <div className="grid gap-3">
-            <Label>{t("docForm.lineItems")}</Label>
-            <div className="rounded-md border">
-              <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
-                <span>{t("docForm.column.item")}</span>
-                <span>{t("docForm.column.description")}</span>
-                <span>{t("docForm.column.qty")}</span>
-                <span>{t("docForm.column.unitPrice")}</span>
-                <span>{t("docForm.column.total")}</span>
-                <span />
-              </div>
-              {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
-                >
-                  <Select
-                    value={item.catalogItemId}
-                    onValueChange={(value) => applyCatalogItem(index, value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue
-                        placeholder={
-                          loadingCatalog
-                            ? t("docForm.loadingItems")
-                            : catalogItems.length > 0
-                              ? t("docForm.selectItem")
-                              : t("docForm.noSavedItems")
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {catalogItems.map((catalogItem) => (
-                        <SelectItem key={catalogItem.id} value={catalogItem.id}>
-                          {catalogItem.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    className="min-w-0 [overflow-wrap:anywhere]"
-                    aria-label={t("docForm.column.description")}
-                    placeholder={t("docForm.column.description")}
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                  />
-                  <div className="grid min-w-0 gap-1">
-                    <Label htmlFor={`invoice-new-quantity-${index}`} className="md:sr-only">{t("docForm.column.qty")}</Label>
-                    <Input
-                      id={`invoice-new-quantity-${index}`}
-                      type="text"
-                      inputMode="decimal"
-                      aria-label={t("docForm.column.qty")}
-                      aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success}
-                      value={item.quantity || ""}
-                      onChange={(e) =>
-                        updateItem(index, "quantity", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="grid min-w-0 gap-1">
-                    <Label htmlFor={`invoice-new-unitPrice-${index}`} className="md:sr-only">{t("docForm.column.unitPrice")}</Label>
-                    <Input
-                      id={`invoice-new-unitPrice-${index}`}
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      value={item.unitPrice || ""}
-                      onChange={(e) =>
-                        updateItem(index, "unitPrice", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="grid min-w-0 gap-1">
-                    <span id={`invoice-new-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
-                    <output aria-labelledby={`invoice-new-total-${index}`} className="num text-sm text-right pr-2">
-                      {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
-                    </output>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeItem(index)}
-                    disabled={items.length <= 1}
-                  >
-                    <Trash2 className="size-4 text-muted-foreground" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-fit">
-              <Plus className="size-4" />
-              {t("docForm.action.addItem")}
-            </Button>
-          </div>
+          <PriceBasisToggle value={pricesIncludeTax} onChange={value => { priceBasisEdited.current = true; setPricesIncludeTax(value) }} />
+          <InvoiceLinesEditor items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} catalogItems={catalogItems} onCatalogItem={applyCatalogItem} onAdd={addItem} onRemove={removeItem}
+            taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
+            amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
 
-          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
-          <VatGroupPreview {...preview} />
+          <DocumentVatFields items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
+          {!restrictedVat && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">
             <div className="w-64 grid gap-2 text-sm">
@@ -521,19 +447,10 @@ function NewInvoicePage() {
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={taxRate || ""}
-                    onChange={(e) => { setTaxRate(e.target.value); setItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
-                    className="w-16 h-7 text-xs"
-                  />
-                  <span className="text-muted-foreground text-xs">%</span>
+                {restrictedVat ? <span className="num">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span> : <div className="flex items-center gap-1">
+                  <TaxRateInput value={taxRate} onChange={value => { taxRateEdited.current = true; setTaxRate(value); setItems(lines => lines.map(line => ({ ...line, vat: undefined }))) }} />
                   <span className="ml-auto num">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span>
-                </div>
+                </div>}
               </div>
               <div className="flex justify-between font-semibold border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
@@ -554,7 +471,7 @@ function NewInvoicePage() {
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
+        <CardFooter className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
             variant="outline"
@@ -565,7 +482,7 @@ function NewInvoicePage() {
           <Button
             type="button"
             variant="secondary"
-            disabled={saving}
+            disabled={saving || !readiness}
             onClick={() => handleSubmit(false)}
           >
             {saving
@@ -574,7 +491,7 @@ function NewInvoicePage() {
           </Button>
           <Button
             type="button"
-            disabled={saving}
+            disabled={saving || !readiness}
             onClick={() => handleSubmit(true)}
           >
             {saving

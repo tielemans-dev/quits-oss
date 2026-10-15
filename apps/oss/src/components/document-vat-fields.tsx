@@ -8,13 +8,14 @@ import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 
 /** Per-line classifications and document evidence. Evidence may stay incomplete in a draft. */
-export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false, lineErrorId, evidenceErrorId }: {
+export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false, hideClassification = false, lineErrorId, evidenceErrorId }: {
   items: Line[]
   onItemsChange: (items: Line[]) => void
   taxRate: string
   evidence: DraftVatEvidence
   onEvidenceChange: (evidence: DraftVatEvidence) => void
   classificationReadOnly?: boolean
+  hideClassification?: boolean
   /** Id of the message describing a VAT error on this line, when there is one. */
   lineErrorId?: (index: number) => string | undefined
   /** Id of the message describing an error on one evidence entry, when there is one. */
@@ -32,7 +33,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
   const statement = intra || treatments.includes("exempt") || treatments.includes("reverse_charge_domestic")
   const buyerId = intra || treatments.includes("reverse_charge_domestic")
   return <div className="grid gap-3">
-    {!classificationReadOnly && items.map((item, index) => {
+    {!classificationReadOnly && !hideClassification && items.map((item, index) => {
       const vat = documentVat(item, taxRate || "0")
       const reasons: readonly VatReasonCode[] = vatReasonCodes[vat.treatment]
       const errorId = lineErrorId?.(index)
@@ -61,6 +62,17 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
           <Input maxLength={2} {...a11y} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
         </label>}
       </div>
+    })}
+    {hideClassification && items.map((item, index) => {
+      const vat = documentVat(item, taxRate || "0")
+      const reasons: readonly VatReasonCode[] = vatReasonCodes[vat.treatment]
+      if (!reasons.length) return null
+      return <label key={index} className="grid gap-1 text-sm">{t("vat.lineReason", { number: index + 1 })}
+        <select className="h-9 rounded-md border bg-background px-2" disabled={classificationReadOnly} value={vat.reasonCode ?? ""} onChange={event => onItemsChange(items.map((line, i) => i === index ? { ...line, vat: { ...vat, reasonCode: event.target.value as VatReasonCode } } : line))}>
+          <option value="">{t("vat.chooseReason")}</option>
+          {reasons.map(reason => <option key={reason} value={reason}>{t(`vat.reason.${reason}`)}</option>)}
+        </select>
+      </label>
     })}
     {statement && <label className="grid gap-1 text-sm">{t("vat.statement")}
       <Input {...evidenceA11y("statementText")} aria-label={t("vat.statement")} value={evidence.statementText ?? ""} onChange={(event) => patchEvidence({ statementText: event.target.value || undefined })} />

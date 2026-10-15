@@ -1,3 +1,4 @@
+import { useBusinessBuyersOnly } from "../../../hooks/use-business-buyers-only"
 import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
@@ -28,6 +29,7 @@ function NewContactPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
+  const businessOnly = useBusinessBuyersOnly()
   const [error, setError] = useState<string | null>(null)
   const [organizationCountry, setOrganizationCountry] = useState<string | null>(null)
   // The form stays closed to submission until the default country answered, so a quick submit cannot drop it.
@@ -138,10 +140,12 @@ function NewContactPage() {
               <Label htmlFor="company">{t("contacts.field.company")}</Label>
               <Input
                 id="company"
+                aria-describedby={businessOnly ? "company-help" : undefined}
                 name="company"
                 maxLength={120}
                 placeholder={t("contacts.placeholder.company")}
               />
+              {businessOnly && <p id="company-help" className="text-sm text-muted-foreground">{t("contacts.businessOnly.help")}</p>}
             </div>
 
             <div className="grid gap-2">

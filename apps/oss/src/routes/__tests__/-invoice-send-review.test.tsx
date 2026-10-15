@@ -3,18 +3,19 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { ComponentType, ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), create: vi.fn(), update: vi.fn(), send: vi.fn(), resend: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), get: vi.fn(), currency: "DKK" }))
+const aiFixture = vi.hoisted(() => ({ enabled: false }))
+const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), readiness: vi.fn(), create: vi.fn(), update: vi.fn(), send: vi.fn(), resend: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), get: vi.fn(), currency: "DKK" }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ invoiceId: "synthetic-invoice" }), useSearch: () => ({}) }),
   Link: ({ children, to, onClick }: { children: ReactNode; to: string; onClick?: () => void }) => <a href={to} onClick={event => { event.preventDefault(); onClick?.(); api.navigate({ to }) }}>{children}</a>,
   useNavigate: () => api.navigate,
 }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, createV2: { mutate: api.create }, updateV2: { mutate: api.update }, send: { mutate: api.send }, resendEmail: { mutate: api.resend } },
+  invoices: { sendReadiness: { query: api.readiness }, get: { query: api.get }, createV2: { mutate: api.create }, updateV2: { mutate: api.update }, send: { mutate: api.send }, resendEmail: { mutate: api.resend } },
   paymentDetails: { firstSendReadiness: { query: api.bankReadiness } },
   contacts: { list: { query: api.contacts } }, catalog: { list: { query: async () => [] } },
   ai: { generateInvoiceDraft: { mutate: api.generate } },
-  runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: false, byok: false } }) } }, settings: { get: { query: api.settings } },
+  runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: aiFixture.enabled, byok: aiFixture.enabled } }) } }, settings: { get: { query: api.settings } },
 } }))
 vi.mock("../../hooks/use-org-currency", () => ({ useOrgCurrency: () => api.currency }))
 vi.mock("../../lib/auth-client", () => ({ useSession: () => ({ data: { session: { activeOrganizationId: "synthetic-org" } }, isPending: false }) }))
@@ -45,7 +46,9 @@ beforeEach(() => {
   resetRequestOrganizationForTesting()
   initializeRequestOrganizationId("synthetic-org")
   api.bankReadiness.mockResolvedValue({ bankMissing: false })
+  aiFixture.enabled = false
   api.contacts.mockResolvedValue([contact])
+  api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
   api.settings.mockResolvedValue({ locale: "en-US", timezone: "UTC", baseCurrency: "DKK", taxRate: 25, pricesIncludeTax: false, emailDelivery: { available: true }, companyName: "Synthetic Studio" })
   api.create.mockResolvedValue({ id: invoice.id })
 })
@@ -54,7 +57,7 @@ afterEach(() => { cleanup(); vi.resetAllMocks() })
 function fillDraft() {
   fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: contact.id } })
   fireEvent.change(document.getElementById("dueDate")!, { target: { value: "2099-01-01" } })
-  fireEvent.change(screen.getByPlaceholderText("docForm.column.description"), { target: { value: "Synthetic work" } })
+  fireEvent.change(screen.getByLabelText("docForm.column.description"), { target: { value: "Synthetic work" } })
 }
 describe("invoice review regressions", () => {
   it("opens a draft without a delivery date with an empty field", async () => {
@@ -149,7 +152,7 @@ describe("invoice review regressions", () => {
     await act(async () => { persist({ id: invoice.id }) })
     const settings = await screen.findByText("onboardingV2.bankNudge.settings")
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.create).toHaveBeenCalledWith({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2026-10-05", taxRate: "25", vatEvidence: { statementText: "Synthetic exemption evidence" }, notes: "Keep these notes", items: [{ description: "Synthetic work", quantity: "2", unitPrice: "123.45", vat: { treatment: "exempt", rate: "0", reasonCode: "financial", country: null } }] })
+    expect(api.create).toHaveBeenCalledWith({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2026-10-05", taxRate: "25", pricesIncludeTax: false, vatEvidence: { statementText: "Synthetic exemption evidence" }, notes: "Keep these notes", items: [{ description: "Synthetic work", quantity: "2", unitPrice: "123.45", vat: { treatment: "exempt", rate: "0", reasonCode: "financial", country: null } }] })
     await act(async () => { fireEvent.click(settings) })
     expect(api.send).not.toHaveBeenCalled()
     expect(api.resend).not.toHaveBeenCalled()
@@ -181,7 +184,7 @@ describe("invoice review regressions", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     await screen.findByText("Synthetic persistence failure")
     expect(api.bankReadiness).not.toHaveBeenCalled()
-    expect((screen.getByPlaceholderText("docForm.column.description") as HTMLInputElement).value).toBe("Synthetic work")
+    expect((screen.getByLabelText("docForm.column.description") as HTMLInputElement).value).toBe("Synthetic work")
     expect(api.navigate).not.toHaveBeenCalled()
     expect(api.send).not.toHaveBeenCalled()
     api.create.mockResolvedValue({ id: invoice.id })
@@ -203,6 +206,121 @@ describe("invoice review regressions", () => {
     expect(api.send).not.toHaveBeenCalled()
   })
 
+  it("blocks draft saves until the organisation configuration has loaded, and when it fails to load", async () => {
+    let resolve!: (value: unknown) => void
+    api.readiness.mockReturnValue(new Promise(value => { resolve = value }))
+    const view = render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    const save = screen.getByRole("button", { name: "docForm.action.saveDraft" }) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    await act(async () => { fireEvent.click(save) })
+    expect(api.create).not.toHaveBeenCalled()
+    await act(async () => { resolve({ issues: [], taxRate: "20", pricesIncludeTax: false, baseCurrency: "DKK" }) })
+    expect((screen.getByRole("button", { name: "docForm.action.saveDraft" }) as HTMLButtonElement).disabled).toBe(false)
+    view.unmount()
+    api.readiness.mockReset().mockRejectedValue(new Error("Synthetic policy unavailable"))
+    render(<NewPage />)
+    await screen.findByText("invoiceValidation.unknown")
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    expect((screen.getByRole("button", { name: "docForm.action.saveDraft" }) as HTMLButtonElement).disabled).toBe(true)
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).not.toHaveBeenCalled()
+  })
+  it("keeps hosted new prices exclusive after delayed settings and uses the policy VAT rate", async () => {
+    let resolve!: (value: unknown) => void
+    api.readiness.mockReturnValue(new Promise(value => { resolve = value }))
+    render(<NewPage />)
+    expect(screen.getByRole("radio", { name: "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
+    await act(async () => { resolve({ issues: [], taxRate: "0", standardVatRate: "25", countryCode: "DK", pricesIncludeTax: true, baseCurrency: "DKK" }) })
+    expect(screen.getByRole("radio", { name: "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
+    expect(screen.getByText("invoiceVat.hosted")).toBeTruthy()
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: "25" }))
+  })
+  it.each([true, false])("combines restrictive defaults with explicit registration %s", async momsRegistered => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered, pricesIncludeTax: true, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await screen.findByText(momsRegistered ? "invoiceVat.hosted" : "line.noVat")
+    expect(screen.getByRole("radio", { name: "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
+    fillDraft()
+    fireEvent.change(screen.getByLabelText("docForm.column.unitPrice"), { target: { value: "100" } })
+    expect(screen.getByText("docForm.summary.total").parentElement?.textContent).toMatch(new RegExp(`DKK\\s*${momsRegistered ? 125 : 100}[.,]00`))
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: momsRegistered ? "25" : "0", items: [expect.objectContaining({ vat: undefined })] }))
+  })
+  it("applies the mandatory policy VAT rate over an AI rate accepted before readiness arrived", async () => {
+    aiFixture.enabled = true
+    let resolve!: (value: unknown) => void
+    api.readiness.mockReturnValue(new Promise(value => { resolve = value }))
+    api.generate.mockResolvedValue({ draft: { taxRate: 0, items: [{ description: "Synthetic work", quantity: 1, unitPrice: 100 }] } })
+    render(<NewPage />)
+    const generate = await screen.findByRole("button", { name: "invoices.new.ai.action.generate" })
+    await waitFor(() => expect((generate as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.change(screen.getByLabelText("invoices.new.ai.label"), { target: { value: "Synthetic work" } })
+    await act(async () => { fireEvent.click(generate) })
+    expect(api.generate).toHaveBeenCalledOnce()
+    await act(async () => { resolve({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered: true, pricesIncludeTax: true, countryCode: "DK", baseCurrency: "DKK" }) })
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", pricesIncludeTax: false }))
+  })
+  it("preserves a self-hosted inclusive default and its configured VAT rate", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "20", pricesIncludeTax: true, countryCode: "SE", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(screen.getByRole("radio", { name: "invoiceVat.pricesInclude" }).getAttribute("aria-checked")).toBe("true"))
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: true, taxRate: "20" }))
+  })
+  it("defaults Danish invoices to standard VAT and restores 25 percent after outside VAT", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    const vat = await screen.findByLabelText("vat.lineTreatment") as HTMLSelectElement
+    expect(vat.value).toBe("standard")
+    fireEvent.change(vat, { target: { value: "out_of_scope" } })
+    expect(vat.value).toBe("out_of_scope")
+    fireEvent.change(vat, { target: { value: "standard" } })
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: "0.25" }) })] }))
+  })
+  it("shows a policy-fixed rate as plain text on each line instead of a choice", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    expect(await screen.findByText("invoiceVat.hosted")).toBeTruthy()
+    expect(screen.queryByLabelText("vat.lineTreatment")).toBeNull()
+  })
+  it.each([true, false])("preserves explicit pricesIncludeTax=%s while loading configured tax", async pricesIncludeTax => {
+    let resolve!: (value: unknown) => void
+    api.readiness.mockReturnValue(new Promise(value => { resolve = value }))
+    render(<NewPage />)
+    fireEvent.change(screen.getByLabelText("docForm.column.unitPrice"), { target: { value: "100" } })
+    const choice = pricesIncludeTax ? "invoiceVat.pricesInclude" : "invoiceVat.pricesExclude"
+    fireEvent.click(screen.getByRole("radio", { name: choice }))
+    await act(async () => { resolve({ issues: [], taxRate: "20", standardVatRate: "20", pricesIncludeTax: !pricesIncludeTax, baseCurrency: "DKK" }) })
+    expect(screen.getByRole("radio", { name: choice }).getAttribute("aria-checked")).toBe("true")
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, taxRate: "20" }))
+  })
+  it("replaces an edited rate and non-compliant line VAT once a policy fixes the rate for the chosen customer", async () => {
+    api.readiness.mockResolvedValueOnce({ issues: [], taxRate: "25", pricesIncludeTax: false, momsRegistered: true, countryCode: "DK", baseCurrency: "DKK" })
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", pricesIncludeTax: false, momsRegistered: true, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fireEvent.change(await screen.findByLabelText("vat.lineTreatment"), { target: { value: "exempt" } })
+    fireEvent.change(screen.getByLabelText("docForm.summary.tax"), { target: { value: "5" } })
+    fillDraft()
+    await screen.findByText("invoiceVat.hosted")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.readiness).toHaveBeenLastCalledWith({ contactId: contact.id, currency: "DKK" })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", items: [expect.objectContaining({ vat: undefined })] }))
+  })
 })
 
 // MOCK: transport and route context only; both forms, issuance fields and bank gate are real.
@@ -290,5 +408,84 @@ describe("detail-page foreign-currency bank nudge", () => {
     expect(api.send).toHaveBeenCalledTimes(outcome === "failed send" ? 2 : 1)
     expect(api.create).not.toHaveBeenCalled()
     expect(sessionStorage.length).toBe(0)
+  })
+})
+
+describe("VAT treatment choices on the draft editor", () => {
+  it("keeps the full classification editor, rate input and group preview without a policy-fixed rate", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    const treatment = await screen.findByLabelText("vat.lineTreatment") as HTMLSelectElement
+    expect([...treatment.options].map(option => option.value)).toEqual(expect.arrayContaining(["standard", "intra_community", "export", "exempt", "reverse_charge_domestic"]))
+    expect(screen.queryByLabelText("vat.lineRate", { selector: "select" })).toBeNull()
+    expect(screen.getByLabelText("docForm.summary.tax")).toBeTruthy()
+  })
+  it("sends an intra-community line with its evidence when no policy fixes the rate", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    fireEvent.change(await screen.findByLabelText("vat.lineTreatment"), { target: { value: "intra_community" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "intra_community", rate: "0" }) })] }))
+  })
+  it("offers the compact VAT choice only where a policy fixes the rate, and never a 0 % standard option", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "0", standardVatRate: "0", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(screen.queryByLabelText("vat.lineTreatment")).toBeNull())
+    const compact = screen.queryByLabelText("vat.lineRate") as HTMLSelectElement | null
+    if (compact) expect([...compact.options].map(option => option.value)).not.toContain("standard")
+  })
+  it("ignores an AI-supplied VAT rate under a policy-fixed rate and applies it, correctably, otherwise", async () => {
+    aiFixture.enabled = true
+    api.generate.mockResolvedValue({ draft: { items: [{ description: "AI work", quantity: 1, unitPrice: 100 }], taxRate: 0 } })
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", baseCurrency: "DKK" })
+    render(<NewPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    fireEvent.change(await screen.findByLabelText("invoices.new.ai.label"), { target: { value: "Bill Synthetic Buyer" } })
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /invoices.new.ai.action.generate/ })) })
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25" }))
+  })
+})
+
+describe("send errors and line validation on the new invoice form", () => {
+  it("shows the server's own refusal instead of a generic message when sending fails after the draft exists", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
+    api.send.mockRejectedValue(new Error("Exemption requires reason text"))
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ search: expect.objectContaining({ sendError: "Exemption requires reason text" }) })))
+  })
+  it.each([
+    ["a description over 500 characters", "docForm.column.description", "x".repeat(501), "invoiceValidation.description.tooLong"],
+    ["an exponent unit price", "docForm.column.unitPrice", "1e2", "invoiceValidation.unitPrice.invalid"],
+    ["a unit price with too many decimals", "docForm.column.unitPrice", "1.123456", "invoiceValidation.unitPrice.invalid"],
+  ])("blocks %s", async (_name, label, value, message) => {
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    fireEvent.change(screen.getByLabelText(label), { target: { value } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    await screen.findByText(message)
+    expect(api.create).not.toHaveBeenCalled()
+  })
+  it("treats missing bank details as a nudge that never blocks sending", async () => {
+    api.readiness.mockResolvedValue({ issues: [], warnings: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }], taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    expect((await screen.findByTestId("organization-gaps")).getAttribute("role")).toBe("status")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    expect(api.create).toHaveBeenCalledTimes(1)
+  })
+  it("shows an unsupported invoice currency reported by the readiness check", async () => {
+    api.readiness.mockResolvedValue({ issues: [{ code: "currency.unsupported", field: "currency", params: { currencies: "DKK, EUR" } }], taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
+    render(<NewPage />)
+    expect((await screen.findByRole("alert")).textContent).toBe("invoiceValidation.currency.unsupported")
   })
 })

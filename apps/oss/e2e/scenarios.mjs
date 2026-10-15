@@ -54,8 +54,11 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
   }
 
-  /** Reads the line-item grid row `index`, scoped by its description box. */
-  const lineRow = (page, index) => page.getByPlaceholder('Description', { exact: true }).nth(index).locator('xpath=..')
+  /** The labelled description box of line `index`; the new form labels it, the edit form also sets a placeholder. */
+  const descriptionOf = (scope, index) => scope.getByLabel('Description', { exact: true }).nth(index)
+
+  /** Reads the line-item grid row `index`: the nearest ancestor of its description box that holds the other inputs. */
+  const lineRow = (page, index) => descriptionOf(page, index).locator('xpath=ancestor::*[.//input][1]')
 
   /** Summary block under the line items, shared by the new and edit forms. */
   const summaryOf = (page) => page.getByText('Subtotal', { exact: true }).locator('xpath=../..')
@@ -88,7 +91,7 @@ export function registerProductScenarios(test, expect) {
     for (const [index, line] of lines.entries()) {
       if (index > 0) await page.getByRole('button', { name: 'Add Item', exact: true }).click()
       const row = lineRow(page, index)
-      await row.getByPlaceholder('Description', { exact: true }).fill(line.description)
+      await row.getByLabel('Description', { exact: true }).fill(line.description)
       await row.getByLabel('Qty', { exact: true }).fill(String(line.quantity))
       await row.getByRole('spinbutton').fill((line.unitPriceCents / 100).toFixed(2))
     }
@@ -228,7 +231,7 @@ export function registerProductScenarios(test, expect) {
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
     await expect(page.getByText('Edit Invoice', { exact: true })).toBeVisible()
     const first = lineRow(page, 0)
-    await expect(first.getByPlaceholder('Description', { exact: true })).toHaveValue(input.lines[0].description)
+    await expect(first.getByLabel('Description', { exact: true })).toHaveValue(input.lines[0].description)
     await first.getByLabel('Qty', { exact: true }).fill('4')
     // 4 x 150.00 + 1 x 49.50 = 649.50; 10% tax = 64.95; total 714.45.
     const edited = { subtotal: 64950, tax: 6495, total: 71445 }
