@@ -166,7 +166,7 @@ describe("settings stripe account contract", () => {
     expect(settings.stripeByokConfigured).toBe(true)
   })
 
-  it("counts an active Connect account as payment-configured without BYOK keys", async () => {
+  it("does not report BYOK keys for an active Connect account without keys", async () => {
     mocks.findUnique.mockResolvedValue(
       settingsRow({
         stripePublishableKey: null,
@@ -180,7 +180,7 @@ describe("settings stripe account contract", () => {
 
     const settings = await createCaller().get()
 
-    expect(settings.stripeByokConfigured).toBe(true)
+    expect(settings.stripeByokConfigured).toBe(false)
     expect(settings.stripePublishableKey).toBeNull()
   })
 
@@ -240,13 +240,16 @@ describe("settings stripe account contract", () => {
 
       setRuntimeExtensions([{
         id: "test-connect-checkout",
-        resolveStripeCheckoutTarget: async () => status === "active" ? {
+        resolveStripeCheckoutTarget: async () => ({
           kind: "connect",
           stripeAccount: "acct_test",
           client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
-        } : null,
+        }),
       }])
-      expect((await createCaller().get()).stripePaymentsEnabled).toBe(byok || status === "active")
+      const result = await createCaller().get()
+      expect(result.stripePaymentsEnabled).toBe(byok || status === "active")
+      expect(result.stripeCheckoutKind).toBe(byok || status === "active" ? "connect" : null)
+      expect(result.stripeByokConfigured).toBe(byok)
     })
   })
 
@@ -271,7 +274,10 @@ describe("settings stripe account contract", () => {
       id: "test-unavailable-checkout",
       resolveStripeCheckoutTarget: async () => { throw new Error("Checkout unavailable") },
     }])
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
+    expect(warn).toHaveBeenCalledWith("Settings could not resolve Stripe checkout target", { organizationId: "org-1" })
+    warn.mockRestore()
   })
 
   it("calls the registered Connect handler and does not persist the account", async () => {
