@@ -7,7 +7,7 @@ import { translate } from "../../src/lib/i18n/translate"
 import { waitForClientReady } from "./support"
 
 // MOCK: captures only synthetic fixtures in the disposable CI database enforced by the config.
-const revision = process.env.QUI62_EVIDENCE_REVISION === "before" ? "before" : "after"
+const revision = process.env.QUI62_EVIDENCE_REVISION === "baseline" ? "baseline" : "after"
 export async function captureDocument(page: Page, surface: string, locale: string, html: string) {
   await writeFile(test.info().outputPath(`${surface}-${locale}-${revision}.html`), html)
   for (const colorScheme of ["light", "dark"] as const) {
@@ -58,7 +58,7 @@ export async function captureInvoiceEmail(page: Page, invoiceId: string, organiz
   const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })
   if (!invoice.number) throw new Error("Evidence requires an issued synthetic invoice")
   const html = composeInvoiceEmail({ invoice: { ...invoice, number: invoice.number }, settings, to: "buyer@example.test", publicPaymentUrl }).message.html
-  if (revision === "after") expect(html.split(translate("pdf.nonVatRegistered", locale))).toHaveLength(2)
+  expect(html.split(translate("pdf.nonVatRegistered", locale))).toHaveLength(2)
   await captureDocument(page, "invoice-email", locale, html)
 }
 export async function captureOnboarding(page: Page, organizationId: string, locale: string) {
