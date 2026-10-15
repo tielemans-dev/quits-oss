@@ -18,6 +18,7 @@ import {
   type ReviewValues,
 } from "./draft"
 import type { OnboardingV2Client } from "./client"
+import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
 
 type Screen = "search" | "working" | "review" | "failed" | "timeout" | "ceased"
@@ -113,6 +114,21 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     controller: AbortController
   } | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const reviewForm = useRef<HTMLFormElement | null>(null)
+  const focusInvalid = useRef(false)
+  // Long review page: after a rejected submit, take the user to the first field that needs fixing.
+  useEffect(() => {
+    if (!focusInvalid.current || !validationErrors.length) return
+    focusInvalid.current = false
+    // Center the first invalid field so the sticky app header and confirm bar cannot cover it.
+    const target = reviewForm.current?.querySelector<HTMLElement>("[aria-invalid='true']")
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView?.({ block: "center" })
+  }, [validationErrors])
+  function reject(fields: string[]) {
+    focusInvalid.current = true
+    setValidationErrors(fields)
+  }
   const mounted = useRef(true)
   const saving = useRef(false)
   const epoch = useRef(0)
@@ -323,6 +339,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
     setDraft((current) =>
       current
         ? {
@@ -341,8 +358,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
+    // An unanswered VAT question keeps the submit button disabled, so this only guards programmatic submits.
     if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
     const v = draft.values
+    // The form opts out of native (English-only) browser validation; required text fields the schema allows empty are checked here.
+    const empty = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
       (!/^\d{4}$/.test(v.bankRegNumber) || !/^\d{1,10}$/.test(v.bankAccountNumber))
@@ -351,14 +371,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload(draft))
-    if (!validated.success) {
-      const invalid = validated.error.issues.map((issue) => String(issue.path.at(-1)))
-      setValidationErrors(invalid)
-      // Center the first invalid field so the sticky app header and confirm bar cannot cover it.
-      const form = event.currentTarget as HTMLFormElement
-      const target = invalid.map((name) => form.querySelector<HTMLElement>(`[name="${name}"]`)).find(Boolean)
-      target?.focus({ preventScroll: true })
-      target?.scrollIntoView?.({ block: "center" })
+    if (!validated.success || empty.length) {
+      reject([...new Set([...empty, ...(validated.success ? [] : validated.error.issues.map((issue) => String(issue.path.at(-1))))])])
       return
     }
     setValidationErrors([])
@@ -377,11 +391,17 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       clearDraft(storageKey)
       epoch.current++
       if (mounted.current) onComplete()
-    } catch {
+    } catch (error) {
       if (!mounted.current) return
-      setSaveFailed(true)
       setBusy(false)
       saving.current = false
+      // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
+      // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
+      const message = error instanceof Error ? error.message : ""
+      const issues = message === "cvr.invalid" ? [{ field: "cvr" }] : message === "email.invalid" ? [{ field: "email" }] : readableIssues(error) ?? []
+      const fields = [...new Set(issues.flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : []))]
+      if (fields.length) reject(fields)
+      else setSaveFailed(true)
     }
   }
   function remove(group: "customers" | "lines", id: string) {
@@ -405,6 +425,16 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         ? 2
         : 1
   const factsTag = TT(draft?.source === "manual" ? "defaultTag" : "cvrTag")
+  /** The localized message under an invalid review field, so an error is visible next to the field and not only in the banner. */
+  function fieldError(name: keyof ReviewValues) {
+    if (!validationErrors.includes(name)) return null
+    const value = String(draft!.values[name] ?? "").trim()
+    const message: TranslationKey =
+      name === "cvr" ? (value ? "validation.cvr.invalid" : "validation.required")
+      : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
+      : value ? "validation.unknown" : "validation.required"
+    return <span id={`ob-${name}-error`} className="ob-error" role="alert">{t(message)}</span>
+  }
   function field(
     name: keyof ReviewValues,
     suffix: string,
@@ -428,6 +458,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           {...options}
           disabled={busy || (name === "taxRate" && !draft!.values.momsRegistered)}
           aria-invalid={validationErrors.includes(name)}
+          aria-describedby={validationErrors.includes(name) ? `ob-${name}-error` : undefined}
           onChange={(event) =>
             update(
               name,
@@ -437,6 +468,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             )
           }
         />
+        {fieldError(name)}
       </SourceField>
     )
   }
@@ -590,7 +622,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         </section>
       ) : null}
       {screen === "review" && draft ? (
-        <form onSubmit={(event) => void confirm(event)} className="ob-review">
+        <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
           {restored ? (
@@ -627,6 +659,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             <SourceField label={TT("field.address")} tag={factsTag}>
               <textarea
                 aria-label={TT("field.address")}
+                aria-invalid={validationErrors.includes("companyAddress") || undefined}
+                aria-describedby={validationErrors.includes("companyAddress") ? "ob-companyAddress-error" : undefined}
                 name="companyAddress"
                 required
                 maxLength={240}
@@ -634,6 +668,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 disabled={busy}
                 onChange={(event) => update("companyAddress", event.target.value)}
               />
+              {fieldError("companyAddress")}
             </SourceField>
             {field("companyForm", "field.form", factsTag, { required: true, maxLength: 80 })}
             {draft.company?.industry ? (

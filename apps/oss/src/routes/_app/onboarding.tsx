@@ -189,6 +189,9 @@ function OnboardingPageContent() {
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
+  // App-side messages for the name-only and lookup forms (native browser tooltips are English-only).
+  const [manualNameError, setManualNameError] = useState<'validation.required' | null>(null)
+  const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
   const [statusLoading, setStatusLoading] = useState(isCloud && hasActiveOrg)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -525,13 +528,19 @@ function OnboardingPageContent() {
     setError(null)
     setLookupMessage(null)
     setLookupCompanies([])
+    const query = lookupQuery.trim()
+    if (query.length < 3) {
+      setLookupQueryError(query ? 'validation.unknown' : 'validation.required')
+      return
+    }
+    setLookupQueryError(null)
     if (!isCloud) {
       setLookupMessage(t('auth.onboarding.lookup.unavailable'))
       return
     }
     setSubmitting(true)
     try {
-      const result = await trpc.onboarding.searchCvr.query({ q: lookupQuery.trim() })
+      const result = await trpc.onboarding.searchCvr.query({ q: query })
       setLookupCompanies(result.companies)
       setLookupMessage(result.available
         ? (result.companies.length ? null : t('auth.onboarding.lookup.empty'))
@@ -545,6 +554,11 @@ function OnboardingPageContent() {
 
   async function handleManualOrganization(e: React.FormEvent) {
     e.preventDefault()
+    if (!manualName.trim()) {
+      setManualNameError('validation.required')
+      return
+    }
+    setManualNameError(null)
     await createOrganizationFromCompanyName(manualName)
   }
 
@@ -699,7 +713,7 @@ function OnboardingPageContent() {
             </CardDescription>
           </CardHeader>
           {nameOnly ? (
-            <form onSubmit={(e) => void handleManualOrganization(e)}>
+            <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
                   <p className="text-sm text-destructive" role="alert">
@@ -713,9 +727,19 @@ function OnboardingPageContent() {
                     type="text"
                     placeholder={t('auth.onboarding.placeholder.orgName')}
                     value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
+                    onChange={(e) => {
+                      setManualName(e.target.value)
+                      if (e.target.value.trim()) setManualNameError(null)
+                    }}
                     required
+                    aria-invalid={manualNameError ? true : undefined}
+                    aria-describedby={manualNameError ? 'company-name-error' : undefined}
                   />
+                  {manualNameError && (
+                    <p id="company-name-error" className="text-sm text-destructive" role="alert">
+                      {t(manualNameError)}
+                    </p>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
@@ -737,7 +761,7 @@ function OnboardingPageContent() {
               </CardFooter>
             </form>
           ) : (
-            <form className="flex flex-col gap-6" onSubmit={(e) => void handleLookup(e)}>
+            <form noValidate className="flex flex-col gap-6" onSubmit={(e) => void handleLookup(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
                   <p className="text-sm text-destructive" role="alert">
@@ -752,10 +776,20 @@ function OnboardingPageContent() {
                     placeholder={t('auth.onboarding.lookup.placeholder')}
                     value={lookupQuery}
                     maxLength={120}
-                    onChange={(e) => setLookupQuery(e.target.value)}
+                    onChange={(e) => {
+                      setLookupQuery(e.target.value)
+                      if (e.target.value.trim().length >= 3) setLookupQueryError(null)
+                    }}
                     required
                     minLength={3}
+                    aria-invalid={lookupQueryError ? true : undefined}
+                    aria-describedby={lookupQueryError ? 'cvr-query-error' : undefined}
                   />
+                  {lookupQueryError && (
+                    <p id="cvr-query-error" className="text-sm text-destructive" role="alert">
+                      {t(lookupQueryError)}
+                    </p>
+                  )}
                 </div>
                 {lookupMessage && (
                   <p className="text-sm text-muted-foreground" role="status">
