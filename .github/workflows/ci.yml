@@ -326,14 +326,6 @@ jobs:
             apps/oss/test-results
           retention-days: 7
 
-      - name: Upload recipient reminder screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reminder-preference-screenshots
-          path: apps/oss/test-results/shared/**/reminder-preferences-*-da-*.png
-          retention-days: 30
-
   shared-browser:
     name: Shared product browser scenarios
     needs: [paths, shared-browser-worker]

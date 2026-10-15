@@ -5,6 +5,7 @@ import { getRuntimeEnv } from "../runtime/platform"
 import { escapeHtml } from "../email"
 import { translate } from "../i18n/translate"
 import { localeFromAcceptLanguage } from "../i18n/accept-language"
+import { appLogger } from "../observability"
 import { normalizeReminderRecipient, reminderPreferenceId, signReminderUnsubscribeToken, verifyReminderUnsubscribeToken } from "./unsubscribe-token"
 import type { Prisma } from "../../../generated/prisma/client"
 import type { StoredEmailMessage } from "../../domain/delivery/outbox"
@@ -18,12 +19,7 @@ function unsubscribeSecret() {
   return secret
 }
 
-function unsubscribeUrl(path: string, token: string) {
-  const env = getRuntimeEnv()
-  const origin = resolveAppOrigin([readProductEnv(env, "APP_ORIGIN"), env.BETTER_AUTH_URL])
-  if (!/^https?:\/\//.test(origin)) throw new Error("An absolute app origin is required for reminder unsubscribe links")
-  return buildAbsoluteUrl(origin, `${path}?token=${encodeURIComponent(token)}`)
-}
+let warnedMissingOrigin = false
 
 /** Persist the binding in the sending transaction. Resends never reset an unsubscribe. */
 export async function addReminderUnsubscribe(input: {
@@ -32,6 +28,13 @@ export async function addReminderUnsubscribe(input: {
   locale: string
   message: StoredEmailMessage
 }) {
+  const env = getRuntimeEnv()
+  const origin = resolveAppOrigin([readProductEnv(env, "APP_ORIGIN"), env.BETTER_AUTH_URL])
+  if (!/^https?:\/\//.test(origin)) {
+    if (!warnedMissingOrigin) appLogger.warn("reminders.unsubscribe_origin_missing")
+    warnedMissingOrigin = true
+    return input.message
+  }
   const recipient = normalizeReminderRecipient(input.message.to)
   const preference = await input.db.recipientReminderPreference.upsert({
     where: { organizationId_recipient: { organizationId: input.organizationId, recipient } },
@@ -39,12 +42,12 @@ export async function addReminderUnsubscribe(input: {
     update: { locale: input.locale },
   })
   const token = signReminderUnsubscribeToken(preference, unsubscribeSecret())
-  const pageUrl = unsubscribeUrl("/reminders/unsubscribe", token)
-  const oneClickUrl = unsubscribeUrl("/api/reminders/unsubscribe", token)
+  const pageUrl = buildAbsoluteUrl(origin, `/reminders/unsubscribe?token=${encodeURIComponent(token)}`)
+  const oneClickUrl = buildAbsoluteUrl(origin, `/api/reminders/unsubscribe?token=${encodeURIComponent(token)}`)
   const footer = `<p style="margin:12px 0 0;font-size:12px;"><a href="${escapeHtml(pageUrl)}">${escapeHtml(translate("email.reminderUnsubscribe.link", input.locale))}</a><br />${escapeHtml(translate("email.reminderUnsubscribe.scope", input.locale))}</p>`
   return {
     ...input.message,
-    html: input.message.html.replace("<!-- automatic-reminder-preferences -->", footer),
+    html: input.message.html.replace("</body>", () => `${footer}</body>`),
     headers: {
       ...input.message.headers,
       "List-Unsubscribe": `<${oneClickUrl.startsWith("https:") ? oneClickUrl : pageUrl}>`,
@@ -94,7 +97,7 @@ export async function readReminderUnsubscribeState(db: ReminderPreferenceDb, tok
 }
 
 /** POST revalidates the recipient/organization/action binding before writing. */
-export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: string, method: "GET" | "POST", acceptLanguage?: string | null): Promise<ReminderUnsubscribeState> {
+export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: string, method: "POST", acceptLanguage?: string | null): Promise<ReminderUnsubscribeState> {
   const binding = await verifiedReminderPreference(db, token)
   if (!binding) return { kind: "invalid", locale: localeFromAcceptLanguage(acceptLanguage) }
   const { preference, organization } = binding
@@ -105,7 +108,7 @@ export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: 
       data: { unsubscribedAt: new Date() },
     })
   }
-  return { kind: method === "POST" || preference.unsubscribedAt ? "done" : "confirm", locale: preference.locale, organizationName: organization.name }
+  return { kind: "done", locale: preference.locale, organizationName: organization.name }
 }
 
 export async function postReminderUnsubscribe(request: Request, db: ReminderPreferenceDb, oneClick: boolean) {
