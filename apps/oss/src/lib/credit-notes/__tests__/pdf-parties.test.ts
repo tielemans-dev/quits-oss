@@ -4,6 +4,7 @@ import type { OrgSettingsForPdf } from "../../invoice-pdf"
 import { creditNotePdfParties } from "../pdf-parties"
 
 const sellerSnapshot = {
+  momsRegistered: true,
   companyName: "Acme ApS",
   companyEmail: "billing@acme.dk",
   companyAddress: "Vesterbrogade 1, 1620 København V",
@@ -63,7 +64,7 @@ describe("credit note PDF parties", () => {
     ["da-DK", "CVR-nr. 12345678", "Momsnr. DK12345678"],
     ["en-US", "CVR no. 12345678", "VAT no. DK12345678"],
   ])("uses frozen buyer country and registration for seller IDs in %s", (locale, domestic, foreign) => {
-    for (const momsRegistered of [false, true]) {
+    for (const momsRegistered of [false, true, null]) {
       for (const country of ["DK", "DE"]) {
         const frozen = { ...sellerSnapshot, momsRegistered }
         const current: Pick<OrgSettings, "companyName" | "momsRegistered"> & Pick<OrgSettingsForPdf, "taxIds"> = {
