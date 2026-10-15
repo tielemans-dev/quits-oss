@@ -86,6 +86,8 @@ export const daInvoicesMessages = {
   "invoices.detail.action.sending": "Sender...",
   "invoices.detail.action.createPaymentLink": "Opret betalingslink",
   "invoices.detail.action.generatingPaymentLink": "Opretter link...",
+  "invoices.detail.paymentLink.unavailable":
+    "Betalingslink er ikke tilgængelige lige nu. Tjek dine Stripe-indstillinger.",
   "invoices.detail.action.delete": "Slet",
   "invoices.detail.action.updating": "Opdaterer...",
   "invoices.detail.action.markPaid": "Marker som betalt",

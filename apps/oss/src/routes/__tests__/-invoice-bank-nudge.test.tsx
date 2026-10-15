@@ -88,4 +88,23 @@ describe("invoice payment-link availability", () => {
     await screen.findByRole("button", { name: "Mark as Paid" })
     expect(screen.queryByRole("button", { name: "Create Payment Link" }) !== null).toBe(ready)
   })
+
+  it.each([
+    ["en-GB", "Payment links are unavailable right now. Check your Stripe settings."],
+    ["da-DK", "Betalingslink er ikke tilgængelige lige nu. Tjek dine Stripe-indstillinger."],
+  ])("explains the missing payment link when checkout cannot be resolved (%s)", async (locale, hint) => {
+    api.get.mockResolvedValue({ ...draft, number: "INV-1", status: "sent", total: 100, balanceDue: 100, amountPaid: 0, amountCredited: 0 })
+    api.settings.mockResolvedValue({ locale, stripePaymentsEnabled: false, stripeCheckoutUnavailable: true })
+    render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
+    expect(await screen.findByText(hint)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /payment link|betalingslink/i })).toBeNull()
+  })
+
+  it("shows no hint when payments are not set up or the link is available", async () => {
+    api.get.mockResolvedValue({ ...draft, number: "INV-1", status: "sent", total: 100, balanceDue: 100, amountPaid: 0, amountCredited: 0 })
+    api.settings.mockResolvedValue({ locale: "en-GB", stripePaymentsEnabled: false, stripeCheckoutUnavailable: false })
+    render(<I18nProvider locale="en-GB"><Detail /></I18nProvider>)
+    await screen.findByRole("button", { name: "Mark as Paid" })
+    expect(screen.queryByTestId("payment-link-unavailable")).toBeNull()
+  })
 })

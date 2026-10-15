@@ -82,6 +82,8 @@ export const enInvoicesMessages = {
   "invoices.detail.action.sending": "Sending...",
   "invoices.detail.action.createPaymentLink": "Create Payment Link",
   "invoices.detail.action.generatingPaymentLink": "Generating Link...",
+  "invoices.detail.paymentLink.unavailable":
+    "Payment links are unavailable right now. Check your Stripe settings.",
   "invoices.detail.action.delete": "Delete",
   "invoices.detail.action.updating": "Updating...",
   "invoices.detail.action.markPaid": "Mark as Paid",
