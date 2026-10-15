@@ -15,6 +15,9 @@ import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
 import { markInvoicePaid, undoInvoiceMarkPaid } from "../commands/paid-moment"
 import { recordPayment, recordStripeCheckoutPayment, voidPayment } from "../commands/payments"
+import { allocateReceipt, changeReceipt, previewReceiptAllocation, previewReceiptChange, recordReceipt } from "../commands/settlements"
+import { executeCommand } from "../execute"
+import { receiptActionInputSchema, type ReceiptAllocateInput } from "@quits/contracts/payments"
 import { runDueJobs } from "../jobs"
 import "../delivery/outbox"
 
@@ -114,6 +117,27 @@ describeIfDatabase("payment received emails", () => {
     const messages = vi.mocked(deliver).mock.calls.map(([message]) => message)
     vi.mocked(deliver).mockClear()
     return messages
+  }
+
+  /** Records a bank receipt and allocates it to the invoice; returns the allocation's payment id. */
+  async function allocateBankReceipt(org: Awaited<ReturnType<typeof setup>>["org"], invoiceId: string, amount: string) {
+    const actor = org.actors.admin
+    const contactId = (await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).contactId
+    const evidence = { reason: "Bank statement reconciled", evidence: "https://evidence.example.test/statement/1" }
+    const receiptInput = { requestId: crypto.randomUUID(), contactId, currency: "USD", netAmount: amount, feeAmount: "0", reference: crypto.randomUUID(), method: "bank_transfer" as const, paidAt: "2026-06-01", ...evidence }
+    const receipt = await executeCommand(recordReceipt, receiptInput, { actor, clientRequestId: receiptInput.requestId })
+    if (receipt.status !== "completed") throw new Error("receipt setup failed")
+    const input: ReceiptAllocateInput = { requestId: crypto.randomUUID(), receiptId: receipt.result.receiptId, allocations: [{ invoiceId, receiptAmount: amount, invoiceAmount: amount }], ...evidence }
+    const { previewToken } = await prisma.$transaction((db) => previewReceiptAllocation(db, actor.organizationId, input))
+    const allocated = await executeCommand(allocateReceipt, { ...input, previewToken }, { actor })
+    if (allocated.status !== "completed") throw new Error(`allocation failed: ${JSON.stringify(allocated)}`)
+    return { paymentId: allocated.result.paymentIds[0]!, evidence }
+  }
+
+  async function reverseAllocation(org: Awaited<ReturnType<typeof setup>>["org"], paymentId: string, evidence: { reason: string; evidence: string }) {
+    const parsed = receiptActionInputSchema.parse({ requestId: crypto.randomUUID(), action: "reverse_allocation", paymentId, ...evidence })
+    const { previewToken } = await prisma.$transaction((db) => previewReceiptChange(db, org.organizationId, parsed))
+    return executeCommand(changeReceipt, { ...parsed, previewToken }, { actor: org.actors.admin })
   }
 
   it("emails the customer and the seller once when a Stripe payment pays the invoice", async () => {
@@ -252,6 +276,47 @@ describeIfDatabase("payment received emails", () => {
 
     expect(acted).toBe(true)
     expect(voided?.status).toBe("completed")
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).paymentStatus).toBe("partially_paid")
+    expect(deliver).not.toHaveBeenCalled()
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })).result).toMatchObject({ outcome: "withdrawn" })
+  })
+
+  it("tells only the seller when a receipt allocation settles the invoice", async () => {
+    const { org, invoiceId } = await setup()
+    await allocateBankReceipt(org, invoiceId, "250")
+    expect((await sentMessages(org.organizationId)).map((message) => message.to)).toEqual(["seller@acme.test"])
+  })
+
+  it("waits for the last receipt allocation before telling the seller", async () => {
+    const { org, invoiceId } = await setup()
+    await allocateBankReceipt(org, invoiceId, "100")
+    expect(await queuedPaymentEmails(org.organizationId)).toHaveLength(0)
+  })
+
+  it("withdraws unsent emails when a receipt allocation is reversed", async () => {
+    const { org, invoiceId } = await setup()
+    const { paymentId, evidence } = await allocateBankReceipt(org, invoiceId, "250")
+    await rewindToUnsent(org.organizationId)
+    expect((await reverseAllocation(org, paymentId, evidence)).status).toBe("completed")
+    expect(await sentMessages(org.organizationId)).toEqual([])
+  })
+
+  it("does not send when a receipt allocation is reversed during dispatch and reopens the invoice", async () => {
+    const { org, invoiceId } = await setup()
+    const earlier = await allocateBankReceipt(org, invoiceId, "100")
+    const final = await executeIssuanceCommand(recordPayment, { invoiceId, amount: 150, paidAt: "2026-06-01", method: "bank_transfer" }, { actor: org.actors.admin })
+    if (final.status !== "completed") throw new Error("record failed")
+    const jobs = await rewindToUnsent(org.organizationId)
+    expect(jobs).toHaveLength(1)
+
+    // The earlier allocation is reversed right after the worker's final eligibility read.
+    let reversed: Awaited<ReturnType<typeof reverseAllocation>> | undefined
+    const acted = await dispatchWhile(org.organizationId, final.result.payment.id, async () => {
+      reversed = await reverseAllocation(org, earlier.paymentId, earlier.evidence)
+    })
+
+    expect(acted).toBe(true)
+    expect(reversed?.status).toBe("completed")
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).paymentStatus).toBe("partially_paid")
     expect(deliver).not.toHaveBeenCalled()
     expect((await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })).result).toMatchObject({ outcome: "withdrawn" })
