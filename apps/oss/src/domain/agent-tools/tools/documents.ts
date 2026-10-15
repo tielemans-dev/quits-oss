@@ -8,6 +8,9 @@ import { computeSettlement } from "../../documents/settlement"
 type Money = Prisma.Decimal
 
 type LineItem = {
+  sourceKind?: string | null
+  sourceId?: string | null
+  sourceRevision?: string | null
   id?: string
   deliverableId?: string | null
   description: string
@@ -31,6 +34,7 @@ function presentLines(items: LineItem[]) {
   return items.map((item) => ({
     id: item.id,
     deliverableId: item.deliverableId ?? null,
+    ...(item.sourceKind === "aconto" ? { deductsInvoiceId: item.sourceRevision, deductsInvoiceItemId: item.sourceId } : {}),
     description: item.description,
     quantity: item.quantity,
     unitPriceNet: item.unitPriceNet,

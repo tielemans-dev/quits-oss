@@ -1,3 +1,4 @@
+import { invoiceAllowsPayment } from "../../lib/payments/invoice-methods"
 import { Effect } from "effect"
 import { InvalidState } from "../errors"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
@@ -39,10 +40,13 @@ export function buildInvoiceSellerSnapshot(
 export function withInvoicePaymentDetails<T extends SellerSnapshot>(
   seller: T,
   settings: Partial<PaymentDetailsColumns>,
-  locale?: string | null
+  locale?: string | null,
+  paymentMethods?: unknown
 ): T {
   const { bankAccount: _account, paymentNote: _note, ...rest } = seller
-  return { ...rest, ...paymentSnapshotFromColumns({ ...settings, paymentNote: localizedNonVatPaymentNote(settings.paymentNote, seller.momsRegistered, locale) ?? null }) } as T
+  const payment = paymentSnapshotFromColumns({ ...settings, paymentNote: localizedNonVatPaymentNote(settings.paymentNote, seller.momsRegistered, locale) ?? null })
+  if (!invoiceAllowsPayment(paymentMethods, "bank_transfer")) delete payment.bankAccount
+  return { ...rest, ...payment } as T
 }
 
 /**

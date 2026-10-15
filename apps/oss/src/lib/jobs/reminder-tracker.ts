@@ -3,6 +3,7 @@ import type { TranslationKey } from "../i18n/messages"
 /** The part of a `jobs.list` job the tracker reads. The server is the only source of progress. */
 export type TrackerJob = {
   id: string
+  kind?: string
   status: string
   createdAt: Date | string
   steps: {
@@ -69,6 +70,7 @@ export function pickTrackedJob(
     if (dismissed.has(job.id)) return false
     const { phase } = trackerView(job)
     if (phase === "running" || seen.has(job.id)) return true
+    if (job.kind === "vat.summary" && phase === "done" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS) return true
     return phase === "failed" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS
   })
 }

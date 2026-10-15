@@ -55,6 +55,7 @@ export function documentFingerprint(
     totalGross: { toString(): string }
     notes: string | null
     purchaseOrderRef?: string | null
+    paymentMethods?: unknown
     contactId: string
     buyerSnapshot: unknown
     sellerSnapshot?: unknown
@@ -76,6 +77,7 @@ export function documentFingerprint(
     document.totalGross.toString(),
     document.notes,
     document.purchaseOrderRef ?? null,
+    document.paymentMethods ?? null,
     document.items.map((item) => [
       item.description,
       item.quantity.toString(),

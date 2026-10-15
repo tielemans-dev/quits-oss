@@ -8,6 +8,8 @@ import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { retryReminderStep, useReminderJobs } from "./reminder-jobs-store"
 import { useTrackerHeld } from "./tracker-hold"
+import { trpc } from "../../trpc/client"
+import { downloadTextFile } from "../../lib/exports/download"
 
 const STEP_LABEL = {
   waiting: "reminders.tracker.step.waiting",
@@ -47,6 +49,15 @@ export function TrackerToast({
 }) {
   const { t } = useI18n()
   const view = trackerView(job)
+  const vat = job.kind === "vat.summary"
+  const [downloadError, setDownloadError] = useState(false)
+  async function download() {
+    try {
+      const file = await trpc.jobs.vatDownload.query({ jobId: job.id })
+      downloadTextFile(file.filename, file.csv, "text/csv;charset=utf-8")
+      setDownloadError(false)
+    } catch { setDownloadError(true) }
+  }
   const counter = t("reminders.tracker.counter", { sent: view.sent, total: view.total })
 
   return (
@@ -54,7 +65,7 @@ export function TrackerToast({
       data-slot="reminder-tracker"
       data-job-id={job.id}
       data-phase={view.phase}
-      aria-label={t("reminders.tracker.label")}
+      aria-label={t(vat ? "shell.request.title.vat" : "reminders.tracker.label")}
       className="fixed right-4 bottom-4 z-50 w-[22rem] max-w-[calc(100vw-2rem)] [filter:drop-shadow(0_8px_24px_rgb(11_11_12/0.18))]"
     >
       <div className={cn("bg-popover text-popover-foreground border-hairline relative min-h-44 rounded-2xl border p-4", fresh && "tracker-morph")}>
@@ -65,7 +76,7 @@ export function TrackerToast({
         ) : null}
         <div className="flex items-start justify-between gap-3">
           <h2 aria-live="polite" className="text-sm font-semibold">
-            {t(TRACKER_TITLE[view.phase])}
+            {t(vat ? `shell.request.vat.${view.phase}` : TRACKER_TITLE[view.phase])}
           </h2>
           <Button
             type="button"
@@ -96,9 +107,9 @@ export function TrackerToast({
                 {t(step.label as TranslationKey, step.labelParams as Record<string, string>)}
               </span>
               <span className={cn("text-muted-foreground", step.state === "failed" && "text-tone-danger")}>
-                {t(STEP_LABEL[step.state])}
+                {t(vat && step.state === "sent" ? "shell.request.vat.done" : vat && step.state === "sending" ? "shell.request.vat.running" : STEP_LABEL[step.state])}
               </span>
-              {step.state === "failed" ? (
+              {step.state === "failed" && !vat ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -129,6 +140,9 @@ export function TrackerToast({
             />
           </div>
         </div>
+        {vat && view.phase === "done" && <Button type="button" variant="outline" size="sm" onClick={() => void download()} className="mt-3 transition-[color,background-color,box-shadow]">{t("shell.request.vat.download")}</Button>}
+        {downloadError && <p role="alert" className="text-destructive mt-2 text-sm">{t("shell.request.vat.error")}</p>}
+        {vat && view.phase === "failed" && <p className="text-muted-foreground mt-2 text-sm">{t("shell.request.vat.retry")}</p>}
       </div>
     </section>
   )
@@ -150,10 +164,10 @@ export function ReminderTracker() {
   }, [id, phase])
 
   useEffect(() => {
-    if (!id || phase !== "done") return
+    if (!id || phase !== "done" || job?.kind === "vat.summary") return
     const timer = setTimeout(() => dismiss(id), DONE_LINGER_MS)
     return () => clearTimeout(timer)
-  }, [id, phase])
+  }, [id, phase, job?.kind])
 
   if (!job || held) return null
   return (

@@ -12,6 +12,7 @@ import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-fai
 import { recordBaseValuation } from "../../domain/commands/base-valuation"
 import { randomUUID } from "node:crypto"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale } from "../../domain/commands/invoices-from-deliverables"
+import { deductInvoiceDeposits } from "../../domain/commands/invoice-deposits"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
 import { executeIssuanceCommand } from "../../application/issuance"
 import { TRPCError } from "@trpc/server"
@@ -114,6 +115,7 @@ function settlementForUi(invoice: {
 }
 
 export const invoicesRouter = router({
+  deductDeposits: authorizedProcedure("invoice:update").input(deductInvoiceDeposits.input).mutation(async ({ ctx, input }) => serializeInvoiceForUi(unwrapOutcome(await executeCommand(deductInvoiceDeposits, input, { actor: ctx.actor })))),
   sendReadiness: authorizedProcedure("invoice:read").input(z.object({ contactId: z.string().optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional() }).optional()).query(async ({ ctx, input }) => {
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
     const ids = await prisma.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } })
@@ -218,6 +220,7 @@ export const invoicesRouter = router({
         paymentState,
         balanceDue: computeSettlement(invoice).balanceDue,
         currency: invoice.currency,
+        paymentMethods: invoice.paymentMethods,
       }))
 
       const momsRegistered = invoice.status === "draft"

@@ -48,6 +48,10 @@ describe("payment link card target", () => {
     expect(await resolve({ ...noStripe, stripeAccountStatus: "active" })).toMatchObject({ kind: "connect" })
   })
 
+  it("keeps configured card checkout off when the invoice selected bank transfer", async () => {
+    expect(await resolveCardCheckoutTarget({ organizationId: "org-1", settings: { ...byok(), stripeAccountStatus: "none" }, paymentState: "unpaid", balanceDue, currency: "DKK", paymentMethods: ["bank_transfer"] })).toBeNull()
+  })
+
   it("offers no card once the invoice is paid", async () => {
     state.settings = { ...byok(), stripeAccountStatus: "none" }
     expect(await resolveCardCheckoutTarget({ organizationId: "org-1", settings: state.settings as never, paymentState: "paid", balanceDue, currency: "DKK" })).toBeNull()

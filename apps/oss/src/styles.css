@@ -560,3 +560,25 @@ body { caret-color: var(--caret); }
     scroll-behavior: auto !important;
   }
 }
+
+/* Invoice flow uses one interruptible surface, with only compositor properties in motion. */
+.invoice-flow { max-width: min(28rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--sheet, var(--panel)); animation: none !important; }
+.invoice-flow-editor { width: 76rem; max-width: calc(100vw - 2rem); padding: 0; }
+.invoice-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
+.invoice-form { min-width: 0; border: 0; box-shadow: none; }
+.invoice-preview-side { min-width: 0; background: var(--canvas); }
+.invoice-preview { position: sticky; top: 0; }
+.invoice-paper { color: var(--paper-tx, #2a2925); background: var(--paper, #fff); border-color: var(--paper-hl, #ddd); min-height: 36rem; }
+.invoice-workspace-review { grid-template-columns: minmax(0, 1fr); }
+.invoice-workspace-review > .invoice-form { display: none; }
+.invoice-review-bar { position: sticky; bottom: 0; grid-column: 1 / -1; }
+.invoice-detail-panel { position: fixed; inset: 1rem 1rem 1rem auto; translate: none; transform: none; width: 30rem; max-width: calc(100vw - 2rem); }
+.invoice-toast { transition: opacity var(--duration-fade) var(--ease-enter), transform var(--duration-fade) var(--ease-enter); }
+@starting-style { .invoice-toast { opacity: 0; transform: translateY(8px); } }
+@keyframes invoice-row-in { from { opacity: 0; transform: translateY(-6px); } }
+.invoice-fresh-row { animation: invoice-row-in var(--duration-square-fly) var(--ease-enter); }
+@media (max-width: 760px) { .invoice-workspace { grid-template-columns: minmax(0, 1fr); padding: .5rem; } .invoice-preview { padding: .5rem; } }
+@media (prefers-reduced-motion: reduce) {
+  .invoice-toast { transition: opacity var(--duration-fade) var(--ease-enter) !important; transform: none; }
+  .invoice-fresh-row { animation: request-fade var(--duration-fade) var(--ease-enter) !important; }
+}

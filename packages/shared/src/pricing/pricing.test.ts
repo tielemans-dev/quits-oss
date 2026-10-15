@@ -136,3 +136,14 @@ it("uses half-up at both zero and two decimals without rounding the inputs", () 
   }
   expect(() => creditComponents({ group: { ...frozen("0.05", "0.01"), tax: "0.005", net: "0.045" }, cumulativeBefore: "0", creditedGross: "0.01" })).toThrow(/Frozen component/)
 })
+
+it("accepts referenced deduction components while rejecting ordinary negative lines and overdrawn VAT groups", async () => {
+  const { assertStoredDocumentEquation } = await import("./index")
+  const vat = { treatment: "standard", rate: "0.25", country: null, reasonCode: null }
+  const lines = [{ vat, net: "100.00", tax: "25.00", gross: "125.00" }, { vat, deduction: true, net: "-20.03", tax: "-5.01", gross: "-25.04" }]
+  const doc = { currency: "DKK", pricesIncludeTax: false, net: "79.97", tax: "19.99", gross: "99.96", lines }
+  expect(() => assertStoredDocumentEquation(doc)).not.toThrow()
+  expect(() => assertStoredDocumentEquation({ ...doc, lines: lines.map(line => ({ ...line, deduction: false })) })).toThrow()
+  expect(() => assertStoredDocumentEquation({ ...doc, lines: [{ ...lines[1]!, net: "-20.031" }] })).toThrow()
+  expect(() => assertStoredDocumentEquation({ ...doc, net: "-20.03", tax: "-5.01", gross: "-25.04", lines: [lines[1]!] })).toThrow()
+})

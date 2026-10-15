@@ -19,11 +19,11 @@ export function requireDepositsEnabled(lines: ReadonlyArray<{ isDeposit?: boolea
 export function requireDepositInvoiceEnabled(invoice: {
   purpose: string
   scheduleSaleChoice: unknown
-  items: ReadonlyArray<{ deliverableId: string | null }>
+  items: ReadonlyArray<{ deliverableId: string | null; sourceKind?: string | null }>
 }) {
   return Effect.gen(function* () {
     if (getRuntimeCapabilities().agreements.depositsEnabled) return
-    yield* requireDepositsEnabled([{ isDeposit: invoice.purpose === "prepayment" || invoice.scheduleSaleChoice != null }])
+    yield* requireDepositsEnabled([{ isDeposit: invoice.purpose === "prepayment" || invoice.scheduleSaleChoice != null || invoice.items.some(line => line.sourceKind === "aconto") }])
     const ids = invoice.items.flatMap(line => line.deliverableId ? [line.deliverableId] : [])
     if (!ids.length) return
     const db = yield* Db

@@ -77,6 +77,8 @@ export const purchaseOrderRefInputSchema = z.string()
     return true
   }, "Order reference must contain only XML 1.0 characters").nullable().transform(value => value || null)
 
+export const invoicePaymentMethodsSchema = z.array(z.enum(["bank_transfer", "card"])).min(1).max(2)
+
 const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 
 export const invoiceCreateDraftInputSchema = z.object({
@@ -90,6 +92,8 @@ export const invoiceCreateDraftInputSchema = z.object({
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
   /** Recipient version a person confirmed (from sendReadiness). A different current recipient refuses the create. */
+  paymentMethods: invoicePaymentMethodsSchema.optional(),
+  remindersPaused: z.boolean().optional(),
   reviewedRecipient: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
@@ -151,6 +155,12 @@ export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   scheduleAsSale: z.boolean().optional(),
 })
 export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true, purchaseOrderRef: true }).extend({ id: z.string().min(1), expectedRevision: z.number().int().nonnegative().optional() })
+/** VAT-inclusive exact major units. Zero releases the draft's deductions. */
+export const invoiceDeductDepositsInputSchema = z.strictObject({
+  id: z.string().min(1),
+  amountGross: z.string().max(40).regex(/^(0|[1-9]\d*)(\.\d{1,2})?$/).optional(),
+  expectedRevision: z.number().int().nonnegative().optional(),
+})
 
 /** One request ID per user intent; retain it when retrying an uncertain response. */
 export const invoiceMarkPaidInputSchema = z.object({

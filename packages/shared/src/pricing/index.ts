@@ -343,14 +343,14 @@ export function assertStoredDocumentEquation(input: {
   net: string
   tax: string
   gross: string
-  lines: Array<{ vat: { treatment: string; reasonCode?: string | null; rate: string; country?: string | null }; net: string; tax: string; gross: string }>
+  lines: Array<{ deduction?: boolean; vat: { treatment: string; reasonCode?: string | null; rate: string; country?: string | null }; net: string; tax: string; gross: string }>
 }) {
   const exponent = requireCurrencyExponent(input.currency)
   const groups = new Map<string, { net: Decimal; tax: Decimal; gross: Decimal }>()
   for (const line of input.lines) {
     for (const value of [line.net, line.tax, line.gross]) {
       const amount = new D(value)
-      if (amount.lt(0) || !round(amount, exponent).eq(amount)) throw new Error("Invalid stored line precision")
+      if ((line.deduction ? amount.gt(0) : amount.lt(0)) || !round(amount, exponent).eq(amount)) throw new Error("Invalid stored line precision")
     }
     const key = vatGroupKey(line.vat)
     const group = groups.get(key) ?? { net: new D(0), tax: new D(0), gross: new D(0) }
@@ -364,6 +364,7 @@ export function assertStoredDocumentEquation(input: {
       throw new Error("Stored document totals do not match its lines")
   }
   for (const group of totals) {
+    if ([group.net, group.tax, group.gross].some(amount => amount.lt(0))) throw new Error("Deductions exceed VAT group")
     const rounding = group.gross.minus(group.net).minus(group.tax)
     if ((!input.pricesIncludeTax && !rounding.isZero()) || rounding.abs().gt(new D(1).div(new D(10).pow(exponent))))
       throw new Error("Invalid stored payable rounding")

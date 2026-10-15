@@ -30,5 +30,6 @@
       ],
       "outputs": []
     }
-  }
+  },
+  "globalPassThroughEnv": ["QUITS_PRISMA_PREGENERATED"]
 }

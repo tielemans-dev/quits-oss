@@ -1,3 +1,4 @@
+import { invoiceAllowsPayment } from "./invoice-methods"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
@@ -75,6 +76,7 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     paymentState,
     balanceDue,
     currency: invoice.currency,
+    paymentMethods: invoice.paymentMethods,
   })
   return { invoice, paymentState, stripeEnabled: Boolean(checkoutTarget), checkoutTarget }
 }
@@ -82,11 +84,13 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
 /** The card checkout target `/pay` would offer for this balance, or null when it offers bank transfer only. */
 export async function resolveCardCheckoutTarget(input: {
   organizationId: string
+  paymentMethods?: unknown
   settings: StripePaymentConfigurationSnapshot | null | undefined
   paymentState: InvoicePaymentState
   balanceDue: { greaterThan: (value: number) => boolean; toNumber: () => number }
   currency: string
 }): Promise<StripeCheckoutTarget | null> {
+  if (!invoiceAllowsPayment(input.paymentMethods, "card")) return null
   const cardEligible = input.paymentState === "unpaid" && input.balanceDue.greaterThan(0) && assessCardCheckout({
     configuration: input.settings,
     amount: input.balanceDue.toNumber(),

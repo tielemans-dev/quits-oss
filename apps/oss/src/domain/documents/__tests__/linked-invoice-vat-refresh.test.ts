@@ -30,6 +30,7 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
   }
   const update = vi.fn(async ({ data }: { data: object }) => ({ ...invoice, ...data }))
   const db = { $queryRaw: async () => [], invoice: { findFirst: async () => invoice, update },
+    invoiceItem: { count: async () => 0 },
     orgSettings: { upsert: async () => ({ companyName: "Current seller", companyAddress: "New address", countryCode, momsRegistered: currentCvr ? false : true, baseCurrency: "DKK" }) },
     organizationTaxId: { findMany: async () => currentCvr ? [{ scheme: "cvr", value: currentCvr, countryCode: "DK" }] : [] },
   }

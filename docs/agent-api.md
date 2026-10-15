@@ -286,6 +286,15 @@ existing payment methods. Its permissions and approval flow are unchanged.
 
 ### Draft revisions and line keys
 
+Final drafts created from deliverables deduct available earlier aconto invoices on the same
+agreement. These are issued schedule lines explicitly invoiced as sales; prepayment issuance
+remains unsupported. `invoice_deduct_deposits` changes the draft deduction: omit `amountGross`
+for the available amount, pass an exact VAT-inclusive decimal string for a partial amount, or
+`"0"` to remove deductions. Draft reservations prevent reuse and release on removal or deletion.
+Issued deductions are frozen. Credits against an allocated source or a final with deductions
+require allocation reversal, which is not yet supported. Deduction lines reference the original
+number and expose `deductsInvoiceId` and `deductsInvoiceItemId`. Ordinary draft edits retain them.
+
 Invoice and quote drafts carry `editRevision`, initially `0`. Every draft edit increments it,
 including notes-only edits, linked invoice edits, adding or releasing deliverables, and changing a draft payment
 schedule to a sale. Pass `expectedRevision` on updates, on `invoice_add_deliverables`, and on the

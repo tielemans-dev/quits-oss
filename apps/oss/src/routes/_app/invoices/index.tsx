@@ -1,6 +1,9 @@
+import { EMAIL_SEND_FAILED_PARAM } from "../../../lib/email-send-failure"
+import { InvoiceFlow, InvoiceDetailPanel, useInvoiceMorph } from "../../../components/invoices/flow"
+import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { InvoiceListSummary } from "../../../components/invoices/list-summary"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useCalendarDate } from "../../../hooks/use-calendar-date"
 import { trpc } from "../../../trpc/client"
 import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
@@ -73,6 +76,20 @@ function formatDate(dateStr: string, locale?: string) {
 function InvoicesListPage() {
   const { t, locale } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const origin = useRef<DOMRect | undefined>(undefined)
+  const [flowOpen, setFlowOpen] = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [notice, setNotice] = useState<CreatedDocumentTarget | null>(null)
+  const [fresh, setFresh] = useState<string | null>(null)
+  const toast = useInvoiceMorph(notice, origin.current)
+  async function completed(target: CreatedDocumentTarget) {
+    origin.current = document.querySelector(".invoice-preview-side")?.getBoundingClientRect()
+    setFlowOpen(false)
+    setNotice(target)
+    setFresh(target.id)
+    await loadInvoices()
+    void trpc.dashboard.summary.query().then(setSummary).catch(() => {})
+  }
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof trpc.dashboard.summary.query>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
@@ -128,16 +145,26 @@ function InvoicesListPage() {
   }
 
   const newInvoice = (label: string) => (
-    <Button asChild>
-      <Link to="/invoices/new">
+    <Button data-invoice-create onClick={event => { origin.current = event.currentTarget.getBoundingClientRect(); setFlowOpen(true) }}>
         <Plus />
         {label}
-      </Link>
     </Button>
   )
 
+  const noticeInvoice = invoices.find(invoice => invoice.id === notice?.id)
+  const noticeText = notice?.sendError === EMAIL_SEND_FAILED_PARAM
+    ? `${t("invoices.detail.email.sendFailed.title")} ${t("invoices.detail.email.sendFailed.body")}`
+    : notice?.sendError ?? (notice?.emailWarning ? t("invoices.detail.warning.emailSkipped", { reason: notice.emailWarning }) : t(notice?.kind === "recurring" ? "invoices.flow.scheduleSaved" : notice?.kind === "draft" ? "invoices.flow.created" : "shell.request.invoice.sent"))
   return (
     <div className="p-6">
+      {flowOpen && <InvoiceFlow open origin={origin.current} onClose={() => setFlowOpen(false)} onComplete={target => { void completed(target) }} />}
+      {selected && <InvoiceDetailPanel key={selected} id={selected} origin={origin.current} onClose={() => setSelected(null)} onChanged={() => { void loadInvoices() }} />}
+      {notice && <div ref={toast} role="status" className="invoice-toast fixed bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)] rounded-lg border bg-panel p-4 shadow-lg">
+        <p>{noticeText}</p>
+        {noticeInvoice && <Amount value={decimalFromNumber(noticeInvoice.total, noticeInvoice.currency)} currency={noticeInvoice.currency} locale={locale} />}
+        {notice.paymentUrl && <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(notice.paymentUrl!).catch(() => {}) }}>{t("invoices.flow.copyLink")}</Button>}
+        <Button variant="ghost" onClick={() => setNotice(null)}>{t("ui.close")}</Button>
+      </div>}
       <PageHeader title={t("invoices.title")} actions={invoices.length ? newInvoice(t("invoices.action.new")) : null} />
 
       {summary ? <InvoiceListSummary summary={summary} /> : null}
@@ -168,12 +195,13 @@ function InvoicesListPage() {
               const partlyPaid = invoice.balanceDue > 0 && invoice.balanceDue < invoice.total
               const dueDate = formatDate(invoice.dueDate, locale)
               return (
-                <ListRow key={invoice.id}>
+                <ListRow key={invoice.id} data-invoice-id={invoice.id} className={invoice.id === fresh ? "invoice-fresh-row" : undefined}>
                   <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <CustomerMark name={invoice.contact.name} />
                       <div className="min-w-0">
                         <Link
+                          onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) { event.preventDefault(); origin.current = event.currentTarget.closest("[data-invoice-id]")!.getBoundingClientRect(); setSelected(invoice.id) } }}
                           to="/invoices/$invoiceId"
                           params={{ invoiceId: invoice.id }}
                           search={{ emailWarning: undefined }}
