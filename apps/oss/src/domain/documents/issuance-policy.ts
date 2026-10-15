@@ -75,7 +75,7 @@ export const requireInvoiceIssuancePolicy = (organizationId: string, document: I
     catch: () => new InvalidState({ code: "issuance_policy_unavailable", message: "Invoice issuance policy is unavailable" }),
   })
   const issues = policies.flatMap(policy => invoicePolicyIssues(document, policy))
-  if (issues.length) return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending", issues })
+  if (issues.length) return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending", fieldIssues: issues })
 })
 
 /** Resends never reprice or re-check identity, but an adopter that requires payment details still holds them back. */
@@ -87,5 +87,5 @@ export const requireResendPaymentDetails = (organizationId: string, document: Pi
   })
   if (policies.some(policy => policy.requirePaymentDetails))
     return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending",
-      issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] })
+      fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] })
 })

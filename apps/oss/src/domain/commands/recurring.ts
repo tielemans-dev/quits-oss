@@ -652,8 +652,8 @@ export const recordRecurringRunFailure = defineCommand({
 })
 
 /** Names the fields behind a refusal so the draft says what to fix, not only that something is wrong. */
-const failedFields = (issues: z.infer<typeof commandErrorSchema>["issues"]) => {
-  const fields = [...new Set((issues ?? []).map(issue => "field" in issue ? issue.field : issue.path))]
+const failedFields = (error: z.infer<typeof commandErrorSchema>) => {
+  const fields = [...new Set(error.fieldIssues?.map(issue => issue.field) ?? (error.issues ?? []).map(issue => issue.path))]
   return fields.length ? ` (${fields.join(", ")})` : ""
 }
 
@@ -687,7 +687,7 @@ export const recordRecurringAutoSendFailure = defineCommand({
             at: now,
             outcome: "failed",
             code: input.error.code ?? "auto_send_failed",
-            message: `Automatic sending failed: ${input.error.message}${failedFields(input.error.issues)}`,
+            message: `Automatic sending failed: ${input.error.message}${failedFields(input.error)}`,
           }),
         })
       )

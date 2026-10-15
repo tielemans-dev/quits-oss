@@ -61,7 +61,7 @@ async function setup(bank = true) {
     const { org, caller, create } = await setup(false)
     setRuntimeExtensions([{ id: "synthetic-policy", resolveInvoiceIssuancePolicy: () => ({ requirePaymentDetails: true }) }])
     const invoice = await create()
-    await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({ cause: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
+    await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).number).toBeNull()
     expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: "email.deliver" } })).toBe(0)
   })
@@ -83,7 +83,7 @@ async function setup(bank = true) {
       status: "sent", number: "LEGACY-1", issueDate: new Date("2026-01-01"),
       sellerSnapshot: seller, buyerSnapshot: buildBuyerSnapshot(contact), artifactPdfRef: archivedRef, artifactPdfHash: archivedHash,
     } })
-    await expect(caller.invoices.resendEmail({ id: invoice.id })).rejects.toMatchObject({ cause: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
+    await expect(caller.invoices.resendEmail({ id: invoice.id })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
     expect(vi.mocked(deliver)).not.toHaveBeenCalled()
     // Without that policy the same bankless resend goes through on the frozen evidence.
     setRuntimeExtensions([])

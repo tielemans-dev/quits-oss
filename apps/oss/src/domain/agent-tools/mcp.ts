@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
-import type { CommandError } from "@quits/contracts/agent"
+import type { CommandError, FieldIssue } from "@quits/contracts/agent"
 import { appLogger } from "../../lib/observability"
 import type { AgentActor } from "../actor"
 import { authenticateAgentSecret } from "../agent-keys"
@@ -41,12 +41,16 @@ function isDomainError(error: unknown): error is { _tag: string; message: string
 /** Converts a thrown error into the error shape agents see. Never includes stack traces. */
 export function toToolError(error: unknown): CommandError {
   if (isDomainError(error)) {
-    const extra = error as { code?: unknown; issues?: unknown }
+    const extra = error as { code?: unknown; issues?: unknown; fieldIssues?: FieldIssue[] }
     return {
       tag: error._tag,
       message: error.message,
       ...(typeof extra.code === "string" ? { code: extra.code } : {}),
       ...(Array.isArray(extra.issues) ? { issues: extra.issues as CommandError["issues"] } : {}),
+      ...(Array.isArray(extra.fieldIssues) ? {
+        fieldIssues: extra.fieldIssues,
+        issues: extra.fieldIssues.map(issue => ({ path: issue.field, message: issue.code })),
+      } : {}),
     }
   }
   return { tag: "InternalError", message: "The tool failed unexpectedly. Try again later." }

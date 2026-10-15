@@ -10,6 +10,7 @@ import { InvalidState, NotFound, type DomainError } from "./errors"
 import { documentRef } from "./documents/numbering"
 import { Command, Db } from "./services"
 import { buildBuyerSnapshot } from "./documents/snapshots"
+import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../lib/payment-details"
 
 /**
  * What a person approving an agent's command sees, and the version the command must still match
@@ -111,16 +112,22 @@ function buyerReviewSnapshot(contact: Parameters<typeof buildBuyerSnapshot>[0]) 
   }
 }
 
-/** Bind a human send confirmation to the draft and its current recipient identity. */
+/** The organization's payment details as a send would freeze them onto the invoice. */
+export type ReviewedPaymentDetails = Partial<PaymentDetailsColumns> | null | undefined
+
+/**
+ * Bind a human send confirmation to the draft, its current recipient identity and the payment details
+ * the send will freeze: a bank account changed in Settings after the review is a changed review.
+ */
 export function invoiceSendReviewVersion(invoice: Parameters<typeof documentFingerprint>[0] & {
   dueDate: Date
   supplyDate: Date | null
   disputedRevision?: number
   contact: Parameters<typeof buildBuyerSnapshot>[0]
-}) {
+}, payment: ReviewedPaymentDetails) {
   return fingerprint([
     documentFingerprint(invoice, invoice.contact.email?.trim() || null, [invoice.dueDate, invoice.supplyDate]),
-    buyerReviewSnapshot(invoice.contact), invoice.disputedRevision ?? 0,
+    buyerReviewSnapshot(invoice.contact), invoice.disputedRevision ?? 0, paymentSnapshotFromColumns(payment),
   ])
 }
 
@@ -130,15 +137,15 @@ export function recipientReviewVersion(contact: Parameters<typeof buildBuyerSnap
 }
 
 const changedSinceReview = () => new InvalidState({ code: "changed_since_review", message: "The invoice changed after you reviewed it. Review the current details and confirm sending again.",
-  issues: [{ code: "changed_since_review", field: "invoice", params: {} }],
+  fieldIssues: [{ code: "changed_since_review", field: "invoice", params: {} }],
 })
 
 export function requireReviewedRecipient(contact: Parameters<typeof buildBuyerSnapshot>[0], reviewedRecipient?: string) {
   return reviewedRecipient && recipientReviewVersion(contact) !== reviewedRecipient ? Effect.fail(changedSinceReview()) : Effect.void
 }
 
-export function requireInvoiceSendReview(invoice: Parameters<typeof invoiceSendReviewVersion>[0], reviewedVersion?: string) {
-  return reviewedVersion && invoiceSendReviewVersion(invoice) !== reviewedVersion
+export function requireInvoiceSendReview(invoice: Parameters<typeof invoiceSendReviewVersion>[0], payment: ReviewedPaymentDetails, reviewedVersion?: string) {
+  return reviewedVersion && invoiceSendReviewVersion(invoice, payment) !== reviewedVersion
     ? Effect.fail(changedSinceReview())
     : Effect.void
 }
