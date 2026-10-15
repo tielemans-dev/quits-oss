@@ -7,7 +7,7 @@ import { itemsTable } from "../../email"
 const group = { rate: "0", net: "10", tax: "0", gross: "10", treatment: "exempt", reasonCode: "health" }
 const totals = (groups: Parameters<typeof vatRowsByRate>[0], locale = "en-US") => buildTotals({ basis: "net", subtotal: "20", taxAmount: "0", total: "20", currency: "DKK", locale, vatRows: vatRowsByRate(groups, "DKK") })
 
-describe("QUI-9 review regressions", () => {
+describe("VAT statements and email line labels", () => {
   it("preserves distinct frozen statements and reason codes at the same rate", () => {
     const result = totals([
       { ...group, evidence: { statementText: "Section <13> health" } },

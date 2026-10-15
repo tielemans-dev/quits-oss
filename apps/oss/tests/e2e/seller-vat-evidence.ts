@@ -20,12 +20,12 @@ export async function captureDocument(page: Page, surface: string, locale: strin
   }
 }
 export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id: string, locale: string,
-  evidence: { scenario?: string; minPages?: number; expectedText?: string[]; invoiceFooter?: boolean } = {}) {
+  evidence: { scenario?: string; minPages?: number; expectedText?: string[]; footerText?: string[]; artifact?: "stored" | "live" } = {}) {
   const response = await page.request.get(`/api/documents/${kind}/${id}/pdf`)
   expect(response.ok(), `PDF export returned HTTP ${response.status()}`).toBe(true)
   const bytes = await response.body()
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-")
-  expect(response.headers()["x-quits-artifact"]).toBe("stored")
+  expect(response.headers()["x-quits-artifact"]).toBe(evidence.artifact ?? "stored")
   const surface = evidence.scenario ? `${kind}-${evidence.scenario}` : kind
   const prefix = test.info().outputPath(`${surface}-pdf-${locale}-${revision}`)
   await writeFile(`${prefix}.pdf`, bytes)
@@ -37,15 +37,15 @@ export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id:
     expected: translate("pdf.pageNumber", locale, { page: index + 1, total: pages.length }),
     text: value,
   }))
-  // Record observations for every page, including credit notes without a page footer.
+  // Keep the per-page text audit alongside the rendered exports.
   await writeFile(`${prefix}-text-audit.json`, JSON.stringify({ kind, id, locale, scenario: evidence.scenario,
     pages: footers.map(value => ({ ...value, footerPresent: value.text.includes(value.expected) })),
   }, null, 2))
   expect(pages.length).toBeGreaterThanOrEqual(evidence.minPages ?? 1)
-  for (const expected of evidence.expectedText ?? []) expect(text).toContain(expected)
-  if (evidence.invoiceFooter) {
-    expect(kind).toBe("invoice")
-    for (const footer of footers) expect(footer.text).toContain(footer.expected)
+  for (const expected of evidence.expectedText ?? []) expect(text.replace(/\s+/g, " ")).toContain(expected)
+  for (const footer of footers) {
+    expect(footer.text).toContain(footer.expected)
+    for (const expected of evidence.footerText ?? []) expect(footer.text).toContain(expected)
   }
   for (let index = 0; index < pages.length; index++) {
     const png = await readFile(`${prefix}-${index + 1}.png`)

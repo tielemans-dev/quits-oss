@@ -10,7 +10,7 @@ const ids = [{ scheme: "vat", value: "DK12345678", countryCode: "DK" }]
 const zero = { ratePercent: "0", net: "100", tax: "0", gross: "100", treatment: "out_of_scope" }
 const standard = { ratePercent: "25", net: "200", tax: "50", gross: "250", treatment: "standard" }
 const totals = (vatRows: readonly VatRow[], locale = "da-DK") => buildTotals({ basis: "net", subtotal: "300", taxAmount: "50", total: "350", currency: "DKK", locale, vatRows })
-describe("QUI-9 frozen legal presentation", () => {
+describe("Tax identities and VAT totals", () => {
   it.each([["da-DK", "CVR-nr. 12345678", "Momsnr. DK12345678"], ["en-US", "CVR no. 12345678", "VAT no. DK12345678"]])("labels seller IDs by buyer country in %s", (locale, domestic, foreign) => {
     expect(formatTaxIds(ids, locale, "DK", true)).toEqual([domestic])
     expect(formatTaxIds(ids, locale, "SE", true)).toEqual([foreign])
