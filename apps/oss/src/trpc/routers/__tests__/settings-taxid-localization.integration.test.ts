@@ -232,7 +232,7 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
       )
     ).join("")
     expect(pdfText).toContain(invoice.number)
-    expect(pdfText).toContain("15. mar. 2026")
+    expect(pdfText).toContain("15. marts 2026")
     expect(pdfText).toContain("1.250,50\u00a0kr.")
   })
 })
