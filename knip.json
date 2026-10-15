@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": []
+    },
+    "apps/oss": {
+      "entry": [
+        "src/{router,server}.{ts,tsx}",
+        "src/routes/**/*.{ts,tsx}",
+        "**/*.{test,spec}.{ts,tsx,mjs}",
+        "*.config.ts",
+        "src/test-utils/artifact-runtime.ts",
+        "tests/**/index.html",
+        "tests/onboarding-v2/screenshots.html"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "build/**/*.mjs", "e2e/**/*.{ts,mjs}", "tests/**/*.{ts,tsx}", "*.config.ts"],
+      "ignore": ["generated/**", "src/routeTree.gen.ts"],
+      "vite": false,
+      "prisma": false,
+      "playwright": false,
+      "vitest": false
+    },
+    "packages/*": {
+      "project": ["src/**/*.ts"]
+    },
+    "scripts": {
+      "entry": [
+        "check-*.mjs",
+        "{i18n-*,update-tm-allowlist,predev-bootstrap,prepare-number-rollback,run-with-workspace-env}.mjs",
+        "__tests__/**/*.test.{ts,mjs}"
+      ],
+      "project": ["**/*.{ts,js,mjs}"]
+    }
+  }
+}
