@@ -36,17 +36,22 @@ falls through to the existing BYOK loop, which is unchanged.
 
 ## Checkout session expiry
 
-`resolveStripeCheckoutTarget` is the account that may charge now. The first
-extension result wins; otherwise complete BYOK keys are used. `connectReady:
-false` skips Connect for a new charge.
+Registering `resolveStripeCheckoutTarget` gives the runtime Connect card routing
+and disables BYOK fallback. Only an active seller Connect account may charge.
+Missing, pending, or restricted Connect means bank transfer only, even with
+stored BYOK keys. The public page and checkout endpoint share this check.
+Self-hosted runtimes leave this hook unset and keep the existing BYOK path.
 
-`resolveStripeCheckoutExpiryTargets` returns accounts that may still hold an
-open Checkout session, including a connected account the seller no longer
-charges. Expiry searches those accounts and the stored BYOK secret key. A
-`resource_missing` result on one account is not expiry. Self-hosted runtimes
-leave the hook unset. Returning an old Connect account from
-`resolveStripeCheckoutTarget` would also make it the charge account, so the
-hooks stay separate.
+`resolveStripeCheckoutExpiryTargets` returns the seller's Connect accounts that
+may still hold an open Checkout session, including a previous connected account.
+If the hook is absent, expiry uses the checkout extension's account without the
+new-charge readiness gate. Settlement expiry must still work after restriction.
+Hosted expiry never reads BYOK keys. Self-hosted expiry needs only the stored
+secret key, even when the other BYOK settings have been removed.
+
+A `resource_missing` result on one account is not proof of expiry. If no account
+can locate the session, replacement is refused and settlement jobs retry. A
+previous account belongs in the expiry hook, never in the charge resolver.
 
 ## Deposit capability
 

@@ -5,6 +5,7 @@ import { expireOrganizationCheckoutSession } from "../payments/checkout-sessions
 import { resolvePublicInvoiceCheckout } from "../payments/public-checkout"
 import { signInvoicePaymentToken } from "../payments/public"
 import { setRuntimeExtensions } from "../runtime/extensions"
+import { resolveStripeCheckoutTarget } from "../payments/stripe"
 import { encryptSecret } from "../secrets"
 
 const state = vi.hoisted(() => ({
@@ -63,105 +64,133 @@ describe("checkout sessions after switching Stripe accounts", () => {
   })
   afterEach(() => { setRuntimeExtensions([]); vi.restoreAllMocks(); vi.unstubAllEnvs() })
 
-  it.each(["byok-to-connect", "connect-to-byok"])("expires the old %s session before creating checkout", async direction => {
-    const previous = { ...connect, stripeAccount: "acct_previous" }
-    if (direction === "byok-to-connect") state.connectExpire.mockRejectedValue(missing())
-    else {
-      state.byokExpire.mockRejectedValue(missing())
-      // Restricted Connect is not charged. The old session is only on the historical account.
-      state.settings.stripeAccountStatus = "restricted"
-      setRuntimeExtensions([{
-        id: "connect",
-        resolveStripeCheckoutTarget: () => connect,
-        resolveStripeCheckoutExpiryTargets: () => [previous],
-      }])
-    }
-    const expiredAccount = direction === "byok-to-connect" ? connect.stripeAccount : previous.stripeAccount
+  it.each(["none", "pending", "restricted", "active"])("checks cached %s readiness when no caller snapshot is supplied", async status => {
+    state.settings.stripeAccountStatus = status
+    expect(await resolveStripeCheckoutTarget({ organizationId: invoice.organizationId })).toBe(status === "active" ? connect : null)
+  })
+
+  it("does not expire through BYOK when hosted has no Connect extension", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    setRuntimeExtensions([])
+    await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).rejects.toThrow("no Stripe secret key or Connect account")
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it("expires the tracked Connect session before opening another on the seller account", async () => {
     state.create.mockImplementation(async (_params, options) => {
-      expect(options?.stripeAccount).toBe(direction === "byok-to-connect" ? connect.stripeAccount : undefined)
-      expect(state.byokExpire).toHaveBeenCalledWith("cs_previous")
-      expect(state.connectExpire).toHaveBeenCalledWith("cs_previous", expect.objectContaining({ stripeAccount: expiredAccount }))
+      expect(state.connectExpire).toHaveBeenCalledExactlyOnceWith("cs_previous", { stripeAccount: connect.stripeAccount, timeout: 10_000 })
+      expect(options).toEqual({ stripeAccount: connect.stripeAccount })
       return { id: "cs_new", url: "https://checkout.example/new" }
     })
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
-    expect(state.byokExpire).toHaveBeenCalledTimes(1)
-    expect(state.connectExpire).toHaveBeenCalledTimes(1)
+    expect(state.byokExpire).not.toHaveBeenCalled()
   })
 
-  it("expires the BYOK-owned fallback session before opening a Connect-owned session after activation", async () => {
-    const sessions: Record<string, { owner: string; open: boolean }> = {}
-    const expire = (owner: string, id: string) => {
-      if (sessions[id]?.owner !== owner) throw missing()
-      sessions[id].open = false
+  it("finds the session on a previous Connect account without charging it", async () => {
+    const previous = { ...connect, stripeAccount: "acct_previous" }
+    setRuntimeExtensions([{
+      id: "connect", resolveStripeCheckoutTarget: () => connect,
+      resolveStripeCheckoutExpiryTargets: () => [previous],
+    }])
+    state.connectExpire.mockImplementation(async (_id, options) => {
+      if (options.stripeAccount === connect.stripeAccount) throw missing()
       return { status: "expired" }
-    }
-    state.byokExpire.mockImplementation(id => expire(byok.secretKey, id))
-    state.connectExpire.mockImplementation((id, options) => expire(options.stripeAccount, id))
-    state.create.mockImplementation(async (_params, options?: { stripeAccount: string }) => {
-      const owner = options?.stripeAccount ?? byok.secretKey
-      const id = options ? "cs_connect" : "cs_byok"
-      if (options) expect(sessions.cs_byok).toEqual({ owner: byok.secretKey, open: false })
-      sessions[id] = { owner, open: true }
-      return { id, url: `https://checkout.example/${id}` }
     })
-    invoice.stripeCheckoutSessionId = null
-    state.settings.stripeAccountStatus = "pending"
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
-    expect(sessions.cs_byok).toEqual({ owner: byok.secretKey, open: true })
-    invoice.stripeCheckoutSessionId = "cs_byok"
-    state.settings.stripeAccountStatus = "active"
-    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
-    expect(sessions).toEqual({
-      cs_byok: { owner: byok.secretKey, open: false },
-      cs_connect: { owner: connect.stripeAccount, open: true },
-    })
+    expect(state.connectExpire).toHaveBeenCalledTimes(2)
+    expect(state.connectExpire).toHaveBeenLastCalledWith("cs_previous", expect.objectContaining({ stripeAccount: "acct_previous" }))
+    expect(state.create).toHaveBeenCalledWith(expect.anything(), { stripeAccount: connect.stripeAccount })
+    expect(state.byokExpire).not.toHaveBeenCalled()
   })
 
-  it("still expires Connect sessions when leftover BYOK ciphertext cannot decrypt", async () => {
+  it.each(["pending", "restricted"])("refuses hosted checkout when Connect is %s but still expires its old session", async status => {
+    state.settings.stripeAccountStatus = status
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.create).not.toHaveBeenCalled()
+    await state.handler!({ id: "job", organizationId: invoice.organizationId, attempts: 1, createdAt: new Date(),
+      claimToken: "claim", payload: { invoiceId: invoice.id, checkoutSessionId: "cs_previous" } })
+    expect(EXPIRE_CHECKOUT_SESSION_JOB).toBe("payments.expire_checkout_session")
+    expect(state.connectExpire).toHaveBeenCalledTimes(1)
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it("includes the restricted current account when the expiry hook lists only previous accounts", async () => {
+    state.settings.stripeAccountStatus = "restricted"
+    setRuntimeExtensions([{
+      id: "connect", resolveStripeCheckoutTarget: () => connect,
+      resolveStripeCheckoutExpiryTargets: () => [{ ...connect, stripeAccount: "acct_previous" }],
+    }])
+    state.connectExpire.mockImplementation(async (_id, options) => {
+      if (options.stripeAccount !== connect.stripeAccount) throw missing()
+      return { status: "expired" }
+    })
+    await state.handler!({ id: "job", organizationId: invoice.organizationId, attempts: 1, createdAt: new Date(),
+      claimToken: "claim", payload: { invoiceId: invoice.id, checkoutSessionId: "cs_previous" } })
+    expect(state.connectExpire).toHaveBeenCalledExactlyOnceWith("cs_previous", expect.objectContaining({ stripeAccount: connect.stripeAccount }))
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it("recognizes a located session that is no longer open", async () => {
+    state.connectExpire.mockRejectedValue(Object.assign(new Error("not open"), { type: "StripeInvalidRequestError" }))
+    state.retrieve.mockResolvedValue({ status: "complete" })
+    await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).resolves.toBe("not_open")
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it("still expires Connect when leftover BYOK ciphertext cannot decrypt", async () => {
     state.settings.stripeSecretKeyEnc = "undecryptable"
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
     expect(state.connectExpire).toHaveBeenCalledTimes(1)
     expect(state.byokExpire).not.toHaveBeenCalled()
   })
 
-  it("blocks a new charge on an expiry outage, even when the current account reports missing", async () => {
-    state.connectExpire.mockRejectedValue(missing())
-    state.byokExpire.mockRejectedValue(new Error("Stripe unavailable"))
+  it("supports expiry before an extension adopts the historical account hook", async () => {
+    setRuntimeExtensions([{ id: "connect", resolveStripeCheckoutTarget: () => connect }])
+    state.settings.stripeAccountStatus = "restricted"
+    await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).resolves.toBe("expired")
+    expect(state.connectExpire).toHaveBeenCalledTimes(1)
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it.each(["missing", "outage"])("refuses replacement after Connect reports %s, even with usable BYOK keys", async failure => {
+    state.connectExpire.mockRejectedValue(failure === "missing" ? missing() : new Error("Stripe unavailable"))
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.create).not.toHaveBeenCalled()
+    expect(state.byokExpire).not.toHaveBeenCalled()
+  })
+
+  it("refuses replacement if historical account discovery fails", async () => {
+    setRuntimeExtensions([{
+      id: "connect", resolveStripeCheckoutTarget: () => connect,
+      resolveStripeCheckoutExpiryTargets: () => { throw new Error("account lookup unavailable") },
+    }])
     expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
     expect(state.create).not.toHaveBeenCalled()
   })
 
-  it("does not assume an unlocatable session is safe to replace", async () => {
-    state.connectExpire.mockRejectedValue(missing())
-    state.byokExpire.mockRejectedValue(missing())
-    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "unavailable" })
-    expect(state.create).not.toHaveBeenCalled()
+  it("does not use BYOK expiry targets supplied by a hosted extension", async () => {
+    setRuntimeExtensions([{
+      id: "connect", resolveStripeCheckoutTarget: () => null,
+      resolveStripeCheckoutExpiryTargets: () => [byok],
+    }])
+    await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).rejects.toThrow("no Stripe secret key or Connect account")
+    expect(state.byokExpire).not.toHaveBeenCalled()
   })
 
-  it.each(["byok", "connect"])("searches other accounts even when %s reports not_open", async account => {
-    const expire = account === "byok" ? state.byokExpire : state.connectExpire
-    expire.mockRejectedValue(Object.assign(new Error("not open"), { type: "StripeInvalidRequestError" }))
-    state.retrieve.mockResolvedValue({ status: "complete" })
-    expect(await expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).toBe("not_open")
-    expect(state.byokExpire).toHaveBeenCalledWith("cs_previous")
-    expect(state.connectExpire).toHaveBeenCalledWith("cs_previous", expect.objectContaining({ stripeAccount: "acct_switch" }))
-  })
-
-  it("uses the same account search in the settlement expiry job, with an incomplete BYOK setup", async () => {
+  it("expires self-hosted BYOK with incomplete settings in the settlement job", async () => {
+    setRuntimeExtensions([])
     state.settings.stripeWebhookSecretEnc = ""
-    state.connectExpire.mockRejectedValue(missing())
     await state.handler!({ id: "job", organizationId: invoice.organizationId, attempts: 1, createdAt: new Date(),
       claimToken: "claim", payload: { invoiceId: invoice.id, checkoutSessionId: "cs_previous" } })
-    expect(EXPIRE_CHECKOUT_SESSION_JOB).toBe("payments.expire_checkout_session")
-    expect(state.byokExpire).toHaveBeenCalledWith("cs_previous")
+    expect(state.byokExpire).toHaveBeenCalledExactlyOnceWith("cs_previous")
+    expect(state.connectExpire).not.toHaveBeenCalled()
   })
 
-  it("requires recoverable credentials so the expiry job retries after keys are restored", async () => {
+  it.each(["", "undecryptable"])("retries self-hosted expiry after an unavailable key is restored", async key => {
     setRuntimeExtensions([])
-    state.settings.stripeSecretKeyEnc = ""
+    state.settings.stripeSecretKeyEnc = key
     await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).rejects.toThrow("no Stripe secret key")
     state.settings.stripeSecretKeyEnc = encryptSecret(byok.secretKey)
     await expect(expireOrganizationCheckoutSession({ organizationId: invoice.organizationId, sessionId: "cs_previous" })).resolves.toBe("expired")
   })
-
 })

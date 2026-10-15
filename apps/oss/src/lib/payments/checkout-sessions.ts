@@ -2,7 +2,7 @@ import { prisma } from "../db"
 import { appLogger } from "../observability"
 import { getRuntimeExtensions } from "../runtime/extensions"
 import { decryptSecret } from "../secrets"
-import { expireOpenStripeCheckoutSession, type StripeCheckoutTarget } from "./stripe"
+import { expireOpenStripeCheckoutSession, usesStripeConnectCheckout, type StripeCheckoutTarget } from "./stripe"
 
 /** Expiry needs only the API key, even after the seller removes other BYOK settings. */
 export async function organizationStripeSecretKey(organizationId: string) {
@@ -19,11 +19,9 @@ export async function organizationStripeSecretKey(organizationId: string) {
 }
 
 /**
- * A tracked session can predate an account switch. Search historical extension
- * accounts and the stored BYOK key. `resolveStripeCheckoutTarget` is only the
- * account that may charge now, so it is not an expiry source. A caller may pass
- * that account as `target`. A miss on one account is not expiry. Throwing
- * resolvers and Stripe failures keep checkout blocked and jobs retrying.
+ * Hosted sessions belong to Connect, including a seller's previous account. Self-hosted
+ * sessions use the stored BYOK key. A missing session is not proof of expiry: refuse
+ * replacement and let settlement jobs retry until its owning account is reachable.
  */
 export async function expireOrganizationCheckoutSession(input: {
   organizationId: string
@@ -38,25 +36,31 @@ export async function expireOrganizationCheckoutSession(input: {
       targets.push(target)
     }
   }
-  if (input.target) add(input.target)
-  for (const extension of getRuntimeExtensions()) {
-    const historical = await extension.resolveStripeCheckoutExpiryTargets?.({ organizationId: input.organizationId })
-    for (const target of historical ?? []) add(target)
+  const extensions = getRuntimeExtensions().filter(extension =>
+    extension.resolveStripeCheckoutTarget || extension.resolveStripeCheckoutExpiryTargets)
+  if (usesStripeConnectCheckout() || extensions.length) {
+    if (input.target?.kind === "connect") add(input.target)
+    for (const extension of extensions) {
+      const current = await extension.resolveStripeCheckoutTarget?.({ organizationId: input.organizationId })
+      if (current?.kind === "connect") add(current)
+      const historical = await extension.resolveStripeCheckoutExpiryTargets?.({ organizationId: input.organizationId })
+      for (const target of historical ?? []) {
+        if (target?.kind === "connect") add(target)
+      }
+    }
+  } else {
+    if (input.target?.kind === "byok") add(input.target)
+    const secretKey = await organizationStripeSecretKey(input.organizationId)
+    if (secretKey) add({ kind: "byok", secretKey, webhookSecret: "" })
   }
-  const secretKey = await organizationStripeSecretKey(input.organizationId)
-  if (secretKey) add({ kind: "byok", secretKey, webhookSecret: "" })
   if (!targets.length) {
     throw new Error(`Cannot expire Stripe Checkout session ${input.sessionId}: the organization has no Stripe secret key or Connect account`)
   }
-  let outcome: "expired" | "not_open" | "missing" = "missing"
   for (const target of targets) {
     const result = await expireOpenStripeCheckoutSession(target.kind === "byok"
       ? { secretKey: target.secretKey, sessionId: input.sessionId }
       : { target, sessionId: input.sessionId })
-    if (result === "not_open" || outcome === "missing") outcome = result
+    if (result !== "missing") return result
   }
-  if (outcome === "missing") {
-    throw new Error(`Cannot locate Stripe Checkout session ${input.sessionId} on any configured account`)
-  }
-  return outcome
+  throw new Error(`Cannot locate Stripe Checkout session ${input.sessionId} on any configured account`)
 }

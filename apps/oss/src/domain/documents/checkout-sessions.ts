@@ -2,7 +2,6 @@ import { Effect } from "effect"
 import { z } from "zod"
 import { appLogger } from "../../lib/observability"
 import { expireOrganizationCheckoutSession } from "../../lib/payments/checkout-sessions"
-import { resolveStripeCheckoutTarget } from "../../lib/payments/stripe"
 import { registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db } from "../services"
 
@@ -79,11 +78,9 @@ registerJobHandler(EXPIRE_CHECKOUT_SESSION_JOB, async (job) => {
     throw new TerminalJobError(`Invalid ${EXPIRE_CHECKOUT_SESSION_JOB} payload: ${parsed.error.message}`)
   }
   const { invoiceId, checkoutSessionId } = parsed.data
-  const target = await resolveStripeCheckoutTarget({ organizationId: job.organizationId })
   const outcome = await expireOrganizationCheckoutSession({
     organizationId: job.organizationId,
     sessionId: checkoutSessionId,
-    ...(target ? { target } : {}),
   })
   paymentsLogger.info("checkout.expire.done", {
     organizationId: job.organizationId,
