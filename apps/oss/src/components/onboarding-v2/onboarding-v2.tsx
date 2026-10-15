@@ -23,7 +23,7 @@ import { readSelectedCompany, clearSelectedCompany } from "../../lib/onboarding/
 import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
 
-type Screen = "search" | "working" | "review" | "failed" | "timeout" | "ceased"
+type Screen = "search" | "working" | "review" | "failed" | "timeout" | "ceased" | "payments"
 type Props = {
   userId: string
   organizationId: string
@@ -108,6 +108,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [busy, setBusy] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const [bankErrors, setBankErrors] = useState(false)
+  const [connectFailed, setConnectFailed] = useState(false)
   const request = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
   const suggestionPromise = useRef<{
@@ -415,7 +416,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       await client.confirm(confirmationPayload(confirmed))
       clearDraft(storageKey)
       epoch.current++
-      if (mounted.current) onComplete()
+      if (!mounted.current) return
+      // The company is saved either way; a failed capability check must never trap the user here.
+      const offerPayments = client.payments ? await client.payments.available().catch(() => false) : false
+      if (!mounted.current) return
+      if (offerPayments) {
+        setBusy(false)
+        setScreen("payments")
+      } else onComplete()
     } catch (error) {
       if (!mounted.current) return
       setBusy(false)
@@ -443,8 +451,23 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     )
   }
 
+  const steps = client.payments ? ["company", "lookup", "review", "payments"] : ["company", "lookup", "review"]
+  async function connectStripe() {
+    setBusy(true)
+    setConnectFailed(false)
+    try {
+      // Without a redirect the handler finished in place; nothing more to ask for.
+      if (!(await client.payments!.connect()) && mounted.current) onComplete()
+    } catch {
+      if (!mounted.current) return
+      setBusy(false)
+      setConnectFailed(true)
+    }
+  }
   const step =
-    screen === "review"
+    screen === "payments"
+      ? 4
+      : screen === "review"
       ? 3
       : screen === "working" || screen === "ceased" || screen === "failed" || screen === "timeout"
         ? 2
@@ -505,10 +528,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         Quits
         <span className="ob-square" aria-hidden="true" />
       </div>
-      <nav aria-label={TT("step", { x: step })} className="ob-steps">
-        <span className="ob-mobile-step">{TT("step", { x: step })}</span>
+      <nav aria-label={TT("step", { x: step, n: steps.length })} className="ob-steps">
+        <span className="ob-mobile-step">{TT("step", { x: step, n: steps.length })}</span>
         <ol>
-          {["company", "lookup", "review"].map((label, index) => (
+          {steps.map((label, index) => (
             <li key={label} aria-current={index + 1 === step ? "step" : undefined}>
               <span
                 className={`ob-marker ${index + 1 <= step ? "ob-current" : ""}`}
@@ -645,6 +668,26 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               </Button>
             ) : null}
           </div>
+        </section>
+      ) : null}
+      {screen === "payments" ? (
+        <section className="ob-payments">
+          <h1>{TT("payments.heading")}</h1>
+          <p>{TT("payments.sub")}</p>
+          {connectFailed ? (
+            <StateNotice danger title={TT("payments.failed.title")}>
+              <p>{TT("payments.failed.body")}</p>
+            </StateNotice>
+          ) : null}
+          <div className="ob-actions">
+            <Button disabled={busy} onClick={() => void connectStripe()}>
+              {TT("payments.connect")}
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={onComplete}>
+              {TT("payments.skip")}
+            </Button>
+          </div>
+          <p className="ob-source">{TT("payments.note")}</p>
         </section>
       ) : null}
       {screen === "review" && draft ? (
