@@ -3,10 +3,15 @@ import { countryName, ISO_COUNTRY_CODES } from "../country-names"
 import { buyerAddress } from "../documents/invoice-identity"
 
 describe("customer country labels", () => {
-  it("contains the 249 ISO countries without grouping or exceptional codes", () => {
-    expect(ISO_COUNTRY_CODES).toHaveLength(249)
-    expect(new Set(ISO_COUNTRY_CODES).size).toBe(249)
+  it("is the canonical country set: the 249 ISO countries plus Kosovo, without grouping codes", () => {
+    expect(ISO_COUNTRY_CODES).toHaveLength(250)
+    expect(new Set(ISO_COUNTRY_CODES).size).toBe(250)
+    expect(ISO_COUNTRY_CODES).toContain("XK")
     expect(ISO_COUNTRY_CODES).not.toContain("EU")
+    expect(countryName("XK", "en-US")).toBe("Kosovo")
+  })
+  it.each([["Sweden", "Sverige"], ["Sverige", "Sverige"], ["Germany", "Tyskland"], ["Tyskland", "Tyskland"], ["se", "Sverige"]])("prints the legacy name %s in the document language", (value, expected) => {
+    expect(countryName(value, "da-DK")).toBe(expected)
   })
   it.each(["DK", "dk", "Danmark", "Denmark"])("prints %s in the document language", value => {
     expect(countryName(value, "da-DK")).toBe("Danmark")
