@@ -38,7 +38,7 @@ export function DocumentTotals({
     <>
       {totals.lines.map((row, index) => (
         <div key={index} className="flex justify-between">
-          <span className="text-muted-foreground">{row.label}</span>
+          <span className="text-muted-foreground">{row.label}{row.reason && <small className="block text-xs">{row.reason}</small>}</span>
           {amount(row.amount)}
         </div>
       ))}
@@ -46,6 +46,7 @@ export function DocumentTotals({
         <span>{totals.total.label}</span>
         {amount(totals.total.amount)}
       </div>
+      {totals.note && <p className="rounded-md border p-3 text-xs text-muted-foreground">{totals.note}</p>}
     </>
   )
 }
