@@ -4,7 +4,7 @@ capture_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
 cd "$capture_root"
 : "${DATABASE_URL:?Use a migrated disposable local qui56_screens_20261012 database}"
 : "${QUI56_BASELINE_DIR:?Use an independently installed detached main checkout}"
-export SCREENSHOT_OUTPUT="${SCREENSHOT_OUTPUT:-$capture_root/docs/qa/qui-56-screens-refresh}"
+export SCREENSHOT_OUTPUT="${SCREENSHOT_OUTPUT:-$capture_root/.artifacts/qui-56-screens-refresh}"
 mkdir -p "$SCREENSHOT_OUTPUT"
 export PLAYWRIGHT_BASE_URL=http://127.0.0.1:3086
 export QUITS_DISTRIBUTION=cloud VITE_QUITS_DISTRIBUTION=cloud

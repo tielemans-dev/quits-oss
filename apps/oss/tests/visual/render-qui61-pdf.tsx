@@ -15,7 +15,7 @@ const invoice: InvoiceForPdf = {
 const variant = process.argv[2] ?? "after"
 const modulePath = process.env.QUI61_PDF_MODULE ?? "../../src/lib/invoice-pdf.tsx"
 const { InvoicePdfDocument } = await import(resolve(import.meta.dirname, modulePath))
-const output = resolve(import.meta.dirname, "../../../../docs/qa/qui-61")
+const output = resolve(import.meta.dirname, "../../../../.artifacts/qui-61")
 await mkdir(output, { recursive: true })
 for (const locale of ["da-DK", "en-US"]) {
   const buffer = await renderToBuffer(InvoicePdfDocument({ invoice, org: {
