@@ -41,6 +41,7 @@ test("send invoice, download frozen stored PDF, issue and send credit note, send
   await expect(page.getByRole("heading", { name: "Draft invoice" })).toBeVisible()
   await expect(page.getByText("Numbered INV-0001 when sent. The number is not reserved")).toBeVisible()
   await page.getByRole("button", { name: "Send", exact: true }).click()
+  await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
   await expect(page.getByRole("button", { name: "Resend email", exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Invoice INV-0001" })).toBeVisible()
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })

@@ -26,6 +26,7 @@ test("issues successive amount credits, downloads stored invoice UBL and refuses
   await waitForClientReady(page)
   await page.getByRole("button", { name: "Send without email", exact: true }).click()
   await page.getByRole("button", { name: "Continue without email", exact: true }).click()
+  await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
   await expect(page.getByRole("button", { name: "Create credit note", exact: true })).toBeVisible()
   for (const [index, tax] of ["0.01", "0.00"].entries()) {
     await page.goto(`/invoices/${invoice.id}`)
