@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
+import { translate } from "../../lib/i18n/translate"
 import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../onboarding-v2/client"
 import { confirmationPayload, draftKey, newDraft, storeDraft } from "../onboarding-v2/draft"
@@ -144,5 +145,51 @@ describe("CVR VAT notice", () => {
     render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" nonVatEnabled client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
     await screen.findByLabelText("Name")
     expect(screen.queryByText(notice) !== null).toBe(shown)
+  })
+})
+
+describe("review page CVR errors (QUI-39)", () => {
+  async function review(locale: string, client = createOnboardingV2Client(false)) {
+    const draft = newDraft(null, "signup@example.test", false)
+    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", momsRegistered: true, cvr: "12345678" })
+    storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
+    render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" nonVatEnabled client={client} onComplete={() => {}} /></I18nProvider>)
+    const cvr = await screen.findByLabelText(translate("onboardingV2.field.cvr", locale))
+    return { cvr, form: cvr.closest("form")! }
+  }
+
+  it.each([["en-US", "A CVR number has 8 digits"], ["da-DK", "Et CVR-nummer har 8 cifre"]])("shows a visible, localized message next to an invalid CVR in %s", async (locale, message) => {
+    const { cvr, form } = await review(locale)
+    expect(form.noValidate).toBe(true)
+    fireEvent.submit(form)
+    const error = await screen.findByText(message)
+    expect(cvr.getAttribute("aria-invalid")).toBe("true")
+    expect(cvr.getAttribute("aria-describedby")).toBe(error.id)
+    expect(document.activeElement).toBe(cvr)
+    expect(api.confirm).not.toHaveBeenCalled()
+    fireEvent.change(cvr, { target: { value: "24256790" } })
+    expect(screen.queryByText(message)).toBeNull()
+  })
+
+  it("requires the company email even though the form opts out of native validation", async () => {
+    const { cvr, form } = await review("da-DK")
+    fireEvent.change(cvr, { target: { value: "24256790" } })
+    const email = screen.getByLabelText(translate("onboardingV2.field.email", "da-DK"))
+    fireEvent.change(email, { target: { value: "" } })
+    fireEvent.submit(form)
+    expect(await screen.findByText("Indtast en e-mail")).toBeTruthy()
+    expect(email.getAttribute("aria-invalid")).toBe("true")
+    expect(api.confirm).not.toHaveBeenCalled()
+  })
+
+  it("points a server-side CVR rejection at the CVR field instead of failing silently or generically", async () => {
+    const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error("cvr.invalid") }) }
+    const { cvr, form } = await review("da-DK", client)
+    fireEvent.change(cvr, { target: { value: "24256790" } })
+    fireEvent.submit(form)
+    expect(await screen.findByText("Et CVR-nummer har 8 cifre")).toBeTruthy()
+    expect(client.confirm).toHaveBeenCalledOnce()
+    expect(cvr.getAttribute("aria-invalid")).toBe("true")
+    expect(screen.queryByText(translate("onboardingV2.saveFailed.title", "da-DK"))).toBeNull()
   })
 })
