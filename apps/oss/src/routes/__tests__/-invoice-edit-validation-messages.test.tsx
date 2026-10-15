@@ -38,8 +38,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe.each([
-  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
-  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
+  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik.", addLine: "Tilføj vare" }],
+  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment.", addLine: "Add Item" }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
   async function openEditor() {
     render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
@@ -162,6 +162,19 @@ describe.each([
     fireEvent.change(document.getElementById("editNotes")!, { target: { value: "edited" } })
     reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
     expect(await screen.findByText(copy.description)).toBeTruthy()
+  })
+
+  it("keeps a late line error when only another column of that row changed or a row was added", async () => {
+    let reject: (error: Error) => void = () => {}
+    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    fireEvent.click(await openEditor())
+    fireEvent.change(document.getElementById("invoice-edit-quantity-0")!, { target: { value: "3" } })
+    fireEvent.click(screen.getAllByRole("button").find((button) => button.textContent === copy.addLine)!)
+    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    const work = screen.getByDisplayValue("Work")
+    await waitFor(() => expect(work.getAttribute("aria-invalid")).toBe("true"))
+    expect(screen.getByText(copy.description)).toBeTruthy()
+    expect(screen.queryByText(copy.failed)).toBeNull()
   })
 
   it("keeps the editor open when the user edited while a successful save was in flight", async () => {

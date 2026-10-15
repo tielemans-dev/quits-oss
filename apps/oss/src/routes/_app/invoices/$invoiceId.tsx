@@ -178,6 +178,9 @@ type EditItem = {
   vat?: DocumentLineInput["vat"]
 }
 
+/** The editable columns of a line, for issues that are about the line as a whole. */
+const lineColumnsOf = ["description", "quantity", "unitPrice", "vat"] as const
+
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
 }
@@ -420,7 +423,14 @@ function InvoiceDetailPage() {
         case "notes": return now.editNotes === submitted.editNotes
         case "taxRate": return now.editTaxRate === submitted.editTaxRate
         case "vatEvidence": return issue.evidence ? now.editVatEvidence[issue.evidence as keyof DraftVatEvidence] === submitted.editVatEvidence[issue.evidence as keyof DraftVatEvidence] : now.editVatEvidence === submitted.editVatEvidence
-        case "items": return issue.line === undefined ? now.editItems.length === submitted.editItems.length : now.editItems.length === submitted.editItems.length && now.editItems[issue.line] === submitted.editItems[issue.line]
+        case "items": {
+          if (issue.line === undefined) return now.editItems.length === submitted.editItems.length
+          // Compare the reported column's value at the reported row. An error is about a value, so edits to other
+          // columns, added rows, or a row that shifted in with the same value do not make it stale.
+          const before = submitted.editItems[issue.line]
+          const after = now.editItems[issue.line]
+          return !!before && !!after && (issue.column ? [issue.column] : lineColumnsOf).every((column) => after[column] === before[column])
+        }
         default: return true
       }
     }
