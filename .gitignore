@@ -16,6 +16,6 @@ todos.json
 apps/oss/playwright-report/
 apps/oss/test-results/
 
-/generated/prisma
+generated/prisma/
 
 apps/oss/data/artifacts/
