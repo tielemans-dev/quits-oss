@@ -10,6 +10,7 @@ export const daRecurringMessages = {
   "recurring.action.end": "Afslut plan",
   "recurring.action.runNow": "Opret nu",
   "recurring.action.back": "Tilbage til planer",
+  "recurring.action.more": "Flere handlinger",
   "recurring.empty.title": "Ingen gentagne planer endnu",
   "recurring.empty.description": "Fakturer abonnementer og faste aftaler automatisk med fast interval.",
   "recurring.table.name": "Plan",

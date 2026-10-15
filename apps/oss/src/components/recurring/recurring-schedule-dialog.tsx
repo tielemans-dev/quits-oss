@@ -273,6 +273,7 @@ export function RecurringScheduleDialog({
                     size="icon-sm"
                     onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
                     disabled={items.length <= 1}
+                    aria-label={t("invoiceLines.remove", { number: index + 1 })}
                   >
                     <Trash2 className="size-4 text-muted-foreground" />
                   </Button>

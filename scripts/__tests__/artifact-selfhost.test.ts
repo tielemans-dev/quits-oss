@@ -27,6 +27,13 @@ try {
   const b = await renderer.renderPdf(input)
   assert.equal(new TextDecoder().decode(a.slice(0, 5)), "%PDF-")
   assert.deepEqual(a, b)
+  const quote = { ...input, kind: "quote", documentId: "quote", pdf: {
+    ...input.pdf, quote: { expiryDate: "2026-12-01" },
+  } }
+  const quotePdf = await renderer.renderPdf(quote)
+  assert.equal(new TextDecoder().decode(quotePdf.slice(0, 5)), "%PDF-")
+  assert.deepEqual(quotePdf, await renderer.renderPdf(quote))
+  assert.notDeepEqual(quotePdf, a)
   const hash = createHash("sha256").update(a).digest("hex")
   const metadata = { organizationId: "org", documentKind: "invoice", documentId: "invoice", format: "pdf", hash,
     size: a.byteLength, rendererVersion: renderer.version }

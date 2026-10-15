@@ -9,6 +9,7 @@ vi.mock("../../../application/issuance", () => ({ runArtifactRead: vi.fn() }))
 vi.mock("../../../domain/documents/render-input", () => ({ prospectiveRenderInput: vi.fn(), hashBytes: vi.fn() }))
 vi.mock("../../../domain/commands/reminders", () => ({ schedulerActor: vi.fn() }))
 import { privateDocumentPdf } from "../pdf-access"
+import { resetRuntimeServices } from "../../runtime/services"
 
 const request = new Request("https://example.test/api/documents/quote/q1/pdf")
 beforeEach(() => {
@@ -19,6 +20,14 @@ beforeEach(() => {
 })
 
 describe("private quote PDF downloads", () => {
+  it("returns 503 when no host renderer is configured", async () => {
+    mocks.find.mockResolvedValue({ id: "q1", number: "T-0021" })
+    resetRuntimeServices()
+    const response = await privateDocumentPdf(request, "quote", "q1")
+    expect(response.status).toBe(503)
+    expect(await response.text()).toBe("Document renderer unavailable")
+    expect(mocks.render).not.toHaveBeenCalled()
+  })
   it("requires a session and active organization before reading the quote", async () => {
     for (const session of [null, { user: { id: "u1" }, session: {} }]) {
       mocks.session.mockResolvedValue(session)

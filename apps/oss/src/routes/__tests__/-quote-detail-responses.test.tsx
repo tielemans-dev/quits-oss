@@ -192,6 +192,17 @@ describe.each(["da-DK", "en-US"])("quote detail polish in %s", (locale) => {
     expect(container.querySelectorAll('[data-slot="card"] [data-slot="card"]').length).toBe(0)
   })
 
+  it("keeps an explicit unknown country in foreign address order", async () => {
+    state.locale = locale
+    const data = quote("q_1", "Q-0001")
+    Object.assign(data.contact, { city: "Madrid", state: "Madrid", zip: "28001", country: "España" })
+    state.get.mockResolvedValue(data)
+    render(<RouteComponent />)
+    expect(await screen.findByText("Madrid, Madrid, 28001")).toBeTruthy()
+    expect(screen.getByText("España")).toBeTruthy()
+    expect(screen.queryByText("28001 Madrid")).toBeNull()
+  })
+
   it.each(["INV-0002", null])("links to the converted invoice with number %s or draft copy", async (number) => {
     state.locale = locale
     state.get.mockResolvedValue({ ...quote("q_1", "Q-0001"), status: "accepted", invoices: [{ id: "inv_2", number }] })

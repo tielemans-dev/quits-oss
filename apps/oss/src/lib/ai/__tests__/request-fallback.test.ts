@@ -29,8 +29,8 @@ describe("request model fallback", () => {
     expect(test.resolve).not.toHaveBeenCalled()
     expect(test.complete).not.toHaveBeenCalled()
   })
-  it("leaves deterministic requests to the parser", async () => {
-    const test = run(fields, true, "faktura til Nordlys 12 timer à 850 kr.")
+  it.each(["faktura til Nordlys 12 timer à 850 kr.", "betaling modtaget fra Havbrise 1.250,50 kr ref F-1042"])("leaves deterministic requests to the parser: %s", async input => {
+    const test = run(fields, true, input)
     expect(await test.result).toBeNull()
     expect(test.complete).not.toHaveBeenCalled()
   })

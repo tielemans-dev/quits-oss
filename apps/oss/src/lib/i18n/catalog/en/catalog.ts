@@ -6,6 +6,8 @@ export const enCatalogMessages = {
   "catalog.defaultUnitPrice": "Default Unit Price",
   "catalog.defaultPrice": "Default Price",
   "catalog.actions": "Actions",
+  "catalog.action.edit": "Edit {name}",
+  "catalog.action.archive": "Archive {name}",
   "catalog.add": "Add Item",
   "catalog.save": "Save",
   "catalog.cancel": "Cancel",

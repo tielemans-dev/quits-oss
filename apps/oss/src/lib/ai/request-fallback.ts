@@ -1,5 +1,6 @@
 import { quantityDecimalSchema, unitPriceDecimalSchema } from "@quits/contracts/invoices"
 import { z } from "zod"
+import { parsePaymentRequest } from "../payments/payment-match"
 import { matchCustomer, parseRequest, type RequestContext, type RequestDraft } from "../request-parser"
 import type { AiProvider } from "./provider"
 
@@ -29,7 +30,7 @@ export async function fillRequest(input: {
   context: RequestContext
   resolve: () => Promise<{ provider: AiProvider; model: string }>
 }): Promise<RequestDraft | null> {
-  if (!input.enabled || parseRequest(input.input, input.context) || /^\s*(?:\d{8}|(?:ny\s+kunde|cvr)\b)/iu.test(input.input)) return null
+  if (!input.enabled || parseRequest(input.input, input.context) || parsePaymentRequest(input.input) || /^\s*(?:\d{8}|(?:ny\s+kunde|cvr)\b)/iu.test(input.input)) return null
   try {
     const { provider, model } = await input.resolve()
     const output = await provider.complete({
