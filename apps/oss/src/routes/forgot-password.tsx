@@ -35,7 +35,7 @@ function ForgotPasswordPageContent() {
       const result = await authClient.requestPasswordReset({
         email: email.trim(),
         redirectTo: `${window.location.origin}${authDestination('/reset-password', search.lang)}${search.redirect ? `&redirect=${encodeURIComponent(search.redirect)}` : ''}`,
-      })
+      }, { headers: { 'accept-language': search.lang ?? locale } })
       if (result.error) {
         setError(t(result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.forgotPassword.error'))
       } else {
