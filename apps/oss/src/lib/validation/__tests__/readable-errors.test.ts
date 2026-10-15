@@ -32,7 +32,7 @@ describe("readableIssues", () => {
 
   it("routes document tax rate and VAT evidence issues to their own fields", () => {
     expect(readableIssues(zod({ path: ["taxRate"], code: "too_big" }))?.[0]).toEqual({ field: "taxRate", key: "validation.unknown" })
-    expect(readableIssues(zod({ path: ["vatEvidence", "statementText"], code: "too_big", maximum: 500, origin: "string" }))?.[0]).toEqual({ field: "vatEvidence", key: "validation.tooLong", params: { max: 500 } })
+    expect(readableIssues(zod({ path: ["vatEvidence", "statementText"], code: "too_big", maximum: 500, origin: "string" }))?.[0]).toEqual({ field: "vatEvidence", evidence: "statementText", key: "validation.tooLong", params: { max: 500 } })
   })
 
   it("keeps one issue when a value fails several checks", () => {

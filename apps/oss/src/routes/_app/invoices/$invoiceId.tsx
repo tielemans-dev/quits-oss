@@ -259,8 +259,8 @@ function InvoiceDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
-  // Identity of the edit values; changes whenever any edited value changes, so a save can tell its answer is stale.
-  const editSnapshot = useRef<object>({})
+  // The edit values as of this render, so a save can tell which fields changed while it was in flight.
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
   const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems])
   editSnapshot.current = editValues
 
@@ -369,6 +369,8 @@ function InvoiceDetailPage() {
   }
 
   function addEditItem() {
+    // Collection-level issues (too few or too many lines) are about the row count, which just changed.
+    clearIssues((issue) => issue.field === "items" && issue.line === undefined)
     setEditItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "0" }])
   }
 
@@ -376,7 +378,9 @@ function InvoiceDetailPage() {
     if (editItems.length <= 1) return
     // Drop the deleted row's issues and move later rows' issues up with their rows.
     setEditIssues((prev) => prev.flatMap((issue) =>
-      issue.field !== "items" || issue.line === undefined || issue.line < index ? [issue]
+      issue.field !== "items" ? [issue]
+        : issue.line === undefined ? []
+        : issue.line < index ? [issue]
         : issue.line === index ? []
         : [{ ...issue, line: issue.line - 1 }]))
     setEditItems((prev) => prev.filter((_, i) => i !== index))
@@ -406,7 +410,20 @@ function InvoiceDetailPage() {
     setEditIssues([])
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
-    const submitted = editSnapshot.current
+    const submitted = editSnapshot.current!
+    // Whether the value an issue was reported for is still the one the user sees.
+    const unchanged = (issue: ReadableIssue) => {
+      const now = editSnapshot.current!
+      switch (issue.field) {
+        case "contact": return now.editContactId === submitted.editContactId
+        case "dueDate": return now.editDueDate === submitted.editDueDate
+        case "notes": return now.editNotes === submitted.editNotes
+        case "taxRate": return now.editTaxRate === submitted.editTaxRate
+        case "vatEvidence": return issue.evidence ? now.editVatEvidence[issue.evidence as keyof DraftVatEvidence] === submitted.editVatEvidence[issue.evidence as keyof DraftVatEvidence] : now.editVatEvidence === submitted.editVatEvidence
+        case "items": return issue.line === undefined ? now.editItems.length === submitted.editItems.length : now.editItems.length === submitted.editItems.length && now.editItems[issue.line] === submitted.editItems[issue.line]
+        default: return true
+      }
+    }
     try {
       const updated = await trpc.invoices.updateV2.mutate({
         id: invoice.id,
@@ -425,13 +442,17 @@ function InvoiceDetailPage() {
       })
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
+      // Edits made while the save was in flight are not in this response; keep the editor open so they are not lost.
+      if (editSnapshot.current !== submitted) return
       setEditing(false)
       setEditIssues([])
     } catch (err) {
       if (!isCurrent()) return
       const issues = readableIssues(err)
       // Fields edited while the save was in flight may already be fixed; a late answer must not flag them again.
-      if (issues) { if (editSnapshot.current === submitted) setEditIssues(issues) }
+      const current = issues?.filter(unchanged)
+      if (current?.length) setEditIssues(current)
+      else if (issues) setError(t("validation.save.failed"))
       else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
       setActing(false)
@@ -767,7 +788,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence"); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
             {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">

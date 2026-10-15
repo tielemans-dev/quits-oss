@@ -24,4 +24,14 @@ describe.each(["da-DK", "en-GB"])("record payment validation in %s (QUI-39)", (l
     expect(screen.getByText(translate("payments.record.error.amount", locale))).toBeTruthy()
     expect(record).not.toHaveBeenCalled()
   })
+
+  it("clears the amount message once the amount changes", () => {
+    const { amount, form } = open()
+    fireEvent.change(amount, { target: { value: "" } })
+    fireEvent.submit(form)
+    const message = translate("payments.record.error.amount", locale)
+    expect(screen.getByText(message)).toBeTruthy()
+    fireEvent.change(amount, { target: { value: "50" } })
+    expect(screen.queryByText(message)).toBeNull()
+  })
 })

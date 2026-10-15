@@ -346,7 +346,7 @@ export function RecordPaymentDialog({
                 max={balanceDue}
                 required
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => { setAmount(event.target.value); setError(null) }}
               />
             </div>
             <div className="grid gap-2">
@@ -354,7 +354,7 @@ export function RecordPaymentDialog({
               <LocalizedDateField
                 id="payment-date"
                 value={paidAt}
-                onChange={setPaidAt}
+                onChange={(value) => { setPaidAt(value); setError(null) }}
                 locale={locale}
                 placeholder={t("payments.record.datePlaceholder")}
                 required

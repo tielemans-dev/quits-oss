@@ -7,6 +7,8 @@ export type ReadableIssue = {
   line?: number
   /** The line column the issue belongs to, when it is not the line as a whole. */
   column?: "description" | "quantity" | "unitPrice" | "vat"
+  /** The VAT evidence entry (e.g. `statementText`) a `vatEvidence` issue belongs to. */
+  evidence?: string
   key: TranslationKey
   params?: { max: number }
 }
@@ -49,7 +51,8 @@ function mapIssue(issue: RawIssue): ReadableIssue {
   const field: ReadableField = head === "contactId" ? "contact" : head === "dueDate" ? "dueDate" : head === "items" ? "items" : head === "notes" ? "notes" : head === "taxRate" ? "taxRate" : head === "vatEvidence" ? "vatEvidence" : "form"
   const line = typeof index === "number" ? index : undefined
   const column = leaf === "description" || leaf === "quantity" || leaf === "unitPrice" || leaf === "vat" ? leaf : undefined
-  const at = { field, ...(line === undefined ? {} : { line }), ...(column ? { column } : {}) }
+  const evidence = field === "vatEvidence" && typeof index === "string" ? index : undefined
+  const at = { field, ...(line === undefined ? {} : { line }), ...(column ? { column } : {}), ...(evidence ? { evidence } : {}) }
   if (tooLong) return { ...at, key: "validation.tooLong", params: { max: issue.maximum as number } }
   if (issue.format === "email") return { field: "email", key: "validation.email.invalid" }
   if (field === "contact") return { ...at, key: "validation.customer.required" }
@@ -77,7 +80,7 @@ export function readableIssues(error: unknown): ReadableIssue[] | null {
   // One value can fail several checks (format and range); each maps to the same message, so keep one.
   const seen = new Set<string>()
   return issues.map(mapIssue).filter((issue) => {
-    const id = [issue.field, issue.line ?? "", issue.column ?? "", issue.key, issue.params?.max ?? ""].join("|")
+    const id = [issue.field, issue.line ?? "", issue.column ?? "", issue.evidence ?? "", issue.key, issue.params?.max ?? ""].join("|")
     if (seen.has(id)) return false
     seen.add(id)
     return true

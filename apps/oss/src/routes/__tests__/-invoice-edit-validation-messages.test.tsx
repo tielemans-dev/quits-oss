@@ -155,6 +155,34 @@ describe.each([
     expect(api.update).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps a late failure's errors for fields that did not change while it was in flight", async () => {
+    let reject: (error: Error) => void = () => {}
+    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    fireEvent.click(await openEditor())
+    fireEvent.change(document.getElementById("editNotes")!, { target: { value: "edited" } })
+    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    expect(await screen.findByText(copy.description)).toBeTruthy()
+  })
+
+  it("keeps the editor open when the user edited while a successful save was in flight", async () => {
+    let resolve: (value: unknown) => void = () => {}
+    api.update.mockReturnValue(new Promise((done) => { resolve = done }))
+    fireEvent.click(await openEditor())
+    fireEvent.change(screen.getByDisplayValue("Work"), { target: { value: "Consulting" } })
+    resolve(draft)
+    await waitFor(() => expect(screen.getByRole("button", { name: copy.save }).hasAttribute("disabled")).toBe(false))
+    expect(screen.getByDisplayValue("Consulting")).toBeTruthy()
+  })
+
+  it("clears a line-count error when the row count changes", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "too_big", path: ["items"] }])))
+    fireEvent.click(await openEditor())
+    const message = await screen.findByText(copy.unknown)
+    expect(message.closest("#edit-items-error")).not.toBeNull()
+    fireEvent.click(screen.getAllByRole("button").filter((button) => button.innerHTML.includes("lucide-trash"))[0])
+    expect(screen.queryByText(copy.unknown)).toBeNull()
+  })
+
   it("shows one message when a value fails several checks", async () => {
     api.update.mockRejectedValue(new Error(JSON.stringify([
       { code: "invalid_format", path: ["items", 0, "quantity"] },
