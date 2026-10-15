@@ -1,6 +1,6 @@
 import type { TranslationKey } from "../i18n/catalog"
 
-export type ReadableField = "contact" | "dueDate" | "items" | "email" | "cvr" | "form"
+export type ReadableField = "contact" | "dueDate" | "items" | "notes" | "email" | "cvr" | "form"
 export type ReadableIssue = {
   field: ReadableField
   /** Zero-based line index for `items` issues that belong to one line. */
@@ -46,7 +46,7 @@ function mapIssue(issue: RawIssue): ReadableIssue {
   const path = Array.isArray(issue.path) ? issue.path : []
   const [head, index, leaf] = path
   const tooLong = issue.code === "too_big" && issue.origin === "string" && typeof issue.maximum === "number"
-  const field: ReadableField = head === "contactId" ? "contact" : head === "dueDate" ? "dueDate" : head === "items" ? "items" : "form"
+  const field: ReadableField = head === "contactId" ? "contact" : head === "dueDate" ? "dueDate" : head === "items" ? "items" : head === "notes" ? "notes" : "form"
   const line = typeof index === "number" ? index : undefined
   const column = leaf === "description" || leaf === "quantity" || leaf === "unitPrice" ? leaf : undefined
   const at = { field, ...(line === undefined ? {} : { line }), ...(column ? { column } : {}) }

@@ -13,16 +13,21 @@ describe("readableIssues", () => {
     ["empty lines", { path: ["items"], code: "too_small" }, "Add at least one line", "Tilføj mindst én linje"],
     ["description", { path: ["items", 1, "description"], code: "too_small" }, "Describe what you're invoicing for", "Beskriv, hvad du fakturerer for"],
     ["quantity", { path: ["items", 0, "quantity"], code: "invalid_type" }, "Enter a quantity, like 1 or 2.5", "Indtast et antal, fx 1 eller 2,5"],
-    ["price", { path: ["items", 0, "unitPrice"], code: "invalid_type" }, "Enter a price, like 1,250.00", "Indtast en pris, fx 1.250,00"],
-    ["date", { path: ["dueDate"], code: "invalid_format" }, "Enter a date, like 24/10/2026", "Indtast en dato, fx 24-10-2026"],
+    ["price", { path: ["items", 0, "unitPrice"], code: "invalid_type" }, "Enter a price, like 1250.00", "Indtast en pris, fx 1250,00"],
+    ["date", { path: ["dueDate"], code: "invalid_format" }, "Enter a date, like 10/24/2026", "Indtast en dato, fx 24.10.2026"],
     ["due before issue", { path: ["dueDate"], code: "custom", message: "dueDate.beforeIssue" }, "Due date must be after the invoice date", "Forfaldsdatoen skal ligge efter fakturadatoen"],
     ["cvr", { path: ["cvr"], code: "custom", message: "cvr.invalid" }, "A CVR number has 8 digits", "Et CVR-nummer har 8 cifre"],
     ["email", { path: ["email"], code: "invalid_format", format: "email" }, "Enter a valid email, like name@company.com", "Indtast en gyldig e-mail, fx navn@firma.dk"],
     ["too long", { path: ["notes"], code: "too_big", maximum: 500, origin: "string" }, "500 characters max", "Højst 500 tegn"],
+    ["notes too long", { path: ["notes"], code: "too_big", maximum: 5000, origin: "string" }, "5000 characters max", "Højst 5000 tegn"],
     ["unmapped", { path: ["somethingElse"], code: "weird" }, "Check this field and try again", "Tjek feltet og prøv igen"],
   ])("maps %s in English and Danish", (_name, issue, en, da) => {
     expect(texts(zod(issue), "en")).toEqual([en])
     expect(texts(zod(issue), "da")).toEqual([da])
+  })
+
+  it("routes notes issues to the notes field", () => {
+    expect(readableIssues(zod({ path: ["notes"], code: "too_big", maximum: 5000, origin: "string" }))?.[0]?.field).toBe("notes")
   })
 
   it("keeps the line and column an issue belongs to", () => {
