@@ -44,7 +44,7 @@ export function frozenVatGroups(document: {
       const parsed = frozenVatGroupSchema.safeParse({
         ...vat, key, exponent, baseExponent: exponent, net: "0", tax: "0", gross: "0", payableRounding: "0",
         netBase: null, taxBase: null, grossBase: null, payableRoundingBase: null,
-        ...(document.vatEvidence ? { evidence: document.vatEvidence } : {}),
+        ...(document.vatEvidence && vat.treatment !== "standard" ? { evidence: document.vatEvidence } : {}),
       })
       if (!parsed.success) throw new UnfinishedVatClassification(parsed.error.message)
       group = parsed.data
@@ -59,23 +59,28 @@ export function frozenVatGroups(document: {
 }
 
 /**
- * VAT groups collapsed to one row per rate, for display. Groups that differ only in treatment,
- * country or reason (a standard 0 % and an exempt line, say) share a rate and so one row. Sums are
- * exact decimals of the stored group amounts; nothing is repriced.
+ * VAT groups displayed per rate, treatment and reason so each exemption keeps its taxable amount.
+ * Sums are exact decimals of the stored group amounts; nothing is repriced.
  */
 export function vatRowsByRate(
-  groups: ReadonlyArray<{ rate: string; net: string; tax: string; gross: string }>,
+  groups: ReadonlyArray<{ rate: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; evidence?: { statementText?: string | null } | null }>,
   currency: string
 ): VatRow[] {
   const exponent = documentFractionDigits(currency)
   const rows = new Map<string, VatRow>()
   for (const group of groups) {
     const ratePercent = fractionToPercentage(group.rate)
-    const row = rows.get(ratePercent) ?? { ratePercent, net: "0", tax: "0", gross: "0" }
+    const key = JSON.stringify([ratePercent, group.treatment ?? null, group.reasonCode ?? null])
+    const row = rows.get(key) ?? { ratePercent, net: "0", tax: "0", gross: "0" }
+    row.treatments = [...new Set([...(row.treatments ?? []), ...(group.treatment ? [group.treatment] : [])])]
+    row.treatment = row.treatments.length === 1 ? row.treatments[0] : undefined
+    if (group.reasonCode) row.reasonCodes = [...new Set([...(row.reasonCodes ?? []), group.reasonCode])]
+    const statement = group.treatment === "standard" ? undefined : group.evidence?.statementText?.trim()
+    if (statement) row.statements = [...new Set([...(row.statements ?? []), statement])]
     row.net = toDecimal(row.net).plus(group.net).toFixed(exponent)
     row.tax = toDecimal(row.tax).plus(group.tax).toFixed(exponent)
     row.gross = toDecimal(row.gross).plus(group.gross).toFixed(exponent)
-    rows.set(ratePercent, row)
+    rows.set(key, row)
   }
   return [...rows.values()].sort((a, b) => toDecimal(a.ratePercent).comparedTo(b.ratePercent))
 }

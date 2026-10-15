@@ -243,3 +243,8 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model RecipientReminderPreference
+ * 
+ */
+export type RecipientReminderPreference = Prisma.RecipientReminderPreferenceModel

@@ -305,6 +305,7 @@ export const onboardingRouter = router({
       if ("defaultCurrency" in input) {
         assertSettingsCurrency(input.defaultCurrency)
         settingsUpdateData.defaultCurrency = input.defaultCurrency
+        settingsUpdateData.currency = input.defaultCurrency
       }
       if ("taxRegime" in input) settingsUpdateData.taxRegime = input.taxRegime
       if ("pricesIncludeTax" in input)

@@ -224,7 +224,7 @@ export const updateInvoiceDraft = defineCommand({
         data.buyerSnapshot = buildBuyerSnapshot(contact)
       }
       if (input.dueDate) data.dueDate = new Date(input.dueDate)
-      if (input.supplyDate) data.supplyDate = new Date(input.supplyDate)
+      if (input.supplyDate !== undefined) data.supplyDate = input.supplyDate ? new Date(input.supplyDate) : null
       if (input.currency) data.currency = input.currency
       if (input.pricesIncludeTax !== undefined) data.pricesIncludeTax = input.pricesIncludeTax
       if (input.notes !== undefined) data.notes = input.notes

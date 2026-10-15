@@ -47,17 +47,17 @@ describe("seller VAT presentation", () => {
     const taxIds = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
     for (const output of outputs(locale, false, {}, [taxIds[0]!])) {
       expect(output).toContain(nonVatStatement(locale))
-      expect(output).not.toContain("VAT: 12345678")
+      expect(output).not.toContain(locale === "da-DK" ? "Momsnr. 12345678" : "VAT no. 12345678")
     }
     const [pdf, email, pay] = outputs(locale, false, {}, taxIds)
-    expect(pdf).toContain("CVR: 24256790")
-    expect(pay).toContain("CVR: 24256790")
-    expect(email).toContain("CVR-nr.: 24256790")
+    expect(pdf).toContain(locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790")
+    expect(pay).toContain(locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790")
+    expect(email).toContain(locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790")
     for (const status of [true, null, undefined]) {
-      for (const output of outputs(locale, status, {}, [taxIds[0]!])) expect(output).toContain("VAT: 12345678")
+      for (const output of outputs(locale, status, {}, [taxIds[0]!])) expect(output).toContain(locale === "da-DK" ? "Momsnr. 12345678" : "VAT no. 12345678")
     }
     for (const taxRegime of ["custom", "us_sales_tax"]) {
-      for (const output of outputs(locale, false, { taxRegime }, [taxIds[0]!])) expect(output).toContain("VAT: 12345678")
+      for (const output of outputs(locale, false, { taxRegime }, [taxIds[0]!])) expect(output).toContain(locale === "da-DK" ? "Momsnr. 12345678" : "VAT no. 12345678")
     }
   })
 
@@ -182,13 +182,13 @@ describe("credit note registration statement", () => {
     for (const registered of [false, true, null]) {
       const document = { ...credit, sellerSnapshot: { companyName: "Frozen seller", momsRegistered: registered, taxIds }, taxRegime: "eu_vat" }
       const pdf = pdfText(CreditNotePdfDocument({ creditNote: document, org: { locale, taxIds: [{ scheme: "cvr", value: "24256790" }] } })).join(" ")
-      expect(pdf.includes(translate("creditNotes.pdf.vatNumber", locale) + ": 12345678")).toBe(registered !== false)
+      expect(pdf.includes(translate("pdf.vatNumber", locale) + " 12345678")).toBe(registered !== false)
       expect(pdf).not.toContain("24256790")
       const email = buildCreditNoteEmailContent({ creditNote: document, invoice: credit.invoice, org: { locale }, contactName: "Synthetic buyer" }).html
       for (const output of [pdf, email]) expect(output.includes(nonVatStatement(locale))).toBe(registered === false)
     }
     const custom = { ...credit, taxRegime: "custom", sellerSnapshot: { momsRegistered: false, taxIds } }
-    expect(pdfText(CreditNotePdfDocument({ creditNote: custom, org: { locale } })).join(" ")).toContain(translate("creditNotes.pdf.vatNumber", locale) + ": 12345678")
+    expect(pdfText(CreditNotePdfDocument({ creditNote: custom, org: { locale } })).join(" ")).toContain(translate("pdf.vatNumber", locale) + " 12345678")
   })
 
   it.each(["da-DK", "en-US"])("prints the issued choice once in PDF and email in %s", locale => {
