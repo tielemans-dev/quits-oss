@@ -146,6 +146,7 @@ model AccountingConnection {
   remoteAccountId String
   credentialEnc   String?
   mappingRevision String
+  mappings        Json?
   syncStartAt     DateTime                   @default(now())
   reviewBefore    DateTime?
   updatedAt       DateTime                   @updatedAt

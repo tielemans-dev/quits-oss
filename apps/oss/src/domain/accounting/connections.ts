@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { Prisma, PrismaClient, AccountingProviderId } from "../../../generated/prisma/client"
+import { Prisma, type PrismaClient, type AccountingProviderId } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { encryptSecret } from "../../lib/secrets"
 import { accountFingerprint, reconnectReview } from "./sync-position"
@@ -7,10 +7,12 @@ import { dineroProvider, type DineroSettings } from "./dinero"
 import { economicProvider, type EconomicSettings } from "./economic"
 import type { AccountingConnections, AccountingTransport } from "./delivery"
 import type { AccountingEvent, AccountingProvider } from "./provider"
+import { mappingsSchema, type AccountingMappings } from "./mappings"
 
 export type ConnectionInfo = {
   organizationId: string; generation: string; provider: AccountingProviderId
   remoteAccountId: string; mappingRevision: string
+  mappings?: AccountingMappings // Saved chart configuration; validate remote relationships before resolving settings.
 }
 type Settings = { provider: "economic"; value: EconomicSettings } | { provider: "dinero"; value: DineroSettings }
 type Payload = { path: string; body: Prisma.InputJsonValue }
@@ -44,7 +46,7 @@ export async function connectAccounting(input: {
     }
     await tx.accountingConnection.upsert({ where: { organizationId: input.organizationId },
       create: { organizationId: input.organizationId, ...data, syncStartAt: input.syncStartAt ?? now },
-      update: { ...data, reviewBefore: now } }) // The first start position survives reconnection.
+      update: { ...data, reviewBefore: now, ...(previous && (previous.provider !== input.provider || previous.remoteAccountId !== input.remoteAccountId) ? { mappings: Prisma.DbNull } : {}) } }) // The first start position survives reconnection.
   }, { isolationLevel: "Serializable" })
 }
 
@@ -56,11 +58,12 @@ export async function disconnectAccounting(organizationId: string, db: PrismaCli
 export function accountingConnections(runtime: AccountingDeliveryRuntime, db: PrismaClient = prisma) {
   return {
     async find(organizationId: string) {
-      const record = await db.accountingConnection.findFirst({
+      const stored = await db.accountingConnection.findFirst({
         where: { organizationId, status: "connected", credentialEnc: { not: null } },
-        select: { organizationId: true, generation: true, provider: true, remoteAccountId: true, mappingRevision: true, syncStartAt: true, reviewBefore: true },
+        select: { organizationId: true, generation: true, provider: true, remoteAccountId: true, mappingRevision: true, syncStartAt: true, reviewBefore: true, mappings: true },
       })
-      if (!record) return null
+      if (!stored) return null
+      const record = { ...stored, mappings: stored.mappings === null ? undefined : mappingsSchema.parse(stored.mappings) }
       const provider: AccountingProvider<Settings, Payload> = {
         id: record.provider,
         map(event, settings) {

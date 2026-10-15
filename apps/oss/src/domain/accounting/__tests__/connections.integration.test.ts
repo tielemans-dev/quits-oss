@@ -8,6 +8,7 @@ import { accountingConnections, connectAccounting, disconnectAccounting, type Ac
 import { deliverAccounting } from "../delivery"
 import { runAccountingTick } from "../scheduled-delivery"
 import { invoiceFixture } from "./fixtures"
+import { defaultMappings } from "../mappings"
 
 const describeDb = process.env.DATABASE_URL ? describe : describe.skip
 describeDb("persisted accounting connections and scheduled delivery", () => {
@@ -97,7 +98,8 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
   })
 
   it.each(["synthetic-remote", "another-remote"])("never replays delivered events after reconnecting to %s", async remoteAccountId => {
-    const f = await setup(), transport = f.transport()
+    const f = await setup(), transport = f.transport(), mappings = defaultMappings()
+    await prisma.accountingConnection.update({ where: { organizationId: f.organizationId }, data: { mappings } })
     expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport })).toBe("delivered")
     await disconnectAccounting(f.organizationId)
     await connectAccounting({ ...f.input, remoteAccountId })
@@ -105,6 +107,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     expect(f.send).toHaveBeenCalledTimes(1)
     expect(await prisma.eventConsumerDelivery.count({ where: { organizationId: f.organizationId, status: "done" } })).toBe(1)
     expect((await f.connections.find(f.organizationId))!.syncStartAt).toEqual(f.event.occurredAt)
+    expect((await f.connections.find(f.organizationId))!.record.mappings).toEqual(remoteAccountId === f.input.remoteAccountId ? mappings : undefined)
   })
 
   it("starts a new generation when reconnecting to another remote account", async () => {

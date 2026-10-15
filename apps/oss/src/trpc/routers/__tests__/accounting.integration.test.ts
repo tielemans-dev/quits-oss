@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
 import { prisma } from "../../../lib/db"
-import { connectAccounting } from "../../../domain/accounting/connections"
+import { accountingConnections, connectAccounting } from "../../../domain/accounting/connections"
 import { deliverAccounting, type AccountingTransport } from "../../../domain/accounting/delivery"
+import { defaultMappings } from "../../../domain/accounting/mappings"
 import { dineroProvider } from "../../../domain/accounting/dinero"
 import { invoiceFixture } from "../../../domain/accounting/__tests__/fixtures"
 
@@ -44,6 +45,35 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     const events = await prisma.domainEvent.findMany({ where: { organizationId: f.org.organizationId, type: "accounting.action_recorded" } })
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({ actorId: f.org.actors.admin.userId, commandId: expect.any(String), payload: { action: "disconnect", provider: "dinero", generation: "generation-1" } })
+  })
+
+  it.each(["dinero", "economic"] as const)("saves %s mappings with an audit entry and rejects stale or unauthorized edits", async provider => {
+    const f = await failedDelivery(), mappings = defaultMappings()
+    await prisma.eventConsumerDelivery.update({ where: { id: f.first.id }, data: { error: { code: "missing_mapping" } } })
+    expect((await f.admin.accounting.status()).providers[1]?.delivery?.blockedDocument).toBe("INV-1")
+    mappings.rows[0] = { ...mappings.rows[0]!, revenueAccount: 1000, vatCode: "U25", productNumber: "sales" }
+    mappings.paymentAccount = 55000
+    await prisma.accountingConnection.update({ where: { organizationId: f.org.organizationId }, data: { provider } })
+    const input = { provider, generation: "generation-1", mappingRevision: "1", mappings }
+    for (const role of ["member", "accountant"] as const)
+      await expect(callerFor(f.org.organizationId, f.org.actors[role].userId).accounting.saveMappings(input)).rejects.toMatchObject({ code: "FORBIDDEN" })
+    await expect(f.admin.accounting.saveMappings({ ...input, mappings: { ...mappings, paymentAccount: -1 } })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(f.admin.accounting.saveMappings({ ...input, generation: "old" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(f.admin.accounting.saveMappings({ ...input, provider: provider === "dinero" ? "economic" : "dinero" })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    const result = await f.admin.accounting.saveMappings(input)
+    expect(result.providers.find(item => item.provider === provider)?.mappings).toEqual(mappings)
+    const stored = await prisma.accountingConnection.findUniqueOrThrow({ where: { organizationId: f.org.organizationId } })
+    expect(stored.mappingRevision).not.toBe("1")
+    const runtime = { settings: vi.fn(), transport: vi.fn() }, connection = await accountingConnections(runtime).find(f.org.organizationId)
+    await connection!.settings({ type: "invoice.issued", schemaVersion: 1, payload: {}, id: "event", deliveryId: "delivery" })
+    expect(runtime.settings).toHaveBeenCalledWith(expect.objectContaining({ mappings, mappingRevision: stored.mappingRevision }), expect.any(Object))
+    await expect(f.admin.accounting.saveMappings(input)).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    const events = await prisma.domainEvent.findMany({ where: { organizationId: f.org.organizationId, type: "accounting.mappings_updated" } })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ actorId: f.org.actors.admin.userId, commandId: expect.any(String), payload: { provider, generation: input.generation, previousRevision: "1", revision: stored.mappingRevision } })
+    expect(await prisma.eventConsumerDelivery.findUnique({ where: { id: f.first.id } })).toMatchObject({ status: "failed", attempts: 5 })
+    await f.admin.accounting.disconnect()
+    await expect(f.admin.accounting.saveMappings({ ...input, mappingRevision: stored.mappingRevision })).rejects.toMatchObject({ code: "BAD_REQUEST" })
   })
 
   it.each(["retry", "skip"] as const)("audits %s, clears backoff and unblocks later documents", async action => {

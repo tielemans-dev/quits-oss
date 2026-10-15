@@ -1,0 +1,18 @@
+{
+  "type": "accounting.mappings_updated",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/accounting.ts",
+      "typeExpression": "\"accounting.mappings_updated\"",
+      "payloadExpression": "{ provider: input.provider, generation: input.generation, previousRevision: input.mappingRevision, revision }",
+      "variant": "default",
+      "payload": {
+        "provider": "dinero",
+        "generation": "generation-1",
+        "previousRevision": "revision-1",
+        "revision": "revision-2"
+      }
+    }
+  ]
+}
