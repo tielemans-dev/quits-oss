@@ -48,6 +48,8 @@ function LoginPageContent() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => { setHydrated(true) }, [])
   // Post-login work outlives a click by up to a few seconds; once the page is left it must not
   // switch organization or load another page on the user's behalf.
   const unmounted = useRef(false)
@@ -132,7 +134,7 @@ function LoginPageContent() {
             {t('auth.login.description')}
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate data-hydrated={hydrated ? "true" : undefined}>
           <CardContent className="flex flex-col gap-4 pb-4">
             {message && (
               <p className="text-sm text-muted-foreground" role="status">

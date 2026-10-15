@@ -65,6 +65,19 @@ const client: OnboardingV2Client = {
     if (!response.ok) throw new Error("Save unavailable")
     return response.json()
   },
+  // Hosted Connect step. The browser tests answer /connect with a redirect, a failure or nothing to do.
+  ...(params.get("payments") === "1"
+    ? {
+        payments: {
+          available: async () => true,
+          connect: async () => {
+            const response = await fetch("/connect", { method: "POST" })
+            if (!response.ok) throw new Error("Connect unavailable")
+            return (await response.json()).redirected === true
+          },
+        },
+      }
+    : {}),
 }
 function wait(ms: number, signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {

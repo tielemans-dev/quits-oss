@@ -18,8 +18,8 @@ const STEP_LABEL = {
 
 const DONE_LINGER_MS = 8000 // a failed toast stays until retried or closed
 const FRESH_MS = 10_000 // a younger job was started on this page: its toast morphs in
-const ease = "ease-[cubic-bezier(0.32,0.72,0,1)]"
-const swap = `transition-[opacity,transform,filter] duration-300 ${ease} motion-reduce:transition-opacity motion-reduce:duration-150`
+const ease = "ease-enter"
+const swap = `transition-[opacity,transform,filter] duration-(--duration-base) ${ease} motion-reduce:transition-opacity motion-reduce:duration-(--duration-fade)`
 const hidden = "scale-25 opacity-0 blur-[4px] motion-reduce:scale-100 motion-reduce:blur-none"
 
 function Mark({ on, children, className }: { on: boolean; children: React.ReactNode; className?: string }) {
@@ -124,7 +124,7 @@ export function TrackerToast({
             className="bg-foreground/10 h-1 overflow-hidden rounded-full"
           >
             <div
-              className={cn("bg-tone-progress h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none", ease)}
+              className={cn("bg-tone-progress h-full rounded-full transition-[width] duration-(--duration-base) motion-reduce:transition-none", ease)}
               style={{ width: `${view.percent}%` }}
             />
           </div>

@@ -223,9 +223,15 @@ class CiPathsTest
   def test_browser_classifier_paths_and_errors
     workflow = WORKFLOWS.fetch('ci')
     fixtures = [
-      [['COPY.md'], false], [['README.md'], false], [['apps/oss/README.md'], false],
-      [['docs/x.json'], false], [['.github/workflows/ci.yml'], false],
-      [['docs/x.json', 'README.md', '.github/workflows/ci.yml'], false],
+      [['COPY.md'], false], [['README.md'], false], [['apps/oss/README.md'], true],
+      [['apps/oss/tests/fixtures/document.md'], true], [['packages/shared/README.md'], true],
+      [['docs/x.json'], false], [['docs/nested/guide.md'], false],
+      [['.github/pull_request_template.md'], false], [['.github/CODEOWNERS'], false],
+      [['.github/workflows/ci.yml'], true], [['.github/workflows/seller-vat-browser.yml'], true],
+      [['.github/workflows/send-flow-browser.yml'], true], [['.github/scripts/ci-gate.mjs'], true],
+      [['.github/scripts/fixture.md'], true],
+      [['docs/x.json', 'README.md', '.github/pull_request_template.md'], false],
+      [['docs/x.json', 'README.md', '.github/workflows/ci.yml'], true],
       [['docs/x.json', 'README.md', '.github/workflows/ci.yml', 'apps/oss/src/x.ts'], true],
       [['apps/oss/src/x.ts'], true], [[], true],
     ]

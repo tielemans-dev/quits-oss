@@ -3,7 +3,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { translate } from "../../lib/i18n/translate"
 import type { TranslationKey } from "../../lib/i18n/messages"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { hydrateRoot } from "react-dom/client"
+import { renderToString } from "react-dom/server"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const {
   search,
@@ -81,6 +83,16 @@ afterEach(() => {
 })
 
 describe("LoginPage", () => {
+  it("marks the login form ready only after hydration attaches its handlers", async () => {
+    const container = document.createElement("div")
+    container.innerHTML = renderToString(<RoutePage />)
+    expect(container.querySelector('form[data-hydrated="true"]')).toBeNull()
+    const root = hydrateRoot(container, <RoutePage />)
+    await act(async () => {})
+    expect(container.querySelector('form[data-hydrated="true"]')).not.toBeNull()
+    await act(async () => root.unmount())
+  })
+
   it("routes cloud users with one organization to onboarding after auto-select", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     signInEmail.mockResolvedValue({ data: { user: { id: "user_1" } } })

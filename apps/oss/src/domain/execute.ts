@@ -157,6 +157,19 @@ export async function executeCommand<Input, Result>(
   rawInput: unknown,
   options: ExecuteOptions
 ): Promise<CommandOutcome<Result>> {
+  const scopedOptions = definition.namespaceRequestId && options.clientRequestId && !options.resumeReceiptId
+    ? { ...options, clientRequestId: `${definition.type}:${options.clientRequestId}` } : options
+  const outcome = await executeCommandOnce(definition, rawInput, scopedOptions)
+  if (outcome.status === "completed" && definition.validateReplay) {
+    const error = await definition.validateReplay(rawInput, outcome.result)
+    if (error) return failure(outcome.commandId, error)
+  }
+  return outcome
+}
+
+async function executeCommandOnce<Input, Result>(
+  definition: CommandDefinition<Input, Result>, rawInput: unknown, options: ExecuteOptions
+): Promise<CommandOutcome<Result>> {
   const { actor } = options
   const organizationId = actor.organizationId
   const now = options.now ?? new Date()

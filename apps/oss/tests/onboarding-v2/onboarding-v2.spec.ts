@@ -319,3 +319,39 @@ for (const locale of ["en-US", "da-DK"]) for (const width of [1280, 390]) {
     await expect(note).toHaveCount(1)
   })
 }
+
+test.describe("hosted card payments step", () => {
+  async function toPaymentsStep(page: Page, locale = "") {
+    await page.route("**/confirm", (route) => route.fulfill({ json: { status: "complete" } }))
+    await page.goto(`/?payments=1&profile=hosted-non-vat${locale}`)
+    await page.getByRole("textbox", { name: "Hvad hedder din virksomhed?" }).fill("Nordlys")
+    await page.getByRole("button", { name: /Fortsæt med Nordlys Studio/ }).click()
+    await confirm(page).click()
+    await expect(page.getByRole("heading", { name: "Få betalt med kort og MobilePay" })).toBeVisible()
+  }
+  test("can be skipped, and Stripe is only contacted on request", async ({ page }) => {
+    let connects = 0
+    await page.route("**/connect", (route) => { connects++; return route.fulfill({ json: { redirected: true } }) })
+    await toPaymentsStep(page)
+    await expect(page.getByRole("listitem").filter({ hasText: "Betaling" })).toHaveAttribute("aria-current", "step")
+    await page.getByRole("button", { name: "Spring over for nu" }).click()
+    await expect(page.getByRole("status")).toHaveText("KLAR")
+    expect(connects).toBe(0)
+  })
+  test("a failed Connect start keeps the step and can be retried or skipped", async ({ page }) => {
+    await page.route("**/connect", (route) => route.fulfill({ status: 500, json: {} }))
+    await toPaymentsStep(page)
+    await page.getByRole("button", { name: "Forbind Stripe" }).click()
+    await expect(page.getByText("Vi kunne ikke åbne Stripe")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Forbind Stripe" })).toBeEnabled()
+    await page.getByRole("button", { name: "Spring over for nu" }).click()
+    await expect(page.getByRole("status")).toHaveText("KLAR")
+  })
+  test("390px mobile screenshot", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await toPaymentsStep(page)
+    await expect(page.getByText("Trin 4/4", { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+    await page.screenshot({ path: "test-results/onboarding-payments-390.png", fullPage: true })
+  })
+})

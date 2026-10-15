@@ -1,0 +1,27 @@
+/*
+ * Motion tokens: the one place the app's easings and durations are defined. CSS and Tailwind read
+ * these variables (`ease-enter`, `duration-(--duration-base)`, `var(--ease-enter)`); script reads
+ * the same values from `lib/motion.ts`, and a test fails if the two drift apart.
+ *
+ * Entrances use `--ease-enter`; exits use `--ease-exit`. Durations are named for the motion they
+ * time, so changing one moves only that motion. Name transitioned properties (`transition-[opacity]`),
+ * never `transition-all`. Reduced motion is handled where each motion is used: drop the movement,
+ * keep a short fade of `--duration-fade`.
+ */
+@theme static {
+  --ease-enter: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: ease-out;
+
+  --duration-fade: 150ms;
+  --duration-square-shrink: 200ms;
+  --duration-leave: 250ms;
+  --duration-square-fly: 260ms;
+  --duration-base: 300ms;
+  --duration-row: 320ms;
+  --duration-toast: 380ms;
+  --duration-card: 400ms;
+  --duration-highlight: 2400ms;
+
+  /* Gap between parts of a card that rise in one after the other. */
+  --stagger-step: 45ms;
+}

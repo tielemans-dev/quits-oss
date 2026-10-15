@@ -2,6 +2,8 @@
 
 @import 'tw-animate-css';
 
+@import './motion-tokens.css';
+
 /*
  * Both families are bundled with the app (SIL OFL 1.1), so no font is fetched from a CDN.
  * Geist (variable, 100-900) is the UI, display and figure face; Geist Mono (variable) is for
@@ -362,8 +364,8 @@ html[data-document] {
   from { opacity: 0; }
 }
 .request-stagger [data-stagger] {
-  animation: request-rise 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
-  animation-delay: calc(var(--stagger-delay, 0ms) + var(--stagger) * 45ms);
+  animation: request-rise var(--duration-base) var(--ease-enter) both;
+  animation-delay: calc(var(--stagger-delay, 0ms) + var(--stagger) * var(--stagger-step));
 }
 @media (prefers-reduced-motion: reduce) {
   .request-stagger [data-stagger] {
@@ -381,7 +383,7 @@ html[data-document] {
 }
 .incoming-new {
   overflow: hidden;
-  animation: incoming-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both, incoming-highlight 2400ms ease-out;
+  animation: incoming-in var(--duration-row) var(--ease-enter) both, incoming-highlight var(--duration-highlight) var(--ease-exit);
 }
 @media (prefers-reduced-motion: reduce) {
   .incoming-new { animation-name: request-fade, incoming-highlight; }
@@ -417,14 +419,14 @@ html[data-document] {
   }
 }
 .tracker-morph {
-  animation: tracker-morph 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: tracker-morph var(--duration-toast) var(--ease-enter) both;
 }
 .tracker-spinner {
-  animation: tracker-spinner-out 380ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: tracker-spinner-out var(--duration-toast) var(--ease-enter) forwards;
 }
 .pill-in,
 .pill-out {
-  animation: 300ms cubic-bezier(0.32, 0.72, 0, 1) var(--stagger, 0ms) both;
+  animation: var(--duration-base) var(--ease-enter) var(--stagger, 0ms) both;
 }
 .pill-in {
   animation-name: pill-in;
