@@ -677,7 +677,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             </SourceField>
             {confirmationEnabled ? <div className="grid gap-3">
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
-              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} required disabled={busy} onChange={value => update("momsRegistered", value)} />
+              {/* Not natively required: confirm() shows, focuses and explains a missing answer (QUI-56). */}
+              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} disabled={busy} onChange={value => update("momsRegistered", value)} />
             </div> : (
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
@@ -685,7 +686,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 name="momsRegistered"
                 aria-invalid={validationErrors.includes("momsRegistered")}
                 value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
-                required
+                aria-required
                 disabled={busy}
                 onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >

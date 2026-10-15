@@ -75,8 +75,9 @@ describe("production v2 seller confirmation", () => {
     const save = screen.getByRole("button", { name: "Create company" }) as HTMLButtonElement
     // Never a silently disabled button: submitting without a VAT answer shows and focuses it.
     expect(save.disabled).toBe(false)
-    expect(radios[0]!.required).toBe(true)
-    fireEvent.submit(save.closest("form")!)
+    // A real click: native validation must not swallow the submit before the notice (QUI-56).
+    expect(radios.some(radio => radio.required)).toBe(false)
+    fireEvent.click(save)
     await screen.findByText("Check the highlighted fields before creating your company.")
     expect(document.activeElement).toBe(radios[0])
     expect(api.prepare).not.toHaveBeenCalled()

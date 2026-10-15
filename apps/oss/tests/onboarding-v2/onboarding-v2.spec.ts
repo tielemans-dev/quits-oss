@@ -239,9 +239,14 @@ test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ pag
   await expect(create).toBeEnabled()
   await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Nordlys Test ApS")
   await page.getByRole("textbox", { name: "Adresse", exact: true }).fill("Testvej 1\n1000 København K")
+  const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
+  await cvr.fill("24256790")
+  // Clicking without a VAT answer explains and focuses it instead of a silent native block.
+  await create.click()
+  await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeFocused()
+  expect(payload).toEqual({})
   await page.getByRole("radio", { name: "Jeg er momsregistreret" }).check()
   // Noah's prod order: VAT first, then a rejected CVR, then a valid one.
-  const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
   await cvr.fill("12345678")
   await cvr.fill("24256790")
   await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeChecked()
