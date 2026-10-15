@@ -93,7 +93,7 @@ export const prospectiveRenderInput = (input: {
       invoice.contact = yield* Effect.promise(() => db.contact.findFirstOrThrow({
         where: { id: invoice.contactId, organizationId }, include: { taxIds: true },
       }))
-      yield* requireInvoiceSendReview(invoice, reviewedVersion)
+      yield* requireInvoiceSendReview(invoice, settings, reviewedVersion)
     }
     // Checked before preparation and again under the commit locks. Empty drafts may still be previewed.
     if (!input.preview && !invoice.items.length) return yield* new InvalidState({ code: "empty_invoice", message: "Add at least one line before sending this invoice." })

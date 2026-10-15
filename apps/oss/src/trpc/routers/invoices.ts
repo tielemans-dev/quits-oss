@@ -186,7 +186,7 @@ export const invoicesRouter = router({
         ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
         : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
       return {
-        reviewedVersion: invoiceSendReviewVersion(invoice),
+        reviewedVersion: invoiceSendReviewVersion(invoice, await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })),
         recipientVersion: recipientReviewVersion(invoice.contact),
         momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),

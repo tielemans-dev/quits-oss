@@ -36,12 +36,13 @@ describe("send confirmation bindings", () => {
       $queryRaw: vi.fn(async () => []),
       agreement: { findFirst: vi.fn(async () => ({ id: "synthetic-agreement", taxRate: "0", taxRateInput: "0", currency: "DKK", pricesIncludeTax: false })) },
       invoiceItem: { deleteMany: vi.fn(), createMany: vi.fn(), update: vi.fn() },
+      orgSettings: { upsert: vi.fn(async () => ({})) }, organizationTaxId: { findMany: vi.fn(async () => []) },
       invoice: { update: vi.fn(async (args: { include: { contact: unknown } }) => {
         expect(args.include.contact).toEqual({ include: { taxIds: true } })
         return updated
       }) },
     }
     const result = await run(updateLinkedInvoice(invoice as never, { id: invoice.id, notes: "n" } as never), db)
-    expect(result).toMatchObject({ _tag: "Right", right: { reviewedVersion: invoiceSendReviewVersion(updated as never) } })
+    expect(result).toMatchObject({ _tag: "Right", right: { reviewedVersion: invoiceSendReviewVersion(updated as never, null) } })
   })
 })
