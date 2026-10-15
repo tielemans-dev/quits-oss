@@ -90,7 +90,28 @@ export async function resetDatabase() {
     .map(({ tablename }) => `"public"."${tablename}"`)
     .join(", ")
 
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`)
+  // The app server can still be finishing requests from the previous test, so TRUNCATE can
+  // lose a deadlock (40P01) against those row locks. Postgres aborts only our statement,
+  // so retrying with a short backoff is safe; anything else is rethrown at once.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`)
+      return
+    } catch (error) {
+      if (attempt >= resetDeadlockAttempts || !isDeadlockError(error)) throw error
+      await new Promise(resolve => setTimeout(resolve, 100 * 2 ** (attempt - 1)))
+    }
+  }
+}
+
+const resetDeadlockAttempts = 5
+
+/** True for a Postgres deadlock (SQLSTATE 40P01), however Prisma wraps it. */
+function isDeadlockError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const { code, meta, message } = error as { code?: unknown; meta?: { code?: unknown }; message?: unknown }
+  if (code === "40P01" || meta?.code === "40P01") return true
+  return typeof message === "string" && (message.includes("40P01") || message.includes("deadlock detected"))
 }
 
 export async function seedCompletedSetup(locale: SeedLocale = usEnglishLocale) {

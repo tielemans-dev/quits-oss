@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process"
+import { writeFile } from "node:fs/promises"
 import { installHostedVatFixture } from "./hosted-vat-extension"
 import { createAgreementDraft } from "../../src/domain/commands/agreements"
 import { mintAgreementLink } from "../../src/lib/agreements/tokens"
@@ -17,7 +19,7 @@ import { isPublicDocumentPath } from "../../src/lib/theme"
 import { danishLocale, loginAsAdmin, resetDatabase, seedCompletedSetup, waitForClientReady } from "./support"
 
 // MOCK: synthetic organizations and invoices only; the config refuses any other database.
-async function capture(page: Page, surface: string, locale: string) {
+async function capture(page: Page, surface: string, locale: string, savedChoice?: { organizationId: string; registered: boolean }) {
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme })
     await page.evaluate(() => localStorage.setItem("quits-theme", "system"))
@@ -30,6 +32,26 @@ async function capture(page: Page, surface: string, locale: string) {
     await expect(page.locator("html[data-document]")).toHaveCount(publicDocument ? 1 : 0)
     for (const [device, width] of [["desktop", 1440], ["mobile390", 390]] as const) {
       await page.setViewportSize({ width, height: 1100 })
+      if (savedChoice) {
+        await expect(page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })).toBeChecked({ checked: savedChoice.registered })
+        await expect(page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })).toBeChecked({ checked: !savedChoice.registered })
+        await expect(page.locator("#taxRate")).toHaveValue(savedChoice.registered ? "25" : "0")
+        const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: savedChoice.organizationId } })
+        expect(saved.momsRegistered).toBe(savedChoice.registered)
+        expect(saved.taxRate?.toNumber()).toBe(savedChoice.registered ? 25 : 0)
+        await writeFile(test.info().outputPath(`${surface}-${locale}-${colorScheme}-${device}-after.json`), JSON.stringify({
+          sourceRevision: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+          harnessRevision: process.env.EVIDENCE_SHA,
+          ciRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+          ciAttempt: process.env.GITHUB_RUN_ATTEMPT,
+          fixture: hosted ? "synthetic hosted contract, not released consumer acceptance" : "synthetic selfhost",
+          revision: "after", locale, colorScheme, device, width, url: page.url(),
+          savedMomsRegistered: saved.momsRegistered, savedTaxRate: saved.taxRate?.toNumber(),
+          yesChecked: await page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true }).isChecked(),
+          noChecked: await page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true }).isChecked(),
+          path: "UI choice, save, success toast, database persistence, reload, checked-state assertions, screenshot",
+        }, null, 2))
+      }
       await page.screenshot({ path: test.info().outputPath(`${surface}-${locale}-${colorScheme}-${device}-after.png`), fullPage: true })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     }
@@ -75,12 +97,10 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
     await expect(page.locator("#taxRate")).toHaveValue("0")
     await page.reload()
-    if (hosted) {
-      // Hosted evidence requires a fresh operator choice; financial truth persists.
-      await expect(yes).not.toBeChecked()
-      await expect(no).not.toBeChecked()
-    } else {
-      await expect(no).toBeChecked()
+    await waitForClientReady(page)
+    await expect(yes).not.toBeChecked()
+    await expect(no).toBeChecked()
+    if (!hosted) {
       await expect(page.getByRole("button", { name: translate("vatStatus.withdraw", locale), exact: true })).toHaveCount(0)
     }
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: setup.organizationId } })).momsRegistered).toBe(false)
@@ -155,12 +175,17 @@ for (const locale of ["da-DK", "en-US"]) {
 }
 
 // Each registration choice starts at a real app control, persists, and reaches app issuance.
-for (const source of ["settings", "onboarding"] as const) {
+const choiceScenarios = [
+  { source: "settings", locale: "da-DK" },
+  { source: "settings", locale: "en-US" },
+  { source: "onboarding", locale: "da-DK" },
+] as const
+for (const { source, locale } of choiceScenarios) {
   for (const registered of [true, false]) {
-    test(`${hosted ? "hosted contract fixture" : "selfhost"} ${source} choice ${registered} reaches invoice sending`, async ({ page }) => {
+    test(`${hosted ? "hosted contract fixture" : "selfhost"} ${source} choice ${registered} in ${locale} reaches invoice sending`, async ({ page }) => {
       test.skip(source === "onboarding" && !hosted, "Self-host onboarding has no hosted company review")
       await resetDatabase()
-      const setup = await seedCompletedSetup(danishLocale)
+      const setup = await seedCompletedSetup({ ...danishLocale, locale })
       await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
         companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København",
         momsRegistered: null, taxRate: 0, bankRegNumber: "0040", bankAccountNumber: "0440116243",
@@ -170,21 +195,27 @@ for (const source of ["settings", "onboarding"] as const) {
       await loginAsAdmin(page)
       let organizationId = setup.organizationId
       if (source === "onboarding") {
-        organizationId = await captureHostedOnboarding(page, setup.organizationId, danishLocale.locale, registered)
+        organizationId = await captureHostedOnboarding(page, setup.organizationId, locale, registered)
       } else {
         await page.goto("/settings/organization")
         await expect(page).toHaveURL(/\/settings$/)
         await waitForClientReady(page)
-        await page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", danishLocale.locale), exact: true }).check()
-        await page.getByRole("button", { name: translate("settings.action.save", danishLocale.locale), exact: true }).click()
-        await expect(page.getByText(translate("settings.success.saved", danishLocale.locale), { exact: true })).toBeVisible()
+        await page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", locale), exact: true }).check()
+        await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()
+        await expect(page.getByText(translate("settings.success.saved", locale), { exact: true })).toBeVisible()
+        await expect(page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })).toBeChecked({ checked: registered })
+        await expect(page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })).toBeChecked({ checked: !registered })
       }
       const saved = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })
       expect(saved.momsRegistered).toBe(registered)
       expect(saved.taxRate?.toNumber()).toBe(registered ? 25 : 0)
       await page.goto("/settings")
+      await page.reload()
       await waitForClientReady(page)
+      await expect(page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", locale), exact: true })).toBeChecked()
+      await expect(page.getByRole("radio", { name: translate(registered ? "vatStatus.no" : "vatStatus.yes", locale), exact: true })).not.toBeChecked()
       await expect(page.locator("#taxRate")).toHaveValue(registered ? "25" : "0")
+      if (source === "settings") await capture(page, `settings-saved-${registered}`, locale, { organizationId, registered })
       const member = await prisma.member.findFirstOrThrow({ where: { organizationId, role: { in: ["owner", "admin"] } } })
       const actor = await resolveUserActor({ organizationId, userId: member.userId })
       if (!actor) throw new Error("Synthetic admin is missing")
@@ -198,8 +229,8 @@ for (const source of ["settings", "onboarding"] as const) {
       if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
       await page.goto(`/invoices/${draft.result.id}`)
       await waitForClientReady(page)
-      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", danishLocale.locale), exact: true }).click()
-      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", danishLocale.locale), exact: true }).click()
+      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", locale), exact: true }).click()
+      await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", locale), exact: true }).click()
       await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
       const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
       expect(issued.sellerSnapshot).toMatchObject({ momsRegistered: registered })
