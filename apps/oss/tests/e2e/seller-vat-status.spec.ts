@@ -375,6 +375,7 @@ for (const locale of ["da-DK", "en-US"]) {
       const setup = await seedCompletedSetup({ ...danishLocale, locale })
       await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
         companyName: "Synthetic Seller", companyAddress: "Testvej 1, 1000 København", momsRegistered: true, taxRate: 0,
+        bankRegNumber: "0040", bankAccountNumber: "0440116243",
       } })
       await prisma.organizationTaxId.createMany({ data: [
         { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" },
