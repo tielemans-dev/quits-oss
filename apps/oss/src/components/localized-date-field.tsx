@@ -18,6 +18,8 @@ type LocalizedDateFieldProps = {
   clearLabel?: string
   disabled?: boolean
   required?: boolean
+  invalid?: boolean
+  describedBy?: string
 }
 
 function resolveCalendarLocale(locale?: string | null) {
@@ -42,6 +44,8 @@ export function LocalizedDateField({
   clearLabel,
   disabled,
   required,
+  invalid,
+  describedBy,
 }: LocalizedDateFieldProps) {
   const selectedDate = parseSelectedDate(value)
   const displayValue = value ? formatIsoDateForInputDisplay(value, locale) : placeholder
@@ -55,6 +59,8 @@ export function LocalizedDateField({
           variant="outline"
           disabled={disabled}
           aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={cn("w-full justify-between text-left font-normal", !value && "text-muted-foreground")}
         >
           <span>{displayValue}</span>

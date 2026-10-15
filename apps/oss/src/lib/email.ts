@@ -200,12 +200,12 @@ export function totalsBlock(
         <td style="padding:4px 0;text-align:right;">${money(amount)}</td>
       </tr>`
   return `
-    <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label, line.amount)).join("")}
+    <table style="width:100%;border-collapse:collapse;margin-top:8px;">${totals.lines.map((line) => row(line.label + (line.reason ? ` · ${line.reason}` : ""), line.amount)).join("")}
       <tr style="border-top:2px solid ${C.hairline};">
         <td style="padding:8px 0;font-weight:bold;">${escapeHtml(totals.total.label)}</td>
         <td style="padding:8px 0;text-align:right;font-weight:bold;font-size:18px;">${money(totals.total.amount)}</td>
       </tr>
-    </table>`
+    </table>${totals.note ? `<p style="color:${C.muted};">${escapeHtml(totals.note)}</p>` : ""}`
 }
 
 /** The quits. wordmark as text: images are often blocked in mail clients. The stop is Settled green. */
