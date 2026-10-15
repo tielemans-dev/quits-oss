@@ -36,6 +36,8 @@ export const draftSchema = z.object({
   company: cvrCompanySchema.nullable(),
   suggestions: onboardingSuggestionsSchema.nullable(),
   suggestionsState: z.enum(["pending", "ready", "hidden"]),
+  /** The user answered the seller VAT question; kept so edits and reloads keep the answer. */
+  vatChoiceConfirmed: z.boolean().default(false),
 })
 export type OnboardingDraft = z.infer<typeof draftSchema>
 
@@ -51,6 +53,7 @@ export function newDraft(
     company,
     suggestions: null,
     suggestionsState: company && suggestions ? "pending" : "hidden",
+    vatChoiceConfirmed: false,
     values: {
       companyName: company?.name ?? "",
       companyAddress: company?.address ?? "",

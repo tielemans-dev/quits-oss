@@ -103,7 +103,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [searching, setSearching] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const [selected, setSelected] = useState<CvrCompany | null>(null)
-  const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const [bankErrors, setBankErrors] = useState(false)
@@ -121,7 +120,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   useEffect(() => {
     if (!focusInvalid.current || !validationErrors.length) return
     focusInvalid.current = false
-    reviewForm.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus()
+    // Center the first invalid field so the sticky app header and confirm bar cannot cover it.
+    const target = reviewForm.current?.querySelector<HTMLElement>("[aria-invalid='true']")
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView?.({ block: "center" })
   }, [validationErrors])
   function reject(fields: string[]) {
     focusInvalid.current = true
@@ -132,8 +134,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const epoch = useRef(0)
   const TT = (suffix: string, vars?: Record<string, string | number>) => t(key(suffix), vars)
 
+  // The answer lives in the draft, so editing other fields or reloading keeps it.
+  const sellerVatChoice = draft?.vatChoiceConfirmed ? draft.values.momsRegistered : null
+
   function discard() {
-    setSellerVatChoice(null)
     epoch.current++
     request.current?.abort()
     suggestionRequest.current?.abort()
@@ -336,11 +340,13 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
     setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
-    if (["companyName", "companyAddress", "cvr", "companyForm", "countryCode"].includes(field)) setSellerVatChoice(null)
     setDraft((current) =>
       current
         ? {
             ...current,
+            // Another CVR number is another company, whose VAT status must be answered again.
+            ...(field === "cvr" && value !== current.values.cvr ? { vatChoiceConfirmed: false } : {}),
+            ...(field === "momsRegistered" ? { vatChoiceConfirmed: value !== null } : {}),
             values: {
               ...current.values,
               [field]: value,
@@ -447,6 +453,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       <SourceField label={TT(suffix)} tag={tag}>
         <Input
           aria-label={TT(suffix)}
+          name={name}
           value={String(value)}
           {...options}
           disabled={busy || (name === "taxRate" && !draft!.values.momsRegistered)}
@@ -654,6 +661,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 aria-label={TT("field.address")}
                 aria-invalid={validationErrors.includes("companyAddress") || undefined}
                 aria-describedby={validationErrors.includes("companyAddress") ? "ob-companyAddress-error" : undefined}
+                name="companyAddress"
                 required
                 maxLength={240}
                 value={draft.values.companyAddress}
@@ -696,10 +704,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             </SourceField>
             {confirmationEnabled ? <div className="grid gap-3">
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
-              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} required disabled={busy} onChange={value => {
-                setSellerVatChoice(value)
-                update("momsRegistered", value)
-              }} />
+              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} required disabled={busy} onChange={value => update("momsRegistered", value)} />
             </div> : (
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
@@ -728,8 +733,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 disabled={busy}
                 onChange={(e) => update("defaultCurrency", e.target.value)}
               >
-                {["DKK", "EUR", "USD", "GBP"].map((currency) => (
-                  <option key={currency}>{currency}</option>
+                {(["DKK", "EUR", "USD", "GBP"] as const).map((currency) => (
+                  <option key={currency} value={currency}>
+                    {t(`auth.onboarding.currency.${currency}`)}
+                  </option>
                 ))}
               </select>
             </SourceField>
@@ -740,8 +747,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 disabled={busy}
                 onChange={(e) => update("locale", e.target.value)}
               >
-                <option value="da-DK">da-DK</option>
-                <option value="en-GB">en-GB</option>
+                <option value="da-DK">{t("auth.onboarding.locale.da")}</option>
+                <option value="en-GB">{t("auth.onboarding.locale.en")}</option>
               </select>
             </SourceField>
             {field("timezone", "field.timezone", TT("defaultTag"), { required: true })}
