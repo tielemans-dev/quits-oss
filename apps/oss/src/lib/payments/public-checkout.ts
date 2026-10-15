@@ -8,7 +8,6 @@ import {
   assessCardCheckout,
   createStripeInvoiceCheckoutSession,
   expireOpenStripeCheckoutSession,
-  resolveStripeCheckoutTarget,
   type StripeCheckoutTarget,
 } from "./stripe"
 import { currencyFractionDigits } from "./stripe-amounts"
@@ -110,7 +109,7 @@ async function openCheckoutSession(token: string) {
   const previousSessionId = session.invoice.stripeCheckoutSessionId
   if (previousSessionId && !(await paymentCameFrom(previousSessionId))) {
     try {
-      await expirePreviousCheckoutSession(target, previousSessionId, session.invoice.organizationId)
+      await expireTrackedCheckoutSession(target, previousSessionId)
     } catch (error) {
       paymentsLogger.error("invoice.checkout.unavailable", {
         ...logContext,
@@ -177,30 +176,6 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "unavailable" } as const
   }
   return { url: null, status: "retry" } as const
-}
-
-/**
- * A tracked session may have been opened with BYOK before Connect became active.
- * Expire that session with the BYOK key that created it before opening one on the
- * connected account. `resource_missing` from the other account is not expiry: the
- * session can still be payable where it was created.
- */
-async function expirePreviousCheckoutSession(
-  target: StripeCheckoutTarget,
-  sessionId: string,
-  organizationId: string,
-) {
-  if (target.kind === "connect") {
-    const byok = await resolveStripeCheckoutTarget(
-      { organizationId },
-      { connectReady: false },
-    )
-    if (byok?.kind === "byok") {
-      const outcome = await expireOpenStripeCheckoutSession({ secretKey: byok.secretKey, sessionId })
-      if (outcome !== "missing") return outcome
-    }
-  }
-  return expireTrackedCheckoutSession(target, sessionId)
 }
 
 /** BYOK sessions were opened with the org secret key; connect sessions belong to that account. */

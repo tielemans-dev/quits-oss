@@ -2,7 +2,6 @@ import type { StripeAccountStatus } from "@quits/contracts/payments"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
-import { appLogger } from "../observability"
 import { assessCardCheckout, resolveStripeCheckoutTarget } from "./stripe"
 import {
   getInvoicePaymentState,
@@ -78,21 +77,7 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
       currency: invoice.currency,
     }).ready,
   }
-  // Card checkout is optional. A throwing extension or a BYOK secret that can no longer
-  // be decrypted must not hide the invoice, its PDF, or its bank transfer details.
-  let stripeEnabled = false
-  if (session.stripeEnabled) {
-    try {
-      stripeEnabled = Boolean(await resolvePublicInvoiceCheckoutTarget(session))
-    } catch (error) {
-      appLogger.child("payments").error("public_invoice.checkout_target_failed", {
-        invoiceId: invoice.id,
-        organizationId: invoice.organizationId,
-        error,
-      })
-    }
-  }
-  return { ...session, stripeEnabled }
+  return { ...session, stripeEnabled: Boolean(await resolvePublicInvoiceCheckoutTarget(session)) }
 }
 
 /** The page and checkout must agree on the target that can actually take this payment. */
