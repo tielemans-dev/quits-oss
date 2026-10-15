@@ -27,7 +27,7 @@ vi.mock("../../init", async () => {
 })
 vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
 vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeExtensions: () => [], isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
-vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => undefined, getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
+vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => ({ get: async (cvr: string) => ({ cvr, status: "active", statusClass: "active" }) }), getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
 vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false }))
 vi.mock("../../../lib/db", () => {

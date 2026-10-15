@@ -23,7 +23,7 @@ describe("getOnboardingRules", () => {
     expect(rules.requirePrimaryTaxId).toBe(true)
   })
 
-  it("keeps danish defaults but hides tax id for individuals in denmark", () => {
+  it("requires a CVR for Danish sole traders", () => {
     const rules = getOnboardingRules({
       countryCode: "DK",
       invoicingIdentity: "individual",
@@ -37,8 +37,8 @@ describe("getOnboardingRules", () => {
       taxRegime: "custom",
       pricesIncludeTax: true,
     })
-    expect(rules.showPrimaryTaxId).toBe(false)
-    expect(rules.requirePrimaryTaxId).toBe(false)
+    expect(rules.showPrimaryTaxId).toBe(true)
+    expect(rules.requirePrimaryTaxId).toBe(true)
   })
 
   it("suggests us defaults for united states onboarding", () => {

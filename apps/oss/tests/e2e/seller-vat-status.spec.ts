@@ -70,7 +70,7 @@ for (const locale of ["da-DK", "en-US"]) {
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
       ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
     } })
-    await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
+    await prisma.organizationTaxId.updateMany({ where: { organizationId: setup.organizationId, scheme: "cvr" }, data: { value: "12345674", countryCode: "DK" } })
     await loginAsAdmin(page)
     await page.goto("/settings/organization")
     await expect(page).toHaveURL(/\/settings$/)
@@ -206,7 +206,7 @@ for (const { source, locale } of choiceScenarios) {
         momsRegistered: null, taxRate: 0, bankRegNumber: "0040", bankAccountNumber: "0440116243",
         ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
       } })
-      await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true } })
+
       await loginAsAdmin(page)
       let organizationId = setup.organizationId
       if (source === "onboarding") {

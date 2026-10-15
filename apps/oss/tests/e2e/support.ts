@@ -120,6 +120,7 @@ export async function seedCompletedSetup(locale: SeedLocale = usEnglishLocale) {
   const initialized = await applySetupInitialization({
     instanceProfile: "smb",
     organization: {
+      cvr: "24256790",
       name: "E2E Org",
       slug,
     },

@@ -1,3 +1,5 @@
+import { requireOnboardingCvr } from "./require-cvr"
+import { isCloudDistribution } from "../distribution"
 import { isReplacedDanishTaxId } from "./danish-tax-id"
 import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
 import { TRPCError } from "@trpc/server"
@@ -57,6 +59,7 @@ async function registryContactsAllowed(organizationId: string, input: ConfirmOnb
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
+  await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? "", organizationId })
   const sellerVatConfirmation = getSellerVatConfirmationService()
   if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
   // Hosted confirmation must present a token before any settings, identity, or trial write.

@@ -21,6 +21,7 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
 import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
 import { authorizedProcedure, protectedProcedure, router } from "../init"
@@ -386,6 +387,10 @@ export const onboardingRouter = router({
             message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
           })
         }
+        await requireOnboardingCvr({
+          cvr: snapshot.values.primaryTaxId?.replace(/^DK/, ""), cloud: true,
+          userId: ctx.user.id, organizationId: ctx.organizationId,
+        })
         // The provider owns durable eligibility and retries across transaction rollback.
         await billingProvider.startTrial?.(ctx.organizationId)
         await tx.orgSettings.update({

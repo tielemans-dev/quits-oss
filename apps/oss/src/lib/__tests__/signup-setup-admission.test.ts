@@ -14,7 +14,7 @@ vi.mock('better-auth/crypto', () => ({ hashPassword: async () => 'synthetic-hash
 vi.mock('@tanstack/react-start/server', () => ({ getRequest: () => new Request('http://localhost/setup', { headers: { 'x-quits-invite': 'test-code' } }) }))
 const input: SetupInitializeInput = { admin: { email: 'TEST@example.test', name: 'Test', password: 'local-password123' },
   locale: { currency: 'DKK', countryCode: 'DK', timezone: 'Europe/Copenhagen', locale: 'da' },
-  organization: { name: 'Test', slug: 'test' }, auth: { mode: 'local_only' }, instanceProfile: 'freelancer' }
+  organization: { cvr: "24256790", name: 'Test', slug: 'test' }, auth: { mode: 'local_only' }, instanceProfile: 'freelancer' }
 function policy(hooks: AuthHooks = {}, mode?: string) {
   setRuntimePlatform({ id: 'setup-policy-test', getRuntimeKind: () => 'node', getEnv: (key) => key === 'SIGNUP_MODE' ? mode : undefined,
     getAuthHooks: () => hooks, getBinding: () => undefined, getPrisma: () => null })

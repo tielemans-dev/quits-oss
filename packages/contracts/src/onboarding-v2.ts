@@ -64,7 +64,7 @@ export const confirmOnboardingV2Schema = z.object({
     accountNumber: z.string().regex(/^\d{1,10}$/),
   }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
-  if ((value.source === "cvr" || value.cvr) && !isValidDanishCvr(value.cvr)) {
+  if (!isValidDanishCvr(value.cvr)) {
     ctx.addIssue({ code: "custom", path: ["cvr"], message: "cvr.invalid" })
   }
   if (new Set(value.catalogSuggestions.map(item => item.name)).size !== value.catalogSuggestions.length) {

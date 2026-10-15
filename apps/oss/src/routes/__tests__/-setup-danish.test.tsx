@@ -34,6 +34,7 @@ async function openFinalStep() {
   await screen.findByText("Opsæt din Quits-instans")
   fireEvent.click(screen.getByRole("button", { name: "Næste" }))
   for (const [label, value] of [
+    ["CVR-nr.", "24256790"],
     ["Organisationsnavn", "Test ApS"],
     ["Administratornavn", "Test Admin"],
     ["Administrator-e-mail", "admin@example.invalid"],

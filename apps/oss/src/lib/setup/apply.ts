@@ -1,3 +1,5 @@
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
+import { TRPCError } from "@trpc/server"
 import { resolveCountryProfile } from "../compliance"
 import { requireCurrencyExponent } from "@quits/shared/currency"
 import { randomUUID } from "node:crypto"
@@ -123,6 +125,7 @@ export async function applySetupInitialization(
     )
   }
 
+  if (!isValidDanishCvr(input.organization.cvr)) throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.invalid" })
   requireCurrencyExponent(input.locale.currency)
   const profile = resolveCountryProfile(input.locale.countryCode)
   // An unsupported country has no default currency; the currency chosen at setup stands in.
@@ -192,6 +195,9 @@ export async function applySetupInitialization(
       },
     })
 
+    await tx.organizationTaxId.create({ data: {
+      organizationId: organization.id, scheme: "cvr", value: input.organization.cvr, countryCode: "DK", isPrimary: true,
+    } })
     await tx.member.create({
       data: {
         id: randomUUID(),

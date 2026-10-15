@@ -295,9 +295,9 @@ describe("OnboardingPage cloud flow", () => {
     )
 
     fireEvent.click(
-      screen.getByRole("button", { name: /I invoice as an individual/i })
+      screen.getByRole("button", { name: /Sole trader with a CVR number/i })
     )
-    expect(screen.queryByLabelText("VAT/CVR number")).toBeNull()
+    expect(screen.getByLabelText("VAT/CVR number")).toBeTruthy()
 
     fireEvent.click(
       screen.getByRole("button", {

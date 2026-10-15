@@ -91,7 +91,7 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
 export async function captureHostedOnboarding(page: Page, organizationId: string, locale: string, registered = false) {
   // Existing documents forbid rerunning confirmV2. Use a fresh synthetic organization.
   const response = await page.request.post("/api/auth/organization/create", {
-    headers: { origin: "http://127.0.0.1:3040" }, data: { name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
+    headers: { origin: "http://127.0.0.1:3040" }, data: { metadata: { cvr: "24256790" }, name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
   })
   expect(response.ok()).toBe(true)
   const organization = await response.json() as { id: string }

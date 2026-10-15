@@ -3,7 +3,7 @@ import { setupInitializeSchema } from "../validators"
 
 const input = (countryCode: string, locale = "en-GB") => ({
   instanceProfile: "smb",
-  organization: { name: "Acme", slug: "acme" },
+  organization: { cvr: "24256790", name: "Acme", slug: "acme" },
   admin: { name: "Admin", email: "admin@example.com", password: "Passw0rd!234" },
   auth: { mode: "local_only" },
   locale: { locale, countryCode, timezone: "UTC", currency: "GBP" },

@@ -84,6 +84,7 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await expect(page).toHaveURL(/\/onboarding/)
   await page.getByRole("button", { name: "Enter manually" }).click()
   await page.getByLabel("Company name").fill("Nordic Advisory")
+  await page.getByLabel("VAT/CVR number").fill("24256790")
   await page.getByRole("button", { name: "Create organization" }).click()
 
   await expect(page.getByText("Finish organization setup")).toBeVisible()
@@ -92,8 +93,8 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await expect(page.getByLabel("Default currency")).toHaveValue("DKK")
   await expect(page.getByLabel("Timezone")).toHaveValue("Europe/Copenhagen")
 
-  await page.getByRole("button", { name: /I invoice as an individual/i }).click()
-  await expect(page.getByLabel("VAT/CVR number")).toHaveCount(0)
+  await page.getByRole("button", { name: /Sole trader with a CVR number/i }).click()
+  await expect(page.getByLabel("VAT/CVR number")).toBeVisible()
 
   await page
     .getByRole("button", { name: /I invoice through a registered business/i })

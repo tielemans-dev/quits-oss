@@ -26,6 +26,8 @@ async function createCloudCallerWithContact() {
   process.env.QUITS_DISTRIBUTION = "cloud"
 
   const { appRouter } = await import("../../router")
+  const { setRuntimeServices } = await import("../../../lib/runtime/services")
+  setRuntimeServices({ cvrLookupProvider: { search: async () => [], get: async (cvr: string) => ({ cvr, status: "active", statusClass: "active" }) } } as never)
   const orgId = randomUUID()
   const contactId = randomUUID()
   const slug = `guard-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
@@ -96,6 +98,7 @@ describeIfDatabase("onboarding document guards", () => {
       await caller.onboarding.saveDraft({
         companyName: "Guard Org",
         companyAddress: "Main St 1",
+        primaryTaxId: "24256790", primaryTaxIdScheme: "cvr",
         companyEmail: "billing@guard.example",
         countryCode: "US",
         locale: "en-US",

@@ -69,7 +69,7 @@ describe("evaluateOnboardingReadiness", () => {
     expect(result.missing).toContain("primaryTaxId")
   })
 
-  it("does not require primary tax id when the tax field is hidden", () => {
+  it("requires CVR for Danish sole traders", () => {
     const result = evaluateOnboardingReadiness(
       buildInput({
         countryCode: "DK",
@@ -79,8 +79,8 @@ describe("evaluateOnboardingReadiness", () => {
       })
     )
 
-    expect(result.isComplete).toBe(true)
-    expect(result.missing).not.toContain("primaryTaxId")
+    expect(result.isComplete).toBe(false)
+    expect(result.missing).toContain("primaryTaxId")
   })
 
   it("marks onboarding complete when required values are present", () => {

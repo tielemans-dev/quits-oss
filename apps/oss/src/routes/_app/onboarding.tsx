@@ -1,7 +1,7 @@
 import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
+import { isValidDanishCvr, DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -193,6 +193,7 @@ function OnboardingPageContent() {
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
+  const [manualCvr, setManualCvr] = useState('')
   // App-side messages for the name-only and lookup forms (native browser tooltips are English-only).
   const [manualNameError, setManualNameError] = useState<'validation.required' | null>(null)
   const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
@@ -480,7 +481,10 @@ function OnboardingPageContent() {
 
   async function createOrganizationFromCompanyName(name: string, company?: CvrLookupCompany) {
     setError(null)
+    const cvr = company?.cvr ?? manualCvr.trim()
+    if (!isValidDanishCvr(cvr)) { setError(t('cvr.invalid')); return }
     setSubmitting(true)
+    let confirmedCompany = company
     let created: Awaited<ReturnType<typeof createNamedOrganization>>
     try {
       created = await createNamedOrganization({
@@ -492,8 +496,13 @@ function OnboardingPageContent() {
           throw new Error(checked.error.message ?? 'slug check failed')
         },
         create: async (body) => {
-          const result = await authClient.organization.create(body)
-          if (result.data?.id) return { ok: true, id: result.data.id }
+          const result = await authClient.organization.create({ ...body, metadata: { cvr } })
+          if (result.data?.id) {
+            confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
+            return { ok: true, id: result.data.id }
+          }
+          setError(t(result.error?.code === 'cvr.inactive' ? 'auth.onboarding.cvrInactive'
+            : result.error?.code === 'cvr.unavailable' ? 'auth.onboarding.lookup.failed' : 'auth.onboarding.error'))
           return { ok: false, message: result.error?.message ?? '' }
         },
       })
@@ -503,16 +512,16 @@ function OnboardingPageContent() {
       return
     }
     if (!created.ok) {
-      setError(t('auth.onboarding.error'))
+      setError(current => current ?? t('auth.onboarding.error'))
       setSubmitting(false)
       return
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    // v2 collects and confirms company details itself; staging would save a legacy draft first.
-    if (session?.user?.id && !noOrgV2) {
+    // Carry the verified registry selection into the review after switching organizations.
+    if (session?.user?.id) {
       try {
-        stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
+        stageSelectedCompany(session.user.id, created.id, confirmedCompany ?? { name, address: '', cvr })
       } catch {
         // Creation already succeeded; storage must not prevent selecting the new organization.
       }
@@ -704,7 +713,7 @@ function OnboardingPageContent() {
       )
     }
 
-    const nameOnly = entryMode === 'manual' || noOrgV2 === true
+    const nameOnly = entryMode === 'manual'
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
@@ -716,6 +725,7 @@ function OnboardingPageContent() {
               {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
+          <p className="px-6 pb-4 text-sm text-muted-foreground">{t('auth.onboarding.b2bOnly')}. {t('auth.onboarding.cvrFree')}</p>
           {nameOnly ? (
             <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
@@ -725,6 +735,9 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
+                  <Label htmlFor="company-cvr">{t('auth.onboarding.primary.dkLabel')}</Label>
+                  <Input id="company-cvr" inputMode="numeric" maxLength={8} required value={manualCvr}
+                    onChange={event => setManualCvr(event.target.value)} />
                   <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
                   <Input
                     id="company-name"
@@ -750,7 +763,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && !noOrgV2 && <Button
+                {isCloud && <Button
                   type="button"
                   variant="link"
                   className="w-full"

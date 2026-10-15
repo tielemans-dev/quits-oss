@@ -1,3 +1,5 @@
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
+
 export type CvrLookupCompany = {
   cvr: string
   name: string
@@ -11,7 +13,7 @@ export type CvrLookupContext = {
 
 /** Cloud supplies the registry client. Self-hosted installs have no lookup. */
 export type CvrLookupProvider = {
-  search(query: string, context: CvrLookupContext): Promise<CvrLookupCompany[]>
+  search(query: string, context: CvrLookupContext): Promise<Array<CvrLookupCompany & { status: string; statusClass: string }>>
 }
 
 export async function searchOwnCvr(input: {
@@ -28,7 +30,7 @@ export async function searchOwnCvr(input: {
   return {
     available: true,
     companies: companies
-      .filter((company) => /^\d{8}$/.test(company.cvr) && company.name.trim().length > 0)
+      .filter((company) => isValidDanishCvr(company.cvr) && company.status === "active" && company.statusClass === "active" && company.name.trim().length > 0)
       .slice(0, 8)
       .map((company) => ({
         cvr: company.cvr,

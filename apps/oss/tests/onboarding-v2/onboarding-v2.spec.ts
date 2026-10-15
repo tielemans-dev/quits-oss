@@ -13,6 +13,8 @@ test("happy path, bank, editable facts/defaults and removable suggestions", asyn
     await route.fulfill({ json: { status: "complete" } })
   })
   await review(page)
+  await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveValue("Nordlys Studio ApS")
+  await expect(page.getByRole("textbox", { name: "Adresse", exact: true })).toHaveValue("Nørrebrogade 12, 2. tv.\n2200 København N")
   await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Mit studio")
   await page.getByRole("spinbutton", { name: "Næste nummer" }).fill("42")
   await page.getByRole("spinbutton", { name: "Betalingsfrist (dage)" }).fill("30")
@@ -116,7 +118,7 @@ test("agent failure omits the suggestion card and allows confirmation", async ({
   await expect(page.getByRole("region", { name: "Forslag", exact: true })).toHaveCount(0)
   await expect(confirm(page)).toBeEnabled()
 })
-test("ceased has no presets and manual setup permits signup", async ({ page }) => {
+test("ceased has no presets and manual entry remains available", async ({ page }) => {
   await reviewCeased(page)
   await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveCount(0)
   await page.getByRole("button", { name: "Opsæt manuelt", exact: true }).click()
@@ -157,16 +159,16 @@ test("lookup failure, retry and 10 second timeout", async ({ page }) => {
   })
   await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveCount(0)
 })
-test("no VAT and liquidation warning keep fields editable", async ({ page }) => {
+test("non-VAT businesses keep 0% and liquidation is refused", async ({ page }) => {
   await review(page, "no-vat")
   await expect(page.getByRole("spinbutton", { name: "Moms %", exact: true })).toHaveValue("0")
   await expect(page.getByText(/Ifølge CVR er virksomheden ikke momsregistreret/)).toBeVisible()
   await page.getByRole("button", { name: "Annuller", exact: true }).click()
-  await review(page, "warning")
-  await expect(page.getByText(/Ifølge CVR er virksomheden under likvidation/)).toBeVisible()
-  await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveValue(
-    "Nordlys Studio ApS",
-  )
+  await page.goto("/?scenario=warning")
+  await page.getByRole("textbox", { name: "Hvad hedder din virksomhed?" }).fill("Nordlys")
+  await page.getByRole("button", { name: /Fortsæt med Nordlys Studio/ }).click()
+  await expect(page.getByRole("heading", { name: /Nordlys Studio ApS er/ })).toBeVisible()
+  await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveCount(0)
 })
 test("390px mobile and English copy", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -249,7 +251,7 @@ test("hosted VAT-only registry mismatch can be answered before the first submit"
   expect(payload).toMatchObject({ momsRegistered: true, settings: { taxRate: 25 } })
 })
 
-test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ page }) => {
+test("manual review requires a CVR and keeps the VAT choice", async ({ page }) => {
   let payload: Record<string, unknown> = {}
   await page.route("**/confirm", async (route) => {
     payload = route.request().postDataJSON()
@@ -264,6 +266,9 @@ test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ pag
   await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Nordlys Test ApS")
   await page.getByRole("textbox", { name: "Adresse", exact: true }).fill("Testvej 1\n1000 København K")
   const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
+  await create.click()
+  await expect(cvr).toHaveAttribute("aria-invalid", "true")
+  expect(payload).toEqual({})
   await cvr.fill("24256790")
   // Clicking without a VAT answer explains and focuses it instead of a silent native block.
   await create.click()
@@ -278,4 +283,21 @@ test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ pag
   await create.click()
   await expect(page.getByRole("status")).toHaveText("KLAR")
   expect(payload).toMatchObject({ source: "manual", companyName: "Nordlys Test ApS", cvr: "24256790", momsRegistered: true, vatId: "DK24256790" })
+})
+
+for (const [locale, refusal, free] of [
+  ["da-DK", "quits er til virksomheder med CVR-nummer", "Det er gratis at registrere et CVR-nummer på virk.dk."],
+  ["en-GB", "quits is for businesses with a CVR number", "Registering a CVR number at virk.dk is free."],
+]) test(`B2B refusal and free CVR guidance appear in ${locale}`, async ({ page }) => {
+  await page.goto(`/?locale=${locale}`)
+  await expect(page.getByText(`${refusal}. ${free}`, { exact: true })).toBeVisible()
+  await page.screenshot({ path: `test-results/qui147-refusal-${locale}.png`, fullPage: true })
+})
+
+test("organization creation hands off to a registry-prefilled review", async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem("quits:onboarding:selected-company:v1:fixture-user:fixture-org",
+    JSON.stringify({ cvr: "24256790", name: "Untrusted", address: "Untrusted" })))
+  await page.goto("/")
+  await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveValue("Nordlys Studio ApS")
+  await expect(page.getByRole("textbox", { name: "Adresse", exact: true })).toHaveValue("Nørrebrogade 12, 2. tv.\n2200 København N")
 })

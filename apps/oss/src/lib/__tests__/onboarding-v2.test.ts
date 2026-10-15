@@ -10,9 +10,9 @@ const company = { companyName: "Test ApS", companyAddress: "Testvej 1, 2. th.\n1
 const input = { ...company, idempotencyKey: "4a8d7e5c-b2f1-4f72-8ba3-b58e21b55d45", cvr: "24256790", vatId: "DK24256790" }
 
 describe("Danish onboarding v2", () => {
-  it.each([true, false])("keeps empty manual CVR valid only without confirmation for registration %s", momsRegistered => {
+  it.each([true, false])("requires manual CVR regardless of confirmation for registration %s", momsRegistered => {
     const manual = { ...input, source: "manual" as const, cvr: "", vatId: undefined, momsRegistered }
-    expect(confirmOnboardingV2Schema.safeParse(manual).success).toBe(true)
+    expect(confirmOnboardingV2Schema.safeParse(manual).success).toBe(false)
     const result = confirmOnboardingV2WithVatConfirmationSchema.safeParse(manual)
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ["cvr"], message: "cvr.invalid" }))
@@ -33,11 +33,11 @@ describe("Danish onboarding v2", () => {
   })
   it.each([true, false])("keeps registration %s through a serialized draft and validated payload", momsRegistered => {
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", momsRegistered })
+    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", cvr: "24256790", momsRegistered })
     const restored = draftSchema.parse(JSON.parse(JSON.stringify(draft)))
     const payload = confirmOnboardingV2Schema.parse(confirmationPayload(restored))
     expect(payload).toMatchObject({ source: "manual", momsRegistered, settings: { taxRate: momsRegistered ? 25 : 0 } })
-    expect(payload.vatId).toBeUndefined()
+    expect(payload.vatId).toBe(momsRegistered ? "DK24256790" : undefined)
   })
   it("sets every Danish default explicitly for CVR and manual summaries", () => {
     const settings = buildDkPresets(company, "signup@example.test")

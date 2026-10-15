@@ -73,7 +73,7 @@ export type CvrLookupProvider = {
   get(cvr: string, context: CvrLookupContext): Promise<CvrCompany | null>
   suggestions?(cvr: string, context: CvrLookupContext): Promise<OnboardingSuggestions>
 }
-export type CvrLookupContext = { userId: string; organizationId: string; signal: AbortSignal }
+export type CvrLookupContext = { userId: string; organizationId?: string; signal: AbortSignal }
 
 export type RuntimeServices = {
   cvrLookupProvider?: CvrLookupProvider

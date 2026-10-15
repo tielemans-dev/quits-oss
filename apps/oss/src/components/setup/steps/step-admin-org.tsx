@@ -3,6 +3,8 @@ import { Label } from "../../ui/label"
 import { useI18n } from "../../../lib/i18n/react"
 
 type AdminOrgStepProps = {
+  organizationCvr: string
+  onOrganizationCvrChange: (value: string) => void
   organizationName: string
   organizationSlug: string
   adminName: string
@@ -16,6 +18,8 @@ type AdminOrgStepProps = {
 }
 
 export function AdminOrgStep({
+  organizationCvr,
+  onOrganizationCvrChange,
   organizationName,
   organizationSlug,
   adminName,
@@ -36,7 +40,13 @@ export function AdminOrgStep({
         <p className="text-sm text-muted-foreground">{t("setup.step.adminOrg.description")}</p>
       </div>
 
+      <p className="text-sm text-muted-foreground">{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="setup-org-cvr">{t("auth.onboarding.primary.dkLabel")}</Label>
+          <Input id="setup-org-cvr" inputMode="numeric" maxLength={8} pattern="[0-9]{8}" required value={organizationCvr}
+            onChange={event => onOrganizationCvrChange(event.target.value)} />
+        </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="setup-org-name">{t("setup.field.organizationName")}</Label>
           <Input
