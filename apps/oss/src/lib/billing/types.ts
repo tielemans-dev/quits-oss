@@ -1,3 +1,5 @@
+import type { Prisma } from "../../../generated/prisma/client"
+
 export type SubscriptionStatus = "free" | "trialing" | "expired" | "active" | "canceled" | "past_due"
 
 export type BillingSubscription = {
@@ -21,7 +23,8 @@ export type BillingSubscription = {
 export type BillingProvider = {
   getSubscription: (organizationId: string) => Promise<BillingSubscription>
   assertInvoiceCreationAllowed: (organizationId: string) => Promise<void>
-  startTrial?: (organizationId: string) => Promise<void>
+  /** The verified CVR and transaction include identity writes not yet visible to other connections. */
+  startTrial?: (organizationId: string, context?: { cvr: string; tx: Prisma.TransactionClient }) => Promise<void>
   createCheckoutSession?: (organizationId: string) => Promise<{ url: string | null }>
   createPortalSession?: (organizationId: string) => Promise<{ url: string | null }>
 }

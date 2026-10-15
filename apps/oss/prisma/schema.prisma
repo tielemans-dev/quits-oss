@@ -299,6 +299,15 @@ model CatalogItem {
   @@map("catalog_item")
 }
 
+// Runtime-owned trial history deliberately survives organization deletion.
+model CvrTrialUsage {
+  cvr                 String   @id
+  firstOrganizationId String
+  usedAt              DateTime @default(now())
+
+  @@map("cvr_trial_usage")
+}
+
 model OrganizationTaxId {
   id             String       @id @default(cuid())
   organizationId String

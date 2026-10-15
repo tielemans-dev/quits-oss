@@ -294,7 +294,8 @@ function toPatchCurrentValues(
 async function applyPatchToOrgSettings(
   organizationId: string,
   patch: OnboardingPatch,
-  source: "ai" | "manual"
+  source: "ai" | "manual",
+  userId: string
 ) {
   const updateData: Record<string, unknown> = {
     onboardingStatus: "in_progress",
@@ -323,6 +324,10 @@ async function applyPatchToOrgSettings(
   await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
+    if (patch.primaryTaxId !== undefined) await requireOnboardingCvr({
+      cvr: patch.primaryTaxId.replace(/^DK/, ""), scheme: patch.primaryTaxIdScheme,
+      cloud: true, userId, organizationId, tx,
+    })
     const settings = await tx.orgSettings.findUnique({ where: { organizationId } })
     if (settings?.onboardingVersion === 2 && (settings.onboardingCompletedAt || ["complete", "completed"].includes(settings.onboardingStatus))) {
       throw new TRPCError({ code: "CONFLICT", message: "Onboarding v2 is already complete" })
@@ -445,11 +450,7 @@ export const onboardingAiRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCloudOnboardingAiEnabled()
       try {
-        if (input.patch.primaryTaxId !== undefined) await requireOnboardingCvr({
-          cvr: input.patch.primaryTaxId.replace(/^DK/, ""), scheme: input.patch.primaryTaxIdScheme,
-          cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId,
-        })
-        await applyPatchToOrgSettings(ctx.organizationId, input.patch, input.source)
+        await applyPatchToOrgSettings(ctx.organizationId, input.patch, input.source, ctx.user.id)
       } catch (error) {
         onboardingLogger.error("onboarding_ai.apply.failed", {
           organizationId: ctx.organizationId,

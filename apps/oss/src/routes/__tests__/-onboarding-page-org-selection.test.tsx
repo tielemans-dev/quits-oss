@@ -117,6 +117,20 @@ afterEach(() => {
 })
 
 describe("OnboardingPage org selection", () => {
+  it("shows the duplicate CVR next step instead of the generic creation error", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
+    vi.mocked(authClient.organization.create).mockResolvedValue({ data: null, error: { code: "cvr.alreadyRegistered" } } as never)
+    render(<RoutePage />)
+    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
+    fireEvent.change(name, { target: { value: "Synthetic" } })
+    fireEvent.submit(name.closest("form")!)
+    expect(await screen.findByText("cvr.alreadyRegistered")).toBeTruthy()
+    expect(setActiveOrganization).not.toHaveBeenCalled()
+  })
+
   it("shows inactive lookup results without offering to create them", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({ data: { user: { id: "user", email: "test@example.test" }, session: { activeOrganizationId: null } } })

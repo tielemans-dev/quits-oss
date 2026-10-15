@@ -1,4 +1,5 @@
 export const enSetupMessages = {
+  "cvr.alreadyRegistered": "This CVR number already belongs to an organization. Ask its owner for an invite.",
   "cvr.invalid": "Enter a valid CVR number.",
   "cvr.inactive": "The CVR number must belong to an active business. Try another CVR number.",
   "cvr.unavailable": "CVR lookup is unavailable. Please try again shortly.",

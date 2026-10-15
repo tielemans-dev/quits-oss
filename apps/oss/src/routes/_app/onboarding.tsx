@@ -505,7 +505,8 @@ function OnboardingPageContent() {
             confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
             return { ok: true, id: result.data.id }
           }
-          setError(t(result.error?.code === 'cvr.inactive' ? 'auth.onboarding.cvrInactive'
+          setError(t(result.error?.code === 'cvr.alreadyRegistered' ? 'cvr.alreadyRegistered'
+            : result.error?.code === 'cvr.inactive' ? 'auth.onboarding.cvrInactive'
             : result.error?.code === 'cvr.unavailable' ? 'auth.onboarding.lookup.failed' : 'auth.onboarding.error'))
           return { ok: false, message: result.error?.message ?? '' }
         },

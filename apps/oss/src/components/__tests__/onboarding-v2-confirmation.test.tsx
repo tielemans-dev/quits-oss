@@ -305,7 +305,7 @@ describe("review page CVR errors (QUI-39)", () => {
     expect(api.confirm).not.toHaveBeenCalled()
   })
 
-  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable"] as const)("shows the localized server rejection %s at the CVR field", async reason => {
+  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable", "cvr.alreadyRegistered"] as const)("shows the localized server rejection %s at the CVR field", async reason => {
     const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error(reason) }) }
     const { cvr, form } = await review("da-DK", client)
     fireEvent.change(cvr, { target: { value: "24256790" } })

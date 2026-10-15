@@ -106,3 +106,41 @@ Wire `signupWaitlist.privacyVersion` from the same consent constant as the same-
 and privacy page. Deploy both hosts with that endpoint and set `SIGNUP_MODE=invite_only` only after
 the released extension is installed and tested. A published release and adoption are separate
 approval gates; this prerequisite does not publish an artifact or alter a consuming dependency.
+
+## Organization CVR admission
+
+A hosted runtime can register `enforceCvrUniqueness: true` on its runtime extension.
+Self-host ignores this option. Before enabling it, group Danish CVR/VAT tax IDs by
+canonical CVR and check `count(DISTINCT "organizationId") > 1`. The local migration
+contains the normalization query and emits a notice for existing duplicates. Resolve
+hosted duplicates before opting in; the migration preserves all existing organizations
+and adds no unique constraint to their tax IDs.
+
+Organization creation, onboarding confirmation, and CVR edits check other organizations
+inside the tax-ID write transaction. The check uses a PostgreSQL transaction advisory
+lock per CVR, so competing writers serialize across processes. Use READ COMMITTED
+isolation so the duplicate query sees a writer that committed while the lock waited.
+The same organization's IDs do not conflict. Danish CVR/VAT aliases and countryless
+legacy IDs count; foreign IDs do not. A conflict returns `cvr.alreadyRegistered`, which
+DA/EN clients translate with the next step of asking the organization's owner for an invite.
+
+`assertOrganizationCvrAvailable(tx, { cvr, organizationId, cloud })` is exported through
+`@quits/oss/runtime/extensions`. QUI-160 should call it after successful registry
+verification and before marking an unverified organization verified, in the same
+transaction that persists its CVR. The outage path itself is unchanged here. This
+helper checks admission only; it neither verifies registry facts nor grants a trial.
+
+`isCvrTrialEligible(store, cvr)` and `claimCvrTrial(store, cvr, organizationId)` are also
+exported there. The trial ledger has no organization foreign key and survives deletion.
+The read is informational; only a successful atomic claim authorizes a new trial.
+Hosted billing must claim with its durable entitlement write in one transaction and
+make retries idempotent against that entitlement. A false claim never grants a new
+trial, even to the same organization. Failed transactions roll back the claim.
+`BillingProvider.startTrial` receives an optional second argument `{ cvr, tx }` so
+providers can use the verified identity and the caller's transaction, including
+uncommitted CVR changes. Existing providers may ignore this additive argument.
+
+After adopting the released artifact, the hosted runtime must backfill known historical
+trial CVRs, including deleted organizations, before using this ledger for eligibility.
+Unknown deleted history cannot be reconstructed from the current organization table.
+No trial-grant implementation or automatic historical backfill is installed by OSS.

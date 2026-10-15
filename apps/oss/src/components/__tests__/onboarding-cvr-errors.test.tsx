@@ -17,7 +17,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks() })
 const company = { companyName: "Synthetic Seller", companyAddress: "Testvej 1", cvr: "24256790", companyForm: "ApS" }
 
 describe.each(["da", "en-US"])("onboarding CVR errors in %s", locale => {
-  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable"] as const)("translates %s in company review", async key => {
+  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable", "cvr.alreadyRegistered"] as const)("translates %s in company review", async key => {
     api.confirm.mockRejectedValueOnce(new Error(key))
     const done = vi.fn()
     const { container } = render(<I18nProvider locale={locale}><CompanyReview company={company} confirmationEnabled nonVatEnabled onComplete={done} /></I18nProvider>)
@@ -27,7 +27,7 @@ describe.each(["da", "en-US"])("onboarding CVR errors in %s", locale => {
     expect(screen.queryByText(key)).toBeNull()
     expect(done).not.toHaveBeenCalled()
   })
-  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable"] as const)("translates %s when applying an AI patch", async key => {
+  it.each(["cvr.invalid", "cvr.inactive", "cvr.unavailable", "cvr.alreadyRegistered"] as const)("translates %s when applying an AI patch", async key => {
     api.apply.mockRejectedValueOnce(new Error(key))
     const applied = vi.fn()
     render(<I18nProvider locale={locale}><AiAssistantPanel values={{}} missing={[]} onApplied={applied} /></I18nProvider>)
