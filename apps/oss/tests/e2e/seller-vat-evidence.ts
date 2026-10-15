@@ -19,18 +19,40 @@ export async function captureDocument(page: Page, surface: string, locale: strin
     }
   }
 }
-export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id: string, locale: string) {
+export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id: string, locale: string,
+  evidence: { scenario?: string; minPages?: number; expectedText?: string[]; footerText?: string[]; artifact?: "stored" | "live" } = {}) {
   const response = await page.request.get(`/api/documents/${kind}/${id}/pdf`)
   expect(response.ok(), `PDF export returned HTTP ${response.status()}`).toBe(true)
   const bytes = await response.body()
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-")
-  expect(response.headers()["x-quits-artifact"]).toBe("stored")
-  const prefix = test.info().outputPath(`${kind}-pdf-${locale}-${revision}`)
+  expect(response.headers()["x-quits-artifact"]).toBe(evidence.artifact ?? "stored")
+  const surface = evidence.scenario ? `${kind}-${evidence.scenario}` : kind
+  const prefix = test.info().outputPath(`${surface}-pdf-${locale}-${revision}`)
   await writeFile(`${prefix}.pdf`, bytes)
   // Poppler renders the actual export. The screenshot is an A4 preview scaled to each viewport.
   execFileSync("pdftoppm", ["-png", "-r", "100", `${prefix}.pdf`, prefix])
-  const png = await readFile(`${prefix}-1.png`)
-  await captureDocument(page, `${kind}-pdf-preview`, locale, `<html><body style="margin:0;background:white"><img alt="Exported PDF page 1" style="display:block;width:100%;max-width:827px;margin:auto" src="data:image/png;base64,${png.toString("base64")}" /></body></html>`)
+  const text = execFileSync("pdftotext", ["-layout", `${prefix}.pdf`, "-"], { encoding: "utf8" })
+  const pages = text.split("\f").filter(value => value.trim())
+  const footers = pages.map((value, index) => ({ page: index + 1,
+    expected: translate("pdf.pageNumber", locale, { page: index + 1, total: pages.length }),
+    text: value,
+  }))
+  // Keep the per-page text audit alongside the rendered exports.
+  await writeFile(`${prefix}-text-audit.json`, JSON.stringify({ kind, id, locale, scenario: evidence.scenario,
+    pages: footers.map(value => ({ ...value, footerPresent: value.text.includes(value.expected) })),
+  }, null, 2))
+  expect(pages.length).toBeGreaterThanOrEqual(evidence.minPages ?? 1)
+  const searchableText = text.replace(/(\p{L})-\s*\n\s*(\p{L})/gu, "$1$2").replace(/\s+/g, " ")
+  for (const expected of evidence.expectedText ?? []) expect(searchableText).toContain(expected)
+  for (const footer of footers) {
+    expect(footer.text).toContain(footer.expected)
+    for (const expected of evidence.footerText ?? []) expect(footer.text).toContain(expected)
+  }
+  for (let index = 0; index < pages.length; index++) {
+    const png = await readFile(`${prefix}-${index + 1}.png`)
+    const preview = index === 0 ? `${surface}-pdf-preview` : `${surface}-pdf-preview-page${index + 1}`
+    await captureDocument(page, preview, locale, `<html><body style="margin:0;background:white"><img alt="Exported PDF page ${index + 1}" style="display:block;width:100%;max-width:827px;margin:auto" src="data:image/png;base64,${png.toString("base64")}" /></body></html>`)
+  }
 }
 export async function captureInvoiceEmail(page: Page, invoiceId: string, organizationId: string, locale: string, publicPaymentUrl: string) {
   const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { contact: true, items: { orderBy: { sortOrder: "asc" } } } })

@@ -16,7 +16,12 @@ import {
 } from "../lib/organization-request"
 
 export type Context = {
-  request?: { url: string; headers: Headers }
+  request?: {
+    url: string
+    headers: Headers
+    /** Browser cancellation for downstream I/O. Never use it to cancel a transaction or commit. */
+    signal?: AbortSignal
+  }
   session: Awaited<ReturnType<typeof auth.api.getSession>> | null
   /**
    * The organization the client says it is acting for (the `x-yaip-organization-id` header), if

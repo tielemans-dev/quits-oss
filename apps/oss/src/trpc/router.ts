@@ -5,6 +5,7 @@ import { paymentDetailsRouter } from "./routers/payment-details"
 import { paymentsRouter } from "./routers/payments"
 import { creditNotesRouter } from "./routers/credit-notes"
 import { remindersRouter } from "./routers/reminders"
+import { jobsRouter } from "./routers/jobs"
 import { recurringRouter } from "./routers/recurring"
 import { exportsRouter } from "./routers/exports"
 import { agentsRouter } from "./routers/agents"
@@ -28,6 +29,7 @@ export const appRouter = router({
   payments: paymentsRouter,
   creditNotes: creditNotesRouter,
   reminders: remindersRouter,
+  jobs: jobsRouter,
   recurring: recurringRouter,
   exports: exportsRouter,
   agents: agentsRouter,
