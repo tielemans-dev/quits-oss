@@ -352,6 +352,12 @@ describe("hosted CVR admission remains enforced", () => {
     expect(mocks.settings?.companyLogo).toBe("https://example.test/logo.png")
     expect(mocks.cvrGet).not.toHaveBeenCalled()
   })
+  it("revalidates an unchanged CVR submitted without its scheme", async () => {
+    mocks.cvrGet.mockRejectedValue(new Error("synthetic outage"))
+    await expect(settingsCaller().update({ primaryTaxId: "24256790" })).rejects.toMatchObject({ message: "cvr.unavailable" })
+    expect(mocks.cvrGet).toHaveBeenCalledOnce()
+    expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790" })
+  })
   it.each(["draft", "settings", "ai"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
     for (const patch of [{ primaryTaxId: "" }, { primaryTaxId: "12345678" }, { primaryTaxId: "24256790", primaryTaxIdScheme: "other" }]) {
       await expect(updateTaxId(route, patch)).rejects.toMatchObject({ code: "BAD_REQUEST" })

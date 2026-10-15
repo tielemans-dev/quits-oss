@@ -54,6 +54,7 @@ import {
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
+import { translateCvrError } from "../../lib/i18n/cvr-error"
 import type { OrgStripeAccount } from "@quits/contracts/payments"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
@@ -656,7 +657,7 @@ function SettingsPage() {
     } catch (err) {
       setError(
         err instanceof Error
-          ? ["cvr.invalid", "cvr.inactive", "cvr.unavailable"].includes(err.message) ? t(err.message as TranslationKey) : err.message
+          ? translateCvrError(err.message, t)
           : t("settings.error.saveFailed")
       )
     } finally {
