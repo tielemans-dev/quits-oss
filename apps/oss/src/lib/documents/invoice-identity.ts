@@ -5,9 +5,9 @@ import { normalizeLocale } from "../i18n/locale"
 export function sellerCvr(ids: readonly DocumentTaxId[] | undefined): string | null {
   for (const id of ids ?? []) {
     if (id.countryCode && id.countryCode !== "DK") continue
-    const scheme = id.scheme?.toLowerCase()
+    const scheme = id.scheme?.trim().toLowerCase()
     const value = id.value.replace(/[\s.\-/]/g, "").toUpperCase()
-    if ((scheme === "cvr" || scheme === "dk_cvr" || (scheme === "vat" && (id.countryCode === "DK" || value.startsWith("DK")))) && /^(DK)?\d{8}$/.test(value)) return value.replace(/^DK/, "")
+    if ((scheme === "cvr" || scheme === "dk_cvr" || scheme === "dk_vat" || (scheme === "vat" && (id.countryCode === "DK" || value.startsWith("DK")))) && /^(DK)?\d{8}$/.test(value)) return value.replace(/^DK/, "")
   }
   return null
 }
