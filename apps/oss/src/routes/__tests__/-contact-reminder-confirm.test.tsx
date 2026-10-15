@@ -7,7 +7,7 @@ import { translate } from "../../lib/i18n/translate"
 
 const api = vi.hoisted(() => ({ get: vi.fn(), resume: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (options: object) => ({ ...options, useParams: () => ({ contactId: "buyer" }) }), useNavigate: () => vi.fn() }))
-vi.mock("../../trpc/client", () => ({ trpc: { contacts: { get: { query: api.get }, resumeReminders: { mutate: api.resume } } } }))
+vi.mock("../../trpc/client", () => ({ trpc: { invoices: { sendReadiness: { query: async () => ({ businessBuyersOnly: false }) } }, contacts: { get: { query: api.get }, resumeReminders: { mutate: api.resume } } } }))
 import { Route } from "../_app/contacts/$contactId"
 const Page = (Route as unknown as { component: ComponentType }).component
 afterEach(() => { cleanup(); vi.resetAllMocks() })
