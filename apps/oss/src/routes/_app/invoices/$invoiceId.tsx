@@ -11,7 +11,7 @@ import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
@@ -73,6 +73,8 @@ import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/docum
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
+import { readableIssues, type ReadableIssue } from "../../../lib/validation/readable-errors"
+import { followLineIssue } from "../../../lib/validation/line-issues"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
@@ -165,6 +167,8 @@ type Invoice = {
 }
 
 type EditItem = {
+  /** Identity of the row in the editor, stable across deletes and inserts (unlike its index). */
+  rowKey: string
   id?: string
   deliverableId?: string
   frozenNet?: number
@@ -176,6 +180,9 @@ type EditItem = {
   catalogItemId?: string
   vat?: DocumentLineInput["vat"]
 }
+
+let nextRowKey = 0
+const newRowKey = () => `row-${++nextRowKey}`
 
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
@@ -252,12 +259,27 @@ function InvoiceDetailPage() {
   const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
+  const [editIssues, setEditIssues] = useState<ReadableIssue[]>([])
+  const [focusInvalid, setFocusInvalid] = useState(false)
+  const editForm = useRef<HTMLDivElement>(null)
   const [editDueDate, setEditDueDate] = useState("")
   const [editSupplyDate, setEditSupplyDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
+  // The edit values as of this render, so a save can tell which fields changed while it was in flight.
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editSupplyDate: string; editNotes: string; editItems: EditItem[] } | null>(null)
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editSupplyDate, editNotes, editItems }), [editContactId, editDueDate, editSupplyDate, editNotes, editItems])
+  editSnapshot.current = editValues
+  // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
+  useEffect(() => {
+    if (!focusInvalid) return
+    setFocusInvalid(false)
+    const first = editForm.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    first?.focus({ preventScroll: true })
+    first?.scrollIntoView?.({ block: "center" })
+  }, [focusInvalid])
 
   // The page stays mounted when navigating to another invoice; drop answers for the previous one.
   const beginRequest = useDocumentResponseGuard(invoiceId)
@@ -328,6 +350,7 @@ function InvoiceDetailPage() {
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
       invoice.items.map((item) => ({
+        rowKey: newRowKey(),
         id: item.id, deliverableId: item.deliverableId ?? undefined,
         ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
         description: item.description,
@@ -343,25 +366,45 @@ function InvoiceDetailPage() {
         setCatalogItems(catalogData as CatalogItemOption[])
       }
     )
+    setEditIssues([])
     setEditing(true)
   }
 
+  // An issue belongs to the field it was reported for; editing that field clears it (as on new invoices).
+  function clearIssues(drop: (issue: ReadableIssue) => boolean) {
+    setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
+  }
+
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
+    clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     )
   }
 
   function addEditItem() {
-    setEditItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "0" }])
+    // Collection-level issues (too few or too many lines) are about the row count, which just changed.
+    clearIssues((issue) => issue.field === "items" && issue.line === undefined)
+    setEditItems((prev) => [...prev, { rowKey: newRowKey(), description: "", quantity: "1", unitPrice: "0" }])
   }
 
   function removeEditItem(index: number) {
     if (editItems.length <= 1) return
+    // Drop the deleted row's issues and move later rows' issues up with their rows.
+    setEditIssues((prev) => prev.flatMap((issue) =>
+      issue.field !== "items" ? [issue]
+        : issue.line === undefined ? []
+        : issue.line < index ? [issue]
+        : issue.line === index ? []
+        : [{ ...issue, line: issue.line - 1 }]))
     setEditItems((prev) => prev.filter((_, i) => i !== index))
   }
 
   function applyCatalogItemToEditItem(index: number, catalogItemId: string) {
+    // A catalog item replaces the description and unit price, so their issues no longer apply.
+    if (catalogItems.some((item) => item.id === catalogItemId)) {
+      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity")
+    }
     setEditItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item
@@ -373,12 +416,23 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
+    // A local quantity error stops the retry before the server can re-report other issues, so keep them until the request runs.
     if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
+      setFocusInvalid(true)
       return
     }
+    setEditIssues([])
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
+    const submitted = editSnapshot.current!
+    // Follow each issue to its row's current position; an issue for a value the user has since edited is dropped.
+    const follow = (issue: ReadableIssue): ReadableIssue | null => {
+      const now = editSnapshot.current!
+      if (issue.field === "items") return followLineIssue(issue, submitted.editItems, now.editItems)
+      const value = ({ contact: "editContactId", dueDate: "editDueDate", notes: "editNotes" } as const)[issue.field as "contact" | "dueDate" | "notes"]
+      return !value || now[value] === submitted[value] ? issue : null
+    }
     try {
       const updated = await trpc.invoices.updateV2.mutate({
         id: invoice.id,
@@ -399,13 +453,18 @@ function InvoiceDetailPage() {
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
       setIssuance(current => ({ ...current, supplyDate: editSupplyDate }))
+      // Edits made while the save was in flight are not in this response; keep the editor open so they are not lost.
+      if (editSnapshot.current !== submitted) return
       setEditing(false)
+      setEditIssues([])
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.detail.error.updateFailed")
-      )
+      if (!isCurrent()) return
+      const issues = readableIssues(err)
+      // Fields edited while the save was in flight may already be fixed; a late answer must not flag them again.
+      const current = issues?.flatMap((issue) => follow(issue) ?? [])
+      if (current?.length) { setEditIssues(current); setFocusInvalid(true) }
+      else if (issues) setError(t("validation.save.failed"))
+      else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
       setActing(false)
     }
@@ -550,12 +609,29 @@ function InvoiceDetailPage() {
   if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
     const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
+      [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
+    const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
+      editIssues.some((issue) => issue.field === field && issue.line === line && (!issue.column || !column || issue.column === column))
+    const fieldMessage = (id: string, match: (issue: ReadableIssue) => boolean) => {
+      const messages = issueMessages(match)
+      return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
+    }
+    const a11y = (id: string, invalid: boolean) => ({ "aria-invalid": invalid || undefined, "aria-describedby": invalid ? id : undefined })
+    // Each line column has its own message element; a control is described only by its column's message and any whole-line message.
+    const lineColumns = ["line", "description", "quantity", "unitPrice"] as const
+    const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
+    const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
+      const id = (at: (typeof lineColumns)[number]) => editIssues.some((issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === at) ? lineIssueId(index, at) : null
+      return [id(column), id("line")].filter(Boolean).join(" ") || undefined
+    }
+    const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
 
     return (
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-3xl" ref={editForm}>
       {bankNudge.dialog}
         <Card>
           <CardHeader>
@@ -573,8 +649,8 @@ function InvoiceDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t("docForm.contact")} *</Label>
-                <Select disabled={!!invoice.agreementId} value={editContactId} onValueChange={setEditContactId}>
-                  <SelectTrigger className="w-full">
+                <Select disabled={!!invoice.agreementId} value={editContactId} onValueChange={(value) => { setEditContactId(value); clearIssues((issue) => issue.field === "contact") }}>
+                  <SelectTrigger className="w-full" {...a11y("edit-contact-error", hasIssue("contact"))}>
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -585,19 +661,24 @@ function InvoiceDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldMessage("edit-contact-error", (issue) => issue.field === "contact")}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="editDueDate">{t("invoices.new.field.dueDate")} *</Label>
                 <LocalizedDateField
                   id="editDueDate"
                   value={editDueDate}
-                  onChange={setEditDueDate}
+                  onChange={(value) => { setEditDueDate(value); clearIssues((issue) => issue.field === "dueDate") }}
+                  invalid={hasIssue("dueDate")}
+                  describedBy={hasIssue("dueDate") ? "edit-dueDate-error" : undefined}
                   locale={locale}
                   placeholder={t("docForm.selectDate")}
                   clearLabel={t("docForm.clear")}
                 />
+                {fieldMessage("edit-dueDate-error", (issue) => issue.field === "dueDate")}
               </div>
             </div>
+            {fieldMessage("edit-form-error", (issue) => issue.field === "form" || issue.field === "email" || issue.field === "cvr")}
 
             <div className="grid gap-2">
               <Label htmlFor="editSupplyDate">{t("invoices.issuance.supplyDate")}</Label>
@@ -614,6 +695,7 @@ function InvoiceDetailPage() {
             {/* Line Items */}
             <div className="grid gap-3">
               <Label>{t("docForm.lineItems")}</Label>
+              {fieldMessage("edit-items-error", (issue) => issue.field === "items" && issue.line === undefined)}
               <div className="rounded-md border">
                 <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                   <span>{t("docForm.column.item")}</span>
@@ -625,7 +707,7 @@ function InvoiceDetailPage() {
                 </div>
                 {editItems.map((item, index) => (
                   <div
-                    key={index}
+                    key={item.rowKey}
                     className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                   >
                     <Select
@@ -656,6 +738,7 @@ function InvoiceDetailPage() {
                       placeholder={t("docForm.column.description")}
                       disabled={!!item.deliverableId}
                       value={item.description}
+                      {...lineA11y(index, "description")}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
                     <div className="grid min-w-0 gap-1">
@@ -665,7 +748,8 @@ function InvoiceDetailPage() {
                         type="text"
                         inputMode="decimal"
                         aria-label={t("docForm.column.qty")}
-                        aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success}
+                        {...lineA11y(index, "quantity")}
+                        aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success || hasIssue("items", index, "quantity") || undefined}
                         disabled={!!item.deliverableId}
                         value={item.quantity || ""}
                         onChange={(e) =>
@@ -682,6 +766,7 @@ function InvoiceDetailPage() {
                         step="0.0001"
                         disabled={!!item.deliverableId}
                         value={item.unitPrice || ""}
+                        {...lineA11y(index, "unitPrice")}
                         onChange={(e) =>
                           updateEditItem(index, "unitPrice", e.target.value)
                         }
@@ -702,6 +787,11 @@ function InvoiceDetailPage() {
                     >
                       <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
+                    {editIssues.some((issue) => issue.field === "items" && issue.line === index) && (
+                      <div className="col-span-full">
+                        {lineColumns.map((column) => <div key={column}>{fieldMessage(lineIssueId(index, column), (issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === column)}</div>)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -756,10 +846,12 @@ function InvoiceDetailPage() {
               <Textarea
                 id="editNotes"
                 value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
+                onChange={(e) => { setEditNotes(e.target.value); clearIssues((issue) => issue.field === "notes") }}
                 placeholder={t("invoices.new.notes.placeholder")}
                 rows={3}
+                {...a11y("edit-notes-error", hasIssue("notes"))}
               />
+              {fieldMessage("edit-notes-error", (issue) => issue.field === "notes")}
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2">
@@ -768,6 +860,7 @@ function InvoiceDetailPage() {
               variant="outline"
               onClick={() => {
                 setEditing(false)
+                setEditIssues([])
                 setError(null)
               }}
             >

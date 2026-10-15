@@ -79,6 +79,26 @@ describe("invoice review regressions", () => {
     expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(supplyDate ?? "")
   })
 
+  it.each(["2026-10-09", null])("keeps a delivery-date edit to %s made during an earlier save", async (supplyDate) => {
+    const stored = await api.get()
+    let finish!: (invoice: unknown) => void
+    api.update.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit" }))
+    const field = screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement
+    fireEvent.change(field, { target: { value: "2026-10-07" } })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
+    fireEvent.change(field, { target: { value: supplyDate ?? "" } })
+    await act(async () => { finish({ ...stored, supplyDate: "2026-10-07" }) })
+    expect(screen.getByLabelText("invoices.issuance.supplyDate")).toBe(field)
+    expect(field.value).toBe(supplyDate ?? "")
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ supplyDate: "2026-10-07" }))
+    api.update.mockResolvedValue({ ...stored, supplyDate })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
+    await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    expect(api.update).toHaveBeenLastCalledWith(expect.objectContaining({ supplyDate }))
+  })
+
   it("rejects exponent quantities before saving and permits one comma-normalized retry", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })
