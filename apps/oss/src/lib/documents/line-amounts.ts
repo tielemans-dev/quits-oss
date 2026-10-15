@@ -1,3 +1,4 @@
+import { vatReasonCodeSchema } from "@quits/contracts/vat"
 import type { TranslationKey } from "../i18n/messages"
 
 /**
@@ -43,23 +44,48 @@ export function lineColumnKeys(basis: PriceBasis | undefined): { unitPrice: Tran
 }
 
 /** VAT of one rate. Amounts are decimal strings in the document's currency. */
-export type VatRow = { ratePercent: string; net: string; tax: string; gross: string }
+export type VatRow = { ratePercent: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; treatments?: string[]; reasonCodes?: string[]; statements?: string[] }
 
 const isZero = (amount: string) => !/[1-9]/.test(amount)
 
 /**
  * The VAT rows a document prints under its subtotal: one per rate. A document with a single zero
- * rate prints none, as before; one that mixes rates keeps its zero-rated row so the reader can
+ * unclassified rate prints none; classified zero rates retain their reason so the reader can
  * see which part carried no VAT.
  */
 export function printableVatRows(rows: readonly VatRow[]): VatRow[] {
-  if (rows.length === 1 && isZero(rows[0]!.ratePercent)) return []
+  if (rows.length === 1 && isZero(rows[0]!.ratePercent) && !vatReasonKeys(rows[0]!).length && !rows[0]!.statements?.length) return []
   return [...rows]
 }
 
-/** The labels of the subtotal and total rows. Only a gross document says which side of the VAT they are on. */
-export function totalsLabelKeys(basis: PriceBasis | undefined): { subtotal: TranslationKey; total: TranslationKey } {
-  return basis === "gross"
+/** VAT-bearing documents state the side of VAT regardless of their line price basis. */
+export function totalsLabelKeys(basis: PriceBasis | undefined, hasVat = basis === "gross"): { subtotal: TranslationKey; total: TranslationKey } {
+  return hasVat
     ? { subtotal: "pdf.subtotalExclTax", total: "pdf.totalInclTax" }
     : { subtotal: "pdf.subtotal", total: "pdf.total" }
+}
+
+export function vatReasonKeys(row: VatRow): TranslationKey[] {
+  const treatments = [...new Set(row.treatments ?? (row.treatment ? [row.treatment] : []))].flatMap<TranslationKey>(treatment => {
+    if (treatment === "out_of_scope") return ["pdf.vatOutOfScope"]
+    if (["exempt", "reverse_charge_domestic", "intra_community", "export", "zero_rated"].includes(treatment)) return [`vat.treatment.${treatment}` as TranslationKey]
+    return []
+  })
+  const reasons = [...new Set(row.reasonCodes ?? (row.reasonCode ? [row.reasonCode] : []))].flatMap<TranslationKey>(code => {
+    const parsed = vatReasonCodeSchema.safeParse(code)
+    // "other" is the catch-all and names nothing the treatment does not already say.
+    return parsed.success && parsed.data !== "other" ? [`vat.reason.${parsed.data}` as TranslationKey] : []
+  })
+  return [...treatments, ...reasons]
+}
+
+/** The document's nominal rate from its lines in order: the first positive one, else the first. */
+export function nominalLineTaxRate(rates: readonly (number | null | undefined)[]): number | undefined {
+  const known = rates.filter((rate): rate is number => rate != null)
+  return known.find(rate => rate > 0) ?? known[0]
+}
+
+export function deviationVatLabel(rate: number | undefined, rows: readonly VatRow[] | null | undefined, mainRate?: number, momsRegistered?: boolean | null): TranslationKey | null {
+  const main = mainRate ?? Number(rows?.find(row => Number(row.ratePercent) > 0)?.ratePercent)
+  return momsRegistered !== false && rate !== undefined && Number.isFinite(main) && rate !== main ? "pdf.lineVatRate" : null
 }
