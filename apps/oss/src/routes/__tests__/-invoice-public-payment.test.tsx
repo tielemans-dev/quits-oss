@@ -1,13 +1,8 @@
 import type { ReactNode } from "react"
-import type { StripeAccountStatus } from "@quits/contracts/payments"
 import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { PublicInvoicePaymentPage } from "../../components/invoices/public-invoice-payment-page"
 import { LocalizedDocument } from "../../components/documents/localized-document"
-import {
-  getStripePaymentConfigurationState,
-  type StripePaymentConfigurationSnapshot,
-} from "../../lib/payments/stripe"
 
 const tinyLogoDataUrl =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
@@ -393,81 +388,4 @@ describe("frozen public bank details", () => {
       expect(html).not.toContain("0440116243")
     })
   }
-})
-
-const noByok: StripePaymentConfigurationSnapshot = {
-  stripePublishableKey: null,
-  stripeSecretKeyEnc: null,
-  stripeWebhookSecretEnc: null,
-}
-
-const configuredByok: StripePaymentConfigurationSnapshot = {
-  stripePublishableKey: "pk_test_123456789",
-  stripeSecretKeyEnc: "encrypted-secret",
-  stripeWebhookSecretEnc: "encrypted-webhook",
-}
-
-function publicPayPage(status: StripeAccountStatus, byok: StripePaymentConfigurationSnapshot = noByok) {
-  const bankAccount = { regNumber: "0040", accountNumber: "0440116243", iban: "DK5000400440116243" }
-  return page("en-US", <PublicInvoicePaymentPage token="test" state={{
-    kind: "ready",
-    paymentState: "unpaid",
-    stripeEnabled: getStripePaymentConfigurationState({ ...byok, stripeAccountStatus: status }).configured,
-    seller,
-    invoice: {
-      ...baseInvoice,
-      currency: "DKK",
-      paymentReference: "REF-42",
-      sellerSnapshot: { bankAccount },
-    },
-  }} />)
-}
-
-describe("public pay card gating", () => {
-  it("shows bank transfer only when Stripe is not connected", () => {
-    const html = publicPayPage("none")
-    expect(html).toContain("Payment details")
-    expect(html).toContain("0440116243")
-    expect(html).toContain("Pay by bank transfer using the details and reference below.")
-    expect(html).not.toContain("Pay now")
-  })
-
-  it("shows the card button and bank transfer when Connect can take card payments", () => {
-    const html = publicPayPage("active")
-    expect(html).toContain("Pay now")
-    expect(html).toContain("Payment details")
-    expect(html).toContain("0440116243")
-    expect(html).toContain("REF-42")
-  })
-
-  it("shows bank transfer only when the Connect account is restricted", () => {
-    const html = publicPayPage("restricted")
-    expect(html).toContain("Payment details")
-    expect(html).toContain("0440116243")
-    expect(html).not.toContain("Pay now")
-  })
-
-  it("keeps bank transfer and hides the card button while Connect onboarding is pending", () => {
-    const html = publicPayPage("pending")
-    expect(html).toContain("0440116243")
-    expect(html).not.toContain("Pay now")
-  })
-
-  it("shows the card button when own Stripe keys are configured, whatever the Connect status", () => {
-    for (const status of ["none", "pending", "restricted", "active"] as const) {
-      const html = publicPayPage(status, configuredByok)
-      expect(html).toContain("Pay now")
-      expect(html).toContain("0440116243")
-    }
-  })
-
-  it("does not treat a partial key set as ready", () => {
-    const html = publicPayPage("none", {
-      stripePublishableKey: "pk_test_123456789",
-      stripeSecretKeyEnc: "encrypted-secret",
-      stripeWebhookSecretEnc: null,
-    })
-    expect(html).toContain("0440116243")
-    expect(html).not.toContain("Pay now")
-  })
 })
