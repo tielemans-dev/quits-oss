@@ -8,6 +8,7 @@ vi.mock("../../lib/email", async () => {
 
 import { appRouter } from "../../trpc/router"
 import { prisma } from "../../lib/db"
+import * as reminderPreferences from "../../lib/reminders/unsubscribe"
 import { deliver, EmailSendError } from "../../lib/email"
 import { deliverSmtp } from "../../lib/email-smtp-node"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
@@ -66,6 +67,7 @@ describeIfDatabase("email outbox", () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     resetRuntimePlatform()
     while (cleanups.length) await cleanups.pop()?.()
     process.env.RESEND_API_KEY = previousEnv.RESEND_API_KEY
@@ -649,6 +651,26 @@ describeIfDatabase("email outbox", () => {
     })
     return { ...ctx, reminderId: reminder.id }
   }
+
+  it("retries SMTP after the final withdrawal check throws before submission", async () => {
+    const { org, reminderId } = await queuedScheduledReminder()
+    useSmtp()
+    const check = vi.spyOn(reminderPreferences, "automaticReminderSuppressed")
+      .mockResolvedValueOnce(false).mockRejectedValueOnce(new Error("Temporary withdrawal query failure"))
+    expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ retrying: 1 })
+    expect(check).toHaveBeenCalledTimes(2)
+    expect(deliver).not.toHaveBeenCalled()
+    const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId, type: EMAIL_DELIVERY_JOB, status: "pending" } })
+    expect(job.payload).toMatchObject({ requests: 0 })
+    expect(job.result).toBeNull()
+    check.mockRestore()
+    await makeDue(job.id)
+    expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ succeeded: 1, failed: 0 })
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(deliver).mock.calls[0]?.[1]).toMatchObject({ provider: "smtp" })
+    expect(await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ result: { outcome: "delivered" } })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminderId } })).toMatchObject({ outcome: "sent" })
+  })
 
   it("withdraws a queued scheduled reminder once automatic reminders are turned off", async () => {
     const { org, reminderId } = await queuedScheduledReminder()
