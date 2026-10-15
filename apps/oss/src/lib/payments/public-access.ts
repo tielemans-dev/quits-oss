@@ -1,6 +1,7 @@
+import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
-import { getStripePaymentConfigurationState } from "./stripe"
+import { assessCardCheckout } from "./stripe"
 import {
   getInvoicePaymentState,
   verifyInvoicePaymentToken,
@@ -57,16 +58,21 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     return null
   }
 
-  const stripeState = getStripePaymentConfigurationState({
-    stripePublishableKey: invoice.organization.settings?.stripePublishableKey ?? null,
-    stripeSecretKeyEnc: invoice.organization.settings?.stripeSecretKeyEnc ?? null,
-    stripeWebhookSecretEnc: invoice.organization.settings?.stripeWebhookSecretEnc ?? null,
-    stripeAccountStatus: invoice.organization.settings?.stripeAccountStatus,
-  })
+  const settings = invoice.organization.settings
+  const balanceDue = computeSettlement(invoice).balanceDue
 
   return {
     invoice,
     paymentState: getInvoicePaymentState(invoice),
-    stripeEnabled: stripeState.configured,
+    stripeEnabled: assessCardCheckout({
+      configuration: {
+        stripePublishableKey: settings?.stripePublishableKey ?? null,
+        stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
+        stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
+        stripeAccountStatus: settings?.stripeAccountStatus,
+      },
+      amount: balanceDue.toNumber(),
+      currency: invoice.currency,
+    }).ready,
   }
 }
