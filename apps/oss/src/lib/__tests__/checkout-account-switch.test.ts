@@ -4,7 +4,6 @@ import { EXPIRE_CHECKOUT_SESSION_JOB } from "../../domain/documents/checkout-ses
 import { expireOrganizationCheckoutSession } from "../payments/checkout-sessions"
 import { resolvePublicInvoiceCheckout } from "../payments/public-checkout"
 import { signInvoicePaymentToken } from "../payments/public"
-import * as stripe from "../payments/stripe"
 import { setRuntimeExtensions } from "../runtime/extensions"
 import { encryptSecret } from "../secrets"
 
@@ -65,9 +64,10 @@ describe("checkout sessions after switching Stripe accounts", () => {
     else {
       state.byokExpire.mockRejectedValue(missing())
       // The card gate can choose BYOK while the old Connect account is no longer ready.
-      vi.spyOn(stripe, "resolveStripeCheckoutTarget").mockResolvedValue(byok)
+      state.settings.stripeAccountStatus = "restricted"
     }
-    state.create.mockImplementation(async () => {
+    state.create.mockImplementation(async (_params, options) => {
+      expect(options?.stripeAccount).toBe(direction === "byok-to-connect" ? connect.stripeAccount : undefined)
       expect(state.byokExpire).toHaveBeenCalledWith("cs_previous")
       expect(state.connectExpire).toHaveBeenCalledWith("cs_previous", expect.objectContaining({ stripeAccount: "acct_switch" }))
       return { id: "cs_new", url: "https://checkout.example/new" }
