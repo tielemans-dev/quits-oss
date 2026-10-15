@@ -237,7 +237,7 @@ Run the standard test suite:
 bun run test
 ```
 
-Build, test and typecheck commands generate the Prisma client first, including on a fresh checkout or a root Turbo cache hit. Before running Vitest, TypeScript or `knip:report` directly in a fresh checkout, run `bun run prisma:generate` from the repository root once; direct tools bypass the package-script preparation hooks.
+Build, test and typecheck commands generate the Prisma client first, including on a fresh checkout or a root Turbo cache hit; `pretest:integration` also prepares integration tests. Before running Vitest, TypeScript or `knip:report` directly in a fresh checkout, run `bun run prisma:generate` from the repository root once; direct tools bypass the package-script preparation hooks.
 
 Run the repo quality gates:
 

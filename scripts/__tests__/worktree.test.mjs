@@ -86,6 +86,16 @@ test("setup and teardown only operate on a recorded worktree DB, preserve failed
     assert.equal(calls.filter(([command, args]) => (command === "dropdb" && args[0] !== "--version") || args.includes("migrate")).length, 0)
     // A persisted matching marker recovers a crash before the ownership flag save.
     marker = (await read()).allocations[worktree].owner
+    const beforeGeneration = calls.length
+    await assert.rejects(setup(worktree, source, (command, args, options) => {
+      if (command === "bun" && args.includes("generate")) {
+        assert.equal(options.cwd, join(worktree, "apps/oss"))
+        throw new Error("generation failed")
+      }
+      return execute(command, args, options)
+    }), /generation failed/)
+    assert.equal((await read()).allocations[worktree].ready, false)
+    assert.equal(calls.slice(beforeGeneration).some(([, args]) => args.includes("migrate")), false)
     await assert.rejects(setup(worktree, source, (command, ...rest) => {
       const output = execute(command, ...rest)
       if (command === "bun" && rest[0].includes("migrate")) throw new Error("migration failed")
@@ -93,7 +103,13 @@ test("setup and teardown only operate on a recorded worktree DB, preserve failed
     }), /migration failed/)
     assert.equal((await read()).allocations[worktree].ready, false)
     await assert.rejects(worktreeEnvironment(worktree, source), /setup incomplete/)
+    const beforeRetry = calls.length
     await setup(worktree, source, execute)
+    assert.deepEqual(calls.slice(beforeRetry).filter(([command]) => command === "bun").map(([, args]) => args), [
+      ["x", "--no-install", "prisma", "--version"],
+      ["x", "--no-install", "prisma", "generate"],
+      ["x", "--no-install", "prisma", "migrate", "deploy"],
+    ])
     assert.equal(calls.filter(([command, args]) => command === "createdb" && args[0] !== "--version").length, 1)
     assert.equal((await read()).allocations[worktree].ready, true)
     assert.equal((await worktreeEnvironment(worktree, source, execute)).env.PORT, "3101")
