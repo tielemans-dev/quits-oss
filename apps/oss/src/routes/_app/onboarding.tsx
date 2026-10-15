@@ -211,6 +211,8 @@ function OnboardingPageContent() {
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
   >(null)
+  const legacyOnboardingReady = v2Availability !== null && runtimeCapabilities !== null && !v2Availability.enabled &&
+    !(runtimeCapabilities.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled)
   const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled])
   const [values, setValues] = useState<CloudOnboardingValues>(() => ({ ...DEFAULT_CLOUD_ONBOARDING_VALUES, locale: organizationLocaleForUi(uiLocale) }))
   const localeChoice = useRef<string | null>(null)
@@ -304,7 +306,7 @@ function OnboardingPageContent() {
           return
         }
 
-        const selected = !status.isComplete && session?.user?.id && session.session.activeOrganizationId
+        const selected = legacyOnboardingReady && !status.isComplete && session?.user?.id && session.session.activeOrganizationId
           ? readSelectedCompany(session.user.id, session.session.activeOrganizationId)
           : null
         const uiOrganizationLocale = localeChoice.current ?? organizationLocaleForUi(uiLocale)
@@ -333,10 +335,9 @@ function OnboardingPageContent() {
           else if (selected || (!parsed.companyName.trim() && parsed.locale === 'da-DK')) {
             parsed.locale = organizationLocaleForUi(uiLocale)
           }
-          if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
+          if (legacyOnboardingReady && !selected && !localeChoice.current && !parsed.companyName.trim() &&
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
-            // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
-            // draft. When capabilities are unknown, skip the write; the next visit can store it.
+            // Onboarding v2 is confirmation-only; an abandoned wizard must not leave a legacy draft.
             const v2Active = await withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
               .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
               .catch(() => true)
@@ -387,7 +388,7 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
+  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale, legacyOnboardingReady])
 
   const [runtimeCapabilitiesFailed, setRuntimeCapabilitiesFailed] = useState(false)
   useEffect(() => {

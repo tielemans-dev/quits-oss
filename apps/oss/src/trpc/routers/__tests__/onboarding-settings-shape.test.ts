@@ -101,7 +101,12 @@ vi.mock("../../../lib/db", () => {
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => { const id = mocks.taxIds.find(id => id.id === where.id)!; Object.assign(id, data); return id },
     },
     $queryRaw: async () => [],
-    $transaction: async (run: (tx: unknown) => unknown) => run(db),
+    $transaction: async (run: (tx: unknown) => unknown, options?: { timeout?: number }) => {
+      const started = Date.now()
+      const result = await run(db)
+      if (Date.now() - started > (options?.timeout ?? 5_000)) throw new Error("Transaction expired")
+      return result
+    },
   }
   return { prisma: db }
 })
@@ -357,6 +362,19 @@ describe("hosted CVR admission remains enforced", () => {
     await expect(settingsCaller().update({ primaryTaxId: "24256790" })).rejects.toMatchObject({ message: "cvr.unavailable" })
     expect(mocks.cvrGet).toHaveBeenCalledOnce()
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790" })
+  })
+  it("saves a valid replacement when the registry takes longer than five seconds", async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.cvrGet.mockImplementation(async cvr => {
+        await new Promise(resolve => setTimeout(resolve, 6_000))
+        return { cvr, status: "active", statusClass: "active" }
+      })
+      const saved = settingsCaller().update({ primaryTaxId: "45676102", primaryTaxIdScheme: "cvr" }).then(() => "saved", (error: Error) => error.message)
+      await vi.advanceTimersByTimeAsync(6_000)
+      expect(await saved).toBe("saved")
+      expect(mocks.taxIds[0]?.value).toBe("45676102")
+    } finally { vi.useRealTimers() }
   })
   it.each(["draft", "settings", "ai"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
     for (const patch of [{ primaryTaxId: "" }, { primaryTaxId: "12345678" }, { primaryTaxId: "24256790", primaryTaxIdScheme: "other" }]) {
