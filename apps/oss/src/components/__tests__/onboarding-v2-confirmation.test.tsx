@@ -148,6 +148,56 @@ describe("CVR VAT notice", () => {
   })
 })
 
+describe("unanswered CVR VAT validation (QUI-56)", () => {
+  const cases = ["en-US", "da-DK"].flatMap(locale =>
+    [true, false].flatMap(confirmationEnabled =>
+      [true, false].flatMap(nonVatEnabled =>
+        [true, false, null].map(momsRegistered => ({ locale, confirmationEnabled, nonVatEnabled, momsRegistered })),
+      ),
+    ),
+  )
+
+  it.each(cases)("handles CVR VAT $momsRegistered in $locale with confirmation=$confirmationEnabled, nonVAT=$nonVatEnabled", async ({ locale, confirmationEnabled, nonVatEnabled, momsRegistered }) => {
+    const draft = newDraft({ cvr: "24256790", name: "Synthetic Studio ApS", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered }, "signup@example.test", false)
+    storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
+    const done = vi.fn()
+    render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled={confirmationEnabled} nonVatEnabled={nonVatEnabled} client={createOnboardingV2Client(false, confirmationEnabled)} onComplete={done} /></I18nProvider>)
+    const save = await screen.findByRole("button", { name: translate("onboardingV2.confirm", locale) })
+    const vat = confirmationEnabled ? screen.getAllByRole("radio")[0]! : screen.getByRole("combobox", { name: translate("onboardingV2.field.vat", locale) })
+    const unanswered = confirmationEnabled || momsRegistered === null
+    if (confirmationEnabled) expect((vat as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(save)
+
+    if (unanswered) {
+      expect(await screen.findByText(translate("onboardingV2.validation", locale))).toBeTruthy()
+      const error = screen.getByText(translate("validation.required", locale))
+      expect(error.closest(".ob-card")?.contains(vat)).toBe(true)
+      expect(vat.getAttribute("aria-invalid")).toBe("true")
+      expect(document.activeElement).toBe(vat)
+      expect(api.prepare).not.toHaveBeenCalled()
+      expect(api.confirm).not.toHaveBeenCalled()
+      expect(done).not.toHaveBeenCalled()
+    } else if (momsRegistered || nonVatEnabled) {
+      // Self-hosted setup can use a known registry value without hosted confirmation.
+      await waitFor(() => expect(done).toHaveBeenCalledOnce())
+      expect(api.prepare).not.toHaveBeenCalled()
+      expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered }))
+      return
+    } else {
+      expect(api.confirm).not.toHaveBeenCalled()
+    }
+
+    // Answering the question clears the error and permits a retry in every capability state.
+    if (confirmationEnabled) fireEvent.click(vat)
+    else fireEvent.change(vat, { target: { value: "true" } })
+    expect(screen.queryByText(translate("validation.required", locale))).toBeNull()
+    fireEvent.click(save)
+    await waitFor(() => expect(done).toHaveBeenCalledOnce())
+    expect(api.prepare).toHaveBeenCalledTimes(confirmationEnabled ? 1 : 0)
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+  })
+})
+
 describe("review page CVR errors (QUI-39)", () => {
   async function review(locale: string, client = createOnboardingV2Client(false)) {
     const draft = newDraft(null, "signup@example.test", false)

@@ -357,12 +357,16 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
     if (!draft || saving.current) return
-    if (!nonVatEnabled && draft.values.momsRegistered === false) return
     const v = draft.values
     // The form opts out of native (English-only) browser validation; required text fields the schema allows empty are checked here.
     const empty: string[] = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
     // Never a silently disabled button: a missing VAT answer is a visible, focused validation error (QUI-56).
-    if ((confirmationEnabled && sellerVatChoice === null) || v.momsRegistered === null) empty.push("momsRegistered")
+    // Reject before capability guards or the payload's non-null VAT assertion.
+    if ((confirmationEnabled && sellerVatChoice === null) || v.momsRegistered === null) {
+      reject([...empty, "momsRegistered"])
+      return
+    }
+    if (!nonVatEnabled && v.momsRegistered === false) return
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
       (!/^\d{4}$/.test(v.bankRegNumber) || !/^\d{1,10}$/.test(v.bankAccountNumber))
@@ -706,12 +710,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
               {/* Not natively required: confirm() shows, focuses and explains a missing answer (QUI-56). */}
               <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} invalid={validationErrors.includes("momsRegistered")} disabled={busy} onChange={value => update("momsRegistered", value)} />
+              {validationErrors.includes("momsRegistered") ? <p className="ob-error" role="alert">{t("validation.required")}</p> : null}
             </div> : (
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
                 aria-label={TT("field.vat")}
                 name="momsRegistered"
                 aria-invalid={validationErrors.includes("momsRegistered")}
+                aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined}
                 value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
                 aria-required
                 disabled={busy}
@@ -721,6 +727,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 <option value="true">{TT("yes")}</option>
                 {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
+              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{t("validation.required")}</p> : null}
             </SourceField>
             )}
             {field("taxRate", "field.rate", TT("defaultTag"), {
