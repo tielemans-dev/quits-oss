@@ -93,11 +93,11 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Typecheck
-        run: bun run typecheck
-
       - name: Generate Prisma client
         run: bun --filter @quits/oss prisma:generate
+
+      - name: Typecheck
+        run: bun run typecheck
 
       - name: Apply migrations
         working-directory: apps/oss
