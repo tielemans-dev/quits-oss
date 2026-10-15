@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
   savedLocale: "da",
+  distribution: "selfhost",
   getLayout: vi.fn(),
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
@@ -84,10 +85,11 @@ function LocaleProbe() {
 beforeEach(() => {
   vi.stubEnv("SSR", false)
   state.savedLocale = "da"
+  state.distribution = "selfhost"
   state.getLayout.mockImplementation(async () => ({
     user: { id: "u_1", name: "User", email: "user@example.test", image: null },
-    activeOrganizationId: "org_1", runtime: { distribution: "selfhost", billingEnabled: false },
-    locale: state.savedLocale, cloudOnboardingComplete: null,
+    activeOrganizationId: "org_1", runtime: { distribution: state.distribution, billingEnabled: false },
+    locale: state.savedLocale, cloudOnboardingComplete: state.distribution === "cloud" ? true : null,
   }))
   state.getSettings.mockImplementation(async () => settingsData())
   state.updateSettings.mockImplementation(async (input: { locale: string }) => {
@@ -99,7 +101,7 @@ afterEach(() => {
   cleanup()
   invalidateAppLayoutSession()
   resetRequestOrganizationForTesting()
-  vi.resetAllMocks()
+  vi.clearAllMocks()
   vi.unstubAllEnvs()
 })
 
@@ -160,6 +162,52 @@ describe("saving the Settings language", () => {
       await screen.findByRole("button", { name: translate("settings.action.save", locale) })
       previousLocale = locale
     }
+  })
+
+  it("preserves edits made after saving without reinitializing the form", async () => {
+    const { container } = await renderSettings()
+    let finishReload!: (data: ReturnType<typeof settingsData>) => void
+    const reload = new Promise<ReturnType<typeof settingsData>>(resolve => { finishReload = resolve })
+    state.getSettings.mockImplementation(() => reload)
+    fireEvent.change(languageSelect(container), { target: { value: "en-US" } })
+    fireEvent.submit(container.querySelector("form")!)
+    await screen.findByText(translate("settings.success.saved", "en-US"))
+    fireEvent.change(languageSelect(container), { target: { value: "da-DK" } })
+    await act(async () => { finishReload(settingsData()) })
+    expect(languageSelect(container).value).toBe("da-DK")
+    expect(state.getSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["selfhost", "cloud"])("keeps this tab's organization context when another tab switches organization on %s", async distribution => {
+    state.distribution = distribution
+    const { container, router } = await renderSettings()
+    const originalContext = router.state.matches.find(match => match.routeId === "/_app")!.context
+    state.getLayout.mockResolvedValue({ ...originalContext, activeOrganizationId: "org_2", locale: "da" })
+    fireEvent.change(languageSelect(container), { target: { value: "en-US" } })
+    fireEvent.submit(container.querySelector("form")!)
+    await screen.findByText(translate("settings.success.saved", "en-US"))
+    await waitFor(() => expectLanguage("en-US"))
+    expect(router.state.matches.find(match => match.routeId === "/_app")?.context)
+      .toEqual(expect.objectContaining({ activeOrganizationId: "org_1", locale: "en-US" }))
+    expect(state.getLayout).toHaveBeenCalledTimes(1)
+    await act(async () => { await router.navigate({ to: "/elsewhere" } as never) })
+    expect(screen.getByTestId("current-locale").textContent).toBe("en-US")
+    expect(getRequestOrganizationId()).toBe("org_1")
+  })
+
+  it.each(["selfhost", "cloud"])("preserves the working route and saved state when the layout endpoint is unavailable on %s", async distribution => {
+    state.distribution = distribution
+    const { container, router } = await renderSettings()
+    const form = container.querySelector("form")!
+    state.getLayout.mockRejectedValue(new Error("Layout unavailable"))
+    fireEvent.change(languageSelect(container), { target: { value: "en-US" } })
+    fireEvent.submit(form)
+    await screen.findByText(translate("settings.success.saved", "en-US"))
+    await waitFor(() => expectLanguage("en-US"))
+    expect(container.querySelector("form")).toBe(form)
+    expect(router.state.matches.every(match => match.status === "success")).toBe(true)
+    expect(state.savedLocale).toBe("en-US")
+    expect(state.getLayout).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the visible and route language while saving and after a rejected save", async () => {
