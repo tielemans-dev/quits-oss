@@ -374,8 +374,11 @@ function InvoiceDetailPage() {
 
   function removeEditItem(index: number) {
     if (editItems.length <= 1) return
-    // Line issues are indexed against the old rows; drop them rather than attach them to the wrong row.
-    clearIssues((issue) => issue.field === "items" && issue.line !== undefined)
+    // Drop the deleted row's issues and move later rows' issues up with their rows.
+    setEditIssues((prev) => prev.flatMap((issue) =>
+      issue.field !== "items" || issue.line === undefined || issue.line < index ? [issue]
+        : issue.line === index ? []
+        : [{ ...issue, line: issue.line - 1 }]))
     setEditItems((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -752,7 +755,8 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => hasIssue("items", index, "vat") ? `edit-line-${index}-error` : undefined} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => hasIssue("items", index, "vat") ? `edit-line-${index}-error` : undefined} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence"); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
+            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -770,13 +774,15 @@ function InvoiceDetailPage() {
                       disabled={!!invoice.agreementId}
                       step="0.01"
                       value={editTaxRate || ""}
-                      onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      {...a11y("edit-taxRate-error", hasIssue("taxRate"))}
+                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate"); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
                     <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
                   </div>
                 </div>
+                {fieldMessage("edit-taxRate-error", (issue) => issue.field === "taxRate")}
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
                   <span className="num">{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>

@@ -89,13 +89,27 @@ describe.each([
     expect(screen.queryByText(copy.notes5000)).toBeNull()
   })
 
-  it("drops line errors when a row is deleted instead of attaching them to another row", async () => {
-    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "too_small", path: ["items", 1, "description"] }])))
+  it("drops a deleted row's errors and keeps later rows' errors on their own row", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "quantity"] }, { code: "too_small", path: ["items", 1, "description"] }])))
     fireEvent.click(await openEditor())
     await screen.findByText(copy.description)
-    const trash = screen.getAllByRole("button").filter((button) => button.innerHTML.includes("lucide-trash"))
-    fireEvent.click(trash[0])
-    expect(screen.queryByText(copy.description)).toBeNull()
+    const trash = () => screen.getAllByRole("button").filter((button) => button.innerHTML.includes("lucide-trash"))
+    fireEvent.click(trash()[0])
+    expect(screen.queryByText(copy.qty)).toBeNull()
+    const more = screen.getByDisplayValue("More")
+    expect(more.getAttribute("aria-invalid")).toBe("true")
+    expect(document.getElementById(more.getAttribute("aria-describedby")!)?.textContent).toBe(copy.description)
+  })
+
+  it("ties a document tax rate error to the tax rate control and clears it on edit", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "too_big", path: ["taxRate"] }])))
+    fireEvent.click(await openEditor())
+    const message = await screen.findByText(copy.unknown)
+    expect(message.closest("#edit-taxRate-error")).not.toBeNull()
+    const rate = document.querySelector<HTMLInputElement>("[aria-describedby='edit-taxRate-error']")!
+    expect(rate.getAttribute("aria-invalid")).toBe("true")
+    fireEvent.change(rate, { target: { value: "25" } })
+    expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
   it("routes VAT errors to the line's VAT controls, not its description, quantity or price", async () => {
