@@ -9,7 +9,7 @@ import { defaultDocumentTaxRate, reconcilePolicyVat } from "../../../lib/invoice
 import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
-import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
+import { IssuanceFields, initialIssuanceValues } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
 import { invoiceSendInputSchema, documentLineV2InputSchema, type DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
@@ -18,8 +18,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect, useRef } from "react"
 import { trpc } from "../../../trpc/client"
-import { retainDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
-import { createThenSend } from "../../../lib/create-and-send"
+import { submitInvoice } from "../../../lib/submit-invoice"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatDate, formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
 import { useOrgCurrency } from "../../../hooks/use-org-currency"
@@ -317,49 +316,21 @@ function NewInvoicePage() {
     setSaving(true)
     try {
       let settingsRequested = false
-      let reviewedVersion: string | undefined
-      // The draft exists once created: whatever happens to the send, show it rather than keep
-      // the form, where submitting again would create a second invoice.
-      const target = await createThenSend({
-        create: async () => {
-          const draft = await trpc.invoices.createV2.mutate({
-            contactId,
-            dueDate,
-            supplyDate: issuance.supplyDate,
-            taxRate,
-            pricesIncludeTax,
-            vatEvidence,
-            reviewedRecipient: sendImmediately ? recipientReview?.recipientVersion ?? undefined : undefined,
-            notes: notes || undefined,
-            items: items.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
-              description: item.description,
-              quantity: String(item.quantity),
-              unitPrice: String(item.unitPrice),
-              vat: item.vat,
-            })),
-          })
-          retainDraftValuation(draft.id, currency, baseCurrency, issuance)
-          reviewedVersion = draft.reviewedVersion
-          return draft
+      const target = await submitInvoice(
+        {
+          contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency,
+          items: items.map(item => normalizeInvoiceQuantity(item, locale)),
         },
-        beforeSend: async () => {
-          setConfirmOpen(false)
-          return bankNudge.beforeSend(() => { settingsRequested = true })
-        },
-        send: async (id) => {
-          const result = await trpc.invoices.send.mutate({ id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) })
-          clearDraftValuation(id, currency, baseCurrency)
-          return result
-        },
-        sendImmediately,
-        sendFailedMessage: t("invoices.detail.error.sendFailed"),
-        sendErrorMessage: error => {
-          const issues = invoiceFieldIssues(error)
-          if (issues.length) return issues.map(issue => t(invoiceIssueKey(issue.code), issue.params)).join(" · ")
-          // The refusal's own message (missing exemption statement, provider failure, ...) beats a generic one.
-          return error instanceof Error && error.message ? error.message : t("invoiceValidation.unknown")
-        },
-      })
+        {
+          sendImmediately,
+          reviewedRecipient: recipientReview?.recipientVersion ?? undefined,
+          beforeSend: async () => {
+            setConfirmOpen(false)
+            return bankNudge.beforeSend(() => { settingsRequested = true })
+          },
+          t,
+        }
+      )
 
       if (settingsRequested) return
       navigate({
