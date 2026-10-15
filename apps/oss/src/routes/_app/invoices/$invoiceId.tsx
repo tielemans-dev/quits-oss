@@ -3,7 +3,11 @@ import { retainDraftValuation, readDraftValuation, clearDraftValuation } from ".
 import { defaultDocumentTaxRate } from "../../../lib/invoice-defaults"
 import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
 import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggle"
+import type { FieldIssue } from "@quits/contracts/agent"
 import { LineVatSelect } from "../../../components/invoices/line-vat-select"
+import { OrganizationGaps } from "../../../components/invoices/organization-gaps"
+import { SendConfirmation } from "../../../components/invoices/send-confirmation"
+import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
@@ -11,7 +15,7 @@ import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
-import type { DocumentLineInput } from "@quits/contracts/invoices"
+import { invoiceSendInputSchema, type DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
@@ -127,6 +131,8 @@ type InvoiceItem = {
 }
 
 type Invoice = {
+  reviewedVersion: string
+  recipientVersion?: string
   sellerSnapshot?: unknown
   issuanceSnapshot?: unknown
   disputed?: boolean
@@ -229,7 +235,10 @@ function InvoiceDetailPage() {
         ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
         : null
   )
+  const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
+  const [sendConfirmation, setSendConfirmation] = useState<"send" | "resend" | "manual" | null>(null)
+  const [sendReviewVersion, setSendReviewVersion] = useState<string>()
   const [editPricesIncludeTax, setEditPricesIncludeTax] = useState(false)
   useEffect(() => {
     if (!invoice || invoice.status !== "draft") return
@@ -482,15 +491,53 @@ function InvoiceDetailPage() {
     }
   }
 
+  async function requestSend(allowSendWithoutEmail = false) {
+    if (!invoice || acting) return
+    const issues: FieldIssue[] = []
+    if (orgSettings.baseCurrency && invoice.currency !== orgSettings.baseCurrency) {
+      if (!invoiceSendInputSchema.shape.exchangeRate.unwrap().safeParse(issuance.exchangeRate).success) issues.push({ code: "required", field: "exchangeRate", params: {} })
+      if (!invoiceSendInputSchema.shape.rateDate.unwrap().safeParse(issuance.rateDate).success) issues.push({ code: "required", field: "rateDate", params: {} })
+    }
+    setFieldIssues(issues)
+    setError(null)
+    if (issues.length) return
+    // Known gaps (seller identity, recipient, currency, policy) are shown instead of asking for a confirmation that
+    // would be refused. The state is read fresh: Settings may have changed since the page loaded.
+    setActing(true)
+    try {
+      const state = await trpc.invoices.sendReadiness.query({ contactId: invoice.contact.id, currency: invoice.currency })
+      setReadiness(state)
+      if (state.policyUnavailable) { setError(t("invoiceValidation.policyUnavailable")); return }
+      const blocking = state.issues.filter(issue => !(allowSendWithoutEmail && issue.code === "missing_recipient"))
+      setFieldIssues(blocking)
+      if (blocking.length) return
+    } catch {
+      setError(t("invoiceValidation.unknown"))
+      return
+    } finally {
+      setActing(false)
+    }
+    // Without a reviewed version the server would skip both review checks; refetch instead of confirming blind.
+    if (!invoice.reviewedVersion) {
+      setFieldIssues([{ code: "changed_since_review", field: "invoice", params: {} }])
+      void reloadInvoice()
+      return
+    }
+    setSendReviewVersion(invoice.reviewedVersion)
+    setSendConfirmation(allowSendWithoutEmail ? "manual" : "send")
+  }
+
   async function handleSend(allowSendWithoutEmail = false) {
     if (!invoice) return
     setError(null)
+    setFieldIssues([])
     setActing(true)
     try {
       retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
       if (!await bankNudge.beforeSend()) return
       const result = await trpc.invoices.send.mutate({
         id: invoice.id,
+        reviewedVersion: sendReviewVersion,
         allowSendWithoutEmail,
         acknowledgeDisputed,
         ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
@@ -506,13 +553,9 @@ function InvoiceDetailPage() {
         )
       }
     } catch (err) {
-      setError(
-        invoice.disputed && !acknowledgeDisputed
-          ? t("agreements.disputedSendRefused")
-          : err instanceof Error
-          ? err.message
-          : t("invoices.detail.error.sendFailed")
-      )
+      const issues = invoiceFieldIssues(err)
+      setFieldIssues(issues)
+      setError(issues.length ? null : invoice.disputed && !acknowledgeDisputed ? t("agreements.disputedSendRefused") : err instanceof Error ? err.message : t("invoices.detail.error.sendFailed"))
       await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
@@ -522,16 +565,16 @@ function InvoiceDetailPage() {
   async function handleResendEmail() {
     if (!invoice) return
     setError(null)
+    setFieldIssues([])
     setActing(true)
     try {
-      await trpc.invoices.resendEmail.mutate({ id: invoice.id })
+      await trpc.invoices.resendEmail.mutate({ id: invoice.id, reviewedRecipient: invoice.recipientVersion })
       await reloadInvoice()
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.detail.error.sendFailed")
-      )
+      const issues = invoiceFieldIssues(err)
+      setFieldIssues(issues)
+      // Without field issues the refusal's own message (a missing payment method, a provider failure) beats a generic one.
+      setError(issues.length ? null : err instanceof Error && err.message ? err.message : t("invoices.detail.error.sendFailed"))
       await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
@@ -655,6 +698,7 @@ function InvoiceDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
+            <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
             {error && (
               <p className="text-sm text-destructive" role="alert">
                 {error}
@@ -1008,7 +1052,7 @@ function InvoiceDetailPage() {
             {downloading ? t("invoices.new.ai.action.generating") : "PDF"}
           </Button>
           {/* A draft whose email is still being delivered can no longer be edited or deleted. */}
-          {invoice.status === "draft" && !emailSending && <IssuanceFields value={issuance} onChange={setIssuance} currency={invoice.currency} baseCurrency={orgSettings.baseCurrency} />}
+          {invoice.status === "draft" && !emailSending && <IssuanceFields value={issuance} onChange={value => { setIssuance(value); setFieldIssues(issues => issues.filter(issue => !["supplyDate", "exchangeRate", "rateDate"].includes(issue.field))) }} currency={invoice.currency} baseCurrency={orgSettings.baseCurrency} errors={fieldIssues} />}
           {invoice.status === "draft" && !emailSending && (
             <>
               <Button variant="outline" size="sm" disabled={acting} onClick={startEditing}>
@@ -1071,8 +1115,21 @@ function InvoiceDetailPage() {
         <ReloadRequiredNotice failure={pollFailure} />
       </div>
 
+      <SendConfirmation open={sendConfirmation !== null} onOpenChange={open => { if (!open) setSendConfirmation(null) }}
+        number={invoice.status === "draft" ? undefined : invoice.number ?? undefined} recipient={invoice.contact.email ?? invoice.contact.name}
+        amount={formatCurrency(invoice.total, invoice.currency, locale)} dueDate={formatDateIntl(toDateString(invoice.dueDate), locale)} pending={acting}
+        onConfirm={() => {
+          const action = sendConfirmation
+          setSendConfirmation(null)
+          if (action === "resend") void handleResendEmail()
+          else void handleSend(action === "manual")
+        }} />
+
       {/* Invoice content (printable) */}
       <div className="print-area grid gap-6">
+            {(invoice.status === "draft" || fieldIssues.some(issue => issue.field.startsWith("seller."))) && <OrganizationGaps issues={[...(invoice.status === "draft" ? readiness?.issues ?? [] : []), ...fieldIssues]} />}
+            {fieldIssues.filter(issue => !issue.field.startsWith("seller.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+
         {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">
           <p role="status">{t("agreements.disputedDraft")}</p>
           <label className="flex items-start gap-2"><input type="checkbox" checked={acknowledgeDisputed} disabled={acting || emailSending} onChange={event => setAcknowledgeDisputed(event.target.checked)} />{t("agreements.acknowledgeDisputed")}</label>
@@ -1091,7 +1148,7 @@ function InvoiceDetailPage() {
                   // A queued email settles on its own; sending again is refused meanwhile.
                   disabled: acting || emailSending,
                   onClick: () => {
-                    void handleSend()
+                    void requestSend()
                   },
                 }
               : canResendEmail && recipientEmailValid && emailDelivery?.available
@@ -1101,7 +1158,7 @@ function InvoiceDetailPage() {
                     pending: acting,
                     disabled: acting || emailSending,
                     onClick: () => {
-                      void handleResendEmail()
+                      setSendConfirmation("resend")
                     },
                   }
                 : null
@@ -1117,7 +1174,7 @@ function InvoiceDetailPage() {
                   cancelLabel: t("invoices.detail.email.degraded.cancel"),
                   pending: acting,
                   onConfirm: () => {
-                    void handleSend(true)
+                    void requestSend(true)
                   },
                   onOpenChange: setSendWithoutEmailOpen,
                 }
