@@ -37,21 +37,38 @@ for (const lang of ['da', 'en']) {
 }
 
 test('a signed-out visit to a protected page logs in and resumes it', async ({ page }) => {
-  // The router may re-encode the query (`%20` as `+`), so compare what the path means.
-  const resumed = (path: string | null, base: string) => {
-    const url = new URL(path ?? '', new URL(base).origin)
-    return { pathname: url.pathname, filter: url.searchParams.get('filter'), tab: url.searchParams.get('tab') }
+  // The router may re-encode the query (`%20` as `+`), so compare what the path means: the
+  // origin, the path and every decoded query entry, duplicates included.
+  const origin = 'http://app.invalid'
+  const meaning = (target: string | null) => {
+    expect(target).not.toBeNull()
+    expect(target!.startsWith('/') && !target!.startsWith('//')).toBe(true)
+    const url = new URL(target!, origin)
+    return { origin: url.origin, pathname: url.pathname, query: [...url.searchParams].sort(), hash: url.hash }
   }
-  const expected = { pathname: '/invoices', filter: 'a b', tab: 'all' }
+  const expected = {
+    origin,
+    pathname: '/invoices',
+    query: [['filter', 'a b'], ['tab', 'all']],
+    hash: '',
+  }
+  const redirectOf = (href: string) => new URL(href, page.url()).searchParams.get('redirect')
+  const landed = (appOrigin: string) => {
+    const url = new URL(page.url())
+    expect(url.origin).toBe(appOrigin)
+    return `${url.pathname}${url.search}${url.hash}`
+  }
+
   await page.goto('/invoices?filter=a%20b&tab=all')
+  const appOrigin = new URL(page.url()).origin
   await expect(page).toHaveURL(/\/login\?/)
-  expect(resumed(new URL(page.url()).searchParams.get('redirect'), page.url())).toEqual(expected)
+  expect(meaning(redirectOf(page.url()))).toEqual(expected)
   await waitForClientReady(page)
   const signup = await page.getByRole('link', { name: 'Sign up' }).getAttribute('href')
-  expect(resumed(new URL(signup!, page.url()).searchParams.get('redirect'), page.url())).toEqual(expected)
+  expect(meaning(redirectOf(signup!))).toEqual(expected)
   await page.getByLabel('Email').fill(adminCredentials.email)
   await page.getByLabel('Password').fill(adminCredentials.password)
   await page.getByRole('button', { name: 'Log in', exact: true }).click()
   await expect(page).toHaveURL(/\/invoices\?/)
-  expect(resumed(`${new URL(page.url()).pathname}${new URL(page.url()).search}`, page.url())).toEqual(expected)
+  expect(meaning(landed(appOrigin))).toEqual(expected)
 })
