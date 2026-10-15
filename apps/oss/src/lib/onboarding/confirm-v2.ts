@@ -8,6 +8,36 @@ import { prisma } from "../db"
 import { getCvrLookupProvider } from "../runtime/services"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
+import { organizationSlugCandidate } from "../organization-slug"
+
+/**
+ * Onboarding creates the organization from a typed name before the CVR review. A slug still
+ * derived from that name (`base` or `base-N`, as organization creation picks them) follows the
+ * confirmed company name; a chosen slug stays. Best effort: nothing links to the slug before
+ * onboarding completes, and failing to rename keeps the old slug.
+ */
+async function followConfirmedNameSlug(organizationId: string, previous: { name: string; slug: string }, companyName: string) {
+  const derivedFrom = (name: string, slug: string) => {
+    const suffix = /-([1-9]\d*)$/.exec(slug)
+    return slug === organizationSlugCandidate(name, 1n) || (suffix !== null && BigInt(suffix[1]!) >= 2n && organizationSlugCandidate(name, BigInt(suffix[1]!)) === slug)
+  }
+  if (!derivedFrom(previous.name, previous.slug) || derivedFrom(companyName, previous.slug)) return
+  // Same order as organization creation, checked in bounded batches of exact candidates.
+  const batch = 50n
+  for (let first = 1n; ; first += batch) {
+    const candidates = Array.from({ length: Number(batch) }, (_, i) => organizationSlugCandidate(companyName, first + BigInt(i)))
+    const taken = new Set((await prisma.organization.findMany({ where: { slug: { in: candidates } }, select: { slug: true } })).map(org => org.slug))
+    for (const slug of candidates.filter(candidate => !taken.has(candidate))) {
+      try {
+        await prisma.organization.updateMany({ where: { id: organizationId, slug: previous.slug }, data: { slug } })
+        return
+      } catch (error) {
+        // Taken meanwhile: try the next candidate. Any other failure keeps the old slug.
+        if ((error as { code?: string } | null)?.code !== "P2002") return
+      }
+    }
+  }
+}
 
 /**
  * Registry-sourced contacts are kept only when the server's own CVR lookup says the company is not
@@ -35,8 +65,9 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
   input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId)) }
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
-  return prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
+  let renamed = null as { name: string; slug: string } | null
+  const result = await prisma.$transaction(async tx => {
+    const [before] = await tx.$queryRaw<{ name: string; slug: string }[]>`SELECT name, slug FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     // Match the settings lock used by document issuance before checking/resetting its counters.
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
@@ -97,6 +128,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       onboardingV2Key: input.idempotencyKey,
       onboardingV2Result: result,
     }
+    renamed = before ?? null
     await tx.organization.update({ where: { id: organizationId }, data: { name: input.companyName } })
     await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...settings }, update: settings })
     // Identify Danish rows before replacing the pair. Countryless foreign VAT IDs
@@ -121,4 +153,6 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await billingProvider.startTrial?.(organizationId)
     return result
   }, { timeout: 60_000 })
+  if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {})
+  return result
 }
