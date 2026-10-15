@@ -60,7 +60,7 @@ for (const locale of ["da-DK", "en-US"]) {
       }
     }
     await captureInvoiceEmail(page, invoice.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
-    await capturePdf(page, "invoice", invoice.id, locale)
+    await capturePdf(page, "invoice", invoice.id, locale, { expectedText: [translate("pdf.nonVatRegistered", locale)] })
     await captureOnboarding(page, setup.organizationId, locale)
   })
 }

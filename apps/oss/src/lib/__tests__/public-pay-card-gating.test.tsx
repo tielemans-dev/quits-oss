@@ -254,6 +254,15 @@ describe("public pay card gating", () => {
     expect(state.createCheckout).not.toHaveBeenCalled()
   })
 
+  it.each(["KWD", "BHD"])("preserves sub-cent %s balances through the loader and serializer", async currency => {
+    state.settings.stripeAccountStatus = "active"
+    Object.assign(state.invoice, { currency, totalGross: 1.004, amountPaid: 1 })
+    expect(await publicSession()).toMatchObject({ stripeEnabled: true, invoice: { balanceDue: 0.004 } })
+    expect(await publicPayPage()).toContain("Pay now")
+    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
+    expect(state.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ amountDue: 0.004 }))
+  })
+
   it.each(["pending", "active"] as const)("renders the %s card gate and transfer details in Danish", async status => {
     state.settings.stripeAccountStatus = status
     state.invoice.locale = "da-DK"

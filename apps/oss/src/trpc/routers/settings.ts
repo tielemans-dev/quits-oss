@@ -267,8 +267,8 @@ export const settingsRouter = router({
       ? await resolveStripeCheckoutTarget(
           { organizationId: ctx.organizationId },
           { connectReady: settings.stripeAccountStatus === "active" },
-        ).catch(() => {
-          appLogger.warn("settings.stripe_checkout_target_unavailable", { organizationId: ctx.organizationId })
+        ).catch(error => {
+          appLogger.warn("settings.stripe_checkout_target_unavailable", { organizationId: ctx.organizationId, error })
           return null
         })
       : null
@@ -741,8 +741,8 @@ export const settingsRouter = router({
       try {
         const result = await handler.run(input.action, { organizationId: ctx.organizationId })
         return { url: stripeConnectRedirectUrl(result?.url) }
-      } catch {
-        appLogger.warn("settings.stripe_connect_action_failed", { organizationId: ctx.organizationId, action: input.action })
+      } catch (error) {
+        appLogger.warn("settings.stripe_connect_action_failed", { organizationId: ctx.organizationId, action: input.action, error })
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not update Stripe Connect. Please try again." })
       }
     }),

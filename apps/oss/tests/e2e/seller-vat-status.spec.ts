@@ -145,7 +145,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
     await capture(page, "pay", locale)
     await captureInvoiceEmail(page, row.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
-    await capturePdf(page, "invoice", row.id, locale)
+    await capturePdf(page, "invoice", row.id, locale, { expectedText: [translate("pdf.nonVatRegistered", locale)] })
     const quoteDraft = await executeCommand(createQuoteDraft, { contactId: contact.id, expiryDate: "2099-12-01", taxRate: 0,
       items: [{ description: "Synthetic consulting", quantity: 2, unitPrice: 500, vat: { treatment: "unclassified_zero", rate: "0" } }],
     }, { actor })
@@ -182,7 +182,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await waitForClientReady(page)
     await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
     await capture(page, "credit-note", locale)
-    await capturePdf(page, "creditNote", credit.id, locale)
+    await capturePdf(page, "creditNote", credit.id, locale, { expectedText: [translate("pdf.nonVatRegistered", locale)] })
     const creditEmail = buildCreditNoteEmailContent({ creditNote: { number: credit.number, issueDate: credit.issueDate,
       sellerSnapshot: credit.sellerSnapshot, reason: credit.reason, subtotal: credit.subtotalNet.toNumber(), taxAmount: credit.totalTax.toNumber(), total: credit.totalGross.toNumber(), currency: credit.currency,
       priceBasis: "net", items: credit.items.map(item => ({ description: item.description, quantity: item.quantity.toNumber(), unitPrice: item.unitPriceNet.toNumber(), total: item.lineNet.toNumber(), taxRate: item.taxRate.toNumber() })) },
@@ -260,6 +260,7 @@ for (const { source, locale } of choiceScenarios) {
       const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
       expect(issued.sellerSnapshot).toMatchObject({ momsRegistered: registered })
       expect(issued.totalTax.toNumber()).toBe(registered ? 25 : 0)
+      await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(registered ? 0 : 1)
     })
   }
 }

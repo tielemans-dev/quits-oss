@@ -1,4 +1,5 @@
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
+import { toDecimal } from "../exports/format"
 import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
 import { nominalLineTaxRate } from "../documents/line-amounts"
 import { payableRoundingOf } from "../../domain/documents/vat-summary"
@@ -88,7 +89,7 @@ export function serializePublicInvoiceSession(session: {
   const balanceDue =
     session.paymentState === "paid"
       ? 0
-      : Math.max(Math.round((totalGross - amountCredited - amountPaid) * 100) / 100, 0)
+      : Math.max(toDecimal(totalGross).minus(amountCredited).minus(amountPaid).toNumber(), 0)
 
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
   const sellerSnapshot = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
