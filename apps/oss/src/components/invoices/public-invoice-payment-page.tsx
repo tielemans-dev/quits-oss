@@ -173,7 +173,7 @@ function PublicInvoiceDocument({
               </div>
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
                 <p>{invoice.buyerSnapshot?.name}</p><p>{invoice.buyerSnapshot?.company}</p>
-                {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
+                {buyerAddress(invoice.buyerSnapshot, locale).map((line, index) => <p key={index}>{line}</p>)}
               </div>
             </div>
             <div className="grid gap-3">
