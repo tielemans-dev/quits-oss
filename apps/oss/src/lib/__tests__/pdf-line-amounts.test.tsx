@@ -113,7 +113,7 @@ describe("invoice PDF lines", () => {
       const text = invoiceText(danish, { locale: "da-DK", timezone })
       const label = text.indexOf("Leveringsdato")
       expect(label).toBeGreaterThan(-1)
-      expect(text[label + 1]).toBe("1. okt. 2026")
+      expect(text[label + 1]).toBe("1. oktober 2026")
     }
   })
 
