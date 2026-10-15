@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server"
+import { z } from "zod"
 import type { Prisma } from "../../../generated/prisma/client"
 import { executeCommand } from "../../domain/execute"
 import { jobTarget, queueReminderJob, REMINDER_BATCH_JOB, retryReminderStep, stepTarget } from "../../domain/reminder-jobs"
 import { prisma } from "../../lib/db"
+import type { TranslationKey } from "../../lib/i18n/messages"
 import { authorizedProcedure, router } from "../init"
 import { unwrapOutcome } from "../outcome"
 
@@ -18,7 +20,13 @@ function progress(job: Prisma.JobGetPayload<{ select: typeof select }>) {
   const succeeded = job.steps.filter(step => step.status === "succeeded")
   const failed = job.steps.filter(step => step.status === "failed").length
   return {
-    ...job, kind: job.type, titleParams: { count: job.steps.length },
+    ...job, kind: REMINDER_BATCH_JOB,
+    title: "reminders.jobs.title" as const satisfies TranslationKey, titleParams: { count: job.steps.length },
+    steps: job.steps.map(step => ({ ...step,
+      label: "reminders.jobs.step" as const satisfies TranslationKey,
+      labelParams: z.object({ customerName: z.string() }).catch({ customerName: "" }).parse(step.labelParams),
+      error: step.error ? { code: "reminder_step_failed" as const, message: step.error } : null,
+    })),
     progress: { done: succeeded.length + failed, total: job.steps.length, succeeded: succeeded.length, failed },
     successfulReminderInvoiceIds: succeeded.flatMap(step => step.invoiceId ? [step.invoiceId] : []),
   }
@@ -28,7 +36,7 @@ export const jobsRouter = router({
   sendReminders: authorizedProcedure("invoice:send")
     .input(queueReminderJob.input)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor, clientRequestId: `reminder.queue_batch:${input.clientRequestId}` }))),
+      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor, clientRequestId: input.clientRequestId }))),
 
   list: authorizedProcedure("invoice:read").query(async ({ ctx }) =>
     (await prisma.job.findMany({

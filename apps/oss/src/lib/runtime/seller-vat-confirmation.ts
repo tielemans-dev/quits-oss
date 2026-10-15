@@ -10,7 +10,8 @@ export type SellerVatConfirmationActor = {
   organizationId: string
   userId: string
   sessionId: string
-  request?: { url: string; headers: Headers }
+  /** Use cancellation for preparatory I/O only, never transactional confirmation or commit. */
+  request?: { url: string; headers: Headers; signal?: AbortSignal }
 }
 export type SellerVatConfirmationTransaction = Pick<Prisma.TransactionClient,
   "$queryRaw" | "$executeRaw" | "session" | "member" | "orgSettings" | "organizationTaxId">

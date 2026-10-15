@@ -9,7 +9,7 @@ import { jobsRouter } from "../../trpc/routers/jobs"
 import { sendReminderNow } from "../commands/reminders"
 import { executeCommand } from "../execute"
 import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, registerJobHandler, runDueJobs, runJobsNow } from "../jobs"
-import { handleReminderBatch, REMINDER_BATCH_JOB } from "../reminder-jobs"
+import { handleReminderBatch, queueReminderJob, REMINDER_BATCH_JOB } from "../reminder-jobs"
 
 vi.mock("../../lib/email", async () => ({
   ...await vi.importActual<typeof import("../../lib/email")>("../../lib/email"), deliver: vi.fn(),
@@ -61,8 +61,58 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
       }
       throw new Error("Job did not finish")
     }
-    return { org, api, caller, jobId, invoiceIds, sweep, finish }
+    return { org, api, caller, jobId, invoiceIds, request, sweep, finish }
   }
+
+  it("rejects changed invoice sets on replay through either entry point", async () => {
+    const ctx = await setup()
+    const replay = await executeCommand(queueReminderJob, ctx.request, {
+      actor: ctx.org.actors.admin, clientRequestId: ctx.request.clientRequestId,
+    })
+    expect(replay).toMatchObject({ status: "completed", result: { jobId: ctx.jobId } })
+    expect(await ctx.api.sendReminders({ ...ctx.request, invoiceIds: [...ctx.invoiceIds].reverse() })).toEqual({ jobId: ctx.jobId })
+    const changed = { ...ctx.request, invoiceIds: ctx.invoiceIds.slice(0, 1) }
+    await expect(ctx.api.sendReminders(changed)).rejects.toThrow("different invoices")
+    expect(await executeCommand(queueReminderJob, changed, {
+      actor: ctx.org.actors.admin, clientRequestId: changed.clientRequestId,
+    })).toMatchObject({ status: "failed", error: { code: "idempotency_mismatch" } })
+    const clientRequestId = randomUUID()
+    const concurrent = await Promise.all([ctx.invoiceIds, ctx.invoiceIds.slice(0, 1)].map(invoiceIds =>
+      executeCommand(queueReminderJob, { invoiceIds, clientRequestId }, { actor: ctx.org.actors.admin, clientRequestId })))
+    expect(concurrent.map(outcome => outcome.status).sort()).toEqual(["completed", "failed"])
+  })
+
+  it("bounds delivery polling and refuses a retry while delivery is uncertain", async () => {
+    const ctx = await setup(1)
+    const step = (await ctx.api.get({ jobId: ctx.jobId })).steps[0]
+    await prisma.jobStep.update({ where: { id: step.id }, data: {
+      status: "running", deliveryKey: "missing-delivery", updatedAt: new Date(Date.now() - 25 * 60 * 60_000),
+    } })
+    const failed = await ctx.sweep()
+    expect(failed).toMatchObject({ status: "failed", steps: [{ status: "failed", error: {
+      code: "reminder_step_failed", message: expect.stringContaining("uncertain"),
+    } }] })
+    await expect(ctx.api.retryStep({ jobId: ctx.jobId, stepId: step.id })).rejects.toThrow("uncertain")
+    // A late success is reconciled on retry without sending another reminder.
+    await prisma.job.create({ data: { organizationId: ctx.org.organizationId, type: "test.delivery",
+      payload: {}, dedupeKey: "missing-delivery", result: { outcome: "delivered", message: null },
+    } })
+    await ctx.api.retryStep({ jobId: ctx.jobId, stepId: step.id })
+    expect((await ctx.finish()).steps[0].status).toBe("succeeded")
+    expect(deliver).not.toHaveBeenCalled()
+  })
+
+  it("lists at most 50 jobs, newest first", async () => {
+    const ctx = await setup(1)
+    await prisma.job.createMany({ data: Array.from({ length: 51 }, (_, i) => ({
+      organizationId: ctx.org.organizationId, type: REMINDER_BATCH_JOB, title: "legacy title", payload: {},
+      createdAt: new Date(Date.now() + (i + 1) * 1000),
+    })) })
+    const jobs = await ctx.api.list()
+    expect(jobs).toHaveLength(50)
+    expect(jobs[0].createdAt.getTime()).toBeGreaterThan(jobs[49].createdAt.getTime())
+    expect(jobs[0].title).toBe("reminders.jobs.title")
+  })
 
   it("isolates a caller's colliding request id from the runner's send receipt", async () => {
     const ctx = await setup(1)
