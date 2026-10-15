@@ -563,7 +563,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
       {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
       {confirmOpen && onComplete && <div className="invoice-review-bar flex flex-wrap items-center justify-end gap-3 border-t bg-panel p-4">
         <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
-        <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>
+        {kind !== "recurring" && <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>}
         <Button variant="outline" onClick={() => setConfirmOpen(false)}>{t("invoices.detail.action.edit")}</Button>
         <Button autoFocus disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("invoices.flow.scheduleAction") : t("invoiceSend.confirm")}</Button>
       </div>}

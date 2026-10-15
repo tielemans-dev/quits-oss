@@ -23,7 +23,7 @@ export function useInvoiceMorph(state: unknown, origin?: DOMRect) {
   useLayoutEffect(() => {
     if (!element) { previous.current = null; return }
     if (typeof element.animate !== "function") return
-    const finish = () => element.getAnimations().forEach(animation => animation.finish())
+    const finish = () => [element, ...document.querySelectorAll(".invoice-fresh-row")].forEach(node => node.getAnimations().forEach(animation => animation.finish()))
     finish()
     const rect = element.getBoundingClientRect(), from = previous.current ?? origin
     previous.current = rect
