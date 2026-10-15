@@ -204,7 +204,7 @@ for (const profile of ["selfhost", "hosted-non-vat"]) {
   }
 }
 
-test("hosted without non-VAT capability hides Nej and blocks a nonregistered save", async ({ page }) => {
+test("hosted VAT-only setup requires an explicit answer and finishes with keyboard input", async ({ page }) => {
   const payloads: Array<Record<string, unknown>> = []
   await page.route("**/confirm", async route => {
     payloads.push(route.request().postDataJSON())
@@ -212,15 +212,70 @@ test("hosted without non-VAT capability hides Nej and blocks a nonregistered sav
   })
   await review(page, "no-vat", "hosted-vat-only")
   const choice = page.getByRole("combobox", { name: "Momsregistreret?", exact: true })
+  await expect(choice).toHaveValue("")
   await expect(choice.getByRole("option", { name: "Ja", exact: true })).toHaveCount(1)
   await expect(choice.getByRole("option", { name: "Nej", exact: true })).toHaveCount(0)
   await expect(page.getByRole("spinbutton", { name: "Moms %", exact: true })).toHaveValue("0")
   await confirm(page).click()
   await expect(page.getByRole("heading", { name: "Tjek dine indstillinger" })).toBeVisible()
   expect(payloads).toHaveLength(0)
-  await choice.selectOption("true")
+  await expect(page.getByText("Bekræft, om du er momsregistreret.", { exact: true })).toBeVisible()
+  await expect(choice).toBeFocused()
+  // Native keyboard input must change the actual answer, without dispatching an event.
+  await choice.press("ArrowDown")
+  await choice.press("Enter")
+  await expect(choice).toHaveValue("true")
   await confirm(page).click()
   await expect(page.getByRole("status")).toHaveText("KLAR")
   expect(payloads).toHaveLength(1)
   expect(payloads[0]).toMatchObject({ momsRegistered: true, vatId: "DK24256790", settings: { taxRate: 25 } })
+})
+
+test("hosted VAT-only registry mismatch can be answered before the first submit", async ({ page }) => {
+  let payload: Record<string, unknown> = {}
+  await page.route("**/confirm", async route => {
+    payload = route.request().postDataJSON()
+    await route.fulfill({ json: { status: "complete" } })
+  })
+  await review(page, "no-vat", "hosted-vat-only")
+  const choice = page.getByRole("combobox", { name: "Momsregistreret?", exact: true })
+  await expect(choice).toHaveValue("")
+  await choice.click()
+  await choice.press("ArrowDown")
+  await choice.press("Enter")
+  await expect(choice).toHaveValue("true")
+  await confirm(page).click()
+  await expect(page.getByRole("status")).toHaveText("KLAR")
+  expect(payload).toMatchObject({ momsRegistered: true, settings: { taxRate: 25 } })
+})
+
+test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ page }) => {
+  let payload: Record<string, unknown> = {}
+  await page.route("**/confirm", async (route) => {
+    payload = route.request().postDataJSON()
+    await route.fulfill({ json: { status: "complete" } })
+  })
+  await page.goto("/?scenario=lookup-down&profile=hosted&confirmation=1")
+  await page.getByRole("textbox", { name: "Hvad hedder din virksomhed?" }).fill("Nordlys")
+  await expect(page.getByRole("heading", { name: "Vi kunne ikke hente data fra CVR" })).toBeVisible()
+  await page.getByRole("button", { name: "Opsæt manuelt", exact: true }).click()
+  const create = page.getByRole("button", { name: "Opret virksomhed", exact: true })
+  await expect(create).toBeEnabled()
+  await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Nordlys Test ApS")
+  await page.getByRole("textbox", { name: "Adresse", exact: true }).fill("Testvej 1\n1000 København K")
+  const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
+  await cvr.fill("24256790")
+  // Clicking without a VAT answer explains and focuses it instead of a silent native block.
+  await create.click()
+  await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeFocused()
+  expect(payload).toEqual({})
+  await page.getByRole("radio", { name: "Jeg er momsregistreret" }).check()
+  // Noah's prod order: VAT first, then a rejected CVR, then a valid one.
+  await cvr.fill("12345678")
+  await cvr.fill("24256790")
+  await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeChecked()
+  await expect(create).toBeEnabled()
+  await create.click()
+  await expect(page.getByRole("status")).toHaveText("KLAR")
+  expect(payload).toMatchObject({ source: "manual", companyName: "Nordlys Test ApS", cvr: "24256790", momsRegistered: true, vatId: "DK24256790" })
 })
