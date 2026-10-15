@@ -80,9 +80,8 @@ void _sdkFitsConnectClient
 /**
  * The first extension that returns a target wins. Otherwise the organization's own
  * Stripe keys are used, and only when publishable key, secret key and webhook secret
- * are all stored. A connect target is used for a new charge only when `connectReady`
- * is not false, which checkout sets from an active card-payments status. Expiry leaves
- * it unset so an open connect session can still be expired.
+ * are all stored. `connectReady: false` skips Connect for new charges.
+ * Expiry leaves readiness unset so existing Connect sessions remain accessible.
  */
 export async function resolveStripeCheckoutTarget(
   context: StripeCheckoutTargetContext,
