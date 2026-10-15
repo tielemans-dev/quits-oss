@@ -17,9 +17,18 @@ export function onboardingShellLanguage(pathname: string, search: unknown): 'da'
   return loginReturnSearchSchema.safeParse(search).data?.lang
 }
 
-/** Returning to the login page after logging in would only loop. */
+/**
+ * Returning to the login page after logging in would only loop. The router matches paths after
+ * decoding them, ignoring case and a trailing slash, so the check does the same.
+ */
 function isLoginPath(path: string): boolean {
-  const pathname = path.split(/[?#]/)[0]
+  let pathname = path.split(/[?#]/)[0]
+  try {
+    pathname = decodeURIComponent(pathname)
+  } catch {
+    // Undecodable text is compared as written.
+  }
+  pathname = pathname.toLowerCase().replace(/\/+$/, '')
   return pathname === '/login' || pathname.startsWith('/login/')
 }
 
