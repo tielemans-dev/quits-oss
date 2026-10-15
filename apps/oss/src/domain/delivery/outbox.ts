@@ -380,25 +380,25 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     throw error
   }
 
+  // Resolve withdrawal before counting a request, so a transient query failure leaves an
+  // unsent delivery retryable, including SMTP deliveries which cannot be deduplicated.
+  const finalWithdrawal = await completion.withdrawalReason?.(prisma, payload.completion.target)
+  if (finalWithdrawal) {
+    return settleDecision(
+      job,
+      payload,
+      completion,
+      possiblyDelivered
+        ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${finalWithdrawal}` }
+        : { reason: "withdrawn", message: finalWithdrawal }
+    )
+  }
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
   const requested = { ...payload, requests: requests + 1, provider }
   await recordOnJob(job, requested)
   // Checked again after the writes above, which can stall: no request once the key may have lapsed.
   if (possiblyDelivered && Date.now() - job.createdAt.getTime() >= IDEMPOTENCY_WINDOW_MS) {
     return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
-  }
-  // Bookkeeping above can stall. Re-check immediately before submission so a preference
-  // changed while the job was being written also stops the queued automatic reminder.
-  const finalWithdrawal = await completion.withdrawalReason?.(prisma, payload.completion.target)
-  if (finalWithdrawal) {
-    return settleDecision(
-      job,
-      requested,
-      completion,
-      possiblyDelivered
-        ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${finalWithdrawal}` }
-        : { reason: "withdrawn", message: finalWithdrawal }
-    )
   }
   let accepted: { id: string }
   try {
