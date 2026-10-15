@@ -17,9 +17,11 @@ and recurring invoices. It does not model what the money is for. A freelancer's 
 4. **Customer sign-off**: the customer accepts or disputes delivered work through a signed link,
    without an account.
 
-Everything is built on the domain core from the invoicing lifecycle design: commands with client
-request ids, deciders, domain events, approval gating for outward-facing commands, and agent tools.
-Nothing here is cloud-only.
+Everything uses the existing [domain commands and deciders](../../apps/oss/src/domain/commands/),
+[event envelope and consumers](../architecture/event-envelope-and-consumers.md), and
+[agent API command, idempotency and approval contracts](../agent-api.md#commands-idempotency-and-approvals).
+These are the current references for client request ids, domain events, outward-facing approval
+gates and agent tools. Nothing here is cloud-only.
 
 Retainers, amendments and addenda of accepted agreements, provider-backed signatures and hosted
 plan limits are **deferred** to their own designs; see "Deferred work".
