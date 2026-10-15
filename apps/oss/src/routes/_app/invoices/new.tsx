@@ -5,7 +5,7 @@ import { OrganizationGaps } from "../../../components/invoices/organization-gaps
 import { SendConfirmation } from "../../../components/invoices/send-confirmation"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
-import { defaultDocumentTaxRate } from "../../../lib/invoice-defaults"
+import { defaultDocumentTaxRate, reconcilePolicyVat } from "../../../lib/invoice-defaults"
 import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
@@ -151,16 +151,20 @@ function NewInvoicePage() {
 
   useEffect(() => {
     let cancelled = false
-    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined }).then(state => {
+    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency }).then(state => {
       if (cancelled) return
       setReadiness(state)
       setBaseCurrency(state.baseCurrency)
-      // Buyer-dependent policy defaults keep applying until the user edits the rate or basis.
-      if (!taxRateEdited.current) setTaxRate(defaultDocumentTaxRate(state))
+      // A policy-fixed rate always wins, also over an earlier edit or an accepted AI rate; otherwise the default
+      // applies until the user edits it.
+      if (state.standardVatRate != null) {
+        setTaxRate(defaultDocumentTaxRate(state))
+        setItems(lines => reconcilePolicyVat(lines, state))
+      } else if (!taxRateEdited.current) setTaxRate(defaultDocumentTaxRate(state))
       if (!priceBasisEdited.current) setPricesIncludeTax(state.standardVatRate != null ? false : state.pricesIncludeTax)
     }).catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
     return () => { cancelled = true }
-  }, [contactId, t])
+  }, [contactId, currency, t])
 
   const fieldError = (field: string) => {
     const issue = fieldIssues.find(issue => issue.field === field)
@@ -193,7 +197,7 @@ function NewInvoicePage() {
     setSaving(true)
     setError(null)
     try {
-      const state = await trpc.invoices.sendReadiness.query({ contactId })
+      const state = await trpc.invoices.sendReadiness.query({ contactId, currency })
       setReadiness(state)
       setBaseCurrency(state.baseCurrency)
       if (!validateForm(true, state.baseCurrency)) return
@@ -382,6 +386,7 @@ function NewInvoicePage() {
         </CardHeader>
         <CardContent className="grid gap-6">
           <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
+          {readiness?.issues.filter(issue => issue.field === "currency").map(issue => <p key={issue.code} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}

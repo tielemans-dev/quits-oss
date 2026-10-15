@@ -110,13 +110,13 @@ function settlementForUi(invoice: {
 }
 
 export const invoicesRouter = router({
-  sendReadiness: authorizedProcedure("invoice:read").input(z.object({ contactId: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+  sendReadiness: authorizedProcedure("invoice:read").input(z.object({ contactId: z.string().optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional() }).optional()).query(async ({ ctx, input }) => {
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
     const ids = await prisma.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } })
     const contact = input?.contactId ? await prisma.contact.findFirst({ where: { id: input.contactId, organizationId: ctx.organizationId }, select: buyerContactSelect }) : null
     const seller = withInvoicePaymentDetails(buildSellerSnapshot(settings, ids), settings)
     const paymentAvailable = resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(seller)
-    const document = { countryCode: settings.countryCode, currency: settings.defaultCurrency ?? settings.currency,
+    const document = { countryCode: settings.countryCode, currency: input?.currency ?? settings.defaultCurrency ?? settings.currency,
       purpose: "sale", supplyDate: new Date(), sellerSnapshot: seller, buyerSnapshot: contact ? buildBuyerSnapshot(contact) : null, paymentAvailable,
       items: [{ vatTreatment: "standard", vatCountry: settings.countryCode, taxRate: "25", vatRateInput: "0.25" }] }
     // An unavailable policy must not take invoice drafting down with it; sending is refused on its own.
@@ -124,7 +124,7 @@ export const invoicesRouter = router({
     let policyUnavailable = false
     try { policies = await resolveInvoicePolicies(ctx.organizationId, document) } catch { policyUnavailable = true }
     const issues = policies.flatMap(policy => invoicePolicyIssues(document, policy))
-      .filter(issue => issue.field.startsWith("seller.") || (contact && issue.field.startsWith("customer.")))
+      .filter(issue => issue.field.startsWith("seller.") || issue.field === "currency" || (contact && issue.field.startsWith("customer.")))
     // Missing payment details only block when an adopter policy says so; otherwise they are a nudge.
     const warnings: FieldIssue[] = paymentAvailable || issues.some(issue => issue.code === "seller.bank.required") ? [] : [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }]
     const recipientIssue = contact ? recipientEmailIssue(contact) : undefined

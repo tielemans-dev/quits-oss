@@ -537,8 +537,10 @@ export const resendInvoiceEmail = defineCommand({
 
       const { settings } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
-      // Only an adopter policy holds a resend back for missing payment details; frozen issued evidence is never repaired.
-      yield* requireResendPaymentDetails(command.organizationId, invoice, emailContext.stripeConfigured || hasInvoiceBankTransfer(withInvoicePaymentDetails({}, settings)))
+      // Only an adopter policy holds a resend back for missing payment details. The bank account frozen on the
+      // issued invoice counts as much as today's Settings: the resend reproduces it and never repairs the evidence.
+      const paymentAvailable = emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot) || hasInvoiceBankTransfer(withInvoicePaymentDetails({}, settings))
+      yield* requireResendPaymentDetails(command.organizationId, invoice, paymentAvailable)
       const publicPaymentUrl =
         (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
           ? getPublicInvoicePaymentUrl(invoice)
