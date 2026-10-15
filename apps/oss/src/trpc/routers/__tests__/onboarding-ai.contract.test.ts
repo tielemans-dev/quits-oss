@@ -116,9 +116,17 @@ describeIfDatabase("onboarding ai contract", () => {
     try {
       const caller = await createCaller("cloud", orgId)
       const runtimeServices = await import("../../../lib/runtime/services")
+      const cvrGet = vi.fn(async (cvr: string) => ({
+        cvr,
+        name: "Synthetic business",
+        address: "Testvej 1",
+        companyForm: "ApS",
+        status: "active" as const,
+        statusClass: "active" as const,
+        momsRegistered: true,
+      }))
       runtimeServices.setRuntimeServices({
-        // Hosted onboarding checks the CVR against the registry; this synthetic provider reports an active company.
-        cvrLookupProvider: { get: async (cvr: string) => ({ cvr, status: "active", statusClass: "active" }) } as never,
+        cvrLookupProvider: { search: async () => [], get: cvrGet },
         onboardingAiService: {
           suggestPatch: async () => ({
             patch: {
@@ -165,6 +173,10 @@ describeIfDatabase("onboarding ai contract", () => {
         source: "ai",
         patch: suggestion.patch,
       })
+      expect(cvrGet).toHaveBeenCalledWith("24256790", expect.objectContaining({
+        userId: "onboarding-ai-user",
+        organizationId: orgId,
+      }))
       expect(applied.values.companyName).toBe("Acme Cloud")
       expect(applied.missing).toContain("companyAddress")
 
