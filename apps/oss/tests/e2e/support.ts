@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto"
 import { expect, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
-import { encryptSecret } from "../../src/lib/secrets"
 import { signQuotePublicToken } from "../../src/lib/quotes/public"
+import { encryptSecret } from "../../src/lib/secrets"
 import {
   applySetupInitialization,
   completeSetup,
@@ -12,8 +12,6 @@ import {
 
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@localhost:5432/yaip?schema=public"
-// The dev server decrypts BYOK with this same fallback when the environment does not set one.
-process.env.BETTER_AUTH_SECRET ??= "playwright-auth-secret-that-is-over-32-characters"
 
 export const appOrigin = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000"
 export const publicPaymentSecret =
@@ -235,8 +233,8 @@ export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promis
     where: { organizationId: setup.organizationId },
     data: {
       stripePublishableKey: "pk_test_123456789",
-      stripeSecretKeyEnc: encryptSecret("sk_test_12345678901234567890"),
-      stripeWebhookSecretEnc: encryptSecret("whsec_test_12345678901234567890"),
+      stripeSecretKeyEnc: encryptSecret("sk_test_placeholder"),
+      stripeWebhookSecretEnc: encryptSecret("whsec_placeholder"),
       ...(options.companyLogo ? { companyLogo: options.companyLogo } : {}),
     },
   })
