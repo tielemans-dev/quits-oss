@@ -4,6 +4,7 @@ import { expect, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
 import { signQuotePublicToken } from "../../src/lib/quotes/public"
+import { encryptSecret } from "../../src/lib/secrets"
 import {
   applySetupInitialization,
   completeSetup,
@@ -232,8 +233,8 @@ export async function seedPublicInvoice(options: PublicSeedOptions = {}): Promis
     where: { organizationId: setup.organizationId },
     data: {
       stripePublishableKey: "pk_test_123456789",
-      stripeSecretKeyEnc: "sk_test_placeholder",
-      stripeWebhookSecretEnc: "whsec_placeholder",
+      stripeSecretKeyEnc: encryptSecret("sk_test_placeholder"),
+      stripeWebhookSecretEnc: encryptSecret("whsec_placeholder"),
       ...(options.companyLogo ? { companyLogo: options.companyLogo } : {}),
     },
   })
