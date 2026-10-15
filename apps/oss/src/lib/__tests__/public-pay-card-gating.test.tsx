@@ -345,6 +345,47 @@ describe("public pay card gating", () => {
     expect(state.expireCheckout).toHaveBeenCalledWith({ secretKey: "sk_test_synthetic", sessionId: "cs_byok_open" })
   })
 
+  it("expires a tracked Connect session before opening BYOK", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "pending" })
+    state.invoice.stripeCheckoutSessionId = "cs_connect_open"
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => input.target?.kind === "connect" ? "expired" : "missing")
+    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
+    expect(state.expireCheckout.mock.calls.map(call => call[0].secretKey ? "byok" : "connect")).toEqual(["byok", "connect"])
+    expect(state.expireCheckout).toHaveBeenLastCalledWith(expect.objectContaining({
+      sessionId: "cs_connect_open",
+      target: expect.objectContaining({ kind: "connect" }),
+    }))
+    expect(state.expireCheckout.mock.invocationCallOrder[1]).toBeLessThan(state.createCheckout.mock.invocationCallOrder[0])
+    expect(state.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ target: expect.objectContaining({ kind: "byok" }) }))
+  })
+
+  it("does not open BYOK while the Connect session cannot be expired", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "pending" })
+    state.invoice.stripeCheckoutSessionId = "cs_connect_open"
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => {
+      if (input.target?.kind === "connect") throw new Error("connect unavailable")
+      return "missing"
+    })
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.createCheckout).not.toHaveBeenCalled()
+    expect(state.expireCheckout.mock.calls.map(call => call[0].secretKey ? "byok" : "connect")).toEqual(["byok", "connect"])
+  })
+
+  it("expires on Connect when leftover BYOK ciphertext cannot be decrypted", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.invoice.stripeCheckoutSessionId = "cs_connect_open"
+    state.decryptSecret.mockImplementation(() => { throw new Error("encryption secret changed") })
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "redirect", url: "https://checkout.example/cs_test" })
+    expect(state.expireCheckout).toHaveBeenCalledTimes(1)
+    expect(state.expireCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: "cs_connect_open",
+      target: expect.objectContaining({ kind: "connect" }),
+    }))
+    expect(state.createCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      target: expect.objectContaining({ kind: "connect" }),
+    }))
+  })
+
   it("expires a session opened in this request on the Connect account that created it", async () => {
     Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
     state.updateInvoice.mockResolvedValue({ count: 0 })
