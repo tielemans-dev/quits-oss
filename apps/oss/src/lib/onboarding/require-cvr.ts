@@ -16,9 +16,14 @@ export async function requireOnboardingCvr(input: {
   if (!input.cloud) return null
   const provider = getCvrLookupProvider()
   if (!provider) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" })
-  const company = await provider.get(input.cvr, {
-    userId: input.userId, organizationId: input.organizationId, signal: AbortSignal.timeout(10_000),
-  }).catch(() => { throw new TRPCError({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" }) })
+  let company: Awaited<ReturnType<typeof provider.get>>
+  try {
+    company = await provider.get(input.cvr, {
+      userId: input.userId, organizationId: input.organizationId, signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" })
+  }
   if (!company || company.cvr !== input.cvr || company.status !== "active" || company.statusClass !== "active") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.inactive" })
   }

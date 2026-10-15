@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { requireOnboardingCvr } from "../require-cvr"
 import { resetRuntimeServices, setRuntimeServices } from "../../runtime/services"
 import { buildQuitsAuthOptions } from "../../runtime/auth-config"
-import { setupInitializeSchema } from "../../setup/validators"
 
 const company = { cvr: "24256790", name: "Registered business", address: "Testvej 1",
   companyForm: "Enkeltmandsvirksomhed", status: "active" as const, statusClass: "active" as const, momsRegistered: false }
@@ -20,7 +19,7 @@ describe("B2B organization admission", () => {
     await expect(requireOnboardingCvr({ ...input, cvr })).rejects.toMatchObject({ message: "cvr.invalid" })
     expect(get).not.toHaveBeenCalled()
     await expect(creation(true)({ organization: { name: "Test", slug: "test", metadata: { cvr } }, user: { id: "user" } } as never)).rejects.toMatchObject({ body: { code: "cvr.invalid" } })
-    expect(setupInitializeSchema.shape.organization.safeParse({ name: "Test", slug: "test", cvr }).success).toBe(cvr == null || cvr === "")
+    if (cvr) await expect(requireOnboardingCvr({ ...input, cloud: false, cvr })).rejects.toMatchObject({ message: "cvr.invalid" })
   })
   it("allows checksum-valid self-hosted businesses without registry access", async () => {
     await expect(requireOnboardingCvr({ ...input, cloud: false })).resolves.toBeNull()
