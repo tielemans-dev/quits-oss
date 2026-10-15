@@ -2,6 +2,7 @@ import { ArrowUp, Sparkles } from "lucide-react"
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
+import { readHandoff } from "../../lib/request-handoff"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { RequestCardSlot } from "./request-card-slot"
@@ -17,8 +18,10 @@ const EXPAND_MS = 300
  */
 export function CommandBar({ recognize, className }: { recognize: RequestRecognizer; className?: string }) {
   const { t } = useI18n()
-  const [value, setValue] = useState("")
-  const [intent, setIntent] = useState<RequestIntent | null>(null)
+  // Back from the form with an edited invoice, the card opens again for the request it began with.
+  const [returned] = useState(() => readHandoff("card")?.input)
+  const [value, setValue] = useState(returned ?? "")
+  const [intent, setIntent] = useState<RequestIntent | null>(() => (returned ? recognize(returned) : null))
   const inputRef = useRef<HTMLInputElement>(null)
   const morph = useMorph<HTMLFormElement>(EXPAND_MS)
   const recognized = recognize(value)
