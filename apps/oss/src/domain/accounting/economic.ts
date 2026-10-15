@@ -1,6 +1,7 @@
 import { calculateDocument, moneyMinor, vatGroupKey } from "@quits/shared/pricing"
 import { creditNoteIssuedSchema, invoiceIssuedSchema } from "../events/money"
 import { postingsFor } from "./postings"
+import { apiAmount } from "./api-amount"
 import type { AccountingProvider, AccountingRefusal } from "./provider"
 
 /** Resolved within one org/connection; product groups supply sales accounts and VAT codes. */
@@ -22,15 +23,6 @@ type EconomicDraft = {
   lines: Array<{ lineNumber: number; sortKey: number; description: string; product: { productNumber: string }; quantity: number; unitNetPrice: number }>
 }
 const refuse = (code: string, detail: string): AccountingRefusal => ({ status: "refused", code, detail })
-
-/** JSON numbers are a boundary conversion only; all money checks use shared Decimal helpers. */
-function apiAmount(amount: string, credit: boolean): number {
-  const minor = BigInt(moneyMinor(amount, 2))
-  if (minor < 0n || minor > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsafe money amount")
-  const value = Number(credit && minor !== 0n ? `-${amount}` : amount)
-  if (moneyMinor(String(value), 2) !== (credit ? -minor : minor).toString()) throw new Error("Lossy JSON number")
-  return value
-}
 
 export const economicProvider: AccountingProvider<EconomicSettings, EconomicDraft> = {
   id: "economic",
