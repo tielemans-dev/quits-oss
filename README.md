@@ -220,6 +220,32 @@ Run the full application TypeScript backlog check:
 bun run typecheck:app
 ```
 
+### Unused code report
+
+After installing dependencies, run Knip from the repository root:
+
+```bash
+bun run knip:report
+```
+
+This opt-in command reports unused files, exports, and dependencies. Findings
+return exit code zero through Knip's `--no-exit-code` option. Invalid configuration,
+missing tooling, and execution failures still return a nonzero exit code. The
+report is separate from lint, builds, CI gates, and app startup. It does not fix
+or delete code.
+
+`knip.json` covers the app, contracts, shared helpers, and repository scripts.
+Package manifest exports remain public entrypoints. App routes, tests, config
+files, and standalone automation scripts are additional entrypoints. Generated
+Prisma code and the generated route tree are excluded from findings.
+
+The app's Vite, Prisma, Playwright, and Vitest plugins are disabled because loading
+their executable configs can load environment files or initialize development
+services. Knip analyzes their source imports instead. Config-only string references,
+dynamic imports, external package consumers, and runtime extensions can cause
+false positives. Review each finding before removing anything; entrypoint exports
+and generated code are outside this report's unused-export coverage.
+
 Run the DB-backed invoice/quote smoke flow (create/edit/send/convert) against your local PostgreSQL configured in `.env`:
 
 ```bash
