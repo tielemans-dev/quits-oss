@@ -3,10 +3,13 @@ import { TRPCError } from "@trpc/server"
 import { accountingExportInputSchema, einvoiceExportInputSchema } from "@quits/contracts/exports"
 import { actorCan } from "../../domain/actor"
 import { exportAccounting } from "../../lib/exports/accounting"
+import { vatOverview } from "../../lib/exports/vat-overview"
+import { prisma } from "../../lib/db"
 import { EinvoiceSourceNotFound, EinvoiceArtifactUnavailable, exportEinvoice } from "../../lib/exports/einvoice"
 import { authorizedProcedure, orgProcedure, router } from "../init"
 
 export const exportsRouter = router({
+  vatOverview: authorizedProcedure("export:read").query(({ ctx }) => vatOverview(prisma, ctx.organizationId)),
   /** Peppol BIS Billing 3.0 UBL for an issued invoice or credit note, or the data it lacks. */
   einvoice: orgProcedure.input(einvoiceExportInputSchema).query(async ({ ctx, input }) => {
     const permission = input.kind === "invoice" ? "invoice:read" : "creditNote:read"
