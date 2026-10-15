@@ -7,6 +7,19 @@ import {
 } from "../email"
 
 describe("email localization", () => {
+  it.each([["da-DK", "da"], ["en-US", "en"], [null, "en"], ["unknown", "en"]])(
+    "sets the email language to match translations for %s", (locale, language) => {
+      expect(layout("<p>Message</p>", locale)).toContain(`<html lang="${language}">`)
+    }
+  )
+
+  it("escapes the document title and supplies a shared fallback", () => {
+    expect(layout("<p>Message</p>")).toContain("<title>quits</title>")
+    expect(layout("", "en", false, "Invoice <INV> & Co")).toContain(
+      "<title>Invoice &lt;INV&gt; &amp; Co</title>"
+    )
+  })
+
   it.each([
     ["en-US", "Sent via quits"],
     ["da-DK", "Sendt via quits"],
@@ -50,6 +63,7 @@ describe("email localization", () => {
     expect(result.html).toContain("Hej Martin, her er dit tilbud.")
     expect(result.html).toContain("Gyldig til")
     expect(result.html).toContain("Sendt via quits")
+    expect(result.html).toContain("<title>Tilbud QTE-0001</title>")
   })
 
   it("renders danish invitation content", () => {

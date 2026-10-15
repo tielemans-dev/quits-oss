@@ -169,7 +169,7 @@ export function EmailDeliveryPanel({
               <p className="text-sm text-muted-foreground">{publicLink.description}</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Input readOnly value={publicLink.url} />
+              <Input readOnly aria-label={publicLink.title} value={publicLink.url} />
               {publicLink.onCopy ? (
                 <Button type="button" variant="outline" onClick={publicLink.onCopy}>
                   {publicLink.copyLabel}

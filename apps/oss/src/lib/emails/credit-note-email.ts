@@ -111,7 +111,7 @@ export function buildCreditNoteEmailContent({
       <p style="margin:0;color:${C.body};font-size:14px;">${formatMultilineHtml(reason ?? "")}</p>
     </div>
   `,
-    locale
+    locale, false, `${t("creditNotes.pdf.title", locale)} ${creditNote.number}`
   )
 
   const subject = sanitizeHeader(
