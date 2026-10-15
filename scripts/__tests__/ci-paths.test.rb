@@ -92,14 +92,14 @@ class CiPathsTest
       end
       assert_equal %w[merge_group pull_request push], triggers.keys.sort if WORKFLOWS.key?(name)
       refute triggers.key?('merge_group') unless WORKFLOWS.key?(name)
+      next unless triggers.key?('pull_request')
       group = workflow.fetch('concurrency').fetch('group')
-      assert_equal '${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}', group
       cancel = workflow.fetch('concurrency').fetch('cancel-in-progress')
       events = [
         ['pull_request', 'refs/pull/155/merge', true],
         ['push', 'refs/heads/main', false],
-        ['merge_group', 'refs/heads/gh-readonly-queue/main/pr-155', true],
-        ['push', 'refs/heads/topic', true],
+        ['merge_group', 'refs/heads/gh-readonly-queue/main/pr-155', false],
+        ['push', 'refs/heads/topic', false],
         ['push', 'refs/tags/v1.0.0', false],
         ['release', 'refs/tags/v1.0.0', false],
         ['workflow_dispatch', 'refs/heads/main', false],
@@ -112,8 +112,9 @@ class CiPathsTest
           assert_equal should_cancel, expression(cancel, context), "#{event}/#{ref}"
           group.gsub(/\$\{\{.*?\}\}/) { |part| expression(part, context).to_s }
         end
-        assert_equal groups.first, groups.last
-        assert_equal "#{name}-#{event == 'pull_request' ? 155 : ref}", groups.first
+        # Unique non-PR groups prevent GitHub from replacing pending main/tag runs.
+        assert_equal(event == 'pull_request', groups.first == groups.last)
+        assert_equal "#{name}-#{event == 'pull_request' ? 155 : 100}", groups.first
       end
     end
     assert_equal 'Shared product browser scenarios', WORKFLOWS['ci']['jobs']['shared-browser']['name']
@@ -122,12 +123,13 @@ class CiPathsTest
     end
   end
 
-  def test_all_jobs_skip_drafts
+  def test_pr_jobs_skip_drafts
     ALL_WORKFLOWS.each do |name, workflow|
       workflow.fetch('jobs').each do |id, job|
+        assert_equal 'ubuntu-latest', job.fetch('runs-on')
+        next unless workflow.fetch(true).key?('pull_request')
         condition = job.fetch('if')
         assert_includes condition, DRAFT_GUARD
-        assert_equal 'ubuntu-latest', job.fetch('runs-on')
         context = condition.scan(/(?:github|needs)\.[\w.-]+/).to_h { |key| [key, nil] }
         context.merge!('github.event_name' => 'pull_request', 'github.event.pull_request.draft' => true,
                        'always()' => true, 'cancelled()' => false)
