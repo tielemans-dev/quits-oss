@@ -2,6 +2,7 @@ import { format, isValid, parseISO } from "date-fns"
 import { da, enUS } from "date-fns/locale"
 import { CalendarIcon, X } from "lucide-react"
 import { formatIsoDateForInputDisplay } from "../lib/i18n/date-input"
+import { translate } from "../lib/i18n/translate"
 import { normalizeLocale } from "../lib/i18n/locale"
 import { cn } from "../lib/utils"
 import { Button } from "./ui/button"
@@ -38,7 +39,7 @@ export function LocalizedDateField({
   onChange,
   locale,
   placeholder,
-  clearLabel = "Clear",
+  clearLabel,
   disabled,
   required,
 }: LocalizedDateFieldProps) {
@@ -72,7 +73,7 @@ export function LocalizedDateField({
           <div className="border-t p-2">
             <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => onChange("")}>
               <X className="size-4" />
-              {clearLabel}
+              {clearLabel ?? translate("docForm.clear", locale)}
             </Button>
           </div>
         ) : null}
