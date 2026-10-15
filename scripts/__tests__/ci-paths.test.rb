@@ -88,7 +88,7 @@ class CiPathsTest
         refute push.key?('tags-ignore')
       end
       if triggers.key?('pull_request')
-        assert_equal %w[opened synchronize reopened ready_for_review], triggers['pull_request']['types']
+        assert_equal %w[opened synchronize reopened ready_for_review converted_to_draft], triggers['pull_request']['types']
       end
       assert_equal %w[merge_group pull_request push], triggers.keys.sort if WORKFLOWS.key?(name)
       refute triggers.key?('merge_group') unless WORKFLOWS.key?(name)
