@@ -6,6 +6,10 @@ import {
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
+import {
+  getRuntimeExtensions,
+  type StripeConnectWebhookVerifier,
+} from "../runtime/extensions"
 import { decryptSecret } from "../secrets"
 import { constructStripeWebhookEvent } from "./stripe"
 import { fromStripeMinorUnits } from "./stripe-amounts"
@@ -33,15 +37,101 @@ type StripeWebhookEventResult = StripeWebhookResult & {
 const notHandled: StripeWebhookResult = { handled: false, alreadyApplied: false }
 
 /**
- * Verifies a webhook against every organization's secret. Several organizations can share one
- * Stripe account and therefore one secret, so a verified event whose invoice belongs to another
- * organization moves on to the next verifying organization instead of being dropped. An
- * organization's secret only ever settles that organization's invoices.
+ * Reads the Connect verifier supplied by the runtime, if any. The first extension that returns
+ * a non-empty platform secret wins. A thrown resolver fails the request so Stripe retries,
+ * rather than treating a broken hosted verifier as "no Connect".
+ */
+async function readStripeConnectWebhookVerifier(): Promise<StripeConnectWebhookVerifier | null> {
+  for (const extension of getRuntimeExtensions()) {
+    if (!extension.resolveStripeConnectWebhook) {
+      continue
+    }
+    const verifier = await extension.resolveStripeConnectWebhook()
+    if (verifier?.webhookSecret) {
+      return verifier
+    }
+  }
+  return null
+}
+
+/**
+ * Tries the platform Connect secret before any organization secret. A matching signature is
+ * routed with `event.account` and never falls through to BYOK, including when the account is
+ * unknown or the invoice belongs to another organization. A signature that does not match
+ * returns null so the caller can try organization secrets.
+ */
+async function processConnectStripeWebhook(
+  payload: string,
+  signature: string
+): Promise<StripeWebhookResult | null> {
+  const verifier = await readStripeConnectWebhookVerifier()
+  if (!verifier) {
+    return null
+  }
+
+  let event: ReturnType<typeof constructStripeWebhookEvent>
+  try {
+    event = constructStripeWebhookEvent({
+      payload,
+      signature,
+      webhookSecret: verifier.webhookSecret,
+    })
+  } catch {
+    return null
+  }
+
+  const stripeAccountId = event.account
+  if (!stripeAccountId) {
+    paymentsLogger.warn("stripe.webhook.connect_missing_account", {
+      eventType: event.type,
+    })
+    return notHandled
+  }
+
+  const organizationId = await verifier.resolveOrganizationId(stripeAccountId)
+  if (!organizationId) {
+    paymentsLogger.info("stripe.webhook.connect_unknown_account", {
+      eventType: event.type,
+      stripeAccountId,
+    })
+    return notHandled
+  }
+
+  const result = await processStripeWebhookEvent(event, { organizationId })
+  if (result.foreignInvoice) {
+    paymentsLogger.info("stripe.webhook.connect_foreign_invoice", {
+      eventType: event.type,
+      stripeAccountId,
+    })
+    return notHandled
+  }
+
+  return { handled: result.handled, alreadyApplied: result.alreadyApplied }
+}
+
+/**
+ * Verifies a webhook, then settles the invoice it names.
+ *
+ * A runtime Connect verifier, when registered, is tried first. Its single platform secret
+ * authenticates connected-account events. `event.account` selects the organization, and that
+ * organization must own the invoice. An unknown account, a missing account, or another
+ * organization's invoice is ignored and is not offered to BYOK secrets. A signature that does
+ * not match the platform secret falls through.
+ *
+ * The fall-through tries every organization's own webhook secret. Several organizations can
+ * share one Stripe account and therefore one secret, so a verified event whose invoice belongs
+ * to another organization moves on to the next verifying organization instead of being dropped.
+ * An organization's secret only ever settles that organization's invoices.
  */
 export async function processStripeWebhookRequest(
   payload: string,
   signature: string
 ): Promise<StripeWebhookResult> {
+  const connectResult = await processConnectStripeWebhook(payload, signature)
+  if (connectResult) {
+    return connectResult
+  }
+
   const candidateSettings = await prisma.orgSettings.findMany({
     where: {
       stripeWebhookSecretEnc: {

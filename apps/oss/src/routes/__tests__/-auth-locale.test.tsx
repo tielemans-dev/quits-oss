@@ -44,6 +44,22 @@ describe('auth locale rendering and admission', () => {
     fireEvent.submit(screen.getByRole('button', { name: danish ? 'Opret konto' : 'Create account' }).closest('form')!)
     await waitFor(() => expect(loadPage).toHaveBeenCalledWith(lang ? `/onboarding?lang=${lang}` : '/onboarding'))
   })
+  it.each([
+    ['/invoices?tab=paid#details', '/onboarding?next=%2Finvoices%3Ftab%3Dpaid%23details&lang=en'],
+    ['https://evil.example', '/onboarding?lang=en'],
+    ['//evil.example', '/onboarding?lang=en'],
+    ['/\\evil.example', '/onboarding?lang=en'],
+    ['/x/..//evil.example', '/onboarding?lang=en'],
+  ])('preserves only a safe signup return target %s', async (redirect, destination) => {
+    state.search = { lang: 'en', redirect }
+    signUp.mockResolvedValue({ data: { user: {} } })
+    render(<I18nProvider><SignupPage /></I18nProvider>)
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Synthetic Person' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'allowed@example.test' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '12345678' } })
+    fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
+    await waitFor(() => expect(loadPage).toHaveBeenCalledWith(destination))
+  })
   it('uses the browser default and lets carried language override it', async () => {
     vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('da-DK')
     const first = render(<I18nProvider><SignupPage /></I18nProvider>)
@@ -81,6 +97,7 @@ describe('auth locale rendering and admission', () => {
     fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Send link' : 'Send reset link' }).closest('form')!)
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('synthetic@example.test'))
     expect(screen.getByRole('status').textContent).not.toContain('{email}')
+    expect(requestReset.mock.calls[0]![1]).toEqual({ headers: { 'accept-language': lang } })
     expect(requestReset.mock.calls[0]![0].redirectTo).toBe(window.location.origin + '/reset-password?lang=' + lang + '&redirect=%2Finvoices')
   })
   it('preserves token and return target on the reset language toggle', () => {

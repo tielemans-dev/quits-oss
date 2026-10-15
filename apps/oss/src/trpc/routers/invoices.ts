@@ -277,6 +277,7 @@ export const invoicesRouter = router({
           stripePublishableKey: true,
           stripeSecretKeyEnc: true,
           stripeWebhookSecretEnc: true,
+          stripeAccountStatus: true,
         },
       })
 
@@ -285,6 +286,7 @@ export const invoicesRouter = router({
           stripePublishableKey: settings?.stripePublishableKey ?? null,
           stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
           stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
+          stripeAccountStatus: settings?.stripeAccountStatus,
         }).configured && !hasInvoiceBankTransfer(invoice.sellerSnapshot)
       ) {
         invoiceLogger.warn("invoice.payment_link.rejected", {

@@ -3615,6 +3615,9 @@ export const OrgSettingsScalarFieldEnum = {
   stripePublishableKey: 'stripePublishableKey',
   stripeSecretKeyEnc: 'stripeSecretKeyEnc',
   stripeWebhookSecretEnc: 'stripeWebhookSecretEnc',
+  stripeAccountId: 'stripeAccountId',
+  stripeAccountStatus: 'stripeAccountStatus',
+  stripeAccountStatusAt: 'stripeAccountStatusAt',
   documentSendingDomain: 'documentSendingDomain',
   documentSendingDomainProviderId: 'documentSendingDomainProviderId',
   documentSendingDomainStatus: 'documentSendingDomainStatus',
@@ -4503,6 +4506,20 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
+ * Reference to a field of type 'StripeAccountStatus'
+ */
+export type EnumStripeAccountStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StripeAccountStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'StripeAccountStatus[]'
+ */
+export type ListEnumStripeAccountStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StripeAccountStatus[]'>
     
 
 

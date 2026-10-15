@@ -192,11 +192,13 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const api = await caller(id)
     const services = await import("../../../lib/runtime/services")
     expect(await api.cvr.available()).toEqual({ enabled: false, suggestions: false })
+    expect(await api.cvr.setupAvailable()).toEqual({ enabled: false })
     const company = { cvr: "24256790", name: "Test ApS", address: "Testvej 1\n1000 København", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
     const search = vi.fn(async () => [company])
     services.setRuntimeServices({ cvrLookupProvider: { search, get: async () => company } })
     try {
       expect(await api.cvr.available()).toEqual({ enabled: true, suggestions: false })
+      expect(await api.cvr.setupAvailable()).toEqual({ enabled: true })
       expect(await api.cvr.search({ q: "Test" })).toEqual([company])
       expect(await api.cvr.get({ cvr: "24256790" })).toEqual(company)
       expect(search.mock.calls[0]).toMatchObject(["Test", { userId: `qui56-${id}`, organizationId: id }])
@@ -432,6 +434,25 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const api = await caller(id)
     await api.onboarding.confirmV2({ ...summary(), reklamebeskyttet, companyEmail: "protected@example.test", companyPhone: "12345678" })
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })
+  })
+  it.each([
+    ["an unprotected registry lookup", false, true],
+    ["a protected registry lookup", true, false],
+    ["a failed registry lookup", undefined, false],
+  ] as const)("keeps CVR contacts only after %s (QUI-56)", async (_label, advertisingProtected, kept) => {
+    const id = await organization()
+    const api = await caller(id)
+    const services = await import("../../../lib/runtime/services")
+    const company = { cvr: "24256790", name: "Synthetic Test ApS", address: "Testvej 1", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const, advertisingProtected }
+    const get = vi.fn(async () => { if (advertisingProtected === undefined) throw new Error("lookup failed"); return company })
+    services.setRuntimeServices({ cvrLookupProvider: { search: async () => [company], get } })
+    try {
+      await api.onboarding.confirmV2({ ...summary(), source: "cvr", companyEmail: "public@example.test", companyPhone: "40486480" })
+    } finally { services.resetRuntimeServices() }
+    expect(get).toHaveBeenCalledWith("24256790", expect.objectContaining({ userId: `qui56-${id}`, organizationId: id }))
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject(kept
+      ? { companyEmail: "public@example.test", companyPhone: "40486480" }
+      : { companyEmail: "signup@example.test", companyPhone: null })
   })
   it("allows manually entered contacts", async () => {
     const id = await organization()

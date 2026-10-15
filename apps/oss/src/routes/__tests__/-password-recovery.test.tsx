@@ -40,7 +40,7 @@ describe("password recovery screens", () => {
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "user@example.com" } })
     fireEvent.click(screen.getByRole("button", { name: "Send reset link" }))
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("If user@example.com belongs to an account"))
-    expect(requestPasswordReset).toHaveBeenCalledWith({ email: "user@example.com", redirectTo: `${window.location.origin}/reset-password?lang=en` })
+    expect(requestPasswordReset).toHaveBeenCalledWith({ email: "user@example.com", redirectTo: `${window.location.origin}/reset-password?lang=en` }, { headers: { "accept-language": "en" } })
     expect(screen.getByRole("link", { name: "Back to log in" }).getAttribute("href")).toBe("/login")
   })
 

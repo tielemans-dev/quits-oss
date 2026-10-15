@@ -5,10 +5,11 @@ import { z } from 'zod'
 import { getSignupConfiguration } from '../lib/runtime/signup-config'
 import { InviteCodeField } from '../components/auth/invite-code-field'
 import { AuthPage } from '../components/auth/auth-page'
-import { authSearchSchema, authLinkSearch, authDestination, type AuthSearch } from '../lib/auth/navigation'
+import { authSearchSchema, authLinkSearch, type AuthSearch } from '../lib/auth/navigation'
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '../lib/auth/password-policy'
 import { InviteOnlyPanel } from '../components/auth/invite-only-panel'
 import { authClient } from '../lib/auth-client'
+import { loginReturnOnboarding } from '../lib/login-return'
 import { loadPage } from '../lib/page-navigation'
 import { Button } from '../components/ui/button'
 import {
@@ -89,7 +90,7 @@ function SignupFormContent({ configuration: { signupMode, waitlist }, invite, se
         else setError(t(result.error.code === 'rate_limited' || result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.signup.error'))
       }
       // An inferred auth language must not pin onboarding's browser/organization default.
-      if (result.data) loadPage(authDestination('/onboarding', suppliedSearch.lang))
+      if (result.data) loadPage(loginReturnOnboarding(suppliedSearch))
     } catch { setError(t('auth.error.network')) }
     finally { pending.current = false; setLoading(false) }
   }

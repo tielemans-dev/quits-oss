@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react"
 import { useRequestOrganizationId } from "../lib/active-organization"
 import { loadOrganizationSettings } from "../lib/organization-settings-query"
+import { normalizeCountryCode } from "../lib/validation/localization"
+
+/** Registration only describes the Danish EU VAT setup (as `settings.update` enforces); elsewhere the saved rate stands. */
+function defaultRate(settings: { taxRate?: number | null; momsRegistered?: boolean | null; countryCode?: string | null; taxRegime?: string | null }) {
+  const notVatRegistered = settings.momsRegistered === false && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat"
+  return notVatRegistered ? 0 : settings.taxRate ?? 0
+}
 
 /** New documents use the saved rate unless the user or an AI draft has chosen one. */
 export function useDocumentTaxRate(): [string, (value: string) => void] {
@@ -13,7 +20,7 @@ export function useDocumentTaxRate(): [string, (value: string) => void] {
       if (cancelled) return
       setState(current => current.organizationId === organizationId && current.edited
         ? current
-        : { organizationId, value: String(settings.taxRate ?? 0), edited: false })
+        : { organizationId, value: String(defaultRate(settings)), edited: false })
     }).catch(() => {})
     return () => { cancelled = true }
   }, [organizationId])

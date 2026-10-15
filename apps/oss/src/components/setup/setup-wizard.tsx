@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { forgetInstallationStatus } from "../../lib/installation-cache"
@@ -9,6 +9,8 @@ import { AuthConfigStep } from "./steps/step-auth-config"
 import { EmailFinishStep } from "./steps/step-email-finish"
 import { InstanceProfileStep } from "./steps/step-instance-profile"
 import type { SetupStatus, SetupStage, SetupWizardState } from "./types"
+
+import { SETUP_DEFAULT_LOCALE } from "../../lib/setup-locale"
 
 const WIZARD_STORAGE_KEY = "quits.setup.wizard.v1"
 /** Where drafts were saved before the product was renamed; read once, then removed. */
@@ -22,10 +24,10 @@ const DEFAULT_SETUP_STATE: SetupWizardState = {
   adminEmail: "",
   adminPassword: "",
   authMode: "local_only",
-  locale: "en-US",
-  countryCode: "US",
-  timezone: "UTC",
-  currency: "USD",
+  locale: SETUP_DEFAULT_LOCALE,
+  countryCode: "DK",
+  timezone: "Europe/Copenhagen",
+  currency: "DKK",
   emailFromName: "",
   emailReplyTo: "",
 }
@@ -123,7 +125,7 @@ function isStepValid(step: number, state: SetupWizardState) {
 }
 
 export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
-  const { t } = useI18n()
+  const { t, setLocale } = useI18n()
   const [setupState, setSetupState] = useState<SetupWizardState>(loadDraftState)
   const [step, setStep] = useState<number>(deriveInitialStep(initialStatus.stage))
   const [submitting, setSubmitting] = useState(false)
@@ -131,6 +133,15 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
   const [slugTouched, setSlugTouched] = useState(false)
 
   useEffect(() => {
+    setLocale(setupState.locale)
+  }, [setupState.locale, setLocale])
+
+  // `step` already starts from the stage; only a later stage change may move it. Re-applying the
+  // stage on mount could land after a fast "Next" click and snap the wizard back to step 1.
+  const appliedStage = useRef(initialStatus.stage)
+  useEffect(() => {
+    if (appliedStage.current === initialStatus.stage) return
+    appliedStage.current = initialStatus.stage
     setStep(deriveInitialStep(initialStatus.stage))
   }, [initialStatus.stage])
 
@@ -160,9 +171,8 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
       // Setup is done: drop the root route's kept installation answer along with the draft.
       forgetInstallationStatus()
       onCompleted()
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t("setup.error.generic")
-      setError(message)
+    } catch {
+      setError(t("setup.error.generic"))
     } finally {
       setSubmitting(false)
     }

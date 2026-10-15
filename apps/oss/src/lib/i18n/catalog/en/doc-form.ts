@@ -27,4 +27,6 @@ export const enDocFormMessages = {
   "docForm.validation.contactRequired": "Please select a customer",
   "docForm.validation.itemDescriptionRequired":
     "All line items must have a description",
+  "docForm.validation.quantityInvalid":
+    "Enter a quantity greater than 0 and at most 1000000, using a decimal point and up to 6 decimal places. Exponent notation is not allowed.",
 } as const

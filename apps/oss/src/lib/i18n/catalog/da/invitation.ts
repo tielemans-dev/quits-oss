@@ -1,6 +1,7 @@
 export const daInvitationMessages = {
   "acceptInvitation.error.fallback": "Kunne ikke acceptere invitationen.",
-  "acceptInvitation.error.title": "Invitationsfejl",
+    "acceptInvitation.error.alreadyUsed": "Denne invitation er allerede brugt eller gælder ikke længere.",
+"acceptInvitation.error.title": "Invitationsfejl",
   "acceptInvitation.error.description": "Denne invitation kunne ikke accepteres.",
   "acceptInvitation.error.goHome": "Gå til forsiden",
   "acceptInvitation.pending.title": "Accepterer invitation",

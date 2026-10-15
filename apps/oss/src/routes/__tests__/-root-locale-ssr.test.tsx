@@ -58,6 +58,13 @@ describe("root document SSR language", () => {
     expect(html).toContain("<nav>Invoices</nav>")
   })
 
+  it.each(["en-US", "da-DK"])("declares Danish for the server-rendered setup page in a %s browser", browser => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue(browser)
+    routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/setup", context: {} }]
+    const html = renderToStaticMarkup(<Shell><I18nProvider initialLocale="da-DK"><Navigation /></I18nProvider></Shell>)
+    expect(html).toContain('<html lang="da">')
+  })
+
   it("does not adopt a fixed public document's locale as the editable shell language", () => {
     routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/q/$token", context: { locale: "da-DK" } }]
     const html = renderToStaticMarkup(<Shell><LocalizedDocument locale="da-DK"><Navigation /></LocalizedDocument></Shell>)
