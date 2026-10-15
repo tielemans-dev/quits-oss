@@ -13,6 +13,7 @@ import { toDecimal } from "../../lib/exports/format"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { invoiceMoneySnapshot, creditMoneySnapshot, type InvoiceMoneySnapshot } from "./money-snapshot"
 import { lockDocument } from "./locks"
+import { requireInvoiceSendReview } from "../approval-contexts"
 import { createHash } from "node:crypto"
 import { Effect } from "effect"
 import type { InvoicePdfDocument, OrgSettingsForPdf } from "../../lib/invoice-pdf"
@@ -82,6 +83,14 @@ export const prospectiveRenderInput = (input: {
       include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } },
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: input.documentId })
+    const reviewedVersion = (input.commandInput as { reviewedVersion?: string }).reviewedVersion
+    if (!input.preview && reviewedVersion) {
+      yield* lockDocument("contact", invoice.contactId, { strength: "no_key_update" })
+      invoice.contact = yield* Effect.promise(() => db.contact.findFirstOrThrow({
+        where: { id: invoice.contactId, organizationId }, include: { taxIds: true },
+      }))
+      yield* requireInvoiceSendReview(invoice, reviewedVersion)
+    }
     // Checked before preparation and again under the commit locks. Empty drafts may still be previewed.
     if (!input.preview && !invoice.items.length) return yield* new InvalidState({ code: "empty_invoice", message: "Add at least one line before sending this invoice." })
     if (!input.preview) yield* requireDepositInvoiceEnabled(invoice)

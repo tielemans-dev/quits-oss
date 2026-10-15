@@ -6,6 +6,7 @@ import { documentVat, percentageToFraction } from "@quits/shared/pricing"
 import { priceCurrentDraft } from "../documents/pricing"
 import { InvalidState } from "../errors"
 import { Command, Db } from "../services"
+import { invoiceSendReviewVersion } from "../approval-contexts"
 import { frozenTotals, releaseLines } from "./billing"
 import { lockedAgreement } from "./issuance"
 
@@ -61,7 +62,8 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
   const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
     ...(input.purchaseOrderRef !== undefined ? { purchaseOrderRef: input.purchaseOrderRef } : {}),
     editRevision: { increment: 1 }, ...totals, ...(input.supplyDate ? { supplyDate: new Date(input.supplyDate) } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),
-  }, include: { contact: true, items: { orderBy: { sortOrder: "asc" } } } }))
+  }, include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } } }))
   command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_updated", payload: { fields: Object.keys(input).filter(key => key !== "id") } })
-  return updated
+  // The detail page replaces its invoice with this result, so it must carry the review version like unlinked edits do.
+  return { ...updated, reviewedVersion: invoiceSendReviewVersion(updated) }
 })

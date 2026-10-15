@@ -24,10 +24,29 @@ async function setup(bank = true) {
   const caller = appRouter.createCaller({ session: { user: { id: org.actors.admin.userId, email: "admin@example.test", name: "Synthetic Admin" }, session: { activeOrganizationId: org.organizationId } } } as never)
   if (bank) await caller.paymentDetails.update({ bankAccount: { regNumber: "0040", accountNumber: "0440116243" } })
   const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Synthetic Buyer", company: "Synthetic Buyer ApS", address: "Testvej 2", zip: "1000", city: "København", country: "DK", email: "buyer@example.test" } })
-  const create = () => caller.invoices.createV2({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2098-12-31", taxRate: "25", items: [{ description: "Work", quantity: "1", unitPrice: "100", vat: { treatment: "standard", rate: "0.25", country: "DK" } }] })
+  const create = (pricesIncludeTax?: boolean) => caller.invoices.createV2({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2098-12-31", taxRate: "25", pricesIncludeTax, items: [{ description: "Work", quantity: "1", unitPrice: "100", vat: { treatment: "standard", rate: "0.25", country: "DK" } }] })
   return { org, caller, contact, create }
 }
 ;(hasTestDatabase ? describe : describe.skip)("invoice send validation and retries", () => {
+  it.each(["amount", "recipient", "due date"])("rejects a changed reviewed %s without numbering or queuing", async change => {
+    const { org, caller, contact, create } = await setup()
+    const invoice = await create()
+    const reviewed = await caller.invoices.get({ id: invoice.id })
+    if (change === "amount") await prisma.invoice.update({ where: { id: invoice.id }, data: { totalGross: "250" } })
+    if (change === "recipient") await prisma.contact.update({ where: { id: contact.id }, data: { email: "changed@example.test" } })
+    if (change === "due date") await prisma.invoice.update({ where: { id: invoice.id }, data: { dueDate: new Date("2099-02-01") } })
+    await expect(caller.invoices.send({ id: invoice.id, reviewedVersion: reviewed.reviewedVersion })).rejects.toMatchObject({
+      cause: { code: "changed_since_review" },
+    })
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).number).toBeNull()
+    expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: "email.deliver" } })).toBe(0)
+  })
+  it("sends an unchanged reviewed draft", async () => {
+    const { caller, create } = await setup()
+    const invoice = await create()
+    const reviewed = await caller.invoices.get({ id: invoice.id })
+    await expect(caller.invoices.send({ id: invoice.id, reviewedVersion: reviewed.reviewedVersion })).resolves.toMatchObject({ emailSent: true })
+  })
   it("sends without bank details or Stripe when no adopter policy requires them", async () => {
     const { caller, create } = await setup(false)
     const invoice = await create()
@@ -93,5 +112,18 @@ async function setup(bank = true) {
     expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: "email.deliver" } })).toBe(1)
     expect(await prisma.domainEvent.count({ where: { aggregateId: invoice.id, type: "invoice.issued" } })).toBe(1)
     expect(await prisma.domainEvent.count({ where: { aggregateId: invoice.id, type: "invoice.sent" } })).toBe(1)
+  })
+  it("snapshots the draft price basis and recalculates when the toggle changes", async () => {
+    const { org, caller, create } = await setup()
+    const invoice = await create(false)
+    expect(invoice.pricesIncludeTax).toBe(false)
+    expect(invoice.total).toBe(125)
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { pricesIncludeTax: true } })
+    const same = await caller.invoices.updateV2({ id: invoice.id, notes: "Keep basis" })
+    expect(same.pricesIncludeTax).toBe(false)
+    const toggled = await caller.invoices.updateV2({ id: invoice.id, pricesIncludeTax: true })
+    expect(toggled.total).toBe(100)
+    expect(toggled.pricesIncludeTax).toBe(true)
+    expect((await create()).pricesIncludeTax).toBe(true)
   })
 })

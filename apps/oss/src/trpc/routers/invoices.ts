@@ -1,4 +1,5 @@
 import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { invoiceSendReviewVersion, recipientReviewVersion } from "../../domain/approval-contexts"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { loadDocumentView } from "../../domain/documents/view"
@@ -154,7 +155,7 @@ export const invoicesRouter = router({
       const invoice = await prisma.invoice.findFirstOrThrow({
         where: { id: input.id, organizationId: ctx.organizationId },
         include: {
-          contact: true,
+          contact: { include: { taxIds: true } },
           agreement: { select: { taxRateInput: true, taxRate: true } },
           items: { orderBy: { sortOrder: "asc" } },
         },
@@ -164,6 +165,8 @@ export const invoicesRouter = router({
         ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
         : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
       return {
+        reviewedVersion: invoiceSendReviewVersion(invoice),
+        recipientVersion: recipientReviewVersion(invoice.contact),
         momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
@@ -232,7 +235,7 @@ export const invoicesRouter = router({
     ),
 
   resendEmail: authorizedProcedure("invoice:send")
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string(), reviewedRecipient: z.string().optional() }))
     .mutation(async ({ ctx, input }) =>
       settleEmailResult(unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })

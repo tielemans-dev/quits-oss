@@ -84,10 +84,13 @@ export const invoiceCreateDraftInputSchema = z.object({
   dueDate: calendarDateInputSchema,
   supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
+  pricesIncludeTax: z.boolean().optional(),
   notes: z.string().trim().max(5000).optional(),
   purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
+  /** Recipient version a person confirmed (from sendReadiness). A different current recipient refuses the create. */
+  reviewedRecipient: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })
 
@@ -98,6 +101,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   dueDate: calendarDateInputSchema.optional(),
   supplyDate: calendarDateInputSchema.optional(),
   currency: currencySchema.optional(),
+  pricesIncludeTax: z.boolean().optional(),
   notes: z.string().trim().max(5000).optional(),
   purchaseOrderRef: purchaseOrderRefInputSchema.optional(),
   taxRate: documentTaxRateSchema.optional(),
@@ -119,6 +123,7 @@ export const invoiceIdInputSchema = z.object({ id: z.string().min(1) })
 
 export const invoiceSendInputSchema = z.object({
   id: z.string().min(1),
+  reviewedVersion: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   allowSendWithoutEmail: z.boolean().optional(),
   acknowledgeDisputed: z.boolean().optional(),
   supplyDate: calendarDateInputSchema.optional(),
