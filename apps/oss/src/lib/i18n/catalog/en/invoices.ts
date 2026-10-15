@@ -21,7 +21,6 @@ export const enInvoicesMessages = {
   "invoices.flow.parseHelp": "Check the suggestion. Fill in the remaining fields below.",
   "invoices.flow.copyLink": "Copy payment link",
   "invoices.flow.detail": "Invoice details",
-  "invoices.flow.scheduleAction": "Create schedule",
   "invoices.summary.outstanding": "Outstanding",
   "invoices.summary.overdue": "Overdue",
   "invoices.summary.paidThisMonth": "Paid this month",

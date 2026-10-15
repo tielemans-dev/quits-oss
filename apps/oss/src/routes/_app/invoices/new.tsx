@@ -362,13 +362,13 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
           reviewedRecipient: recipientReview?.recipientVersion ?? undefined,
           beforeSend: async () => {
             if (!onComplete) setConfirmOpen(false)
-            return bankNudge.beforeSend(() => { settingsRequested = true })
+            return bankNudge.beforeSend(() => { settingsRequested = true }).then(proceed => { if (onComplete && !proceed) settingsRequested = true; return proceed })
           },
           t,
         }
       )
 
-      if (settingsRequested) { if (onComplete) onComplete(target); return }
+      if (settingsRequested) { if (onComplete) onComplete({ ...target, kind: "draft" }); return }
       if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
       navigate({
         to: "/invoices/$invoiceId",
@@ -565,7 +565,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
         <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
         {kind !== "recurring" && <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>}
         <Button variant="outline" onClick={() => setConfirmOpen(false)}>{t("invoices.detail.action.edit")}</Button>
-        <Button autoFocus disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("invoices.flow.scheduleAction") : t("invoiceSend.confirm")}</Button>
+        <Button autoFocus disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("recurring.form.create") : t("invoiceSend.confirm")}</Button>
       </div>}
 
       {!onComplete && <SendConfirmation open={confirmOpen} onOpenChange={setConfirmOpen} recipient={recipientReview?.recipient ?? ""} amount={formatCurrencyIntl(total, currency, locale)} dueDate={dueDate ? formatDate(dueDate, locale) : ""} pending={saving} onConfirm={() => { void handleSubmit(true) }} />}

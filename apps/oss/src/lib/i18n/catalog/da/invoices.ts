@@ -21,7 +21,6 @@ export const daInvoicesMessages = {
   "invoices.flow.parseHelp": "Kontrollér forslaget. Udfyld resten i felterne nedenfor.",
   "invoices.flow.copyLink": "Kopiér betalingslink",
   "invoices.flow.detail": "Fakturadetaljer",
-  "invoices.flow.scheduleAction": "Opret gentagelse",
   "invoices.summary.outstanding": "Udestående",
   "invoices.summary.overdue": "Forfaldent",
   "invoices.summary.paidThisMonth": "Betalt denne måned",
