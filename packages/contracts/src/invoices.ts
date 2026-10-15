@@ -99,7 +99,7 @@ export const invoiceUpdateDraftInputSchema = z.object({
   id: z.string().min(1),
   contactId: z.string().trim().min(1).optional(),
   dueDate: calendarDateInputSchema.optional(),
-  supplyDate: calendarDateInputSchema.optional(),
+  supplyDate: calendarDateInputSchema.nullable().optional(),
   currency: currencySchema.optional(),
   pricesIncludeTax: z.boolean().optional(),
   notes: z.string().trim().max(5000).optional(),

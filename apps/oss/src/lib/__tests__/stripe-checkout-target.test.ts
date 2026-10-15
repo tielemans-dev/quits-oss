@@ -7,6 +7,10 @@ import {
   resolveStripeCheckoutTarget,
 } from "../payments/stripe"
 
+vi.mock("../db", () => ({
+  prisma: { orgSettings: { findUnique: async () => null } },
+}))
+
 const stripeAccount = "acct_connected"
 
 function connectClient() {
@@ -141,6 +145,7 @@ describe("Stripe Connect checkout target", () => {
       { id: "stripe-connect", resolveStripeCheckoutTarget: async () => connect },
     ])
 
-    await expect(resolveStripeCheckoutTarget({ organizationId: "org_1" })).resolves.toBe(connect)
+    await expect(resolveStripeCheckoutTarget({ organizationId: "org_1" }, { connectReady: true })).resolves.toBe(connect)
   })
+
 })
