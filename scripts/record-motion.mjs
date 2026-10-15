@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process"
-import { mkdir, writeFile } from "node:fs/promises"
+import { lstat, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { resolve, join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -12,6 +12,7 @@ const help = `Usage: node scripts/record-motion.mjs /route [options]
 --after-url URL      Candidate app; defaults to --base-url
 --duration SECONDS  App time, rounded up to a 60fps frame (default 3, max 30)
 --out DIRECTORY     New output directory (default artifacts/motion)
+--keep-frames       Retain raw PNG sequences for inspection
 --width N --height N  Even viewport dimensions (default 1280 x 720)
 --wait-for SELECTOR Wait for a hydrated page element before capture
 --storage-state FILE  Playwright auth state, optional
@@ -94,15 +95,23 @@ function verify(file, count) {
 async function main() {
   const options = parseOptions(process.argv.slice(2))
   if (options.help) { console.log(help); return }
-  run("ffmpeg", ["-version"])
-  run("ffprobe", ["-version"])
+  let encoders
+  try { encoders = run("ffmpeg", ["-hide_banner", "-encoders"]) }
+  catch { throw new Error("ffmpeg is unavailable. Install ffmpeg with libx264 and put it on PATH.") }
+  if (!/^\s*V\S*\s+libx264\s/m.test(encoders)) throw new Error("ffmpeg lacks libx264. Install an ffmpeg build with the libx264 encoder.")
+  try { run("ffprobe", ["-version"]) }
+  catch { throw new Error("ffprobe is unavailable. Install ffmpeg/ffprobe and put them on PATH.") }
   const scenario = options.scenario ? await import(pathToFileURL(resolve(options.scenario)).href) : {}
   const { chromium } = createRequire(new URL("../apps/oss/package.json", import.meta.url))("@playwright/test")
-  const out = resolve(options.out)
-  await mkdir(resolve(out, ".."), { recursive: true })
-  await mkdir(out) // Refuse stale frames or overwriting an earlier review.
-  const browser = await chromium.launch({ args: ["--deterministic-mode", "--enable-begin-frame-control"] })
+  const target = resolve(options.out)
+  if (await lstat(target).then(() => true, (error) => { if (error.code !== "ENOENT") throw error; return false })) {
+    throw new Error(`Output already exists: ${target}`)
+  }
+  await mkdir(resolve(target, ".."), { recursive: true })
+  const out = await mkdtemp(`${target}.tmp-`)
+  let browser
   try {
+    browser = await chromium.launch({ args: ["--deterministic-mode", "--enable-begin-frame-control"] })
     console.log("Capturing after at 240 samples per app second...")
     const after = await capture(browser, options, options.after, "no-preference", join(out, "after-frames"), scenario)
     const before = options.before === options.after ? after :
@@ -126,8 +135,16 @@ async function main() {
       samples: { after: after.count, before: before.count, reduced: reduced.count }, outputs,
       sheetTimesMs: indices.map((i) => sampleTime(i, FPS * 4)),
     }, null, 2) + "\n")
-    console.log(`Verified 60fps MP4s, frame sheet, and manifest: ${out}`)
-  } finally { await browser.close() }
+    if (!options["keep-frames"]) for (const name of ["after", "before", "reduced"]) {
+      await rm(join(out, `${name}-frames`), { recursive: true, force: true })
+    }
+    await browser.close()
+    await rename(out, target)
+    console.log(`Verified 60fps MP4s, frame sheet, and manifest: ${target}`)
+  } finally {
+    try { await browser?.close() }
+    finally { await rm(out, { recursive: true, force: true }) }
+  }
 }
 
 main().catch((error) => { console.error(error.message, error.stderr?.toString() ?? ""); process.exitCode = 1 })

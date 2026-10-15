@@ -47,10 +47,18 @@ test("route and comparison URL defaults work with explicit overrides and equals 
 })
 
 test("reject malformed input before opening a browser or creating outputs", () => {
-  for (const args of [[], ["login"], ["//example.test"], ["/", "/extra"], ["/", "--unknown"],
+  for (const args of [[], ["login"], ["//example.test"], ["/\\evil.test/x"], ["/\t/evil.test"], ["/", "/extra"], ["/", "--unknown"],
     ["/", "--duration", "NaN"], ["/", "--duration", "Infinity"], ["/", "--duration", "0"], ["/", "--duration", "31"],
     ["/", "--width", "801"], ["/", "--height", "0"], ["/", "--height", "2162"],
     ["/", "--base-url", "file:///tmp"], ["/", "--before-url", "bad"], ["/", "--out", " "]]) {
     assert.throws(() => parseOptions(args), undefined, JSON.stringify(args))
   }
+})
+
+test("accept readiness/scenario paths and opt-in frame retention", () => {
+  const options = parseOptions(["/login", "--wait-for", "#email", "--scenario", "./review flow.mjs", "--keep-frames"])
+  assert.equal(options["wait-for"], "#email")
+  assert.equal(options.scenario, "./review flow.mjs")
+  assert.equal(options["keep-frames"], true)
+  assert.equal(parseOptions(["/login"])["keep-frames"], false)
 })

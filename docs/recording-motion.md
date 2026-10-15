@@ -10,25 +10,35 @@ cd apps/oss && bunx playwright install --with-deps chromium
 Install `ffmpeg` and `ffprobe` on PATH, with the `libx264` encoder available.
 On Debian/Ubuntu use `sudo apt-get install ffmpeg`; on macOS use `brew install ffmpeg`.
 Start the real app using the README's isolated development database instructions.
-The recorder connects to running apps and never starts servers or migrates databases.
-From the repository root:
+The recorder connects to running apps and never starts servers or migrates databases. From the repository root:
 
 ```sh
 node scripts/record-motion.mjs /login --base-url http://localhost:3000 --out /tmp/login-motion
-node scripts/record-motion.mjs /login --before-url http://localhost:3101 --after-url http://localhost:3102 --out /tmp/comparison
 ```
 
-For git comparisons, start each ref in its own worktree with its own database and
-port, then pass those base URLs. Without a baseline URL the left and right sides
-record the same app. The output directory must be new. `--help` lists all options.
+Before and after accept URLs only. To compare git refs, serve them separately:
+
+```sh
+git --no-pager worktree add /tmp/quits-before BEFORE_REF
+git --no-pager worktree add /tmp/quits-after AFTER_REF
+# Install dependencies and complete README's isolated Setup Worktree steps in each.
+# In separate terminals, start Dev and note each allocated port, for example:
+(cd /tmp/quits-before && bun run dev) # http://localhost:3101
+(cd /tmp/quits-after && bun run dev)  # http://localhost:3102
+node scripts/record-motion.mjs /login --before-url http://localhost:3101 --after-url http://localhost:3102 --out /tmp/ref-review
+```
+
+Without a baseline URL both sides record the same app. The output directory must
+be new. A sibling temporary directory is renamed into place after verification;
+failures remove it, so the same command can be retried. `--help` lists all options.
 On workstations with a heavy-command queue, wrap the recorder command in `fleet-heavy --`.
 
 Outputs are `1x.mp4`, `0.25x.mp4`, `reduced-motion.mp4`, `before-1x.mp4`,
 `before-after.mp4` with baseline left and candidate right, and `frames.png` with
 up to twelve chronological candidate frames. `manifest.json` records timestamps,
-URLs, dimensions, duration, and verified frame counts. Raw PNG sequences remain
-for inspection. Delete the output directory to remove a recording. Upload review
-assets to the PR rather than committing them. Ines signs off on motion recordings.
+URLs, dimensions, duration, and verified frame counts. Raw PNG sequences are deleted
+by default; use `--keep-frames` to retain them. Delete the output directory to remove
+a recording. Upload review assets to the PR rather than committing them. Ines signs off.
 
 The recorder pauses Chromium virtual time between screenshots and explicitly
 drives compositor frames, including CSS blur and backdrop-filter. It samples
@@ -43,6 +53,10 @@ Every capture also checks page and compositor timestamps against the sample time
 Capture begins after network idle, fonts, optional `--wait-for SELECTOR`, and an
 optional scenario's `prepare(page)`. For hydrated routes, choose a selector that
 appears after hydration. Entrance motion before readiness is outside the recording.
+Frame control is already enabled during readiness and `prepare`: selectors must
+become visible without animation frames. Use immediate actions such as fill,
+dispatchEvent, or evaluate; click/hover stability checks and waits for animation
+frames can hang here too. Use frame-independent readiness signals.
 Use `--storage-state /path/to/auth.json` for authenticated routes. Keep auth state
 outside git and use synthetic review data.
 
@@ -72,3 +86,7 @@ Run only the recorder's pure tests and touched-file lint locally:
 node --test scripts/__tests__/record-motion.test.mjs
 bunx oxlint --deny-warnings --report-unused-disable-directives scripts/record-motion*.mjs scripts/__tests__/record-motion.test.mjs
 ```
+
+Optional local smoke check: `node --test scripts/record-motion.smoke.mjs` covers
+readiness/scenario hooks, frame cleanup, retention, and retries. Wrap it in
+`fleet-heavy --` where required; it is excluded from required CI tests.

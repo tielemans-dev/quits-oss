@@ -20,6 +20,7 @@ export function parseOptions(args) {
     duration: { type: "string", default: "3" }, out: { type: "string", default: "artifacts/motion" },
     width: { type: "string", default: "1280" }, height: { type: "string", default: "720" },
     scenario: { type: "string" }, "storage-state": { type: "string" }, "wait-for": { type: "string" },
+    "keep-frames": { type: "boolean", default: false },
     help: { type: "boolean", short: "h" },
   } })
   if (values.help) return { help: true }
@@ -30,6 +31,9 @@ export function parseOptions(args) {
   for (const key of ["base-url", "before-url", "after-url"]) {
     if (values[key] !== undefined && !["http:", "https:"].includes(new URL(values[key]).protocol)) {
       throw new Error(`${key} must be an HTTP(S) URL`)
+    }
+    if (values[key] && new URL(route, values[key]).origin !== new URL(values[key]).origin) {
+      throw new Error("Route must resolve within the app's origin")
     }
   }
   const duration = Number(values.duration), width = Number(values.width), height = Number(values.height)
