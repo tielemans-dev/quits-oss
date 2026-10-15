@@ -390,6 +390,9 @@ export const settingsRouter = router({
         const effectiveRegistration = settingsInput.momsRegistered === undefined
           ? current?.momsRegistered
           : settingsInput.momsRegistered
+        if (settingsInput.taxRate === undefined && settingsInput.countryCode && settingsInput.countryCode !== current?.countryCode) {
+          settingsInput.taxRate = settingsInput.countryCode === "DK" ? 25 : null
+        }
         if (!clearsRegistration && effectiveRegistration === false) settingsInput.taxRate = 0
         const localizedIssues = validateLocalizedFields(resolvedCountry, {
           phone: settingsInput.companyPhone,

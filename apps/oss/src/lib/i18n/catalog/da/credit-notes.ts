@@ -74,8 +74,6 @@ export const daCreditNotesMessages = {
   "creditNotes.pdf.invoiceDate": "Fakturadato",
   "creditNotes.pdf.reason": "Årsag",
   "creditNotes.pdf.taxId": "Skattenr.",
-  "creditNotes.pdf.vatNumber": "Momsnr.",
-  "creditNotes.pdf.cvrNumber": "CVR-nr.",
   "creditNotes.email.subject": "Kreditnota {number} til faktura {invoiceNumber} ({total})",
   "creditNotes.email.greeting": "Hej {name}, her er en kreditnota til faktura {invoiceNumber}.",
   "creditNotes.email.reference": "Krediterer faktura",
