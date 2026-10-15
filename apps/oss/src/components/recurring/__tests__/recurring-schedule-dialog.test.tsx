@@ -22,7 +22,7 @@ describe.each(["da-DK", "en-US"])("recurring validation in %s", locale => {
   async function open(edit = true) {
     render(<I18nProvider locale={locale}><RecurringScheduleDialog open schedule={edit ? schedule : undefined} onOpenChange={() => {}} onSaved={() => {}} /></I18nProvider>)
     await waitFor(() => expect(screen.queryByText(t("docForm.loadingContacts"))).toBeNull())
-    return screen.getByRole("button", { name: t(edit ? "recurring.form.save" : "recurring.form.create"), exact: true })
+    return screen.getByRole("button", { name: t(edit ? "recurring.form.save" : "recurring.form.create") })
   }
   it.each([false, true])("shows an inline name error and clears it only when valid (edit=%s)", async edit => {
     const submit = await open(edit)
