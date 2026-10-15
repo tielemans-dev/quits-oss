@@ -31,7 +31,7 @@ jobs:
     services:
       postgres:
         # MOCK: disposable test database only. Same pinned Official Image as CI.
-        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        image: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
