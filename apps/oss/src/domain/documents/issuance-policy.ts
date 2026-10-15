@@ -15,6 +15,7 @@ export type InvoicePolicyInput = {
   supplyDate: Date | string | null
   sellerSnapshot: unknown
   buyerSnapshot: unknown
+  paymentAvailable?: boolean
   items: Array<{ vatTreatment: string; vatCountry: string | null; taxRate: { toString(): string }; vatRateInput: string | null }>
 }
 
@@ -39,6 +40,7 @@ export function invoicePolicyIssues(document: InvoicePolicyInput, policy: Invoic
   if (policy.requireBusinessBuyer && !buyer?.company?.trim()) add("customer.businessName.required", "customer.company")
   if (policy.currencies && !policy.currencies.includes(document.currency)) add("currency.unsupported", "currency", { currencies: policy.currencies.join(", ") })
   if (policy.requireSupplyDate && !document.supplyDate) add("required", "supplyDate")
+  if (policy.requirePaymentDetails && document.paymentAvailable === false) add("seller.bank.required", "seller.bankAccount")
   if (policy.standardVatRate) {
     const nonRegistered = seller?.momsRegistered === false
     const rate = nonRegistered ? "0" : policy.standardVatRate
@@ -74,4 +76,16 @@ export const requireInvoiceIssuancePolicy = (organizationId: string, document: I
   })
   const issues = policies.flatMap(policy => invoicePolicyIssues(document, policy))
   if (issues.length) return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending", issues })
+})
+
+/** Resends never reprice or re-check identity, but an adopter that requires payment details still holds them back. */
+export const requireResendPaymentDetails = (organizationId: string, document: Pick<InvoicePolicyInput, "sellerSnapshot" | "buyerSnapshot">, paymentAvailable: boolean) => Effect.gen(function* () {
+  if (paymentAvailable) return
+  const policies = yield* Effect.tryPromise({
+    try: () => resolveInvoicePolicies(organizationId, document),
+    catch: () => new InvalidState({ code: "issuance_policy_unavailable", message: "Invoice issuance policy is unavailable" }),
+  })
+  if (policies.some(policy => policy.requirePaymentDetails))
+    return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending",
+      issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] })
 })

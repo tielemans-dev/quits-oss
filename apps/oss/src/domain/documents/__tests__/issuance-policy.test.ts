@@ -81,6 +81,10 @@ describe("optional invoice issuance policy", () => {
   it("preserves self-host scope when no policy is installed", async () => {
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD", sellerSnapshot: {}, buyerSnapshot: null }))).resolves.toBeUndefined()
   })
+  it("lets a self-hosted organization issue without bank details or Stripe", async () => {
+    setRuntimeExtensions([])
+    await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, paymentAvailable: false }))).resolves.toBeUndefined()
+  })
   it("passes the effective identity to the adopter and enforces its policy", async () => {
     setRuntimeExtensions([{ id: "synthetic", resolveInvoiceIssuancePolicy: context => {
       expect(context.seller).toEqual(document.sellerSnapshot)
@@ -92,5 +96,15 @@ describe("optional invoice issuance policy", () => {
     expect(refused).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", issues: [
       { code: "currency.unsupported", field: "currency", params: { currencies: "DKK, EUR" } },
     ] } })
+  })
+  it("holds back an unpaid-for invoice only when the adopter requires payment details", async () => {
+    const unpaid = { ...document, paymentAvailable: false }
+    expect(invoicePolicyIssues(unpaid, policy)).toEqual([])
+    expect(invoicePolicyIssues(unpaid, { ...policy, requirePaymentDetails: true })).toEqual([
+      { code: "seller.bank.required", field: "seller.bankAccount", params: {} },
+    ])
+    expect(invoicePolicyIssues({ ...document, paymentAvailable: true }, { ...policy, requirePaymentDetails: true })).toEqual([])
+    // No adopter policy at all: a self-hosted organization paid by other means still sends.
+    await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", unpaid))).resolves.toBeUndefined()
   })
 })

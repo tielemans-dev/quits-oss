@@ -1,7 +1,7 @@
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { resolveCountryProfile } from "../../lib/compliance"
-import { requireInvoiceIssuancePolicy } from "../documents/issuance-policy"
+import { requireInvoiceIssuancePolicy, requireResendPaymentDetails } from "../documents/issuance-policy"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import type { RenderInput } from "../documents/render-input"
 import { formatIsoDate } from "../../lib/exports/format"
@@ -36,7 +36,7 @@ import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
-import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withSellerVatStatus, buyerContactSelect } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withSellerVatStatus, buyerContactSelect, withInvoicePaymentDetails } from "../documents/snapshots"
 import { requireVatIssuance } from "../documents/vat-issuance"
 import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
@@ -395,7 +395,8 @@ export const sendInvoice = defineCommand({
         ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller, found.taxRegime)
         : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
-      const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
+      const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate,
+        paymentAvailable: resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(withInvoicePaymentDetails(seller, settings)) }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)
       yield* requireVatIssuance(effective)
       // Validate the effective identity before taking a number or queuing any side effects.
@@ -527,6 +528,10 @@ export const resendInvoiceEmail = defineCommand({
 
       const { settings } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
+      // Only an adopter policy holds a resend back for missing payment details. The bank account frozen on the
+      // issued invoice counts as much as today's Settings: the resend reproduces it and never repairs the evidence.
+      const paymentAvailable = emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot) || hasInvoiceBankTransfer(withInvoicePaymentDetails({}, settings))
+      yield* requireResendPaymentDetails(command.organizationId, invoice, paymentAvailable)
       const publicPaymentUrl =
         (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
           ? getPublicInvoicePaymentUrl(invoice)

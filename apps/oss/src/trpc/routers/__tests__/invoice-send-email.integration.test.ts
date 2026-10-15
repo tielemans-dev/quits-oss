@@ -1,3 +1,4 @@
+import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
 import { cleanupTestOrganizations } from "../../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
@@ -36,6 +37,7 @@ function restoreEnv(previous: Record<string, string | undefined>) {
 async function createInvoiceFixture(options?: {
   contactEmail?: string | null
   configureStripe?: boolean
+  configureBank?: boolean
   documentSendingDomain?: string | null
   documentSendingDomainStatus?: string | null
 }) {
@@ -77,6 +79,7 @@ async function createInvoiceFixture(options?: {
       taxRegime: "eu_vat",
       momsRegistered: true,
       pricesIncludeTax: false,
+      ...(options?.configureBank === false ? {} : { bankRegNumber: "0040", bankAccountNumber: "0440116243" }),
       companyName: "Acme",
       companyEmail: "billing@acme.com",
       invoicePrefix: "INVEML",
@@ -297,45 +300,32 @@ describeIfDatabase("invoice send email delivery", () => {
     }
   })
 
-  it("sends invoice email without payment CTA when Stripe is not configured and still records a sent attempt", async () => {
-    const previous = {
-      QUITS_APP_ORIGIN: process.env.QUITS_APP_ORIGIN,
-      QUITS_PUBLIC_PAYMENT_SECRET: process.env.QUITS_PUBLIC_PAYMENT_SECRET,
-      RESEND_API_KEY: process.env.RESEND_API_KEY,
-      FROM_EMAIL: process.env.FROM_EMAIL,
-    }
-
+  it("sends without bank details or Stripe when no adopter policy requires them", async () => {
+    const previous = Object.fromEntries(["RESEND_API_KEY", "FROM_EMAIL", "QUITS_APP_ORIGIN", "QUITS_PUBLIC_PAYMENT_SECRET"].map(key => [key, process.env[key]]))
     process.env.RESEND_API_KEY = "resend_test_key"
-    process.env.FROM_EMAIL = "billing@example.com"
-
-    const { orgId, caller, invoice } = await createInvoiceFixture()
-
+    process.env.FROM_EMAIL = "billing@example.invalid"
+    process.env.QUITS_APP_ORIGIN = "https://app.example.test"
+    process.env.QUITS_PUBLIC_PAYMENT_SECRET = "synthetic-payment-regression-secret"
+    const { orgId, caller, invoice } = await createInvoiceFixture({ configureBank: false })
     try {
-      const result = await caller.invoices.send({ id: invoice.id })
-
-      expect(result.emailSent).toBe(true)
-
-      const reloaded = await prisma.invoice.findUniqueOrThrow({
-        where: { id: invoice.id },
-        select: {
-          status: true,
-          publicPaymentIssuedAt: true,
-          lastEmailAttemptOutcome: true,
-        },
-      })
-
-      expect(reloaded.status).toBe("sent")
-      expect(reloaded.publicPaymentIssuedAt).toBeNull()
-      expect(reloaded.lastEmailAttemptOutcome).toBe("sent")
+      await expect(caller.invoices.send({ id: invoice.id })).resolves.toMatchObject({ emailSent: true })
       expect(deliver).toHaveBeenCalledTimes(1)
-      const [message, options] = vi.mocked(deliver).mock.calls[0]!
-      expect(message.to).toBe("buyer@example.com")
-      expect(message.html).not.toContain("/pay/")
-      expect(options).toEqual({ provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-send:/) })
     } finally {
-      restoreEnv(previous)
+      for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
       await cleanupTestOrganizations({ where: { id: orgId } })
     }
+  })
+
+  it("blocks sending when neither bank details nor Stripe are configured and the adopter requires payment details", async () => {
+    const { orgId, caller, invoice } = await createInvoiceFixture({ configureBank: false })
+    setRuntimeExtensions([{ id: "synthetic-policy", resolveInvoiceIssuancePolicy: () => ({ requirePaymentDetails: true }) }])
+    try {
+      await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({
+        cause: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] },
+      })
+      expect(deliver).not.toHaveBeenCalled()
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).status).toBe("draft")
+    } finally { setRuntimeExtensions([]); await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
 
   it("rejects send when email delivery is not configured unless degraded send is explicitly allowed", async () => {

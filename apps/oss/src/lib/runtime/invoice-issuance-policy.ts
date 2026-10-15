@@ -15,6 +15,8 @@ export type InvoiceIssuancePolicy = {
   requireBusinessBuyer?: boolean
   requireIdentity?: boolean
   requireSupplyDate?: boolean
+  /** Refuse to send while neither bank details nor an online payment method can be shown to the customer. Off by default: self-hosters may be paid by other means. */
+  requirePaymentDetails?: boolean
   /** Legacy operator confirmation; the effective seller snapshot carries the three-state choice.
    * Explicit confirmation for the effective seller. A registration number alone is not confirmation. */
   sellerVatRegistered?: boolean

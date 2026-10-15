@@ -10,6 +10,9 @@ import { documentPdf } from "../../lib/documents/pdf-access"
 import { invoiceIssuedSchema } from "../../domain/events/money"
 import type { RenderInput } from "../../domain/documents/render-input"
 import { appRouter } from "../../trpc/router"
+import { setRuntimeExtensions } from "../../lib/runtime/extensions"
+
+const requirePaymentDetails = () => setRuntimeExtensions([{ id: "synthetic-policy", resolveInvoiceIssuancePolicy: () => ({ requirePaymentDetails: true }) }])
 
 const bankAccount = {
   accountHolder: "Nordic Design ApS",
@@ -31,6 +34,7 @@ beforeEach(() => {
 afterEach(async () => {
   while (cleanups.length) await cleanups.pop()?.()
   vi.unstubAllEnvs()
+  setRuntimeExtensions([])
 })
 
 async function setup(options: { details?: { bankAccount?: Partial<typeof bankAccount> | null; note?: string | null } | null } = {}) {
@@ -194,34 +198,31 @@ const sellerOf = async (id: string) =>
     expect(numbered.ubl?.payment?.reference).toBe(number)
   })
 
-  it("adds no payment details for an organization that has entered none", async () => {
+  it("issues without a payment method when no adopter policy requires one", async () => {
     const context = await setup({ details: null })
     const invoice = await draft(context)
-    await issue(context, invoice.id)
-
-    const seller = await sellerOf(invoice.id)
-    expect(seller).not.toBeNull()
-    expect(seller && ("bankAccount" in seller || "paymentNote" in seller)).toBe(false)
-    const rendered = await storedRenderInput(context, invoice.id)
-    // The render input is exactly what it was before this feature existed.
-    expect(["bankAccount", "paymentNote", "paymentReference"].some((key) => key in rendered.pdf.invoice)).toBe(false)
-    expect(rendered.ubl && "payment" in rendered.ubl).toBe(false)
+    const result = await issueDocument({ kind: "invoice", actor: context.actor, commandInput: { id: invoice.id, allowSendWithoutEmail: true } })
+    expect(result).toMatchObject({ status: "completed" })
   })
 
-  it("freezes a note without a bank account, and leaves the note out when there is none", async () => {
-    const noteOnly = await setup({ details: { note: "Pay by MobilePay" } })
-    const invoice = await draft(noteOnly)
-    await issue(noteOnly, invoice.id)
-    const seller = await sellerOf(invoice.id)
-    expect(seller?.paymentNote).toBe("Pay by MobilePay")
-    expect(seller && "bankAccount" in seller).toBe(false)
+  it("refuses to issue without a payment method when the adopter requires one, but still renders the draft", async () => {
+    requirePaymentDetails()
+    const context = await setup({ details: null })
+    const invoice = await draft(context)
+    const result = await issueDocument({ kind: "invoice", actor: context.actor, commandInput: { id: invoice.id, allowSendWithoutEmail: true } })
+    expect(result).toMatchObject({ status: "failed", error: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
+    const response = await documentPdf("invoice", invoice.id, context.org.organizationId)
+    expect(response.status).toBe(200)
+    const rendered = JSON.parse(await response.text()) as RenderInput & { kind: "invoice" }
+    expect(["bankAccount", "paymentNote", "paymentReference"].some(key => key in rendered.pdf.invoice)).toBe(false)
+  })
 
-    const accountOnly = await setup({ details: { bankAccount } })
-    const second = await draft(accountOnly)
-    await issue(accountOnly, second.id)
-    const sellerWithoutNote = await sellerOf(second.id)
-    expect(sellerWithoutNote?.bankAccount).toEqual(bankAccount)
-    expect(sellerWithoutNote && "paymentNote" in sellerWithoutNote).toBe(false)
+  it("does not treat a payment note as a bank account", async () => {
+    requirePaymentDetails()
+    const context = await setup({ details: { note: "Pay by MobilePay" } })
+    const invoice = await draft(context)
+    const result = await issueDocument({ kind: "invoice", actor: context.actor, commandInput: { id: invoice.id, allowSendWithoutEmail: true } })
+    expect(result).toMatchObject({ status: "failed", error: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
   })
 
   it("keeps parsing and rendering an invoice issued before payment details existed", async () => {

@@ -1,3 +1,5 @@
+import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
+import { resolveInvoiceEmailContext } from "./invoice-email"
 import { requireDepositsEnabled, requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
@@ -94,7 +96,7 @@ export const prospectiveRenderInput = (input: {
     const refreshedBuyer = buildBuyerSnapshot(invoice.contact)
     const buyer = (invoice.agreementId || invoice.quoteId) ? parseBuyerSnapshot(invoice.buyerSnapshot) ?? {} : refreshedBuyer
     if (!input.preview && invoice.calculationVersion === "v2" && !invoice.supplyDate && !(input.commandInput as { supplyDate?: string }).supplyDate) return yield* new InvalidState({ code: "supply_date_required", message: "Confirm a supply date before issuing a v2 invoice" })
-    if (!input.preview) yield* requireInvoiceIssuancePolicy(organizationId, { ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: (input.commandInput as { supplyDate?: string }).supplyDate ?? invoice.supplyDate })
+    if (!input.preview) yield* requireInvoiceIssuancePolicy(organizationId, { ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: (input.commandInput as { supplyDate?: string }).supplyDate ?? invoice.supplyDate, paymentAvailable: resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(seller) })
     if (!input.preview) yield* requireVatIssuance({ ...invoice, sellerSnapshot: seller, buyerSnapshot: buyer })
     const money = input.preview ? undefined : yield* Effect.try({ try: () => invoiceMoneySnapshot(invoice, { ...(input.commandInput as { supplyDate?: string; exchangeRate?: string; rateDate?: string }), number: input.number, issuedAt: input.issuedAt, baseCurrency: settings.baseCurrency, seller: seller ?? buildSellerSnapshot(settings, sellerTaxIds), buyer }), catch: error => error instanceof InvalidState ? error : new InvalidState({ code: "money_snapshot_unavailable", message: "The document's currency or frozen money components cannot be valued" }) })
     // The reference a bank transfer is matched by: the invoice's own, else its number. A draft preview has no number yet.
