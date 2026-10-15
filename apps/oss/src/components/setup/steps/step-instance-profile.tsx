@@ -46,6 +46,7 @@ export function InstanceProfileStep({ value, onChange }: InstanceProfileStepProp
             <button
               key={option}
               type="button"
+              aria-pressed={isSelected}
               className={cn(
                 "rounded-lg border p-4 text-left transition-colors",
                 isSelected

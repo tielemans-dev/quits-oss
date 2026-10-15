@@ -266,9 +266,12 @@ export const paymentsRouter = router({
     }),
 
   record: authorizedProcedure("payment:create")
-    .input(paymentRecordInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const result = unwrapOutcome(await executeCommand(recordPayment, input, { actor: ctx.actor }))
+    // A caller that may retry sends `requestId`; the same id returns the first outcome instead of recording again.
+    .input(paymentRecordInputSchema.extend({ requestId: z.string().trim().min(1).max(100).optional() }))
+    .mutation(async ({ ctx, input: { requestId, ...input } }) => {
+      const result = unwrapOutcome(
+        await executeCommand(recordPayment, input, { actor: ctx.actor, clientRequestId: requestId && `payment:${requestId}` })
+      )
       return { payment: serializePayment(result.payment), balanceDue: result.balanceDue.toNumber() }
     }),
 

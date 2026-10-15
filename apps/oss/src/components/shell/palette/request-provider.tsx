@@ -1,8 +1,9 @@
 import { Sparkles } from 'lucide-react'
 
+import { suggestRequest } from '../../command-bar/suggest-request'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
-import { permittedRequest, recognizeRequest, type RequestRecognizer } from '../../command-bar/request-intent'
-import type { PaletteProvider } from './types'
+import { permittedRequest, recognizeRequest, type RequestRecognizer, type RequestIntent } from '../../command-bar/request-intent'
+import type { PaletteProvider, PaletteSection } from './types'
 
 /** The list fades out over this long (see `CommandPalette`); the card's content waits for it. */
 const LIST_FADE_MS = 90
@@ -17,10 +18,8 @@ export function createRequestProvider(recognize: RequestRecognizer = recognizeRe
     id: 'request',
     // Ahead of Opret and Gå til, behind a provider that drafts invoices itself (see `PaletteProvider.order`).
     order: 90,
-    sections: ({ query, can, t }) => {
-      const intent = permittedRequest(recognize, can)(query)
-      if (!intent) return []
-      return [
+    sections: ({ query, can, t, signal, requestFallbackEnabled }) => {
+      const section = (intent: RequestIntent | null): PaletteSection[] => intent ? [
         {
           id: 'request',
           heading: t('shell.palette.groupRequest'),
@@ -34,7 +33,9 @@ export function createRequestProvider(recognize: RequestRecognizer = recognizeRe
             },
           ],
         },
-      ]
+      ] : []
+      const intent = permittedRequest(recognize, can)(query)
+      return intent ? section(intent) : requestFallbackEnabled ? suggestRequest(query, can, signal).then(section) : []
     },
   }
 }

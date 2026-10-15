@@ -19,6 +19,7 @@ vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" 
 vi.mock("../../../hooks/use-invoice-due-date", async importActual => ({ ...await importActual<typeof import("../../../hooks/use-invoice-due-date")>(), useInvoiceDueDate: () => ["2026-11-14", () => {}] }))
 vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ timezone: "UTC" }) }))
 
+import { fillRequest } from "../../../lib/ai/request-fallback"
 import { I18nProvider } from "../../../lib/i18n/react"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../../lib/request-handoff"
 import { InvoiceRequestCard } from "../invoice-request-card"
@@ -66,6 +67,23 @@ describe("invoice request card", () => {
     expect(text()).toContain("konsulent")
     expect(text()).toMatch(/Subtotal8\.500,00 kr\.Moms 25 %2\.125,00 kr\./)
     expect(api.create).not.toHaveBeenCalled()
+  })
+
+  it("renders model fields as editable, recalculates totals and hands edited fields to the form without a write", async () => {
+    const input = "Lav en regning for rådgivning til Havbrise"
+    const suggested = await fillRequest({
+      enabled: true, input, context: { customers: [{ id: "buyer", name: "Havbrise Logistik A/S" }], catalogItems: [] },
+      resolve: async () => ({ model: "test", provider: { id: "openai_compatible", complete: vi.fn(async () => JSON.stringify({ intent: "invoice", customerQuery: "Havbrise", items: [{ description: "Rådgivning", quantity: "10", unitPrice: "850" }, { description: "Transport", quantity: "1", unitPrice: "100" }] })) } }),
+    })
+    render(<I18nProvider locale="da-DK"><InvoiceRequestCard intent={{ kind: "invoice", input, suggested: suggested! }} onDismiss={() => {}} /></I18nProvider>)
+    await waitFor(() => expect(text()).toContain("10.750,00 kr."))
+    expect(screen.getByRole("combobox", { name: "Kunde" })).toBeTruthy()
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Antal" })[0]!, { target: { value: "12" } })
+    await waitFor(() => expect(text()).toContain("12.875,00 kr."))
+    expect(api.create).not.toHaveBeenCalled()
+    expect(api.send).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Rediger" }))
+    expect(readHandoff("form")).toMatchObject({ suggested, items: [{ description: "Rådgivning", quantity: "12", unitPrice: "850" }, { description: "Transport", quantity: "1", unitPrice: "100" }] })
   })
 
   it("names what is missing and does not offer to send", async () => {

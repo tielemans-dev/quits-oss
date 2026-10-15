@@ -265,6 +265,7 @@ function InvoiceDetailPage() {
     baseCurrency?: string
     taxRate?: string
     stripePaymentsEnabled?: boolean
+    stripeCheckoutUnavailable?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
   const paymentLinkDescriptionKey = invoice?.publicPaymentCardEnabled
@@ -331,6 +332,7 @@ function InvoiceDetailPage() {
           locale: settings.locale,
           timezone: settings.timezone,
           stripePaymentsEnabled: settings.stripePaymentsEnabled,
+          stripeCheckoutUnavailable: settings.stripeCheckoutUnavailable,
           baseCurrency: settings.baseCurrency,
           taxRate: settings.taxRate?.toString(),
         })
@@ -1140,6 +1142,11 @@ function InvoiceDetailPage() {
                     ? t("invoices.detail.action.generatingPaymentLink")
                     : t("invoices.detail.action.createPaymentLink")}
                 </Button>
+              )}
+              {orgSettings.stripeCheckoutUnavailable && invoice.paymentStatus !== "paid" && (
+                <p className="text-xs text-muted-foreground" data-testid="payment-link-unavailable">
+                  {t("invoices.detail.paymentLink.unavailable")}
+                </p>
               )}
               <Button size="sm" disabled={acting} onClick={handleMarkPaid}>
                 <CheckCircle className="size-4" />

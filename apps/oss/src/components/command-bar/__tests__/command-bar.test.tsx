@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { CommandBar } from "../command-bar"
@@ -30,6 +30,19 @@ describe("command bar", () => {
     expect(submit.disabled).toBe(true)
     fireEvent.submit(input.closest("form")!)
     expect(screen.queryByRole("region")).toBeNull()
+  })
+
+  it("drops stale suggestions and opens a suggested card only after a click", async () => {
+    const suggest = vi.fn(async (input: string) => ({ kind: "invoice" as const, input, suggested: { intent: "invoice" as const, items: [], confidence: 0.5, remainder: "" } }))
+    render(<I18nProvider locale="da-DK"><CommandBar recognize={recognizeRequest} suggest={suggest} /></I18nProvider>)
+    const input = screen.getByRole("textbox")
+    fireEvent.change(input, { target: { value: "Lav en regning til Nordlys" } })
+    fireEvent.change(input, { target: { value: "En anden opgave" } })
+    await act(async () => {})
+    expect(screen.queryByRole("region")).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Bed quits" }))
+    expect(screen.getByRole("region").textContent).toContain("En anden opgave")
+    expect(screen.getByRole("status").textContent).toContain("Foreslåede felter")
   })
 
   it("grows into the card slot for a request, and Annuller hands the cursor back", () => {

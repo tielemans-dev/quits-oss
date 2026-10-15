@@ -10,6 +10,8 @@ export const aiInvoiceDraftCapabilitiesSchema = z
     customEndpoint: z.boolean(),
     /** The server may run a locally installed CLI agent configured by the operator. */
     localAgent: z.boolean(),
+    /** Optional model fills for command-bar requests; disabled unless explicitly enabled. */
+    requestFallbackEnabled: z.boolean().optional(),
     maxPromptChars: z.number().int().positive(),
   })
   .strict()

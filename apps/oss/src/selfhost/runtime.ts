@@ -18,7 +18,7 @@ export const selfhostDocumentRenderer: DocumentRenderer = {
     return new TextEncoder().encode(buildUblDocument(input.ubl))
   },
   async renderPdf(input) {
-    const document = input.kind === "invoice" ? createElement(InvoicePdfDocument, input.pdf)
+    const document = input.kind === "invoice" || input.kind === "quote" ? createElement(InvoicePdfDocument, input.pdf)
       : input.kind === "creditNote" ? createElement(CreditNotePdfDocument, input.pdf)
       : createElement(AgreementPdf, input.pdf)
     return new Uint8Array(await renderToBuffer(document as Parameters<typeof renderToBuffer>[0]))

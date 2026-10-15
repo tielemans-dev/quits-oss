@@ -330,6 +330,8 @@ export const settingsRouter = router({
         : { managed: false as const, available: true, enabled: true },
       stripeByokConfigured: stripeByokConfigured(settings),
       stripePaymentsEnabled: Boolean(stripeTarget),
+      // Payments are set up but cannot be used right now, so the invoice page can say why the card action is missing.
+      stripeCheckoutUnavailable: stripeState.configured && !stripeTarget,
       stripeCheckoutKind: stripeTarget?.kind ?? null,
       stripePublishableKey: settings.stripePublishableKey,
       stripeAccount: readStripeAccount({

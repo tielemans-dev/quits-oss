@@ -43,6 +43,7 @@ export function AuthConfigStep({ value, onChange }: AuthConfigStepProps) {
             <button
               key={option.value}
               type="button"
+              aria-pressed={isSelected}
               className={cn(
                 "rounded-lg border p-4 text-left transition-colors",
                 isSelected

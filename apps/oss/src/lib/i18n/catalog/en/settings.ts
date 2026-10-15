@@ -245,5 +245,7 @@ export const enSettingsMessages = {
     "{name} will lose access to this organization immediately.",
   "settings.team.action.cancel": "Cancel",
   "settings.team.action.remove": "Remove",
+  "settings.team.action.removeMember": "Remove {name}",
+  "settings.team.action.cancelInvite": "Cancel invitation to {email}",
   "settings.team.invitation.pending": "Invitation pending",
 } as const

@@ -1,32 +1,35 @@
 import type { ComponentType } from "react"
 
-import { parseRequest, type RequestContext } from "../../lib/request-parser"
+import { parsePaymentRequest } from "../../lib/payments/payment-match"
+import { parseRequest, type RequestContext, type RequestDraft } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "repeat"; input: string }
+export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment" | "repeat"; input: string; suggested?: RequestDraft }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
-export type RequestRecognizer = (input: string) => RequestIntent | null
+export type RequestRecognizer = (input: string, suggested?: RequestDraft) => RequestIntent | null
 
 // Recognising an intent needs no customers or catalogue; the cards match those when they open.
 const noContext: RequestContext = { customers: [], catalogItems: [] }
 
-export const recognizeRequest: RequestRecognizer = (input) => {
+export const recognizeRequest: RequestRecognizer = (input, suggested) => {
+  if (suggested) return { kind: suggested.intent, input, suggested }
   if (/^\s*(?:\d{8}|(?:ny\s+kunde|cvr)\b.*)\s*$/iu.test(input)) return { kind: "customer", input: input.trim() }
   const draft = parseRequest(input, noContext)
-  return draft ? { kind: draft.intent, input: input.trim() } : null
+  if (draft) return { kind: draft.intent, input: input.trim() }
+  return parsePaymentRequest(input) ? { kind: "payment", input: input.trim() } : null
 }
 
-/** The permission a card's confirming click needs: creating an invoice, or sending the rykkere. */
-const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send", customer: "contact:create" } as const
+/** The permission a card's confirming click needs: creating an invoice or a customer, sending the rykkere, or recording a payment. */
+const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(
   recognize: RequestRecognizer,
   can: (action: (typeof REQUIRED)[RequestIntent["kind"]] | "contact:read") => boolean
 ): RequestRecognizer {
-  return (input) => {
-    const intent = recognize(input)
+  return (input, suggested) => {
+    const intent = recognize(input, suggested)
     return intent && can(REQUIRED[intent.kind]) && (intent.kind !== "customer" || (can("invoice:create") && can("contact:read"))) ? intent : null
   }
 }

@@ -169,6 +169,7 @@ describe("settings stripe account contract", () => {
     expect(settings.stripePublishableKey).toBe("pk_test_123456789")
     expect(settings.stripeByokConfigured).toBe(true)
     expect(settings.stripePaymentsEnabled).toBe(true)
+    expect(settings.stripeCheckoutUnavailable).toBe(false)
     expect(settings.stripeCheckoutKind).toBe("byok")
   })
 
@@ -307,7 +308,9 @@ describe("settings stripe account contract", () => {
       resolveStripeCheckoutTarget: async () => { throw new Error("Checkout unavailable") },
     }])
     const warn = vi.spyOn(appLogger, "warn")
-    expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
+    const result = await createCaller().get()
+    expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutUnavailable).toBe(true)
     expect(warn).toHaveBeenCalledWith("settings.stripe_checkout_target_unavailable", { organizationId: "org-1", error: expect.any(Error) })
     warn.mockRestore()
   })
@@ -317,6 +320,7 @@ describe("settings stripe account contract", () => {
     const warn = vi.spyOn(appLogger, "warn")
     const result = await createCaller().get()
     expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutUnavailable).toBe(true)
     expect(result.stripeCheckoutKind).toBeNull()
     expect(warn).toHaveBeenCalledWith("settings.stripe_checkout_target_unavailable", { organizationId: "org-1", error: expect.any(Error) })
     warn.mockRestore()
