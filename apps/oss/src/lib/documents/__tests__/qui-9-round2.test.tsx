@@ -7,7 +7,7 @@ import { serializePublicInvoiceSession } from "../../payments/public-session"
 import { serializePublicQuoteSession } from "../../quotes/public-session"
 import { vatRowsByRate } from "../../../domain/documents/frozen-vat-groups"
 import { buildTotals } from "../totals"
-import { creditMoneySnapshot } from "../../../domain/documents/money-snapshot"
+import { creditNoteMainRate } from "../../../domain/documents/render-input"
 import { nominalLineTaxRate } from "../line-amounts"
 
 const decimal = (value: number) => ({ toNumber: () => value })
@@ -77,13 +77,8 @@ describe("QUI-9 round 2 legal presentation", () => {
   })
 
   it("freezes the main rate from credited line order, including [5, 25]", () => {
-    for (const rates of [[5], [5, 25]]) {
-      const snapshot = creditMoneySnapshot({ currency: "DKK", totalGross: "1000", issuanceSnapshot: null } as never, {
-        id: "credit", number: "CN-1", issuedAt: new Date("2026-10-15"), baseCurrency: "DKK", reason: "Correction", mode: "lines",
-        built: { lines: rates.map(taxRate => ({ taxRate, lineNet: 100, lineTax: taxRate, lineGross: 100 + taxRate })), subtotalNet: 100, totalTax: 5, totalGross: 105 } as never,
-        hasPayments: false, paid: "0", priorCredits: "0", seller: {}, buyer: {},
-      })
-      expect(snapshot.taxRate).toBe(5)
-    }
+    const invoice = { subtotalNet: decimal(200), totalTax: decimal(30), items: [{ taxRate: decimal(25) }, { taxRate: decimal(5) }] }
+    expect(creditNoteMainRate(invoice, [5])).toBe(5)
+    expect(creditNoteMainRate(invoice, [5, 25])).toBe(5)
   })
 })
