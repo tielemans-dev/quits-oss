@@ -54,6 +54,21 @@ describe("invoice send controls", () => {
     expect(screen.getByText("Gør dine firmaoplysninger klar")).toBeTruthy()
     expect(screen.getByText("Fakturaen skal vise dit reg.nr. og kontonummer, så kunden kan betale.")).toBeTruthy()
   })
+  it.each([
+    [[{ code: "required", field: "seller.companyName", params: {} }], "Add your company name", ["Before you can send an invoice", "A CVR number has 8 digits", "Confirm whether you're VAT-registered"]],
+    [[{ code: "required", field: "seller.companyAddress", params: {} }], "Add your company's postal address", ["Before you can send an invoice", "Add your company name"]],
+    [[{ code: "seller.country.unsupported", field: "seller.countryCode", params: { country: "DK" } }], "Choose a supported country for your company", ["Before you can send an invoice", "Add your company name"]],
+    [[{ code: "seller.vatRegistration.required", field: "seller.vatRegistered", params: {} }], "Confirm whether you're VAT-registered", ["Before you can send an invoice", "A CVR number has 8 digits"]],
+    [[{ code: "cvr.invalid", field: "seller.cvr", params: {} }], "A CVR number has 8 digits", ["Before you can send an invoice", "Confirm whether you're VAT-registered"]],
+  ])("names the seller blocker it is about instead of CVR and VAT instructions: %j", (issues, shown, hidden) => {
+    render(<I18nProvider locale="en-US"><OrganizationGaps issues={issues} /></I18nProvider>)
+    expect(screen.getByText(shown)).toBeTruthy()
+    for (const text of hidden) expect(screen.queryByText(text, { exact: false })).toBeNull()
+  })
+  it("keeps the combined CVR and VAT wording when both are missing", () => {
+    render(<I18nProvider locale="en-US"><OrganizationGaps issues={[{ code: "cvr.invalid", field: "seller.cvr", params: {} }, { code: "seller.vatRegistration.required", field: "seller.vatRegistered", params: {} }]} /></I18nProvider>)
+    expect(screen.getByText(/needs your CVR number, and you need to confirm whether you're VAT-registered/)).toBeTruthy()
+  })
   it("requires an explicit confirmation and disables sending while pending", () => {
     const onConfirm = vi.fn()
     const onOpenChange = vi.fn()

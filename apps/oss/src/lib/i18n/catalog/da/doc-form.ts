@@ -34,6 +34,8 @@ export const daDocFormMessages = {
   "invoiceValidation.unknown": "Tjek feltet og prøv igen",
   "invoiceValidation.customer.businessName.required": "Indtast kundens firmanavn",
   "invoiceValidation.customer.country.unsupported": "Lige nu kan du kun fakturere kunder i: {countries}",
+  "invoiceValidation.seller.companyName.required": "Tilføj dit firmanavn",
+  "invoiceValidation.seller.companyAddress.required": "Tilføj dit firmas postadresse",
   "invoiceValidation.seller.country.unsupported": "Vælg et understøttet land for dit firma",
   "invoiceValidation.seller.vatRegistration.required": "Bekræft, om du er momsregistreret",
   "invoiceValidation.seller.bank.required": "Tilføj bankoplysninger",
