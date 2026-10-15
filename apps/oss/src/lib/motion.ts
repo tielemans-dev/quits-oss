@@ -17,6 +17,8 @@ export const DURATION = {
   spin: milliseconds("duration-spin"),
   pulse: milliseconds("duration-pulse"),
   fade: milliseconds("duration-fade"),
+  undoFade: milliseconds("duration-undo-fade"),
+  undoTick: milliseconds("duration-undo-tick"),
   squareShrink: milliseconds("duration-square-shrink"),
   leave: milliseconds("duration-leave"),
   squareFly: milliseconds("duration-square-fly"),

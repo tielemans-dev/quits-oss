@@ -3,10 +3,11 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn(), list: vi.fn(), get: vi.fn() }))
+const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn(), list: vi.fn(), get: vi.fn(), later: vi.fn(), held: vi.fn(), cancel: vi.fn(), release: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => api.navigate }))
 vi.mock("../../../trpc/client", () => ({
   trpc: {
+    jobs: { sendInvoiceLater: { mutate: api.later }, held: { query: api.held }, cancelHeld: { mutate: api.cancel }, release: { mutate: api.release } },
     contacts: { list: { query: async () => [{ id: "lindholm", name: "Lindholm & Bak I/S" }, { id: "other", name: "Andet ApS" }] } },
     catalog: { list: { query: async () => [] } },
     invoices: {
@@ -21,7 +22,8 @@ vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSet
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { clearHandoff } from "../../../lib/request-handoff"
-import { HeldSendToast } from "../held-send-toast"
+import { removeUndo } from "../../undo/undo-store"
+import { UndoToaster } from "../../undo/undo-toaster"
 import { InvoiceRequestCard } from "../invoice-request-card"
 import { onRequestDone } from "../request-events"
 
@@ -33,7 +35,7 @@ function renderCard(onDismiss = vi.fn()) {
   render(
     <I18nProvider locale="da-DK">
       <InvoiceRequestCard intent={{ kind: "repeat", input: "fakturer Lindholm som sidst" }} onDismiss={onDismiss} />
-      <HeldSendToast />
+      <UndoToaster />
     </I18nProvider>
   )
   return onDismiss
@@ -50,6 +52,13 @@ beforeEach(() => {
   api.readiness.mockResolvedValue(ready)
   api.create.mockResolvedValue({ id: "inv-153", reviewedVersion: "r1" })
   api.send.mockResolvedValue({})
+  api.held.mockResolvedValue([])
+  api.later.mockImplementation(async () => {
+    api.held.mockResolvedValue([{ id: "repeat-job", type: "invoice.delayed_send", steps: 0, heldForMs: 8000, invoiceId: "inv-153" }])
+    return { jobId: "repeat-job" }
+  })
+  api.cancel.mockResolvedValue({})
+  api.release.mockResolvedValue({ status: "done", error: null })
   // Newest first: a draft, another customer's, then the customer's last two.
   const row = (id: string, contactId: string, status: string) => ({ id, contactId, status, currency: "DKK" })
   api.list.mockResolvedValue([row("draft-1", "lindholm", "draft"), row("inv-other", "other", "sent"), row("inv-146", "lindholm", "paid"), row("inv-120", "lindholm", "paid")])
@@ -57,6 +66,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  removeUndo("repeat-job")
   vi.useRealTimers()
   vi.resetAllMocks()
   clearHandoff()
@@ -91,56 +101,56 @@ describe("repeat last invoice card", () => {
     expect(sendButton().disabled).toBe(true)
   })
 
-  it("makes nothing at the click, and sends after the wait with the edited hours", async () => {
+  it("queues the edited repeat immediately, restores one undo toast on reload, and releases after the window", async () => {
     const done = vi.fn()
     const off = onRequestDone(done)
-    const onDismiss = renderCard()
+    renderCard()
     fireEvent.change(await hours(), { target: { value: "10" } })
-
     await clickSend()
-
-    await screen.findByText("Sender faktura til Lindholm & Bak I/S om 8 s")
-    expect(onDismiss).toHaveBeenCalledTimes(1)
-    expect(api.create).not.toHaveBeenCalled()
-
-    await act(async () => { await vi.advanceTimersByTimeAsync(7900) })
-    expect(api.create).not.toHaveBeenCalled()
-    await act(async () => { await vi.advanceTimersByTimeAsync(200) })
-    await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-153", reviewedVersion: "r1" })))
+    await screen.findByRole("button", { name: "Fortryd" })
+    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-153", reviewedVersion: "r1" }))
     expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
-      contactId: "lindholm",
-      dueDate: "2026-10-29",
-      supplyDate: new Date().toISOString().slice(0, 10),
-      reviewedRecipient: "v1",
-      pricesIncludeTax: false,
+      contactId: "lindholm", reviewedRecipient: "v1",
       items: [{ description: "Designsparring, september", quantity: "10", unitPrice: "900", vat: undefined }],
     }))
-    await waitFor(() => expect(done).toHaveBeenCalledWith({ kind: "invoice", invoiceId: "inv-153" }))
+    expect(screen.getAllByRole("button", { name: "Fortryd" })).toHaveLength(1)
+    expect(document.querySelector("[data-slot=held-send-toast]")).toBeNull()
+
+    // A reload discards the card and all client undo state. Only the server's job remains.
+    cleanup()
+    removeUndo("repeat-job")
+    api.held.mockResolvedValue([{ id: "repeat-job", type: "invoice.delayed_send", steps: 0, heldForMs: 4000, invoiceId: "inv-153" }])
+    render(<I18nProvider locale="da-DK"><UndoToaster /></I18nProvider>)
+    await screen.findByRole("button", { name: "Fortryd" })
+    expect(screen.getAllByRole("button", { name: "Fortryd" })).toHaveLength(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(3800) })
+    expect(api.release).not.toHaveBeenCalled()
+    expect(api.send).not.toHaveBeenCalled()
+    expect(done).not.toHaveBeenCalled()
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+    expect(api.release).toHaveBeenCalledWith({ jobId: "repeat-job" })
+    expect(api.create).toHaveBeenCalledTimes(1)
+    expect(done).toHaveBeenCalledWith({ kind: "invoice", invoiceId: "inv-153" })
     off()
   })
 
-  it("makes nothing at all after Fortryd", async () => {
+  it("Fortryd cancels the server job and never releases it", async () => {
     renderCard()
     await clickSend()
-
     fireEvent.click(await screen.findByRole("button", { name: "Fortryd" }))
     await act(async () => { await vi.advanceTimersByTimeAsync(9000) })
-
-    expect(api.create).not.toHaveBeenCalled()
+    expect(api.cancel).toHaveBeenCalledWith({ jobId: "repeat-job" })
+    expect(api.release).not.toHaveBeenCalled()
     expect(api.send).not.toHaveBeenCalled()
-    expect(screen.queryByRole("button", { name: "Fortryd" })).toBeNull()
   })
 
-  it("says so when the invoice could not be made, instead of showing it as sent", async () => {
+  it("reports a draft creation failure without queuing a send", async () => {
     api.create.mockRejectedValue(new Error("down"))
     renderCard()
     await clickSend()
-
-    await act(async () => { await vi.advanceTimersByTimeAsync(8100) })
-
-    expect((await screen.findByRole("alert")).textContent).toContain("Fakturaen til Lindholm & Bak I/S blev ikke sendt.")
-    fireEvent.click(screen.getByRole("button", { name: "Luk" }))
-    expect(screen.queryByRole("alert")).toBeNull()
+    expect((await screen.findByRole("alert")).textContent).toBeTruthy()
+    expect(api.later).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "Fortryd" })).toBeNull()
   })
 
   it("says there is nothing to copy for a customer without an issued invoice", async () => {

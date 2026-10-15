@@ -1,0 +1,78 @@
+name: Nightly quality reports
+
+on:
+  schedule:
+    - cron: '36 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quits_quality
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d quits_quality"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      QUITS_WORKTREE_ENV: '1'
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/quits_quality
+      BETTER_AUTH_SECRET: quality-fixture-only-over-thirty-two-characters
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3066
+      QUITS_PUBLIC_PAYMENT_SECRET: quality-payment-fixture-only
+      QUITS_PUBLIC_QUOTE_SECRET: quality-quote-fixture-only
+      FROM_EMAIL: billing@example.test
+      PW_TEST_SOURCE_TRANSFORM: ${{ github.workspace }}/apps/oss/tests/e2e/react-jsx-transform.cjs
+      PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @quits/oss prisma:generate
+      - run: node --test scripts/__tests__/design-check.test.mjs
+      - name: Report design values
+        run: node scripts/design-check.mjs > design-report.json
+      - name: Install visual tools
+        working-directory: apps/oss
+        run: |
+          bunx playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Visual and accessibility reports
+        id: browser
+        continue-on-error: true
+        working-directory: apps/oss
+        env:
+          QUITS_ARTIFACT_DIR: ${{ runner.temp }}/quality-artifacts
+        run: bunx playwright test -c playwright.quality.config.ts --workers=2
+      - name: Record report status
+        if: always()
+        env:
+          OUTCOME: ${{ steps.browser.outcome }}
+        run: echo "Quality browser outcome = $OUTCOME. Report-only until baseline and design approval in Linear. See quality-reports artifact." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-reports
+          path: |
+            design-report.json
+            apps/oss/playwright-report/quality/
+            apps/oss/test-results/quality/
+          compression-level: 9
+          retention-days: 3

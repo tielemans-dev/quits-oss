@@ -3,6 +3,7 @@ import { Cause, Effect, Exit, Option } from "effect"
 import type { ArtifactStaging, Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
 import { getDocumentArtifactStore, getDocumentRenderer } from "../lib/runtime/services"
+import { renderPdf } from "../lib/documents/render-pdf"
 import { getRuntimeCapabilities } from "../lib/runtime/extensions"
 import { actorKey, type Actor } from "../domain/actor"
 import { executeCommand, type ExecuteOptions, type CommandOutcome } from "../domain/execute"
@@ -167,7 +168,7 @@ export async function prepareDocument(stagingId: string): Promise<ArtifactStagin
           return { ref, hash, size: bytes.byteLength }
         }
         await checkPreparation()
-        const artifacts: StoredArtifacts = { pdf: await storeBytes("pdf", await renderer.renderPdf(renderInput)) }
+        const artifacts: StoredArtifacts = { pdf: await storeBytes("pdf", await renderPdf(renderer, renderInput)) }
         if (renderer.renderUbl) {
           await checkPreparation()
           const ubl = await renderer.renderUbl(renderInput)

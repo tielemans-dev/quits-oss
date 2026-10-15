@@ -33,6 +33,7 @@ export const queueVatExport = defineCommand({
 /** Each checkpoint commits under the runner's claim, so a replacement runner can resume safely. */
 export const handleVatExport: JobHandler = async job => {
   const overview = z.object({ available: z.literal(true), outputVatMinor: z.string().regex(/^-?\d+$/),
+    inputVatMinor: z.string().regex(/^\d+$/).nullable().optional(),
     period: z.object({ from: z.iso.date(), to: z.iso.date(), date: z.iso.date(), label: z.string(), daysLeft: z.number() }),
   }).parse(job.payload)
   const owned = { id: job.id, organizationId: job.organizationId, claimToken: job.claimToken }

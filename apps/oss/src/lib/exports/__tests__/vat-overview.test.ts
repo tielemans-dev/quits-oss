@@ -7,6 +7,7 @@ const setup = (patch = {}) => ({
   orgSettings: { findUnique: vi.fn().mockResolvedValue({ momsRegistered: true, countryCode: "DK", taxRegime: "eu_vat", vatPeriod: "quarterly", timezone: "Europe/Copenhagen", ...patch }) },
   invoice: { findMany: vi.fn().mockResolvedValue([{ currency: "DKK", totalTax: new Prisma.Decimal("100.01") }, { currency: "DKK", totalTax: new Prisma.Decimal("0.02") }]) },
   creditNote: { findMany: vi.fn().mockResolvedValue([{ currency: "DKK", totalTax: new Prisma.Decimal("25.02") }]) },
+  vatPeriodEntry: { findUnique: vi.fn().mockResolvedValue(null) },
 })
 it.each([
   ["quarterly", "2026-10-15", "Q3", "2026-07-01", "2026-09-30", "2026-12-01"],
@@ -24,6 +25,10 @@ it.each(["quarterly", "half_yearly"])("reconciles %s issued tax less credits in 
   expect(args.where).toMatchObject({ organizationId: "org", status: { not: "draft" }, issueDate: { gte: new Date("2026-06-30T22:00:00Z") } })
   expect(args.where.issueDate.lt).toEqual(new Date(vatPeriod === "quarterly" ? "2026-09-30T22:00:00Z" : "2026-12-31T23:00:00Z"))
   expect(db.creditNote.findMany).toHaveBeenCalledWith(args)
+  expect(db.vatPeriodEntry.findUnique).toHaveBeenCalledWith({ where: { organizationId_from_to: {
+    organizationId: "org", from: result.available && result.period.from, to: result.available && result.period.to,
+  } } })
+  expect(result).toMatchObject({ inputVatMinor: null, payableVatMinor: null })
 })
 it.each([{ momsRegistered: false }, { momsRegistered: null }, { countryCode: "SE" }, { taxRegime: "none" }, { vatPeriod: null }])("does not invent an overview for %j", async patch => {
   const db = setup(patch)

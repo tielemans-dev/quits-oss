@@ -7,7 +7,7 @@ import { vatOverview, tastSelvSummary } from "../../lib/exports/vat-overview"
 import { queueVatExport, handleVatExport } from "../vat-export-job"
 import { Command, Db } from "../services"
 import { StaleJobClaimError } from "../jobs"
-const overview = { available: true as const, period: { from: "2026-07-01", to: "2026-09-30", date: "2026-12-01", label: "Q3", daysLeft: 47 }, outputVatMinor: "-101" }
+const overview = { available: true as const, period: { from: "2026-07-01", to: "2026-09-30", date: "2026-12-01", label: "Q3", daysLeft: 47 }, outputVatMinor: "-101", inputVatMinor: null, payableVatMinor: null, inputVatUpdatedAt: null, inputVatUpdatedBy: null }
 const job = { id: "job", organizationId: "org", claimToken: "claim", payload: overview, attempts: 1, createdAt: new Date() }
 beforeEach(() => {
   vi.clearAllMocks()
@@ -47,4 +47,11 @@ it("refuses to replay a click for a different period", async () => {
   db.job.findUnique.mockResolvedValue({ payload: overview })
   expect(await queueVatExport.validateReplay!({ from: "2026-07-01" }, { jobId: "job" })).toBeUndefined()
   expect(await queueVatExport.validateReplay!({ from: "2026-01-01" }, { jobId: "job" })).toMatchObject({ code: "idempotency_mismatch" })
+})
+it.each([["0", "-1.01"], ["1001", "-11.02"]])("keeps manual purchase VAT %s in the persisted worksheet job", async (inputVatMinor, payable) => {
+  const payload = { ...overview, inputVatMinor }
+  await handleVatExport({ ...job, payload })
+  const csv = db.job.updateMany.mock.calls.at(-1)![0].data.result.csv
+  expect(csv).toContain(`Moms i alt,${payable},Salgsmoms minus købsmoms`)
+  expect(csv).toContain("Manuelt angivet for perioden")
 })

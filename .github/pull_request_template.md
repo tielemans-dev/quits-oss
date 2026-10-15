@@ -19,6 +19,10 @@ Upload PR-only assets to GitHub; do not commit them. -->
 
 ## Risk
 
+- [ ] Ines design sign-off recorded in Linear, or no design change.
+- [ ] Mira copy check completed against COPY.md and docs/public-promises.md, or no copy change.
+- [ ] Noah production check recorded before Done, or pending under Needs Martin.
+
 <!-- State material risks, compatibility effects, or unresolved questions.
 Keep the diff <=400 changed lines, excluding generated/lockfiles/migrations.
 The parent schedules one independent review per ready head, at most three rounds;
