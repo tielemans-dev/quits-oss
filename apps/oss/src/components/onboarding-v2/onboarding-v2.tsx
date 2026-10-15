@@ -352,13 +352,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    if (!draft || saving.current) return
-    // The form opts out of native (English-only) browser validation, so an unanswered VAT question gets the app's own message.
-    if ((confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) {
-      reject(["momsRegistered"])
-      return
-    }
+    // An unanswered VAT question keeps the submit button disabled, so this only guards programmatic submits.
+    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
     const v = draft.values
+    // The form opts out of native (English-only) browser validation; required text fields the schema allows empty are checked here.
+    const empty = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
       (!/^\d{4}$/.test(v.bankRegNumber) || !/^\d{1,10}$/.test(v.bankAccountNumber))
@@ -367,8 +365,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload(draft))
-    if (!validated.success) {
-      reject(validated.error.issues.map((issue) => String(issue.path.at(-1))))
+    if (!validated.success || empty.length) {
+      reject([...new Set([...empty, ...(validated.success ? [] : validated.error.issues.map((issue) => String(issue.path.at(-1))))])])
       return
     }
     setValidationErrors([])
@@ -392,7 +390,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       setBusy(false)
       saving.current = false
       // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
-      const fields = (readableIssues(error) ?? []).flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : [])
+      // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
+      const message = error instanceof Error ? error.message : ""
+      const issues = message === "cvr.invalid" ? [{ field: "cvr" }] : message === "email.invalid" ? [{ field: "email" }] : readableIssues(error) ?? []
+      const fields = [...new Set(issues.flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : []))]
       if (fields.length) reject(fields)
       else setSaveFailed(true)
     }
@@ -705,7 +706,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 aria-label={TT("field.vat")}
                 value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
                 required
-                aria-invalid={validationErrors.includes("momsRegistered") || undefined}
                 disabled={busy}
                 onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >

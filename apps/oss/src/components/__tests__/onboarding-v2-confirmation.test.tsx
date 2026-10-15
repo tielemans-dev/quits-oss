@@ -130,8 +130,19 @@ describe("review page CVR errors (QUI-39)", () => {
     expect(screen.queryByText(message)).toBeNull()
   })
 
+  it("requires the company email even though the form opts out of native validation", async () => {
+    const { cvr, form } = await review("da-DK")
+    fireEvent.change(cvr, { target: { value: "24256790" } })
+    const email = screen.getByLabelText(translate("onboardingV2.field.email", "da-DK"))
+    fireEvent.change(email, { target: { value: "" } })
+    fireEvent.submit(form)
+    expect(await screen.findByText("Indtast en e-mail")).toBeTruthy()
+    expect(email.getAttribute("aria-invalid")).toBe("true")
+    expect(api.confirm).not.toHaveBeenCalled()
+  })
+
   it("points a server-side CVR rejection at the CVR field instead of failing silently or generically", async () => {
-    const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error(JSON.stringify([{ code: "custom", path: ["cvr"], message: "cvr.invalid" }])) }) }
+    const client = { ...createOnboardingV2Client(false), confirm: vi.fn(async () => { throw new Error("cvr.invalid") }) }
     const { cvr, form } = await review("da-DK", client)
     fireEvent.change(cvr, { target: { value: "24256790" } })
     fireEvent.submit(form)
