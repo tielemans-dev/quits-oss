@@ -32,7 +32,7 @@ export function buyerAddress(buyer: BuyerSnapshot | null | undefined, locale: st
   return [buyer?.address, [buyer?.zip, buyer?.city, buyer?.state].filter(Boolean).join(" "), countryName(buyer?.country, locale)].filter((value): value is string => Boolean(value))
 }
 
-/** PDF postal presentation. Public payment-page country presentation is managed separately. */
+/** PDF postal presentation. */
 export function pdfBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, locale?: string | null): string[] {
   const countryCode = buyer.country?.trim().toUpperCase()
   const country = countryCode && /^[A-Z]{2}$/.test(countryCode)
