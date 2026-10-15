@@ -102,6 +102,7 @@ function settingsRow(overrides: Record<string, unknown> = {}) {
     stripeSecretKeyEnc: encryptSecret("sk_test_12345678901234567890"),
     stripeWebhookSecretEnc: encryptSecret("whsec_12345678901234567890"),
     stripeAccountId: null,
+    stripeAccountBusinessName: null,
     stripeAccountStatus: "none",
     stripeAccountStatusAt: null,
     documentSendingDomain: null,
@@ -160,6 +161,7 @@ describe("settings stripe account contract", () => {
     expect(settings.stripeAccount).toEqual({
       mode: "byok",
       accountId: null,
+      businessName: null,
       status: "none",
       statusAt: null,
     })
@@ -232,6 +234,7 @@ describe("settings stripe account contract", () => {
     mocks.findUnique.mockResolvedValue(
       settingsRow({
         stripeAccountId: "acct_test",
+        stripeAccountBusinessName: "Acme ApS",
         stripeAccountStatus: "active",
         stripeAccountStatusAt: statusAt,
       })
@@ -242,6 +245,7 @@ describe("settings stripe account contract", () => {
     expect(settings.stripeAccount).toEqual({
       mode: "connect",
       accountId: "acct_test",
+      businessName: "Acme ApS",
       status: "active",
       statusAt: "2026-10-12T12:00:00.000Z",
     })

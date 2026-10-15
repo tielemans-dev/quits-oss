@@ -41,7 +41,7 @@ export function StripeConnectCard({
   onOpenStripe,
   onDisconnect,
 }: {
-  account: Pick<OrgStripeAccount, "accountId" | "status">
+  account: Pick<OrgStripeAccount, "accountId" | "status"> & { businessName?: string | null }
   onConnect?: () => void
   onResume?: () => void
   onFixInStripe?: () => void
@@ -49,7 +49,7 @@ export function StripeConnectCard({
   onDisconnect?: () => void
 }) {
   const { t } = useI18n()
-  const { status, accountId } = account
+  const { status, accountId, businessName } = account
 
   return (
     <Card data-testid="stripe-connect-card" data-stripe-connect-status={status}>
@@ -67,6 +67,7 @@ export function StripeConnectCard({
         {status !== "none" && accountId ? (
           <div className="grid gap-1">
             <div className="text-sm font-medium">{t("settings.payments.connect.account.label")}</div>
+            {businessName ? <div className="text-sm">{businessName}</div> : null}
             <div className="text-sm text-muted-foreground">{accountId}</div>
           </div>
         ) : null}

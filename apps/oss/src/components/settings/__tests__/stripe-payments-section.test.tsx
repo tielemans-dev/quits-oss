@@ -32,6 +32,7 @@ function connectAccount(status: StripeAccountStatus): OrgStripeAccount {
   return {
     mode: "connect",
     accountId: status === "none" ? null : "acct_test",
+    businessName: status === "none" ? null : "Acme ApS",
     status,
     statusAt: "2026-10-12T12:00:00.000Z",
   }
@@ -40,6 +41,7 @@ function connectAccount(status: StripeAccountStatus): OrgStripeAccount {
 const byokAccount: OrgStripeAccount = {
   mode: "byok",
   accountId: null,
+  businessName: null,
   status: "none",
   statusAt: null,
 }
