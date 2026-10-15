@@ -385,7 +385,7 @@ export function InvoicePdfDocument({
         <View style={styles.totalsContainer}>
           {totals.lines.map((row, index) => (
             <View key={index} style={styles.totalsRow}>
-              <Text style={styles.totalLabel}>{row.label}</Text>
+              <Text style={styles.totalLabel}>{row.label}{row.reason ? `\n${row.reason}` : ""}</Text>
               <Text>{formatCurrency(Number(row.amount), invoice.currency, locale)}</Text>
             </View>
           ))}
@@ -397,6 +397,7 @@ export function InvoicePdfDocument({
           </View>
         </View>
 
+        {totals.note && <Text style={[styles.label, { borderWidth: 1, padding: 8 }]}>{totals.note}</Text>}
         {/* Payment details */}
         {momsRegistered === false && <Text style={[styles.notesText, { marginTop: 24 }]}>{nonVatStatement(locale)}</Text>}
 
