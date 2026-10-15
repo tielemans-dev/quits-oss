@@ -89,7 +89,7 @@ describe("stored line rates at the render-input boundary", () => {
     }
     if (rates.includes(0)) {
       expect(rendered.vatRows).toEqual(expect.arrayContaining([expect.objectContaining({ ratePercent: "0", treatment: zeroTreatment, treatments: [zeroTreatment] })]))
-      expect(buildTotals({ basis: "net", subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, vatRows: rendered.vatRows, currency, locale: "en-US" }).lines).toEqual(expect.arrayContaining([expect.objectContaining({ reason: zeroTreatment === "exempt" ? "Exempt · Health · Synthetic health exemption" : "Outside the scope of VAT" })]))
+      expect(buildTotals({ basis: "net", subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, vatRows: rendered.vatRows, currency, locale: "en-US" }).lines).toEqual(expect.arrayContaining([expect.objectContaining({ reason: zeroTreatment === "exempt" ? "Exempt from VAT under section 13(1)(1) of the Danish VAT Act (momsloven) · Synthetic health exemption" : "Outside the scope of VAT" })]))
     }
     h.invoice.status = "sent"
     if (!prepared.right.snapshot || typeof prepared.right.snapshot !== "object" || !("money" in prepared.right.snapshot)) throw new Error("Expected frozen money")

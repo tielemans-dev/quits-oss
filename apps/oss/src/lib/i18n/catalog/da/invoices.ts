@@ -179,7 +179,7 @@ export const daInvoicesMessages = {
   "vat.treatment.exempt": "Momsfritaget",
   "vat.treatment.reverse_charge_domestic": "Indenlandsk omvendt betalingspligt",
   "vat.treatment.out_of_scope": "Uden for moms",
-  "vat.treatment.zero_rated": "Nulsats",
+  "vat.treatment.zero_rated": "Momsfritaget med fradragsret",
   "vat.treatment.unclassified_zero": "Ukategoriseret tidligere nulsats",
   "vat.reason.goods": "Varer",
   "vat.reason.services_b2b": "B2B-ydelser",

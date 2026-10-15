@@ -295,7 +295,7 @@ export function InvoicePdfDocument({
   const totals = buildTotals({
     basis: invoice.pricesIncludeTax === undefined ? undefined : priceBasis(invoice.pricesIncludeTax),
     subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total,
-    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale, taxRegime: invoice.taxRegime,
   })
   const paymentDetails = quote ? null : buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },

@@ -18,6 +18,7 @@ export function DocumentTotals({
   vatRows,
   rounding,
   currency,
+  taxRegime,
   renderAmount,
 }: {
   priceBasis?: PriceBasis
@@ -27,11 +28,12 @@ export function DocumentTotals({
   vatRows?: readonly VatRow[] | null
   rounding?: string | null
   currency: string
+  taxRegime?: string | null
   /** Optional presentation for callers that need separator-aware tabular digits. */
   renderAmount?: (amount: string) => ReactNode
 }) {
   const { locale } = useI18n()
-  const totals = buildTotals({ basis: priceBasis, subtotal, taxAmount, total, vatRows, rounding, currency, locale })
+  const totals = buildTotals({ basis: priceBasis, subtotal, taxAmount, total, vatRows, rounding, currency, locale, taxRegime })
   const money = (amount: string) => formatCurrency(Number(amount), currency, locale)
   const amount = renderAmount ?? ((value: string) => <span className="num">{money(value)}</span>)
   return (

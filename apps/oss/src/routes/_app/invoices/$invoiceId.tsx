@@ -1403,7 +1403,7 @@ function InvoiceDetailPage() {
             {/* Totals */}
             <div className="flex justify-end">
               <div className="w-full sm:w-80 grid gap-2 text-sm">
-                <DocumentTotals priceBasis={invoice.priceBasis} subtotal={invoice.subtotal} taxAmount={invoice.taxAmount} total={invoice.total} vatRows={invoice.vatRows} rounding={invoice.rounding} currency={invoice.currency} />
+                <DocumentTotals priceBasis={invoice.priceBasis} subtotal={invoice.subtotal} taxAmount={invoice.taxAmount} total={invoice.total} vatRows={invoice.vatRows} rounding={invoice.rounding} currency={invoice.currency} taxRegime={invoice.taxRegime} />
                 {invoice.status !== "draft" && (invoice.amountPaid > 0 || invoice.amountCredited > 0) && (
                   <>
                     {invoice.amountPaid > 0 && (

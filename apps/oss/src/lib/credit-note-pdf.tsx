@@ -120,7 +120,7 @@ export function CreditNotePdfDocument({
   const totals = buildTotals({
     basis: creditNote.pricesIncludeTax === undefined ? undefined : priceBasis(creditNote.pricesIncludeTax),
     subtotal: creditNote.subtotal, taxAmount: creditNote.taxAmount, total: creditNote.total,
-    vatRows: creditNote.vatRows, rounding: creditNote.rounding, currency: creditNote.currency, locale,
+    vatRows: creditNote.vatRows, rounding: creditNote.rounding, currency: creditNote.currency, locale, taxRegime: creditNote.taxRegime,
   })
 
   return (
