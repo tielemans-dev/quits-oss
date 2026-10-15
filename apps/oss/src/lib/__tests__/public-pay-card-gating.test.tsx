@@ -145,6 +145,12 @@ describe("public pay card gating", () => {
     await expectUnavailable()
   })
 
+  it("refuses leftover BYOK keys when only the managed payments capability is registered", async () => {
+    setRuntimeExtensions([{ id: "managed-only", resolveCapabilities: () => ({ payments: { managed: true } }) }])
+    Object.assign(state.settings, configuredByok)
+    await expectUnavailable()
+  })
+
   it("shows bank transfer only on hosted when the Connect extension is absent", async () => {
     vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
     Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
