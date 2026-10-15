@@ -26,6 +26,12 @@ describe("calendar-date input compatibility", () => {
       .toMatchObject({ agreedDate: "2026-11-07", expectedDate: "2026-11-07" })
   })
 
+  it("allows an explicit draft delivery-date clear while omission preserves the value", () => {
+    expect(invoiceUpdateDraftV2InputSchema.parse({ id: "invoice", supplyDate: null })).toEqual({ id: "invoice", supplyDate: null })
+    expect(invoiceUpdateDraftV2InputSchema.parse({ id: "invoice" })).toEqual({ id: "invoice" })
+    expect(invoiceUpdateDraftV2InputSchema.safeParse({ id: "invoice", supplyDate: "" }).success).toBe(false)
+  })
+
   it("validates the calendar day, including leap days, without discarding validation of the time", () => {
     expect(calendarDateInputSchema.parse("2028-02-29T23:59:00-11:00")).toBe("2028-02-29")
     expect(calendarDateInputSchema.parse("2028-02-29")).toBe("2028-02-29")

@@ -181,7 +181,7 @@ describe("frozen invoice email payment details", () => {
     expect(before).toContain("0123 456 789")
     expect(before).toContain("Issue-time note")
     expect(before).toContain("Testvej 42<br />9000 Aalborg")
-    expect(before).toContain("CVR-nr.: 12345678")
+    expect(before).toContain("CVR-nr. 12345678")
     expect(before).not.toMatch(/0040|0440116243|Legacy frozen note|Current payment note|9876543/)
   })
 

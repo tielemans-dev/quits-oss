@@ -74,8 +74,6 @@ export const enCreditNotesMessages = {
   "creditNotes.pdf.invoiceDate": "Invoice date",
   "creditNotes.pdf.reason": "Reason",
   "creditNotes.pdf.taxId": "Tax ID",
-  "creditNotes.pdf.vatNumber": "VAT no.",
-  "creditNotes.pdf.cvrNumber": "CVR no.",
   "creditNotes.email.subject": "Credit note {number} for invoice {invoiceNumber} ({total})",
   "creditNotes.email.greeting": "Hi {name}, here is a credit note for invoice {invoiceNumber}.",
   "creditNotes.email.reference": "Credits invoice",

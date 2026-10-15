@@ -7,6 +7,7 @@ import {
 import {
   publicQuoteTokenInputSchema,
 } from "@quits/contracts/quotes"
+import { nominalLineTaxRate } from "../documents/line-amounts"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
 import { resolvePublicPresentation } from "../documents/public-presentation"
@@ -105,6 +106,7 @@ export function serializePublicQuoteSession(session: {
       expiryDate: toDateString(quote.expiryDate) ?? quote.expiryDate,
       totalGross: toNumber(quote.totalGross),
       totalTax: toNumber(quote.totalTax),
+      taxRate: nominalLineTaxRate([...quote.items].sort((a, b) => a.sortOrder - b.sortOrder).map(item => item.taxRate == null ? undefined : toNumber(item.taxRate))),
       subtotalNet: toNumber(quote.subtotalNet),
       vatRows: quote.vatRows,
       rounding: quote.rounding,
