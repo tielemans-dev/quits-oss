@@ -25,9 +25,11 @@ export async function searchOwnCvr(input: {
   signal?: AbortSignal
 }): Promise<{ available: boolean; companies: CvrLookupCompany[] }> {
   if (!input.cloud || !input.lookup) return { available: false, companies: [] }
+  const signal = AbortSignal.any([...(input.signal ? [input.signal] : []), AbortSignal.timeout(8_000)])
+  signal.throwIfAborted()
   const companies = await input.lookup.search(input.query, {
     userId: input.userId,
-    signal: AbortSignal.any([...(input.signal ? [input.signal] : []), AbortSignal.timeout(8_000)]),
+    signal,
   })
   return {
     available: true,

@@ -259,13 +259,13 @@ export const onboardingRouter = router({
   // Lookup runs before an organization exists. The hosted runtime supplies the provider.
   searchCvr: protectedProcedure
     .input(z.object({ q: z.string().trim().min(3).max(120) }))
-    .query(({ ctx, input }) =>
+    .query(({ ctx, input, signal }) =>
       searchOwnCvr({
         query: input.q,
         cloud: isCloudDistribution,
         userId: ctx.user.id,
         lookup: getCvrLookupProvider(),
-        signal: ctx.request?.signal,
+        signal: signal && ctx.request?.signal ? AbortSignal.any([signal, ctx.request.signal]) : signal ?? ctx.request?.signal,
       }),
     ),
   getStatus: authorizedProcedure("settings:read").query(async ({ ctx }) => {
