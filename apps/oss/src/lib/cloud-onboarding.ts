@@ -39,7 +39,7 @@ const profileDefaultsMap: Record<CloudOnboardingProfile, CloudProfileDefaults> =
   },
   enterprise: {
     taxRegime: "custom",
-    pricesIncludeTax: true,
+    pricesIncludeTax: false,
     invoicePrefix: "INV",
     quotePrefix: "QTE",
   },
