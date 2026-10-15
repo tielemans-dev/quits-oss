@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../../lib/db"
+import { translate } from "../../lib/i18n/translate"
 import { deliver, EmailSendError } from "../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { jobsRouter } from "../../trpc/routers/jobs"
 import { sendReminderNow } from "../commands/reminders"
 import { executeCommand } from "../execute"
-import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, runDueJobs } from "../jobs"
+import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, registerJobHandler, runDueJobs } from "../jobs"
 import { handleReminderBatch, REMINDER_BATCH_JOB } from "../reminder-jobs"
 
 vi.mock("../../lib/email", async () => ({
@@ -38,7 +39,10 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
       user: { id: userId }, session: { activeOrganizationId: org.organizationId },
     } } as never)
     const api = caller()
-    const { jobId } = await api.sendReminders({ invoiceIds })
+    const request = { invoiceIds, clientRequestId: randomUUID() }
+    const submissions = await Promise.all([api.sendReminders(request), api.sendReminders(request)])
+    expect(submissions[0]).toEqual(submissions[1])
+    const { jobId } = submissions[0]
     const sweep = async () => {
       await prisma.job.updateMany({ where: { organizationId: org.organizationId, type: REMINDER_BATCH_JOB, status: "pending" }, data: { runAfter: new Date(0) } })
       await runDueJobs({ organizationIds: [org.organizationId] })
@@ -62,6 +66,10 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
   it("recovers a crash after sending but before storing the delivery key, without repeating completed steps", async () => {
     const ctx = await setup()
     const state = await ctx.api.get({ jobId: ctx.jobId })
+    expect(state).toMatchObject({ title: "reminders.jobs.title", titleParams: { count: 2 } })
+    expect(state.steps[0]).toMatchObject({ label: "reminders.jobs.step", labelParams: { customerName: "Buyer" } })
+    expect(translate("reminders.jobs.title", "da", state.titleParams)).toBe("Send rykkere til 2 forfaldne fakturaer")
+    expect(translate("reminders.jobs.title", "en", state.titleParams)).toBe("Send reminders to 2 overdue invoices")
     const first = state.steps[0]
     await executeCommand(sendReminderNow, { invoiceId: first.invoiceId }, {
       actor: ctx.org.actors.admin, clientRequestId: `job-step:${first.id}:1`,
@@ -122,15 +130,60 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     expect(deliver).toHaveBeenCalledTimes(1)
   })
 
+  it("allows only one concurrent runner to claim a batch and rejects retry during that claim", async () => {
+    const ctx = await setup(1)
+    let release!: () => void, started!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const entered = new Promise<void>(resolve => { started = resolve })
+    const handler = vi.fn(async (job: Parameters<typeof handleReminderBatch>[0]) => {
+      started()
+      await gate
+      return handleReminderBatch(job)
+    })
+    registerJobHandler(REMINDER_BATCH_JOB, handler)
+    const scope = { organizationIds: [ctx.org.organizationId], limit: 1 }
+    const runners = Promise.all([runDueJobs(scope), runDueJobs(scope)])
+    try {
+      await entered
+      const step = (await ctx.api.get({ jobId: ctx.jobId })).steps[0]
+      await expect(ctx.api.retryStep({ jobId: ctx.jobId, stepId: step.id })).rejects.toThrow("currently running")
+    } finally {
+      release()
+      await runners
+      registerJobHandler(REMINDER_BATCH_JOB, handleReminderBatch)
+    }
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect((await runners).map(r => r.processed).sort()).toEqual([0, 1])
+    expect((await ctx.finish()).steps[0].attempts).toBe(1)
+    expect(deliver).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([false, true])("handles a removed member with a committed receipt: %s", async committed => {
+    const ctx = await setup(1)
+    const step = (await ctx.api.get({ jobId: ctx.jobId })).steps[0]
+    if (committed) {
+      await prisma.jobStep.update({ where: { id: step.id }, data: { status: "running", attempts: 1 } })
+      await executeCommand(sendReminderNow, { invoiceId: step.invoiceId }, {
+        actor: ctx.org.actors.admin, clientRequestId: `job-step:${step.id}:1`,
+      })
+    }
+    await prisma.member.deleteMany({ where: { organizationId: ctx.org.organizationId, userId: ctx.org.actors.admin.userId } })
+    await runDueJobs({ organizationIds: [ctx.org.organizationId] })
+    const state = await ctx.caller(ctx.org.actors.accountant.userId).get({ jobId: ctx.jobId })
+    expect(state.steps[0].status).toBe(committed ? "succeeded" : "failed")
+    expect(state.successfulReminderInvoiceIds).toEqual(committed ? ctx.invoiceIds : [])
+    expect(deliver).toHaveBeenCalledTimes(committed ? 1 : 0)
+  })
+
   it("scopes creation, reads and retries to the org and enforces send permission", async () => {
     const a = await setup(1), b = await setup(1)
     const step = (await a.api.get({ jobId: a.jobId })).steps[0]
-    await expect(b.api.sendReminders({ invoiceIds: a.invoiceIds })).rejects.toThrow("not found")
+    await expect(b.api.sendReminders({ invoiceIds: a.invoiceIds, clientRequestId: randomUUID() })).rejects.toThrow("not found")
     await expect(b.api.get({ jobId: a.jobId })).rejects.toThrow("not found")
     await expect(b.api.retryStep({ jobId: a.jobId, stepId: step.id })).rejects.toThrow("not found")
     await expect(b.api.retryStep({ jobId: b.jobId, stepId: step.id })).rejects.toThrow("Only failed")
     expect((await b.api.list()).map(j => j.id)).toEqual([b.jobId])
-    await expect(a.caller(a.org.actors.accountant.userId).sendReminders({ invoiceIds: a.invoiceIds })).rejects.toThrow()
+    await expect(a.caller(a.org.actors.accountant.userId).sendReminders({ invoiceIds: a.invoiceIds, clientRequestId: randomUUID() })).rejects.toThrow()
     expect(deliver).not.toHaveBeenCalled()
   })
 

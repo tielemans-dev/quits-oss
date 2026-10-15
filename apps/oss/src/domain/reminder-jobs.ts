@@ -20,7 +20,7 @@ export const queueReminderJob = defineCommand({
   type: "reminder.queue_batch",
   permission: "invoice:send",
   outwardFacing: true,
-  input: z.object({ invoiceIds: z.array(z.string().min(1)).min(1).max(100) }),
+  input: z.object({ invoiceIds: z.array(z.string().min(1)).min(1).max(100), clientRequestId: z.string().min(1).max(200) }),
   summarize: input => `Send reminders to ${input.invoiceIds.length} overdue invoices`,
   handle: input => Effect.gen(function* () {
     const db = yield* Db
@@ -37,9 +37,10 @@ export const queueReminderJob = defineCommand({
     if (invoices.length !== ids.length) return yield* new NotFound({ entity: "invoice", message: "Overdue invoices not found" })
     const job = yield* Effect.promise(() => db.job.create({ data: {
       organizationId: command.organizationId, type: REMINDER_BATCH_JOB,
-      title: `Send reminders to ${ids.length} overdue invoices`, payload: { actor: command.actor },
+      title: "reminders.jobs.title", payload: { actor: command.actor },
       steps: { create: ids.map((invoiceId, position) => ({
-        invoiceId, position, label: `Rykker til ${invoices.find(i => i.id === invoiceId)!.contact.name}`,
+        invoiceId, position, label: "reminders.jobs.step",
+        labelParams: { customerName: invoices.find(i => i.id === invoiceId)!.contact.name },
       })) },
     } }))
     return { jobId: job.id }

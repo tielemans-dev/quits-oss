@@ -10,7 +10,7 @@ const select = {
   id: true, type: true, title: true, status: true, createdAt: true, updatedAt: true,
   steps: {
     orderBy: { position: "asc" },
-    select: { id: true, position: true, label: true, invoiceId: true, status: true, error: true, attempts: true },
+    select: { id: true, position: true, label: true, labelParams: true, invoiceId: true, status: true, error: true, attempts: true },
   },
 } satisfies Prisma.JobSelect
 
@@ -18,7 +18,7 @@ function progress(job: Prisma.JobGetPayload<{ select: typeof select }>) {
   const succeeded = job.steps.filter(step => step.status === "succeeded")
   const failed = job.steps.filter(step => step.status === "failed").length
   return {
-    ...job, kind: job.type,
+    ...job, kind: job.type, titleParams: { count: job.steps.length },
     progress: { done: succeeded.length + failed, total: job.steps.length, succeeded: succeeded.length, failed },
     successfulReminderInvoiceIds: succeeded.flatMap(step => step.invoiceId ? [step.invoiceId] : []),
   }
@@ -28,7 +28,7 @@ export const jobsRouter = router({
   sendReminders: authorizedProcedure("invoice:send")
     .input(queueReminderJob.input)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor }))),
+      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor, clientRequestId: input.clientRequestId }))),
 
   list: authorizedProcedure("invoice:read").query(async ({ ctx }) =>
     (await prisma.job.findMany({

@@ -1,5 +1,7 @@
 /** Owned by the reminders feature. */
 export const enRemindersMessages = {
+  "reminders.jobs.title": "Send reminders to {count} overdue invoices",
+  "reminders.jobs.step": "Reminder to {customerName}",
   "reminders.email.subject.upcoming": "Reminder: invoice {number} is due {dueDate}",
   "reminders.email.subject.overdue": "Overdue: invoice {number} — {balance} outstanding",
   "reminders.email.title.upcoming": "Payment reminder",
