@@ -38,6 +38,7 @@ import {
 import { Plus, Sparkles, Trash2 } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
 import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
+import { visibleFieldError, type FieldError } from "../../../lib/validation/field-error"
 
 export const Route = createFileRoute("/_app/invoices/new")({
   component: NewInvoicePage,
@@ -74,6 +75,7 @@ function NewInvoicePage() {
   const [saving, setSaving] = useState(false)
   const submitPending = useRef(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldError, setFieldError] = useState<FieldError<"contact" | "dueDate" | "items"> | null>(null)
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [loadingCatalog, setLoadingCatalog] = useState(true)
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
@@ -143,6 +145,12 @@ function NewInvoicePage() {
       })
     )
   }
+
+  const invalidFields = new Set<"contact" | "dueDate" | "items">()
+  if (!contactId) invalidFields.add("contact")
+  if (!dueDate) invalidFields.add("dueDate")
+  if (items.some((item) => !item.description.trim())) invalidFields.add("items")
+  const shownError = visibleFieldError(fieldError, invalidFields) ?? error
 
   const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
   const subtotal = Number(preview.result?.net ?? "0")
@@ -237,17 +245,18 @@ function NewInvoicePage() {
   async function handleSubmit(sendImmediately: boolean) {
     if (submitPending.current) return
     setError(null)
+    setFieldError(null)
 
     if (!contactId) {
-      setError(t("docForm.validation.contactRequired"))
+      setFieldError({ field: "contact", message: t("docForm.validation.contactRequired") })
       return
     }
     if (!dueDate) {
-      setError(t("invoices.new.validation.dueDateRequired"))
+      setFieldError({ field: "dueDate", message: t("invoices.new.validation.dueDateRequired") })
       return
     }
     if (items.some((item) => !item.description.trim())) {
-      setError(t("docForm.validation.itemDescriptionRequired"))
+      setFieldError({ field: "items", message: t("docForm.validation.itemDescriptionRequired") })
       return
     }
 
@@ -313,9 +322,9 @@ function NewInvoicePage() {
           <CardTitle>{t("invoices.new.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-6">
-          {error && (
+          {shownError && (
             <p className="text-sm text-destructive" role="alert">
-              {error}
+              {shownError}
             </p>
           )}
 
