@@ -17,9 +17,25 @@ export function onboardingShellLanguage(pathname: string, search: unknown): 'da'
   return loginReturnSearchSchema.safeParse(search).data?.lang
 }
 
+/** Returning to the login page after logging in would only loop. */
+function isLoginPath(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0]
+  return pathname === '/login' || pathname.startsWith('/login/')
+}
+
 /** `next` wins when both aliases are supplied, even if it is invalid. */
 export function loginReturnTarget(search: LoginReturnSearch): string | null {
-  return toInternalRedirectPath(search.next ?? search.redirect)
+  const target = toInternalRedirectPath(search.next ?? search.redirect)
+  return target && !isLoginPath(target) ? target : null
+}
+
+/** Where a signed-out visitor to `path` (including search) logs in before resuming it. */
+export function loginRedirectHref(path: string, lang?: 'da' | 'en'): string {
+  const target = loginReturnTarget({ redirect: path })
+  const query = new URLSearchParams()
+  if (target && target !== '/') query.set('redirect', target)
+  if (lang) query.set('lang', lang)
+  return `/login${query.size ? `?${query}` : ''}`
 }
 
 /** Carry language without re-encoding the destination's other query parameters. */

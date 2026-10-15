@@ -69,7 +69,21 @@ afterEach(() => {
 describe("app layout redirects on a cloud server", () => {
   it("sends a signed-out visitor to login", async () => {
     state.getAppLayoutSession.mockResolvedValue({ ...layout(null, null), user: null })
-    expect(await load("/settings")).toEqual({ to: "/login" })
+    expect(await load("/settings")).toEqual({ href: "/login?redirect=%2Fsettings" })
+  })
+
+  it("keeps the full path, search and language when sending a signed-out visitor to login", async () => {
+    state.getAppLayoutSession.mockResolvedValue({ ...layout(null, null), user: null })
+    const result = await load("/invoices/new?customer=a%20b&lang=da") as { href: string }
+    const url = new URL(result.href, "http://app.test")
+    expect(url.pathname).toBe("/login")
+    expect(url.searchParams.get("redirect")).toBe("/invoices/new?customer=a%20b&lang=da")
+    expect(url.searchParams.get("lang")).toBe("da")
+  })
+
+  it("sends a signed-out visitor to the dashboard to a bare login", async () => {
+    state.getAppLayoutSession.mockResolvedValue({ ...layout(null, null), user: null })
+    expect(await load("/")).toEqual({ href: "/login" })
   })
 
   it("sends a user without an active organization to onboarding", async () => {
@@ -219,7 +233,7 @@ describe("app layout server calls", () => {
 
     state.getAppLayoutSession.mockResolvedValueOnce({ ...layout(null, null), user: null })
     invalidateAppLayoutSession()
-    expect(await load("/invoices")).toEqual({ to: "/login" })
+    expect(await load("/invoices")).toEqual({ href: "/login?redirect=%2Finvoices" })
     expect(state.getAppLayoutSession).toHaveBeenCalledTimes(3)
   })
 })

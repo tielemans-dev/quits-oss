@@ -35,3 +35,17 @@ for (const lang of ['da', 'en']) {
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
   })
 }
+
+test('a signed-out visit to a protected page logs in and resumes it', async ({ page }) => {
+  const target = '/invoices?filter=a%20b&tab=all'
+  await page.goto(target)
+  await expect(page).toHaveURL(/\/login\?/)
+  expect(new URL(page.url()).searchParams.get('redirect')).toBe(target)
+  await waitForClientReady(page)
+  const signup = await page.getByRole('link', { name: 'Sign up' }).getAttribute('href')
+  expect(new URL(signup!, page.url()).searchParams.get('redirect')).toBe(target)
+  await page.getByLabel('Email').fill(adminCredentials.email)
+  await page.getByLabel('Password').fill(adminCredentials.password)
+  await page.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page).toHaveURL(/\/invoices\?filter=a%20b&tab=all/)
+})
