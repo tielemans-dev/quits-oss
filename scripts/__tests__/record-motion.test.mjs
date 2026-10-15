@@ -62,3 +62,10 @@ test("accept readiness/scenario paths and opt-in frame retention", () => {
   assert.equal(options["keep-frames"], true)
   assert.equal(parseOptions(["/login"])["keep-frames"], false)
 })
+
+test("frame thresholds accept overrides and reject invalid or out-of-range values", () => {
+  assert.equal(parseOptions(["/", "--check-jump", "0.8"]).thresholds.jump, 0.8)
+  for (const [key, value] of [["blank", "-1"], ["jump", "1.1"], ["layout", "NaN"], ["flicker", "Infinity"]]) {
+    assert.throws(() => parseOptions(["/", `--check-${key}`, value]))
+  }
+})
