@@ -55,10 +55,6 @@ import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import type { OrgStripeAccount } from "@quits/contracts/payments"
-import {
-  stripeConnectRedirectUrl,
-  type StripeConnectSettingsAction,
-} from "../../lib/runtime/stripe-connect-settings"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
@@ -69,11 +65,7 @@ import { ReminderPolicyCard } from "../../components/settings/reminder-policy-ca
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
-import {
-  StripePaymentsSection,
-  stripeByokUpdate,
-  stripeConnectActionHandlers,
-} from "../../components/settings/stripe-payments-section"
+import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -726,17 +718,6 @@ function SettingsPage() {
     }
   }
 
-  async function handleStripeConnectAction(action: StripeConnectSettingsAction) {
-    setError(null)
-    try {
-      const result = await trpc.settings.runStripeConnectAction.mutate({ action })
-      const url = stripeConnectRedirectUrl(result.url)
-      if (url) window.location.assign(url)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
-    }
-  }
-
   async function handleConfigureDocumentSendingDomain() {
     setDocumentSendingError(null)
     setDocumentSendingSuccess(null)
@@ -1327,9 +1308,19 @@ function SettingsPage() {
           clearStripeWebhookSecret={clearStripeWebhookSecret}
           onClearStripeSecretKeyChange={setClearStripeSecretKey}
           onClearStripeWebhookSecretChange={setClearStripeWebhookSecret}
-          {...stripeConnectActionHandlers(settings.stripeConnectActions, (action) => {
-            void handleStripeConnectAction(action)
-          })}
+          connectActions={settings.stripeConnectActions}
+          onConnectError={setError}
+          onConnectSettings={(next) => {
+            setSettings((current) =>
+              current
+                ? {
+                    ...current,
+                    stripeAccount: next.stripeAccount,
+                    stripeConnectActions: next.stripeConnectActions,
+                  }
+                : current,
+            )
+          }}
         />
 
         {/* AI invoice drafting */}

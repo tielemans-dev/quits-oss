@@ -14,6 +14,11 @@ export type StripeConnectSettingsHandler = {
   ) => Promise<{ url?: string | null } | void>
 }
 
+/** Opens an https URL returned by the hosted handler. */
+export function followStripeConnectUrl(url: string) {
+  window.location.assign(url)
+}
+
 /** Only an https URL from the registered handler is safe to open. */
 export function stripeConnectRedirectUrl(url: string | null | undefined): string | null {
   if (typeof url !== "string" || url.length === 0) return null

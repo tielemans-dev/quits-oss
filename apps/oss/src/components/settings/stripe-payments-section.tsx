@@ -1,6 +1,11 @@
 import type { OrgStripeAccount, StripePaymentMode } from "@quits/contracts/payments"
-import type { StripeConnectSettingsAction } from "../../lib/runtime/stripe-connect-settings"
+import {
+  followStripeConnectUrl,
+  stripeConnectRedirectUrl,
+  type StripeConnectSettingsAction,
+} from "../../lib/runtime/stripe-connect-settings"
 import { useI18n } from "../../lib/i18n/react"
+import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -70,10 +75,9 @@ export function StripePaymentsSection({
   clearStripeWebhookSecret,
   onClearStripeSecretKeyChange,
   onClearStripeWebhookSecretChange,
-  onConnect,
-  onResume,
-  onFixInStripe,
-  onDisconnect,
+  connectActions = false,
+  onConnectSettings,
+  onConnectError,
 }: {
   account?: OrgStripeAccount
   stripeByokConfigured: boolean
@@ -82,21 +86,39 @@ export function StripePaymentsSection({
   clearStripeWebhookSecret: boolean
   onClearStripeSecretKeyChange: (clear: boolean) => void
   onClearStripeWebhookSecretChange: (clear: boolean) => void
-  onConnect?: () => void
-  onResume?: () => void
-  onFixInStripe?: () => void
-  onDisconnect?: () => void
+  /** True only when a runtime handler is registered and the caller may update settings. */
+  connectActions?: boolean
+  onConnectSettings?: (next: { stripeAccount: OrgStripeAccount; stripeConnectActions: boolean }) => void
+  onConnectError?: (message: string | null) => void
 }) {
   const { t } = useI18n()
+
+  async function runConnectAction(action: StripeConnectSettingsAction) {
+    onConnectError?.(null)
+    try {
+      const result = await trpc.settings.runStripeConnectAction.mutate({ action })
+      const url = stripeConnectRedirectUrl(result.url)
+      if (url) {
+        followStripeConnectUrl(url)
+        return
+      }
+      const next = await trpc.settings.get.query()
+      onConnectSettings?.({
+        stripeAccount: next.stripeAccount,
+        stripeConnectActions: next.stripeConnectActions,
+      })
+    } catch (err) {
+      onConnectError?.(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    }
+  }
 
   if (account.mode === "connect") {
     return (
       <StripeConnectCard
         account={account}
-        onConnect={onConnect}
-        onResume={onResume}
-        onFixInStripe={onFixInStripe}
-        onDisconnect={onDisconnect}
+        {...stripeConnectActionHandlers(connectActions, (action) => {
+          void runConnectAction(action)
+        })}
       />
     )
   }

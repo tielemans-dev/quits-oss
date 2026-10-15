@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   txFindUnique: vi.fn(),
   txUpsert: vi.fn(),
   paymentsManaged: false,
+  canUpdateSettings: true,
 }))
 
 vi.mock("../../../lib/db", () => ({
@@ -36,7 +37,8 @@ vi.mock("../../../domain/documents/base-currency", async (importOriginal) => ({
 
 vi.mock("../../../domain/actor", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../domain/actor")>()),
-  actorCan: () => true,
+  actorCan: (_actor: unknown, permission: string) =>
+    permission !== "settings:update" || mocks.canUpdateSettings,
 }))
 
 vi.mock("../../../domain/user-actor", () => ({
@@ -133,6 +135,7 @@ describe("settings stripe account contract", () => {
     vi.clearAllMocks()
     resetRuntimeServices()
     mocks.paymentsManaged = false
+    mocks.canUpdateSettings = true
     mocks.findFirst.mockResolvedValue(null)
     mocks.txFindUnique.mockResolvedValue({
       countryCode: "DK",
@@ -225,6 +228,9 @@ describe("settings stripe account contract", () => {
 
     mocks.paymentsManaged = true
     expect((await createCaller().get()).stripeConnectActions).toBe(true)
+
+    mocks.canUpdateSettings = false
+    expect((await createCaller().get()).stripeConnectActions).toBe(false)
   })
 
   it("calls the registered Connect handler and does not persist the account", async () => {
