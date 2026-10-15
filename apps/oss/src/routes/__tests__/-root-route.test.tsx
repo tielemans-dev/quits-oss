@@ -108,3 +108,25 @@ describe("root route installation check", () => {
     expect(await navigate("/invoices")).toHaveProperty("installation.isSetupComplete", true)
   })
 })
+
+describe("demo isolation", () => {
+  it("skips installation for demo routes without caching a setup answer", async () => {
+    forgetInstallationStatus()
+    getInstallationStatus.mockClear()
+    for (const pathname of ['/demo', '/demo/', '/demo/invoice-editor', '/demo/send-review']) {
+      expect(await navigate(pathname)).toEqual({ installation: undefined })
+    }
+    expect(getInstallationStatus).not.toHaveBeenCalled()
+    getInstallationStatus.mockResolvedValue({ isSetupComplete: false, distribution: 'selfhost' })
+    expect(await navigate('/invoices')).toMatchObject({ to: '/setup' })
+    expect(getInstallationStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not bypass setup for similarly named production paths", async () => {
+    forgetInstallationStatus()
+    getInstallationStatus.mockClear()
+    getInstallationStatus.mockResolvedValue({ isSetupComplete: false, distribution: 'selfhost' })
+    expect(await navigate('/demo-admin')).toMatchObject({ to: '/setup' })
+    expect(getInstallationStatus).toHaveBeenCalledTimes(1)
+  })
+})

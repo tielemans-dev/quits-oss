@@ -30,6 +30,10 @@ function NotFound() {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
+    // Public examples never query installation state or populate its production cache.
+    if (location.pathname === '/demo' || location.pathname.startsWith('/demo/')) {
+      return { installation: undefined }
+    }
     const installation = await reuseInstallationStatus(async () =>
       normalizeInstallationStatus(await getInstallationStatus())
     )
