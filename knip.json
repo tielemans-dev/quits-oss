@@ -3,7 +3,8 @@
   "workspaces": {
     ".": {
       "entry": [],
-      "project": []
+      "project": [],
+      "ignoreDependencies": ["nitro", "oxlint"]
     },
     "apps/oss": {
       "entry": [
@@ -13,14 +14,24 @@
         "*.config.ts",
         "src/test-utils/artifact-runtime.ts",
         "tests/**/index.html",
-        "tests/onboarding-v2/screenshots.html"
+        "tests/onboarding-v2/screenshots.html",
+        "tests/**/*.config.ts",
+        "tests/onboarding-v2/{fixture,screenshots,screenshots-mocks}.tsx",
+        "tests/visual/auth/main.tsx",
+        "tests/e2e/fixtures/waitlist-form.tsx",
+        "tests/onboarding-v2/runtime-captures.ts",
+        "tests/visual/render-qui61-pdf.tsx",
+        "e2e/qui52{,-current}-capture.mjs"
       ],
       "project": ["src/**/*.{ts,tsx}", "build/**/*.mjs", "e2e/**/*.{ts,mjs}", "tests/**/*.{ts,tsx}", "*.config.ts"],
-      "ignore": ["generated/**", "src/routeTree.gen.ts"],
       "vite": false,
       "prisma": false,
       "playwright": false,
-      "vitest": false
+      "vitest": false,
+      "ignoreDependencies": ["qui56-baseline-onboarding", "qui56-baseline-welcome"],
+      "ignoreIssues": {
+        "src/components/ui/**": ["exports", "types"]
+      }
     },
     "packages/*": {
       "project": ["src/**/*.ts"]
