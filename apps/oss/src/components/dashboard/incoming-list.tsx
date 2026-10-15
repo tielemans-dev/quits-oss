@@ -38,6 +38,7 @@ export function IncomingList({
   inAttention,
   reminders,
   onRemind,
+  newInvoiceId,
 }: {
   items: IncomingItem[]
   today: string
@@ -45,6 +46,8 @@ export function IncomingList({
   inAttention: ReadonlySet<string>
   reminders: Record<string, ReminderState>
   onRemind: (invoiceId: string) => void
+  /** A row that has just arrived grows in and carries a highlight that fades out. */
+  newInvoiceId?: string
 }) {
   const { t, locale } = useI18n()
 
@@ -78,7 +81,7 @@ export function IncomingList({
             return (
               <li
                 key={item.documentId}
-                className="group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 border-t px-4 py-3 transition-colors duration-150 first:border-t-0"
+                className={cn("group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 border-t px-4 py-3 transition-colors duration-150 first:border-t-0", item.documentId === newInvoiceId && "incoming-new")}
               >
                 <CustomerMark name={item.customerName} className="mt-0.5" />
                 <div className="min-w-0">

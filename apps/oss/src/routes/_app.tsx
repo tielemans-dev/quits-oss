@@ -15,6 +15,7 @@ import { OrganizationChangedBanner } from '../components/organization-changed-ba
 import { shouldRedirectToCloudOnboarding } from '../lib/cloud-onboarding'
 import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
+import '../components/command-bar/register-cards'
 import { AppMain } from '../components/shell/app-main'
 import { I18nProvider } from '../lib/i18n/react'
 import { loginRedirectHref, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, onboardingShellLanguage } from '../lib/login-return'

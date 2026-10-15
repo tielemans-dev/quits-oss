@@ -48,5 +48,9 @@ export const daNavMessages = {
   "shell.request.title.invoice": "Faktura",
   "shell.request.title.overdue": "Forfaldne fakturaer",
   "shell.request.dismiss": "Annuller",
+  "shell.request.invoice.edit": "Rediger",
+  "shell.request.invoice.sent": "Faktura sendt",
+  "shell.request.invoice.gap": "Mangler: {field}",
+  "shell.request.invoice.foreignCurrency": "Fakturaer i fremmed valuta kræver en kurs og sendes fra den fulde formular.",
   "shell.org.switch": "Skift organisation",
 } as const

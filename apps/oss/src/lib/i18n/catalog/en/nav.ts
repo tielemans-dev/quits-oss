@@ -48,5 +48,9 @@ export const enNavMessages = {
   "shell.request.title.invoice": "Invoice",
   "shell.request.title.overdue": "Overdue invoices",
   "shell.request.dismiss": "Cancel",
+  "shell.request.invoice.edit": "Edit",
+  "shell.request.invoice.sent": "Invoice sent",
+  "shell.request.invoice.gap": "Missing: {field}",
+  "shell.request.invoice.foreignCurrency": "Invoices in a foreign currency need an exchange rate and are sent from the full form.",
   "shell.org.switch": "Switch organization",
 } as const

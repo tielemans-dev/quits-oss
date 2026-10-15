@@ -6,6 +6,7 @@ import { DashboardView, DashboardHeader } from "../../components/dashboard/dashb
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
 import { CommandBar } from "../../components/command-bar/command-bar"
+import { onRequestDone } from "../../components/command-bar/request-events"
 import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
 import { sendReminderBatch } from "../../components/jobs/reminder-jobs-store"
 import { useShellPermissions } from "../../components/shell/use-shell-permissions"
@@ -35,6 +36,9 @@ function DashboardPage() {
   const { load, refresh, retry } = useDashboardSummary()
   const { data: session } = useSession()
   const { can } = useShellPermissions()
+  const [newInvoiceId, setNewInvoiceId] = useState<string>()
+  // A card finished something over this page (an invoice was sent): show it in the figures and lists.
+  useEffect(() => onRequestDone(done => { setNewInvoiceId(done.invoiceId); void refresh() }), [refresh])
 
   if (load.status === "loading") {
     return (
@@ -63,6 +67,7 @@ function DashboardPage() {
       sendReminder={sendReminder}
       sendReminderBatch={sendReminderBatch}
       onRemindersSettled={refresh}
+      newInvoiceId={newInvoiceId}
       userName={session?.user.name}
       commandBar={<CommandBar recognize={permittedRequest(recognizeRequest, can)} />}
     />

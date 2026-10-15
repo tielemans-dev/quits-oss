@@ -35,6 +35,8 @@ export const enInvoicesMessages = {
   "invoices.new.validation.dueDateRequired": "Please set a due date",
   "invoices.new.error.createFailed": "Failed to create invoice",
   "invoices.new.notes.placeholder": "Payment terms, thank you note, etc.",
+  "invoices.new.fromRequest": "Filled in from the command bar",
+  "invoices.new.backToRequest": "Back to the suggestion",
   "invoices.new.ai.label": "Draft with AI",
   "invoices.new.ai.placeholder":
     "Example: Create an invoice for Acme for 8 hours of design at 1200 DKK/hour, due in 14 days.",
