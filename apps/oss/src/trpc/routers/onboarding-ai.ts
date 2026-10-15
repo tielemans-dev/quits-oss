@@ -1,4 +1,4 @@
-import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
+import { admitOnboardingCvr } from "../../lib/onboarding/cvr-verification"
 import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
 import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
@@ -324,7 +324,7 @@ async function applyPatchToOrgSettings(
   await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
-    if (patch.primaryTaxId !== undefined) await requireOnboardingCvr({
+    if (patch.primaryTaxId !== undefined) await admitOnboardingCvr({
       cvr: patch.primaryTaxId.replace(/^DK/, ""), scheme: patch.primaryTaxIdScheme,
       cloud: true, userId, organizationId, tx,
     })

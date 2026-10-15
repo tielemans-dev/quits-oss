@@ -1,3 +1,5 @@
+import { billingProvider } from "../../lib/billing"
+import { recordCvrVerification } from "../../lib/onboarding/cvr-verification"
 import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
 import { isCloudDistribution } from "../../lib/distribution"
 import { translate } from "../../lib/i18n/translate"
@@ -376,6 +378,7 @@ export const settingsRouter = router({
 
       // The registry's 10-second deadline must fit inside the atomic save.
       return prisma.$transaction(async (tx) => {
+        let verifiedCvr: string | undefined
         let baseCurrency: string
         try { baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, settingsInput) }
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
@@ -383,6 +386,7 @@ export const settingsRouter = router({
           where: { organizationId: ctx.organizationId },
           select: {
             countryCode: true,
+            onboardingCompletedAt: true,
             locale: true,
             paymentNote: true,
             taxRegime: true,
@@ -417,8 +421,9 @@ export const settingsRouter = router({
           const stored = await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })
           if (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase()) {
-            await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
+            const company = await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
               cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId, tx })
+            if (company) verifiedCvr = company.cvr
           }
         }
         // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
@@ -586,6 +591,13 @@ export const settingsRouter = router({
           }
         }
 
+        if (verifiedCvr) {
+          const pending = await tx.organizationCvrVerification.findUnique({ where: { organizationId: ctx.organizationId } })
+          await recordCvrVerification(tx, ctx.organizationId, verifiedCvr, true)
+          if (pending?.status === "pending" && current?.onboardingCompletedAt) {
+            await billingProvider.startTrial?.(ctx.organizationId, { cvr: verifiedCvr, tx })
+          }
+        }
         await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })
         return tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
       }, { timeout: 15_000 })
