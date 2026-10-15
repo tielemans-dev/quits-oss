@@ -1,12 +1,13 @@
 import { Sparkles } from 'lucide-react'
 
+import { DURATION } from '../../../lib/motion'
 import { suggestRequest } from '../../command-bar/suggest-request'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest, type RequestRecognizer, type RequestIntent } from '../../command-bar/request-intent'
 import type { PaletteProvider, PaletteSection } from './types'
 
 /** The list fades out over this long (see `CommandPalette`); the card's content waits for it. */
-const LIST_FADE_MS = 90
+const LIST_FADE_MS = DURATION.listFade
 
 /**
  * "Opgave / Bed quits: …": one row ahead of the search results when the input reads as a

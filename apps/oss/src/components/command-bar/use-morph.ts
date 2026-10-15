@@ -1,9 +1,7 @@
 import { useCallback, useRef } from "react"
 import { flushSync } from "react-dom"
 
-import { EASE_ENTER } from "../../lib/motion"
-
-const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+import { EASE_ENTER, prefersReducedMotion } from "../../lib/motion"
 
 /**
  * Animates the height of `ref` across a change that resizes it. `run` commits the change, then

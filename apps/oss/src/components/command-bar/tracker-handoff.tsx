@@ -2,7 +2,7 @@ import { Loader2, X } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 
-import { DURATION, EASE_ENTER } from "../../lib/motion"
+import { DURATION, EASE_ENTER, prefersReducedMotion } from "../../lib/motion"
 import { cn } from "../../lib/utils"
 import { holdTracker } from "../jobs/tracker-hold"
 import { Button } from "../ui/button"
@@ -18,8 +18,6 @@ const TOAST = '[data-slot="reminder-tracker"], [data-slot="undo-toast"][data-job
 
 export type HandoffLabels = { failed: string; retry: string; close: string }
 
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
-
 function fly(el: HTMLElement, from: DOMRect, done: () => void) {
   const corner = { left: window.innerWidth - MARGIN - SQUARE, top: window.innerHeight - MARGIN - SQUARE }
   const box = (left: number, top: number, size: { width: number; height: number }, radius: number) =>
@@ -27,7 +25,7 @@ function fly(el: HTMLElement, from: DOMRect, done: () => void) {
   const square = { width: SQUARE, height: SQUARE }
   if (typeof el.animate !== "function") return done()
   // Reduced motion: no travel, the square only fades in where it ends.
-  const animation = reducedMotion()
+  const animation = prefersReducedMotion()
     ? el.animate({ opacity: [0, 1] }, { duration: DURATION.fade })
     : el.animate(
         [

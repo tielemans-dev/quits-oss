@@ -35,7 +35,7 @@ const SHRINK_MS = DURATION.card
 const HOLD_MS = 1500
 const LEAVE_MS = DURATION.leave
 /** The check's content arrives this long into the shrink, once the surface has made room. */
-const CHECK_DELAY_MS = 90
+const CHECK_DELAY_MS = DURATION.listFade
 
 type Readiness = Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>>
 

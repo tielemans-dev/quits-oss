@@ -26,10 +26,12 @@ export const DURATION = {
   row: milliseconds("duration-row"),
   toast: milliseconds("duration-toast"),
   card: milliseconds("duration-card"),
+  count: milliseconds("duration-count"),
   highlight: milliseconds("duration-highlight"),
 } as const
 
 export const STAGGER_STEP = milliseconds("stagger-step")
 
 /** True when the user asked for reduced motion; script-driven motion then fades only. */
-export const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+export const prefersReducedMotion = () =>
+  typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)
