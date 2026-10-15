@@ -1,3 +1,4 @@
+import { vatReasonCodeSchema } from "@quits/contracts/vat"
 import type { TranslationKey } from "../i18n/messages"
 
 /**
@@ -43,7 +44,7 @@ export function lineColumnKeys(basis: PriceBasis | undefined): { unitPrice: Tran
 }
 
 /** VAT of one rate. Amounts are decimal strings in the document's currency. */
-export type VatRow = { ratePercent: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; treatments?: string[] }
+export type VatRow = { ratePercent: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; treatments?: string[]; reasonCodes?: string[] }
 
 const isZero = (amount: string) => !/[1-9]/.test(amount)
 
@@ -65,11 +66,23 @@ export function totalsLabelKeys(basis: PriceBasis | undefined, hasVat = basis ==
 }
 
 export function vatReasonKeys(row: VatRow): TranslationKey[] {
-  return [...new Set(row.treatments ?? (row.treatment ? [row.treatment] : []))].flatMap<TranslationKey>(treatment => {
+  const treatments = [...new Set(row.treatments ?? (row.treatment ? [row.treatment] : []))].flatMap<TranslationKey>(treatment => {
     if (treatment === "out_of_scope") return ["pdf.vatOutOfScope"]
     if (["exempt", "reverse_charge_domestic", "intra_community", "export", "zero_rated"].includes(treatment)) return [`vat.treatment.${treatment}` as TranslationKey]
     return []
   })
+  const reasons = [...new Set(row.reasonCodes ?? (row.reasonCode ? [row.reasonCode] : []))].flatMap<TranslationKey>(code => {
+    const parsed = vatReasonCodeSchema.safeParse(code)
+    // "other" is the catch-all and names nothing the treatment does not already say.
+    return parsed.success && parsed.data !== "other" ? [`vat.reason.${parsed.data}` as TranslationKey] : []
+  })
+  return [...treatments, ...reasons]
+}
+
+/** The document's nominal rate from its lines in order: the first positive one, else the first. */
+export function nominalLineTaxRate(rates: readonly (number | null | undefined)[]): number | undefined {
+  const known = rates.filter((rate): rate is number => rate != null)
+  return known.find(rate => rate > 0) ?? known[0]
 }
 
 export function deviationVatLabel(rate: number | undefined, rows: readonly VatRow[] | null | undefined, mainRate?: number): TranslationKey | null {

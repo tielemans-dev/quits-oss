@@ -436,7 +436,7 @@ export function InvoicePdfDocument({
           </View>
         )}
         <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
-          <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, "DK", momsRegistered), org.companyEmail].filter(Boolean).join(" · ")}</Text>
+          <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered), org.companyEmail].filter(Boolean).join(" · ")}</Text>
           <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
         </View>
       </Page>

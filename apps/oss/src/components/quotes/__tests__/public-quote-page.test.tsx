@@ -183,6 +183,20 @@ describe("PublicQuotePage", () => {
     container.innerHTML = html
     expect(container.querySelectorAll('[data-slot="amount"]')[4]?.textContent).toBe("$1,200.01")
   })
+  it("keeps the seller's tax IDs out of the customer card", () => {
+    const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote,
+        sellerSnapshot: { ...baseQuote.sellerSnapshot, taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] },
+        buyerSnapshot: { ...baseQuote.buyerSnapshot, country: "DK", taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
+    }} />)
+    const container = document.createElement("div")
+    container.innerHTML = html
+    const customerCard = [...container.querySelectorAll("div.rounded-lg.border")].find(card => card.textContent?.includes("Buyer Name"))!
+    expect(customerCard.textContent).toContain("87654321")
+    expect(customerCard.textContent).not.toContain("12345678")
+    expect(container.textContent).toContain("12345678")
+  })
   it("top-aligns content-sized cards, uses micro labels and right-aligned tabular amounts", () => {
     const html = page("en-US", <PublicQuotePage token="test" state={{ kind: "ready", decisionState: "pending", seller, quote: baseQuote }} />)
     expect(html).toContain("items-start")

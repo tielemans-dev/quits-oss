@@ -74,6 +74,7 @@ export function vatRowsByRate(
     const row = rows.get(ratePercent) ?? { ratePercent, net: "0", tax: "0", gross: "0" }
     row.treatments = [...new Set([...(row.treatments ?? []), ...(group.treatment ? [group.treatment] : [])])]
     row.treatment = row.treatments.length === 1 ? row.treatments[0] : undefined
+    if (group.reasonCode) row.reasonCodes = [...new Set([...(row.reasonCodes ?? []), group.reasonCode])]
     row.net = toDecimal(row.net).plus(group.net).toFixed(exponent)
     row.tax = toDecimal(row.tax).plus(group.tax).toFixed(exponent)
     row.gross = toDecimal(row.gross).plus(group.gross).toFixed(exponent)

@@ -154,6 +154,7 @@ function PublicQuoteDocument({
   const { quote, decisionState, seller } = state
   const momsRegistered = sellerVatPresentationStatus(quote.sellerSnapshot?.momsRegistered, quote.taxRegime)
   const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
+  const sellerTaxIds = formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
   const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null
@@ -161,6 +162,7 @@ function PublicQuoteDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
+      {sellerTaxIds.length > 0 && <div className="text-sm text-muted-foreground"><h2 className="text-xs font-medium uppercase tracking-wide">{t("pdf.from")}</h2>{sellerTaxIds.map(id => <p key={id}>{id}</p>)}</div>}
       <div className="grid w-full items-start gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
@@ -250,7 +252,6 @@ function PublicQuoteDocument({
             <div className="grid gap-4 rounded-lg border p-4">
               <InfoBlock label={t("public.document.customer")} value={quote.contact.name} />
               {distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company }) && <InfoBlock label={t("public.document.company")} value={distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company })!} />}
-              {formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered).map(id => <p key={id}>{id}</p>)}
               {formatTaxIds(quote.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
               <div className="grid gap-2 text-sm" aria-label={t("public.document.total")}>
                 <DocumentTotals

@@ -182,7 +182,7 @@ describe("frozenVatRows", () => {
     ] })
     const rows = frozenVatRows({ ...document, items: document.items.map((line) => ({ ...line, vatCountry: line.vatCountry ?? null, vatReasonCode: line.vatReasonCode ?? null })) })
     expect(rows).toEqual([
-      { ratePercent: "0", net: "500.00", tax: "0.00", gross: "500.00", treatment: "exempt", treatments: ["exempt"] },
+      { ratePercent: "0", net: "500.00", tax: "0.00", gross: "500.00", treatment: "exempt", treatments: ["exempt"], reasonCodes: ["other"] },
       { ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05", treatment: "standard", treatments: ["standard"] },
       { ratePercent: "25", net: "1200.00", tax: "300.00", gross: "1500.00", treatment: "standard", treatments: ["standard"] },
     ])
@@ -197,7 +197,7 @@ describe("frozenVatRows", () => {
       { rate: "0.25", net: "80.00", tax: "20.00", gross: "100.00", treatment: "standard" },
     ], "DKK")
     expect(rows).toEqual([
-      { ratePercent: "0", net: "150.00", tax: "0.00", gross: "150.00", treatment: undefined, treatments: ["exempt", "out_of_scope"] },
+      { ratePercent: "0", net: "150.00", tax: "0.00", gross: "150.00", treatment: undefined, treatments: ["exempt", "out_of_scope"], reasonCodes: ["other"] },
       { ratePercent: "25", net: "80.00", tax: "20.00", gross: "100.00", treatment: "standard", treatments: ["standard"] },
     ])
   })
@@ -226,7 +226,7 @@ describe("frozenVatRowsOrUndefined", () => {
 
   it("has the rows of a finished one", () => {
     expect(frozenVatRowsOrUndefined({ ...totals, items: [{ ...line, vatReasonCode: "other" }] }))
-      .toEqual([{ ratePercent: "0", net: "10.00", tax: "0.00", gross: "10.00", treatment: "exempt", treatments: ["exempt"] }])
+      .toEqual([{ ratePercent: "0", net: "10.00", tax: "0.00", gross: "10.00", treatment: "exempt", treatments: ["exempt"], reasonCodes: ["other"] }])
   })
 
   it("has no rows when the lines do not carry the stored tax, as with legacy lines whose tax is zero", () => {
