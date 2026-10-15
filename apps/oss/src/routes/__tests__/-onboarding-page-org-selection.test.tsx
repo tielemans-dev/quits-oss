@@ -74,7 +74,7 @@ vi.mock("../../lib/auth-client", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
-    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) } },
+    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) }, setupAvailable: { query: vi.fn(async () => ({ enabled: false })) } },
     onboarding: {
       getStatus: {
         query: vi.fn(),
@@ -206,7 +206,7 @@ describe("OnboardingPage org selection", () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
-    vi.mocked(trpc.runtime.capabilities.query).mockResolvedValueOnce({ onboardingV2: { enabled: true } } as never)
+    vi.mocked(trpc.cvr.setupAvailable.query).mockResolvedValueOnce({ enabled: true } as never)
     vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
     vi.mocked(authClient.organization.create).mockResolvedValue({ data: { id: "org_created" }, error: null } as never)
     setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
@@ -227,9 +227,9 @@ describe("OnboardingPage org selection", () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
-    vi.mocked(trpc.runtime.capabilities.query)
+    vi.mocked(trpc.cvr.setupAvailable.query)
       .mockRejectedValueOnce(new Error("network"))
-      .mockResolvedValueOnce({ onboardingV2: { enabled: true } } as never)
+      .mockResolvedValueOnce({ enabled: true } as never)
     render(<RoutePage />)
     const retry = await screen.findByRole("button", { name: "onboardingV2.retry" })
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
@@ -239,13 +239,23 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
   })
 
+  it("keeps the v1 lookup card when v2 is enabled but CVR onboarding is unavailable", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.runtime.capabilities.query).mockResolvedValue({ onboardingV2: { enabled: true } } as never)
+    vi.mocked(trpc.cvr.setupAvailable.query).mockResolvedValueOnce({ enabled: false } as never)
+    render(<RoutePage />)
+    expect(await screen.findByText("auth.onboarding.lookup.title")).toBeTruthy()
+  })
+
   it("offers the retry when the capability lookup hangs instead of spinning forever", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       isCloudDistributionMock.mockReturnValue(true)
       useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
       listOrganizations.mockResolvedValue({ data: [] })
-      vi.mocked(trpc.runtime.capabilities.query).mockReturnValueOnce(new Promise(() => {}) as never)
+      vi.mocked(trpc.cvr.setupAvailable.query).mockReturnValueOnce(new Promise(() => {}) as never)
       render(<RoutePage />)
       await vi.advanceTimersByTimeAsync(10_000)
       expect(await screen.findByRole("button", { name: "onboardingV2.retry" })).toBeTruthy()

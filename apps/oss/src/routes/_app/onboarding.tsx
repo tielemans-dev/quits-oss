@@ -164,8 +164,8 @@ function OnboardingPageContent() {
     return () => { cancelled = true }
   }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
 
-  // Before an organization exists, the public runtime capabilities decide whether onboarding v2
-  // applies. v2 then only needs a name to create the organization; the CVR lookup, review and
+  // Before an organization exists, cvr.setupAvailable (same predicate as cvr.available) decides
+  // whether onboarding v2 applies. v2 then only needs a name to create the organization; the CVR lookup, review and
   // confirmation happen in the v2 wizard instead of the v1 card creating a finished organization.
   // A failed lookup stays unknown (with a retry) rather than falling back to v1.
   const [noOrgV2, setNoOrgV2] = useState<boolean | null>(null)
@@ -175,8 +175,8 @@ function OnboardingPageContent() {
     if (!isCloud || hasActiveOrg) return
     let cancelled = false
     setNoOrgV2Failed(false)
-    withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
-      .then(capabilities => { if (!cancelled) setNoOrgV2((capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true) })
+    withTimeout(trpc.cvr.setupAvailable.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      .then(result => { if (!cancelled) setNoOrgV2(result?.enabled === true) })
       .catch(() => { if (!cancelled) setNoOrgV2Failed(true) })
     return () => { cancelled = true }
   }, [isCloud, hasActiveOrg, noOrgV2Attempt])
@@ -325,7 +325,7 @@ function OnboardingPageContent() {
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
             // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
             // draft. When capabilities are unknown, skip the write; the next visit can store it.
-            const v2Active = await trpc.runtime.capabilities.query()
+            const v2Active = await withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
               .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
               .catch(() => true)
             if (cancelled) return
