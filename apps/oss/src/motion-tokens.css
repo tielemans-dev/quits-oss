@@ -20,6 +20,7 @@
   --animate-spin: spin var(--duration-spin) var(--ease-linear) infinite;
   --animate-pulse: pulse var(--duration-pulse) var(--ease-enter) infinite;
 
+  --duration-tick: 100ms;
   --duration-fade: 150ms;
   --duration-square-shrink: 200ms;
   --duration-leave: 250ms;
