@@ -137,6 +137,7 @@ describe("settings stripe account contract", () => {
       aiProvider: "openrouter",
       aiBaseUrl: null,
       momsRegistered: null,
+      stripePublishableKey: "pk_test_123456789",
     })
     mocks.txUpsert.mockImplementation(async ({ update }: { update: Record<string, unknown> }) => update)
   })
@@ -153,6 +154,42 @@ describe("settings stripe account contract", () => {
       statusAt: null,
     })
     expect(settings.stripePublishableKey).toBe("pk_test_123456789")
+    expect(settings.stripeByokConfigured).toBe(true)
+  })
+
+  it("counts an active Connect account as payment-configured without BYOK keys", async () => {
+    mocks.findUnique.mockResolvedValue(
+      settingsRow({
+        stripePublishableKey: null,
+        stripeSecretKeyEnc: null,
+        stripeWebhookSecretEnc: null,
+        stripeAccountId: "acct_test",
+        stripeAccountStatus: "active",
+        stripeAccountStatusAt: statusAt,
+      })
+    )
+
+    const settings = await createCaller().get()
+
+    expect(settings.stripeByokConfigured).toBe(true)
+    expect(settings.stripePublishableKey).toBeNull()
+  })
+
+  it("does not count a non-active Connect account as payment-configured without BYOK keys", async () => {
+    for (const stripeAccountStatus of ["none", "pending", "restricted"] as const) {
+      mocks.findUnique.mockResolvedValue(
+        settingsRow({
+          stripePublishableKey: null,
+          stripeSecretKeyEnc: null,
+          stripeWebhookSecretEnc: null,
+          stripeAccountStatus,
+        })
+      )
+
+      const settings = await createCaller().get()
+
+      expect(settings.stripeByokConfigured).toBe(false)
+    }
   })
 
   it("returns connect mode when payments are managed", async () => {
@@ -187,23 +224,45 @@ describe("settings stripe account contract", () => {
     vi.unstubAllEnvs()
   })
 
-  it("refuses Stripe key writes when payments are managed", async () => {
+  it("refuses new or different Stripe key material when payments are managed", async () => {
     mocks.paymentsManaged = true
 
     await expect(createCaller().update(byokKeys)).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Stripe keys cannot be saved while card payments are managed",
     })
-    await expect(createCaller().update({ clearStripeSecretKey: true })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
-    })
-    await expect(createCaller().update({ clearStripeWebhookSecret: true })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
-    })
+    await expect(
+      createCaller().update({ stripePublishableKey: "pk_test_different" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(
+      createCaller().update({
+        stripePublishableKey: "pk_test_123456789",
+        stripeSecretKey: "sk_test_12345678901234567890",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await expect(
+      createCaller().update({ stripeWebhookSecret: "whsec_12345678901234567890" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
     expect(mocks.txUpsert).not.toHaveBeenCalled()
   })
 
-  it("still saves other settings when payments are managed", async () => {
+  it("rejects a new publishable key when a managed org has none stored", async () => {
+    mocks.paymentsManaged = true
+    mocks.txFindUnique.mockResolvedValue({
+      countryCode: "DK",
+      aiProvider: "openrouter",
+      aiBaseUrl: null,
+      momsRegistered: null,
+      stripePublishableKey: null,
+    })
+
+    await expect(
+      createCaller().update({ stripePublishableKey: "pk_test_123456789" })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
+  })
+
+  it("still saves other settings when payments are managed and secrets are omitted", async () => {
     mocks.paymentsManaged = true
 
     await createCaller().update({ companyName: "Managed Acme" })
@@ -213,5 +272,37 @@ describe("settings stripe account contract", () => {
     expect(update.stripePublishableKey).toBeUndefined()
     expect(update.stripeSecretKeyEnc).toBeUndefined()
     expect(update.stripeWebhookSecretEnc).toBeUndefined()
+  })
+
+  it("saves unrelated settings when a managed org resubmits its stored publishable key", async () => {
+    mocks.paymentsManaged = true
+
+    await createCaller().update({
+      companyName: "Managed Acme",
+      stripePublishableKey: "pk_test_123456789",
+      clearStripeSecretKey: false,
+      clearStripeWebhookSecret: false,
+    })
+
+    const update = mocks.txUpsert.mock.calls[0]?.[0].update
+    expect(update.companyName).toBe("Managed Acme")
+    expect(update.stripePublishableKey).toBe("pk_test_123456789")
+    expect(update.stripeSecretKeyEnc).toBeUndefined()
+    expect(update.stripeWebhookSecretEnc).toBeUndefined()
+  })
+
+  it("clears stored Stripe secrets when payments are managed", async () => {
+    mocks.paymentsManaged = true
+
+    await createCaller().update({
+      stripePublishableKey: "pk_test_123456789",
+      clearStripeSecretKey: true,
+      clearStripeWebhookSecret: true,
+    })
+
+    const update = mocks.txUpsert.mock.calls[0]?.[0].update
+    expect(update.stripePublishableKey).toBe("pk_test_123456789")
+    expect(update.stripeSecretKeyEnc).toBeNull()
+    expect(update.stripeWebhookSecretEnc).toBeNull()
   })
 })

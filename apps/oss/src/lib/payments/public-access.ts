@@ -45,6 +45,7 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
               stripePublishableKey: true,
               stripeSecretKeyEnc: true,
               stripeWebhookSecretEnc: true,
+              stripeAccountStatus: true,
             },
           },
         },
@@ -60,6 +61,7 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     stripePublishableKey: invoice.organization.settings?.stripePublishableKey ?? null,
     stripeSecretKeyEnc: invoice.organization.settings?.stripeSecretKeyEnc ?? null,
     stripeWebhookSecretEnc: invoice.organization.settings?.stripeWebhookSecretEnc ?? null,
+    stripeAccountStatus: invoice.organization.settings?.stripeAccountStatus,
   })
 
   return {
