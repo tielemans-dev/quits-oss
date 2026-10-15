@@ -3,6 +3,7 @@ import { resolveInvoiceEmailContext } from "./invoice-email"
 import { requireDepositsEnabled, requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
+import { requireUnallocatedAconto } from "../agreements/billing"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
 import { impliedTaxRate } from "./pricing"
@@ -156,6 +157,7 @@ export const prospectiveRenderInput = (input: {
         creditNotes: { where: { status: "issued" }, include: { items: true } } },
     }))
     if (!invoice) return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: selection.invoiceId })
+    yield* requireUnallocatedAconto(invoice.id, invoice.items)
     const built = yield* priceCreditNote(invoice, selection)
     const sellerSnapshot = creditSellerSnapshot(invoice.sellerSnapshot, settings, sellerTaxIds)
     const buyerSnapshot = invoice.buyerSnapshot ?? buildBuyerSnapshot(invoice.contact)

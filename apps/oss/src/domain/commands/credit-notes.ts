@@ -19,6 +19,7 @@ import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
+import { requireUnallocatedAconto } from "../agreements/billing"
 import { creditNoteIssueApproval, creditNoteSendApproval } from "../approval-contexts"
 
 const creditNoteLogger = appLogger.child("credit-notes")
@@ -45,6 +46,7 @@ const lockInvoiceForCredit = (invoiceId: string) =>
     if (!invoice) {
       return yield* new NotFound({ message: "Invoice not found", entity: "invoice", id: invoiceId })
     }
+    yield* requireUnallocatedAconto(invoice.id, invoice.items)
     return invoice
   })
 

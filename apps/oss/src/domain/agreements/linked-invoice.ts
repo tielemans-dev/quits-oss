@@ -10,6 +10,7 @@ import { invoiceSendReviewVersion } from "../approval-contexts"
 import { loadDocumentContext } from "../documents/context"
 import { frozenTotals, releaseLines } from "./billing"
 import { lockedAgreement } from "./issuance"
+import { isAconto } from "../commands/invoice-deposits"
 
 function unchanged(line: InvoiceItem, input: NonNullable<InvoiceUpdateDraftInput["items"]>[number]) {
   const equal = (a: string | number, b: string | number) => new Prisma.Decimal(String(a)).equals(String(b))
@@ -28,7 +29,7 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
     (input.currency !== undefined && input.currency !== invoice.currency) ||
     (input.taxRate !== undefined && !new Prisma.Decimal(agreement.taxRateInput ?? agreement.taxRate.toString()).equals(String(input.taxRate))))
     return yield* new InvalidState({ code: "linked_invoice_context_immutable", message: "A linked invoice keeps the agreement's contact, currency and frozen VAT context" })
-  const kept = new Set<string>(), unlinked: DocumentLineInput[] = []
+  const kept = new Set(invoice.items.filter(isAconto).map(line => line.id)), unlinked: DocumentLineInput[] = []
   if (input.items) {
     const keys = new Set<string>()
     for (const item of input.items) {
@@ -60,6 +61,7 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
     if (priced.itemRows.length) yield* Effect.promise(() => db.invoiceItem.createMany({ data: priced.itemRows.map((row, index) => ({ ...row, invoiceId: invoice.id, sortOrder: invoice.items.length + index })) }))
     totals = frozenTotals([...invoice.items.filter(line => kept.has(line.id)), ...priced.itemRows])
   }
+  if (Object.values(totals).some(value => value.lt(0))) return yield* new InvalidState({ code: "aconto_exceeds_final", message: "Remove deductions before reducing the final invoice below the deducted amount" })
   const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
     ...(input.purchaseOrderRef !== undefined ? { purchaseOrderRef: input.purchaseOrderRef } : {}),
     editRevision: { increment: 1 }, ...totals, ...(input.supplyDate !== undefined ? { supplyDate: input.supplyDate ? new Date(input.supplyDate) : null } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),

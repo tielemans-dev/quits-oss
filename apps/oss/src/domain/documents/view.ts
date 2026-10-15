@@ -17,7 +17,7 @@ import { impliedTaxRate } from "./pricing"
 type Row = Pick<InvoiceItem,
   "id" | "description" | "quantity" | "quantityInput" | "unitPriceInput" | "unitPriceNet" | "unitPriceGross" |
   "vatTreatment" | "vatRateInput" | "taxRate" | "vatCountry" | "vatReasonCode" | "lineNet" | "lineTax" | "lineGross"
-> & { deliverableId?: string | null; clientKey?: string | null }
+> & { deliverableId?: string | null; clientKey?: string | null; sourceKind?: string | null }
 type DocumentRows = Pick<Invoice,
   "status" | "number" | "locale" | "timezone" | "currency" | "pricesIncludeTax" | "calculationVersion" |
   "sellerSnapshot" | "buyerSnapshot" | "vatEvidence" | "contactId" | "notes" | "issueDate" |
@@ -66,7 +66,7 @@ export function draftViewInputFromRows(
         reasonCode: line.vatReasonCode as NonNullable<DraftViewInput["lines"][number]["vat"]>["reasonCode"],
       },
       stored: { net: line.lineNet.toFixed(exponent), tax: line.lineTax.toFixed(exponent), gross: line.lineGross.toFixed(exponent) },
-      locked: options.lockAll === true || Boolean(line.deliverableId),
+      locked: options.lockAll === true || Boolean(line.deliverableId) || line.sourceKind === "aconto",
     })),
   }
 }

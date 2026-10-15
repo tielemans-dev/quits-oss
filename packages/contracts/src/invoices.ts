@@ -151,6 +151,12 @@ export const invoiceCreateFromDeliverablesInputSchema = z.strictObject({
   scheduleAsSale: z.boolean().optional(),
 })
 export const invoiceAddDeliverablesInputSchema = invoiceCreateFromDeliverablesInputSchema.omit({ issueDate: true, dueDate: true, purchaseOrderRef: true }).extend({ id: z.string().min(1), expectedRevision: z.number().int().nonnegative().optional() })
+/** VAT-inclusive exact major units. Zero releases the draft's deductions. */
+export const invoiceDeductDepositsInputSchema = z.strictObject({
+  id: z.string().min(1),
+  amountGross: z.string().max(40).regex(/^(0|[1-9]\d*)(\.\d{1,2})?$/).optional(),
+  expectedRevision: z.number().int().nonnegative().optional(),
+})
 
 /** One request ID per user intent; retain it when retrying an uncertain response. */
 export const invoiceMarkPaidInputSchema = z.object({

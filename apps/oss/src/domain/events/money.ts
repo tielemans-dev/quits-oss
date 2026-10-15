@@ -10,7 +10,7 @@ export const valuationSchema = z.strictObject({ base: moneySchema, rate: nullabl
 const artifact = z.strictObject({ ref: s.min(1), hash: s.regex(/^[a-f0-9]{64}$/), size: z.number().int().nonnegative() })
 export const artifactsSchema = z.strictObject({ pdf: artifact, ubl: artifact.optional() })
 const dates = { occurredAt: z.iso.datetime(), postingDate: z.iso.date(), issueDate: z.iso.date(), taxPointDate: z.iso.date().nullable(), taxPointReason: z.enum(["invoice_issued", "advance_received", "none", "assessment_required", "tax_point_review"]) }
-const line = z.strictObject({ lineId: s, description: s, quantityInput: decimalStringSchema, unitPriceInput: decimalStringSchema, net: decimalStringSchema, tax: decimalStringSchema, gross: decimalStringSchema, vat: vatClassificationSchema, deliverableId: s.nullable().optional() })
+const line = z.strictObject({ lineId: s, description: s, quantityInput: decimalStringSchema, unitPriceInput: decimalStringSchema, net: decimalStringSchema, tax: decimalStringSchema, gross: decimalStringSchema, vat: vatClassificationSchema, deliverableId: s.nullable().optional(), deductsInvoiceId: s.nullable().optional(), deductsInvoiceItemId: s.nullable().optional() })
 export const invoiceIssuedSchema = z.strictObject({
   documentId: s, number: s, purpose: z.enum(["sale", "prepayment"]), ...dates,
   supplyDate: z.iso.date().nullable(), dueDate: z.iso.date(), currency: s, exponent: currencyExponentSchema,
