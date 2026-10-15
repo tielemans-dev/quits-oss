@@ -2,7 +2,8 @@ import { Effect } from "effect"
 import type { Invoice, Payment } from "../../../generated/prisma/client"
 import { composeMessage } from "../../lib/email"
 import { buildPaymentReceivedEmailContent } from "../../lib/emails/payment-received-email"
-import { registerDeliveryCompletion, enqueueEmailDelivery } from "../delivery/outbox"
+import { Prisma } from "../../../generated/prisma/client"
+import { deliveryKey, registerDeliveryCompletion, enqueueEmailDelivery } from "../delivery/outbox"
 import { isValidRecipient } from "../commands/reminders"
 import { Command, Db } from "../services"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
@@ -29,6 +30,29 @@ registerDeliveryCompletion(PAYMENT_NOTIFICATION, {
   delivered: async () => [],
   failed: async () => [],
 })
+
+const AUDIENCES = ["client", "seller"] as const
+
+/** Names exactly one payment's email to one audience. */
+const idempotencyKey = (paymentId: string, audience: (typeof AUDIENCES)[number]) => `payment-received-${paymentId}-${audience}`
+
+/**
+ * Withdraws a payment's notifications that no provider request has started for. Call it in the
+ * command that voids or undoes the payment, so it serializes with a worker on the job rows: a
+ * worker that already passed `withdrawalReason` loses its claim and fails its next write, before
+ * it contacts the provider. A request already started keeps its own outcome, because the provider
+ * may have it; that is the only window left open.
+ */
+export async function withdrawPaymentNotifications(db: Prisma.TransactionClient, paymentId: string) {
+  await db.job.updateMany({
+    where: {
+      dedupeKey: { in: AUDIENCES.map((audience) => deliveryKey(idempotencyKey(paymentId, audience))) },
+      result: { equals: Prisma.DbNull },
+      payload: { path: ["requests"], equals: 0 },
+    },
+    data: { status: "done", claimToken: null, result: { outcome: "withdrawn", message: PAYMENT_VOIDED_MESSAGE } },
+  })
+}
 
 /**
  * Queues the emails for an invoice that this payment just paid in full: a confirmation to the
@@ -80,7 +104,7 @@ export const queuePaymentReceivedEmails = (input: { invoice: Invoice; payment: P
             sellerEmail: settings.companyEmail,
           })
         ),
-        idempotencyKey: `payment-received-${payment.id}-${audience}`,
+        idempotencyKey: idempotencyKey(payment.id, audience),
         completion: { kind: PAYMENT_NOTIFICATION, target: { invoiceId: invoice.id, paymentId: payment.id } },
       })
 

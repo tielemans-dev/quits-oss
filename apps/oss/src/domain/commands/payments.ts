@@ -19,7 +19,7 @@ import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { documentRef } from "../documents/numbering"
 import { Command, Db } from "../services"
 import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
-import { queuePaymentReceivedEmails } from "../documents/payment-notifications"
+import { queuePaymentReceivedEmails, withdrawPaymentNotifications } from "../documents/payment-notifications"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -452,6 +452,7 @@ export const voidPayment = defineCommand({
           data: { voidedAt: command.now, voidReason: input.reason },
         })
       )
+      yield* Effect.promise(() => withdrawPaymentNotifications(db, payment.id))
       const refreshed = yield* refreshInvoiceSettlement(invoice.id)
 
       command.emit({

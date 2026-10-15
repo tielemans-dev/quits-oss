@@ -215,4 +215,35 @@ describeIfDatabase("payment received emails", () => {
     await executeIssuanceCommand(voidPayment, { paymentId: recorded.result.payment.id, reason: "Entered twice" }, { actor: org.actors.admin })
     expect(await sentMessages(org.organizationId)).toEqual([])
   })
+
+  it("does not send when an undo commits between the eligibility check and the provider request", async () => {
+    const { org, invoiceId } = await setup()
+    const marked = await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    if (marked.status !== "completed") throw new Error("mark paid failed")
+    const jobs = await rewindToUnsent(org.organizationId)
+
+    // Pause dispatch right after the worker read the payment as eligible, and commit the undo then.
+    const original = prisma.payment.findUnique.bind(prisma.payment)
+    let undone: Awaited<ReturnType<typeof executeIssuanceCommand>> | undefined
+    const spy = vi.spyOn(prisma.payment, "findUnique").mockImplementation(((args: Parameters<typeof original>[0]) =>
+      original(args).then(async (found) => {
+        if (!undone && args.where.id === marked.result.paymentId) {
+          undone = await executeIssuanceCommand(
+            undoInvoiceMarkPaid,
+            { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() },
+            { actor: org.actors.admin }
+          )
+        }
+        return found
+      })) as unknown as typeof prisma.payment.findUnique)
+    try {
+      await runDueJobs({ organizationIds: [org.organizationId] })
+    } finally {
+      spy.mockRestore()
+    }
+
+    expect(undone?.status).toBe("completed")
+    expect(deliver).not.toHaveBeenCalled()
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })).result).toMatchObject({ outcome: "withdrawn" })
+  })
 })
