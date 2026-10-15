@@ -1,0 +1,63 @@
+name: Send flow browser
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/send-flow-browser.yml'
+      - 'apps/oss/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'bun.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-flow-browser:
+    name: Invoice send flow browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # MOCK: disposable test database only. Same pinned Official Image as CI.
+        image: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: quits_send_flow_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d quits_send_flow_browser"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/quits_send_flow_browser?schema=public
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3061
+      # Production TSX imported by the Node worker must create actual React elements.
+      PW_TEST_SOURCE_TRANSFORM: ${{ github.workspace }}/apps/oss/tests/e2e/react-jsx-transform.cjs
+      PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @quits/oss prisma:generate
+      - name: Install Chromium
+        working-directory: apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Run the send-flow journey
+        working-directory: apps/oss
+        run: bunx playwright test -c playwright.send-flow.config.ts
+      - name: Upload traces and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: send-flow-browser
+          path: |
+            apps/oss/test-results
+            apps/oss/playwright-report/send-flow
+          retention-days: 14
