@@ -76,6 +76,7 @@ vi.mock("../../trpc/client", () => ({
   trpc: {
     cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) }, setupAvailable: { query: vi.fn(async () => ({ enabled: false })) } },
     onboarding: {
+      searchCvr: { query: vi.fn() },
       getStatus: {
         query: vi.fn(),
       },
@@ -116,6 +117,19 @@ afterEach(() => {
 })
 
 describe("OnboardingPage org selection", () => {
+  it("shows inactive lookup results without offering to create them", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user", email: "test@example.test" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.onboarding.searchCvr.query).mockResolvedValue({ available: true, companies: [{ cvr: "24256790", name: "Ceased ApS", address: "Testvej 1", active: false }] })
+    render(<RoutePage />)
+    const query = await screen.findByLabelText("auth.onboarding.lookup.query")
+    fireEvent.change(query, { target: { value: "Ceased" } })
+    fireEvent.submit(query.closest("form")!)
+    const notice = await screen.findByText("cvr.inactive")
+    expect((notice.closest("button") as HTMLButtonElement).disabled).toBe(true)
+    expect(authClient.organization.create).not.toHaveBeenCalled()
+  })
   it("selects the created organization even when tab-local storage is blocked", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
@@ -220,7 +234,7 @@ describe("OnboardingPage org selection", () => {
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
     // The new organization continues in the v2 wizard (lookup, review, confirm), not the app.
     expect(loadPage).toHaveBeenCalledWith("/onboarding")
-    expect(authClient.organization.create).toHaveBeenCalledWith(expect.objectContaining({ metadata: { cvr: "24256790" } }))
+    expect(authClient.organization.create).toHaveBeenCalledWith(expect.objectContaining({ metadata: { cvr: "24256790", onboardingAutoSlug: expect.any(String) } }))
   })
 
   it("keeps v2 unknown with a retry instead of falling back to v1 when capabilities fail", async () => {

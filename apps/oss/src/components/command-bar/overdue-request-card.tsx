@@ -1,41 +1,16 @@
-import { getCurrencyExponent } from "@quits/shared/currency"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { formatCurrency } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { remindedInvoiceIds } from "../../lib/jobs/reminder-tracker"
-import { invoiceDaysOverdue, invoiceDisplayStatus } from "../../lib/payments/invoice-display-status"
 import { trpc } from "../../trpc/client"
 import { tCount } from "../dashboard/i18n"
 import { sendReminderBatch, useReminderJobs } from "../jobs/reminder-jobs-store"
 import { Button } from "../ui/button"
+import { MAX_BATCH, overdueInvoices, totalsByCurrency, type Invoice } from "./overdue-invoices"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { handOffToTracker } from "./tracker-handoff"
-
-/** One job takes at most this many invoices (`queueReminderJob`). */
-const MAX_BATCH = 100
-
-type Invoice = {
-  id: string
-  number: string | null
-  status: string
-  paymentStatus: string
-  dueDate: string
-  balanceDue: number
-  currency: string
-  contact: { name: string }
-}
-
-/** Sums in minor units, so that the figure shown is exact; one total per currency. */
-function totalsByCurrency(invoices: readonly Invoice[]) {
-  const sums = new Map<string, number>()
-  for (const invoice of invoices) {
-    const exponent = getCurrencyExponent(invoice.currency) ?? 2
-    sums.set(invoice.currency, (sums.get(invoice.currency) ?? 0) + Math.round(invoice.balanceDue * 10 ** exponent))
-  }
-  return [...sums].map(([currency, minor]) => ({ currency, amount: minor / 10 ** (getCurrencyExponent(currency) ?? 2) }))
-}
 
 /**
  * The invoices the Fakturaer list shows as overdue (same status function, same reminded set), each
@@ -68,13 +43,10 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
     return () => { cancelled = true }
   }, [t])
 
-  const overdue = useMemo(() => {
-    if (!loaded) return null
-    return loaded.invoices
-      .filter(invoice => invoiceDisplayStatus(invoice, loaded.timezone, undefined, reminded.has(invoice.id)) === "overdue")
-      .map(invoice => ({ invoice, days: invoiceDaysOverdue(invoice.dueDate, loaded.timezone) }))
-      .sort((a, b) => b.days - a.days)
-  }, [loaded, reminded])
+  const overdue = useMemo(
+    () => (loaded ? overdueInvoices(loaded.invoices, loaded.timezone, reminded) : null),
+    [loaded, reminded]
+  )
 
   const ticked = (overdue ?? []).filter(({ invoice }, index) => (chosen ? chosen.has(invoice.id) : index < MAX_BATCH))
   const tickedIds = new Set(ticked.map(({ invoice }) => invoice.id))

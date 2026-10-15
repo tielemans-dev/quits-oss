@@ -347,7 +347,7 @@
   display: none;
 }
 .ob-spin {
-  animation: ob-spin 1s linear infinite;
+  animation: ob-spin var(--duration-spin) var(--ease-linear) infinite;
 }
 @keyframes ob-spin {
   to {

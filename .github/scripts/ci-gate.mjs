@@ -14,7 +14,7 @@ if (runBrowser !== undefined && !["true", "false"].includes(runBrowser)) {
   throw new Error("Browser classification returned an invalid result")
 }
 if (runBrowser === "false" && process.env.EVENT_NAME !== "pull_request") {
-  throw new Error("Only a prose or workflow-only PR may skip browsers")
+  throw new Error("Only a documentation or GitHub metadata PR may skip browsers")
 }
 const workers = Object.entries(needs).filter(([name]) => name !== "paths")
 if (workers.length === 0) throw new Error("No verification jobs were supplied")

@@ -1,15 +1,15 @@
 import { ArrowUp, Sparkles } from "lucide-react"
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
+import { DURATION } from "../../lib/motion"
 import { readHandoff } from "../../lib/request-handoff"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
+import { onRequestOpen } from "./request-events"
 import { RequestCardSlot } from "./request-card-slot"
 import type { RequestIntent, RequestRecognizer } from "./request-intent"
 import { useMorph } from "./use-morph"
-
-const EXPAND_MS = 300
 
 /**
  * The pill under the greeting on Overblik: write a request, and when it reads as one, the pill
@@ -23,8 +23,23 @@ export function CommandBar({ recognize, className }: { recognize: RequestRecogni
   const [value, setValue] = useState(returned ?? "")
   const [intent, setIntent] = useState<RequestIntent | null>(() => (returned ? recognize(returned) : null))
   const inputRef = useRef<HTMLInputElement>(null)
-  const morph = useMorph<HTMLFormElement>(EXPAND_MS)
+  const morph = useMorph<HTMLFormElement>(DURATION.base)
   const recognized = recognize(value)
+  const open = useRef(intent !== null)
+  open.current = intent !== null
+
+  // A summary row can ask for a card; it never replaces one the person is working in.
+  useEffect(
+    () =>
+      onRequestOpen((request) => {
+        if (open.current) return
+        morph.run(() => {
+          setValue(request.input)
+          setIntent(request)
+        })
+      }),
+    [morph.run]
+  )
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -52,7 +67,7 @@ export function CommandBar({ recognize, className }: { recognize: RequestRecogni
       className={cn(
         "border-hairline bg-panel overflow-hidden border shadow-xs",
         // The corners ease from pill to card in step with the height.
-        "[transition:border-radius_300ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:[transition:none]",
+        "[transition:border-radius_var(--duration-base)_var(--ease-enter)] motion-reduce:[transition:none]",
         intent ? "rounded-[18px]" : "rounded-full",
         className
       )}

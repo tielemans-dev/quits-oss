@@ -9,6 +9,14 @@ const company = {
 }
 
 describe("searchOwnCvr", () => {
+  it("passes request cancellation to the pre-organization lookup", async () => {
+    const controller = new AbortController()
+    let received!: AbortSignal
+    const lookup = { search: vi.fn(async (_query: string, context: { signal: AbortSignal }) => { received = context.signal; return [] }) }
+    await searchOwnCvr({ query: "Nordlys", cloud: true, userId: "user", lookup, signal: controller.signal })
+    controller.abort()
+    expect(received.aborted).toBe(true)
+  })
   it("stays closed without a hosted lookup provider", async () => {
     const lookup: CvrLookupProvider = { search: vi.fn() }
     await expect(searchOwnCvr({ query: "Nordlys", cloud: false, userId: "user_1", lookup })).resolves.toEqual({
@@ -28,7 +36,8 @@ describe("searchOwnCvr", () => {
     }
     await expect(searchOwnCvr({ query: "Nordlys", cloud: true, userId: "user_1", lookup })).resolves.toEqual({
       available: true,
-      companies: [{ cvr: "24256790", name: "Nordlys Studio ApS", address: "Vestergade 1" }],
+      companies: [{ cvr: "24256790", name: "Nordlys Studio ApS", address: "Vestergade 1" },
+        { cvr: "24256790", name: "Nordlys Studio ApS", address: "Vestergade 1", active: false }],
     })
   })
 })

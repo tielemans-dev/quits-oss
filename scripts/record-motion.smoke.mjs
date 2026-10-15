@@ -29,8 +29,26 @@ test("readiness and scenario hooks, frame retention, and retry after failure", a
     await record("default")
     assert.equal((await readdir(join(root, "default"))).some((name) => name.endsWith("-frames")), false)
     assert.equal(await readFile(join(root, "audit"), "utf8"), "frame\nframe\n")
+    assert.equal(JSON.parse(await readFile(join(root, "default", "after-checks.json"), "utf8")).passed, true)
     await record("kept", ["--keep-frames"])
     assert.equal((await readdir(join(root, "kept", "after-frames"))).length, 12)
+    await writeFile(scenario, "export function prepare(page) { return page.evaluate(() => document.body.innerHTML = '') }")
+    await assert.rejects(record("blank", ["--wait-for", "body"]), /Frame checks failed/)
+    const report = JSON.parse(await readFile(join(root, "blank", "after-checks.json"), "utf8"))
+    assert.equal(report.passed, false)
+    assert.ok(report.findings.some(f => f.check === "blank" && f.frame === 0))
+    assert.ok((await readdir(join(root, "blank", "checks-after"))).length > 0)
+    assert.ok((await readdir(join(root, "blank"))).includes("1x.mp4"))
+    await writeFile(scenario, `export function prepare(page) { return page.evaluate(() => {
+      document.body.innerHTML = '<div style="height:40px;width:40px;background:#333">text</div>'
+    }) }
+    export function frame(page, {index}) { return page.evaluate(index => {
+      document.body.style.background = index === 1 ? '#111' : '#fff'
+      document.body.style.paddingTop = index === 1 ? '32px' : '0'
+    }, index) }`)
+    await assert.rejects(record("glitches", ["--wait-for", "body"]), /Frame checks failed/)
+    const glitches = JSON.parse(await readFile(join(root, "glitches", "after-checks.json"), "utf8"))
+    for (const check of ["pop-in", "flicker", "layout-shift"]) assert.ok(glitches.findings.some(f => f.check === check), check)
     await writeFile(scenario, "export function prepare() { throw Error('intentional failure') }")
     await assert.rejects(record("retry"), /intentional failure/)
     assert.equal((await readdir(root)).some((name) => name.startsWith("retry")), false)

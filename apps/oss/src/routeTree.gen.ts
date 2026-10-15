@@ -9,17 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RemindersUnsubscribeRouteImport } from './routes/reminders.unsubscribe'
-import { Route as ApiRemindersUnsubscribeRouteImport } from './routes/api/reminders/unsubscribe'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as DemoIndexRouteImport } from './routes/demo/index'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as RemindersUnsubscribeRouteImport } from './routes/reminders.unsubscribe'
 import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
+import { Route as DemoSendReviewRouteImport } from './routes/demo/send-review'
+import { Route as DemoInvoiceEditorRouteImport } from './routes/demo/invoice-editor'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as ATokenRouteImport } from './routes/a.$token'
@@ -39,6 +42,7 @@ import { Route as QTokenLogoRouteImport } from './routes/q.$token_.logo'
 import { Route as PayTokenPdfRouteImport } from './routes/pay.$token_.pdf'
 import { Route as PayTokenLogoRouteImport } from './routes/pay.$token_.logo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
+import { Route as ApiRemindersUnsubscribeRouteImport } from './routes/api/reminders/unsubscribe'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe-webhook'
 import { Route as ApiCronTickRouteImport } from './routes/api/cron/tick'
 import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-overdue'
@@ -61,16 +65,6 @@ import { Route as ApiAgreementsAgreementIdPdfRouteImport } from './routes/api/ag
 import { Route as AppAgreementsAgreementIdEditRouteImport } from './routes/_app/agreements/$agreementId_.edit'
 import { Route as ApiDocumentsKindDocumentIdPdfRouteImport } from './routes/api/documents/$kind/$documentId.pdf'
 
-const RemindersUnsubscribeRoute = RemindersUnsubscribeRouteImport.update({
-  id: '/reminders/unsubscribe',
-  path: '/reminders/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRemindersUnsubscribeRoute = ApiRemindersUnsubscribeRouteImport.update({
-  id: '/api/reminders/unsubscribe',
-  path: '/api/reminders/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -96,14 +90,29 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DemoIndexRoute = DemoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DemoRoute,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const RemindersUnsubscribeRoute = RemindersUnsubscribeRouteImport.update({
+  id: '/reminders/unsubscribe',
+  path: '/reminders/unsubscribe',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const QTokenRoute = QTokenRouteImport.update({
   id: '/q/$token',
@@ -114,6 +123,16 @@ const PayTokenRoute = PayTokenRouteImport.update({
   id: '/pay/$token',
   path: '/pay/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DemoSendReviewRoute = DemoSendReviewRouteImport.update({
+  id: '/send-review',
+  path: '/send-review',
+  getParentRoute: () => DemoRoute,
+} as any)
+const DemoInvoiceEditorRoute = DemoInvoiceEditorRouteImport.update({
+  id: '/invoice-editor',
+  path: '/invoice-editor',
+  getParentRoute: () => DemoRoute,
 } as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
@@ -209,6 +228,11 @@ const PayTokenLogoRoute = PayTokenLogoRouteImport.update({
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemindersUnsubscribeRoute = ApiRemindersUnsubscribeRouteImport.update({
+  id: '/api/reminders/unsubscribe',
+  path: '/api/reminders/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPaymentsStripeWebhookRoute =
@@ -326,12 +350,11 @@ const ApiDocumentsKindDocumentIdPdfRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/demo': typeof DemoRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
-  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
-  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
@@ -342,8 +365,12 @@ export interface FileRoutesByFullPath {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
+  '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
+  '/demo/': typeof DemoIndexRoute
   '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -361,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
@@ -381,8 +409,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
-  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
-  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
@@ -393,9 +419,13 @@ export interface FileRoutesByTo {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
+  '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
   '/': typeof AppIndexRoute
+  '/demo': typeof DemoIndexRoute
   '/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/agreements/new': typeof AppAgreementsNewRoute
   '/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -413,6 +443,7 @@ export interface FileRoutesByTo {
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/pay/$token/logo': typeof PayTokenLogoRoute
   '/pay/$token/pdf': typeof PayTokenPdfRoute
@@ -431,12 +462,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/demo': typeof DemoRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
-  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
-  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/signup': typeof SignupRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
@@ -447,9 +477,13 @@ export interface FileRoutesById {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
+  '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
   '/q/$token': typeof QTokenRoute
+  '/reminders/unsubscribe': typeof RemindersUnsubscribeRoute
   '/_app/': typeof AppIndexRoute
+  '/demo/': typeof DemoIndexRoute
   '/_app/agreements/$agreementId': typeof AppAgreementsAgreementIdRoute
   '/_app/agreements/new': typeof AppAgreementsNewRoute
   '/_app/contacts/$contactId': typeof AppContactsContactIdRoute
@@ -467,6 +501,7 @@ export interface FileRoutesById {
   '/api/cron/mark-overdue': typeof ApiCronMarkOverdueRoute
   '/api/cron/tick': typeof ApiCronTickRoute
   '/api/payments/stripe-webhook': typeof ApiPaymentsStripeWebhookRoute
+  '/api/reminders/unsubscribe': typeof ApiRemindersUnsubscribeRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/pay/$token_/logo': typeof PayTokenLogoRoute
   '/pay/$token_/pdf': typeof PayTokenPdfRoute
@@ -486,12 +521,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/demo'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/setup'
-    | '/reminders/unsubscribe'
-    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/activity'
     | '/approvals'
@@ -502,8 +536,12 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/demo/invoice-editor'
+    | '/demo/send-review'
     | '/pay/$token'
     | '/q/$token'
+    | '/reminders/unsubscribe'
+    | '/demo/'
     | '/agreements/$agreementId'
     | '/agreements/new'
     | '/contacts/$contactId'
@@ -521,6 +559,7 @@ export interface FileRouteTypes {
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
+    | '/api/reminders/unsubscribe'
     | '/api/trpc/$'
     | '/pay/$token/logo'
     | '/pay/$token/pdf'
@@ -541,8 +580,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/setup'
-    | '/reminders/unsubscribe'
-    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/activity'
     | '/approvals'
@@ -553,9 +590,13 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/demo/invoice-editor'
+    | '/demo/send-review'
     | '/pay/$token'
     | '/q/$token'
+    | '/reminders/unsubscribe'
     | '/'
+    | '/demo'
     | '/agreements/$agreementId'
     | '/agreements/new'
     | '/contacts/$contactId'
@@ -573,6 +614,7 @@ export interface FileRouteTypes {
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
+    | '/api/reminders/unsubscribe'
     | '/api/trpc/$'
     | '/pay/$token/logo'
     | '/pay/$token/pdf'
@@ -590,12 +632,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/demo'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/setup'
-    | '/reminders/unsubscribe'
-    | '/api/reminders/unsubscribe'
     | '/signup'
     | '/_app/activity'
     | '/_app/approvals'
@@ -606,9 +647,13 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/demo/invoice-editor'
+    | '/demo/send-review'
     | '/pay/$token'
     | '/q/$token'
+    | '/reminders/unsubscribe'
     | '/_app/'
+    | '/demo/'
     | '/_app/agreements/$agreementId'
     | '/_app/agreements/new'
     | '/_app/contacts/$contactId'
@@ -626,6 +671,7 @@ export interface FileRouteTypes {
     | '/api/cron/mark-overdue'
     | '/api/cron/tick'
     | '/api/payments/stripe-webhook'
+    | '/api/reminders/unsubscribe'
     | '/api/trpc/$'
     | '/pay/$token_/logo'
     | '/pay/$token_/pdf'
@@ -644,24 +690,25 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  DemoRoute: typeof DemoRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SetupRoute: typeof SetupRoute
-  RemindersUnsubscribeRoute: typeof RemindersUnsubscribeRoute
-  ApiRemindersUnsubscribeRoute: typeof ApiRemindersUnsubscribeRoute
   SignupRoute: typeof SignupRoute
   ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiMcpRoute: typeof ApiMcpRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
+  RemindersUnsubscribeRoute: typeof RemindersUnsubscribeRoute
   ATokenLogoRoute: typeof ATokenLogoRoute
   ATokenPdfRoute: typeof ATokenPdfRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronMarkOverdueRoute: typeof ApiCronMarkOverdueRoute
   ApiCronTickRoute: typeof ApiCronTickRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
+  ApiRemindersUnsubscribeRoute: typeof ApiRemindersUnsubscribeRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   PayTokenLogoRoute: typeof PayTokenLogoRoute
   PayTokenPdfRoute: typeof PayTokenPdfRoute
@@ -673,20 +720,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reminders/unsubscribe': {
-      id: '/reminders/unsubscribe'
-      path: '/reminders/unsubscribe'
-      fullPath: '/reminders/unsubscribe'
-      preLoaderRoute: typeof RemindersUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/reminders/unsubscribe': {
-      id: '/api/reminders/unsubscribe'
-      path: '/api/reminders/unsubscribe'
-      fullPath: '/api/reminders/unsubscribe'
-      preLoaderRoute: typeof ApiRemindersUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -722,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -729,12 +769,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo/': {
+      id: '/demo/'
+      path: '/'
+      fullPath: '/demo/'
+      preLoaderRoute: typeof DemoIndexRouteImport
+      parentRoute: typeof DemoRoute
+    }
     '/_app/': {
       id: '/_app/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/reminders/unsubscribe': {
+      id: '/reminders/unsubscribe'
+      path: '/reminders/unsubscribe'
+      fullPath: '/reminders/unsubscribe'
+      preLoaderRoute: typeof RemindersUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/q/$token': {
       id: '/q/$token'
@@ -749,6 +803,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/pay/$token'
       preLoaderRoute: typeof PayTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/demo/send-review': {
+      id: '/demo/send-review'
+      path: '/send-review'
+      fullPath: '/demo/send-review'
+      preLoaderRoute: typeof DemoSendReviewRouteImport
+      parentRoute: typeof DemoRoute
+    }
+    '/demo/invoice-editor': {
+      id: '/demo/invoice-editor'
+      path: '/invoice-editor'
+      fullPath: '/demo/invoice-editor'
+      preLoaderRoute: typeof DemoInvoiceEditorRouteImport
+      parentRoute: typeof DemoRoute
     }
     '/api/mcp': {
       id: '/api/mcp'
@@ -881,6 +949,13 @@ declare module '@tanstack/react-router' {
       path: '/api/trpc/$'
       fullPath: '/api/trpc/$'
       preLoaderRoute: typeof ApiTrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reminders/unsubscribe': {
+      id: '/api/reminders/unsubscribe'
+      path: '/api/reminders/unsubscribe'
+      fullPath: '/api/reminders/unsubscribe'
+      preLoaderRoute: typeof ApiRemindersUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/payments/stripe-webhook': {
@@ -1091,26 +1166,41 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface DemoRouteChildren {
+  DemoInvoiceEditorRoute: typeof DemoInvoiceEditorRoute
+  DemoSendReviewRoute: typeof DemoSendReviewRoute
+  DemoIndexRoute: typeof DemoIndexRoute
+}
+
+const DemoRouteChildren: DemoRouteChildren = {
+  DemoInvoiceEditorRoute: DemoInvoiceEditorRoute,
+  DemoSendReviewRoute: DemoSendReviewRoute,
+  DemoIndexRoute: DemoIndexRoute,
+}
+
+const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  DemoRoute: DemoRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SetupRoute: SetupRoute,
-  RemindersUnsubscribeRoute: RemindersUnsubscribeRoute,
-  ApiRemindersUnsubscribeRoute: ApiRemindersUnsubscribeRoute,
   SignupRoute: SignupRoute,
   ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiMcpRoute: ApiMcpRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
+  RemindersUnsubscribeRoute: RemindersUnsubscribeRoute,
   ATokenLogoRoute: ATokenLogoRoute,
   ATokenPdfRoute: ATokenPdfRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronMarkOverdueRoute: ApiCronMarkOverdueRoute,
   ApiCronTickRoute: ApiCronTickRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
+  ApiRemindersUnsubscribeRoute: ApiRemindersUnsubscribeRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   PayTokenLogoRoute: PayTokenLogoRoute,
   PayTokenPdfRoute: PayTokenPdfRoute,

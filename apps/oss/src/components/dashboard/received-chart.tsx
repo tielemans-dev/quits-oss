@@ -80,7 +80,7 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "block w-full rounded-[5px] transition-colors duration-150",
+                      "block w-full rounded-[5px] transition-colors duration-(--duration-fade)",
                       height === 0
                         ? "bg-foreground/10 h-0.5"
                         : month.isCurrent

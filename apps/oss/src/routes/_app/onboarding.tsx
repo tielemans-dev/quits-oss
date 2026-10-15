@@ -210,11 +210,11 @@ function OnboardingPageContent() {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [missingFields, setMissingFields] = useState<OnboardingMissingField[]>([])
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
-    Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
+    Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'payments' | 'sellerVatConfirmation'> | null
   >(null)
   const legacyOnboardingReady = v2Availability !== null && runtimeCapabilities !== null && !v2Availability.enabled &&
     !(runtimeCapabilities.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled)
-  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled])
+  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true, runtimeCapabilities?.payments?.managed === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled, runtimeCapabilities?.payments?.managed])
   const [values, setValues] = useState<CloudOnboardingValues>(() => ({ ...DEFAULT_CLOUD_ONBOARDING_VALUES, locale: organizationLocaleForUi(uiLocale) }))
   const localeChoice = useRef<string | null>(null)
   const [manualOverrides, setManualOverrides] = useState<Record<AutoFillField, boolean>>({
@@ -407,7 +407,7 @@ function OnboardingPageContent() {
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
-            capabilities as Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'>
+            capabilities as Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'payments' | 'sellerVatConfirmation'>
           )
         }
       })
@@ -500,7 +500,7 @@ function OnboardingPageContent() {
           throw new Error(checked.error.message ?? 'slug check failed')
         },
         create: async (body) => {
-          const result = await authClient.organization.create({ ...body, metadata: { cvr } })
+          const result = await authClient.organization.create({ ...body, metadata: { cvr, onboardingAutoSlug: body.slug } })
           if (result.data?.id) {
             confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
             return { ok: true, id: result.data.id }
@@ -823,13 +823,14 @@ function OnboardingPageContent() {
                     type="button"
                     variant="outline"
                     className="h-auto w-full flex-col items-start gap-1 py-3"
-                    disabled={submitting}
+                    disabled={submitting || company.active === false}
                     onClick={() => void createOrganizationFromCompanyName(company.name, company)}
                   >
                     <span>{t('auth.onboarding.lookup.confirm', { company: company.name })}</span>
                     <span className="text-xs font-normal text-muted-foreground">
                       {company.cvr} · {company.address}
                     </span>
+                    {company.active === false ? <span>{t('cvr.inactive')}</span> : null}
                   </Button>
                 ))}
               </CardContent>
@@ -897,16 +898,18 @@ function OnboardingPageContent() {
     )
   }
 
+  function completeCompanySetup() {
+    invalidateAppLayoutSession()
+    if (target || search.lang) loadPage(returnDestination)
+    else void navigate({ to: '/' })
+  }
+
   if (!v2Availability?.enabled && runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
-    return <div className="mx-auto w-full max-w-xl space-y-4 p-6"><B2bNotice className="text-sm text-muted-foreground" /><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+    return <div className="mx-auto w-full max-w-xl space-y-4 p-6"><B2bNotice className="text-sm text-muted-foreground" /><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={completeCompanySetup} /></div>
   }
 
   if (v2Availability?.enabled && session) {
-    return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} nonVatEnabled={runtimeCapabilities?.onboardingV2?.nonVatEnabled === true} confirmationEnabled={runtimeCapabilities?.sellerVatConfirmation?.enabled === true} onComplete={() => {
-      invalidateAppLayoutSession()
-      if (target || search.lang) loadPage(returnDestination)
-      else void navigate({ to: '/' })
-    }} />
+    return <OnboardingV2 key={`${session.user.id}:${session.session.activeOrganizationId}`} userId={session.user.id} organizationId={session.session.activeOrganizationId!} signupEmail={session.user.email} client={v2Client} nonVatEnabled={runtimeCapabilities?.onboardingV2?.nonVatEnabled === true} confirmationEnabled={runtimeCapabilities?.sellerVatConfirmation?.enabled === true} onComplete={completeCompanySetup} />
   }
 
   return (

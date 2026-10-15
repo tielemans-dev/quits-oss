@@ -68,7 +68,7 @@ describe("Amount", () => {
     const { container } = render(<Amount value="10.00" currency="DKK" locale="da-DK" rule="double" />)
     const className = lines(container)[1].getAttribute("class")!
     expect(className).toContain("transition-[stroke-dashoffset,stroke-dasharray]")
-    expect(className).toContain("duration-300")
+    expect(className).toContain("duration-(--duration-base)")
     expect(className).toContain("motion-reduce:transition-none")
   })
 

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { CommandBar } from "../command-bar"
+import { announceRequestOpen } from "../request-events"
 import { permittedRequest, recognizeRequest } from "../request-intent"
 
 afterEach(cleanup)
@@ -47,6 +48,16 @@ describe("command bar", () => {
     expect(input.readOnly).toBe(false)
     expect(input.value).toBe("")
     expect(document.activeElement).toBe(input)
+  })
+
+  it("opens the card another part of the page asks for, and leaves an open one alone", () => {
+    const { input } = renderBar()
+    act(() => announceRequestOpen({ kind: "overdue", input: "Forfaldne fakturaer" }))
+    expect(input.value).toBe("Forfaldne fakturaer")
+    expect(screen.getByRole("region", { name: "Opgave" })).toBeTruthy()
+
+    act(() => announceRequestOpen({ kind: "overdue", input: "noget andet" }))
+    expect(input.value).toBe("Forfaldne fakturaer")
   })
 
   it("closes the card on Escape", () => {

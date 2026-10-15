@@ -23,7 +23,7 @@ import { readSelectedCompany, clearSelectedCompany } from "../../lib/onboarding/
 import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
 
-type Screen = "search" | "working" | "review" | "failed" | "timeout" | "ceased"
+type Screen = "search" | "working" | "review" | "failed" | "timeout" | "ceased" | "payments"
 type Props = {
   userId: string
   organizationId: string
@@ -108,6 +108,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [busy, setBusy] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const [bankErrors, setBankErrors] = useState(false)
+  const [connectFailed, setConnectFailed] = useState(false)
   const request = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
   const suggestionPromise = useRef<{
@@ -116,6 +117,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     controller: AbortController
   } | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
   const focusInvalid = useRef(false)
   // Long review page: after a rejected submit, take the user to the first field that needs fixing.
@@ -147,6 +149,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     suggestionRequest.current?.abort()
     suggestionPromise.current = null
     setValidationErrors([])
+    setCvrError(null)
     clearDraft(storageKey)
     setDraft(null)
     setRestored(false)
@@ -358,6 +361,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    if (field === "cvr") setCvrError(null)
     setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
     setDraft((current) =>
       current
@@ -401,6 +405,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     setValidationErrors([])
+    setCvrError(null)
     saving.current = true
     setBusy(true)
     setSaveFailed(false)
@@ -415,7 +420,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       await client.confirm(confirmationPayload(confirmed))
       clearDraft(storageKey)
       epoch.current++
-      if (mounted.current) onComplete()
+      if (!mounted.current) return
+      // The company is saved either way; a failed capability check must never trap the user here.
+      const offerPayments = client.payments ? await client.payments.available().catch(() => false) : false
+      if (!mounted.current) return
+      if (offerPayments) {
+        setBusy(false)
+        setScreen("payments")
+      } else onComplete()
     } catch (error) {
       if (!mounted.current) return
       setBusy(false)
@@ -423,6 +435,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
       // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
       const message = error instanceof Error ? error.message : ""
+      if (message === "cvr.inactive" || message === "cvr.unavailable") {
+        setCvrError(message)
+        reject(["cvr"])
+        return
+      }
       const issues = message === "cvr.invalid" ? [{ field: "cvr" }] : message === "email.invalid" ? [{ field: "email" }] : readableIssues(error) ?? []
       const fields = [...new Set(issues.flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : []))]
       if (fields.length) reject(fields)
@@ -443,8 +460,23 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     )
   }
 
+  const steps = client.payments ? ["company", "lookup", "review", "payments"] : ["company", "lookup", "review"]
+  async function connectStripe() {
+    setBusy(true)
+    setConnectFailed(false)
+    try {
+      // Without a redirect the handler finished in place; nothing more to ask for.
+      if (!(await client.payments!.connect()) && mounted.current) onComplete()
+    } catch {
+      if (!mounted.current) return
+      setBusy(false)
+      setConnectFailed(true)
+    }
+  }
   const step =
-    screen === "review"
+    screen === "payments"
+      ? 4
+      : screen === "review"
       ? 3
       : screen === "working" || screen === "ceased" || screen === "failed" || screen === "timeout"
         ? 2
@@ -455,7 +487,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     if (!validationErrors.includes(name)) return null
     const value = String(draft!.values[name] ?? "").trim()
     const message: TranslationKey =
-      name === "cvr" ? (value ? "validation.cvr.invalid" : "validation.required")
+      name === "cvr" ? (cvrError ?? (value ? "validation.cvr.invalid" : "validation.required"))
       : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
       : value ? "validation.unknown" : "validation.required"
     return <span id={`ob-${name}-error`} className="ob-error" role="alert">{t(message)}</span>
@@ -505,10 +537,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         Quits
         <span className="ob-square" aria-hidden="true" />
       </div>
-      <nav aria-label={TT("step", { x: step })} className="ob-steps">
-        <span className="ob-mobile-step">{TT("step", { x: step })}</span>
+      <nav aria-label={TT("step", { x: step, n: steps.length })} className="ob-steps">
+        <span className="ob-mobile-step">{TT("step", { x: step, n: steps.length })}</span>
         <ol>
-          {["company", "lookup", "review"].map((label, index) => (
+          {steps.map((label, index) => (
             <li key={label} aria-current={index + 1 === step ? "step" : undefined}>
               <span
                 className={`ob-marker ${index + 1 <= step ? "ob-current" : ""}`}
@@ -647,6 +679,26 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           </div>
         </section>
       ) : null}
+      {screen === "payments" ? (
+        <section className="ob-payments">
+          <h1>{TT("payments.heading")}</h1>
+          <p>{TT("payments.sub")}</p>
+          {connectFailed ? (
+            <StateNotice danger title={TT("payments.failed.title")}>
+              <p>{TT("payments.failed.body")}</p>
+            </StateNotice>
+          ) : null}
+          <div className="ob-actions">
+            <Button disabled={busy} onClick={() => void connectStripe()}>
+              {TT("payments.connect")}
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={onComplete}>
+              {TT("payments.skip")}
+            </Button>
+          </div>
+          <p className="ob-source">{TT("payments.note")}</p>
+        </section>
+      ) : null}
       {screen === "review" && draft ? (
         <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
@@ -717,6 +769,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               { type: "email", required: true },
             )}
             {field("companyPhone", "field.phone", factsTag)}
+            {draft.source === "cvr" ? <p className="ob-notice" role="note">{TT("review.contacts", { email: signupEmail })}</p> : null}
           </SummaryCard>
           <SummaryCard title={TT("vatCurrency")}>
             <SourceField label={TT("field.country")} tag={factsTag}>
