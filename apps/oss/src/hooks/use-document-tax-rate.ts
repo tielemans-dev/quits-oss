@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import { useRequestOrganizationId } from "../lib/active-organization"
 import { loadOrganizationSettings } from "../lib/organization-settings-query"
 
-/** A seller who is not VAT registered charges no VAT, whatever rate a legacy settings row still holds. */
-function defaultRate(settings: { taxRate?: number | null; momsRegistered?: boolean | null }) {
-  return settings.momsRegistered === false ? 0 : settings.taxRate ?? 0
+/** Registration only describes the Danish EU VAT setup (as `settings.update` enforces); elsewhere the saved rate stands. */
+function defaultRate(settings: { taxRate?: number | null; momsRegistered?: boolean | null; countryCode?: string | null; taxRegime?: string | null }) {
+  const notVatRegistered = settings.momsRegistered === false && settings.countryCode === "DK" && settings.taxRegime === "eu_vat"
+  return notVatRegistered ? 0 : settings.taxRate ?? 0
 }
 
 /** New documents use the saved rate unless the user or an AI draft has chosen one. */

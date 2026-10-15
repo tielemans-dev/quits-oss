@@ -37,7 +37,7 @@ describe.each([['invoice', InvoiceRoute], ['quote', QuoteRoute]] as const)("new 
     expect((container.querySelector('input[max="100"]') as HTMLInputElement).value).toBe(String(taxRate ?? 0))
   })
   it.each([[25, "0"], [0, "0"], [25.5, "25.5"]])("keeps a non-VAT seller at zero rate unless registered (saved %s)", async (taxRate, expected) => {
-    fixture.load.mockResolvedValue({ taxRate, momsRegistered: expected === "25.5", pricesIncludeTax: false, defaultCurrency: "DKK" })
+    fixture.load.mockResolvedValue({ taxRate, countryCode: "DK", taxRegime: "eu_vat", momsRegistered: expected === "25.5", pricesIncludeTax: false, defaultCurrency: "DKK" })
     const Component = (route as unknown as { component: () => React.ReactNode }).component
     const { container } = render(<Component />)
     await waitFor(() => expect((container.querySelector('input[max="100"]') as HTMLInputElement).value).toBe(expected))
