@@ -121,6 +121,7 @@
   },
   "devDependencies": {
     "@better-auth/cli": "^1.4.19",
+    "@axe-core/playwright": "4.11.1",
     "@playwright/test": "^1.56.0",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
