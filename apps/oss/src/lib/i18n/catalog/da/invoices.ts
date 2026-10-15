@@ -37,6 +37,8 @@ export const daInvoicesMessages = {
   "invoices.new.error.createFailed": "Kunne ikke oprette faktura",
   "invoices.new.notes.placeholder":
     "Betalingsbetingelser, takkenote osv.",
+  "invoices.new.fromRequest": "Udfyldt fra kommandolinjen",
+  "invoices.new.backToRequest": "Tilbage til forslaget",
   "invoices.new.ai.label": "Kladde med AI",
   "invoices.new.ai.placeholder":
     "Eksempel: Opret en faktura til Acme for 8 timers design á 1200 DKK/time, forfalder om 14 dage.",

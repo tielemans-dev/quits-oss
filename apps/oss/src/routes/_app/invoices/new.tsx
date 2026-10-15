@@ -18,6 +18,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect, useRef } from "react"
 import { trpc } from "../../../trpc/client"
+import { clearHandoff, handOff, readHandoff } from "../../../lib/request-handoff"
 import { submitInvoice } from "../../../lib/submit-invoice"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatDate, formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
@@ -40,7 +41,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card"
-import { Sparkles } from "lucide-react"
+import { ArrowLeft, Sparkles } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
 import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
 
@@ -61,26 +62,29 @@ type LineItem = {
 function NewInvoicePage() {
   const { t, locale } = useI18n()
   const bankNudge = useFirstInvoiceBankNudge()
+  // Opened from the request card with its invoice; "Tilbage til forslaget" takes the edited invoice back.
+  const [handed] = useState(() => readHandoff("form"))
+  useEffect(clearHandoff, [])
   const currency = useOrgCurrency()
-  const [issuance, setIssuance] = useState(initialIssuanceValues)
+  const [issuance, setIssuance] = useState(() => handed?.issuance ?? initialIssuanceValues())
   const [baseCurrency, setBaseCurrency] = useState<string>()
-  const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(handed?.pricesIncludeTax ?? false)
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const submitPending = useRef(false)
   // Recipient version shown in the open send confirmation; create refuses it if the contact changed since.
   const [recipientReview, setRecipientReview] = useState<{ recipient: string | null; recipientVersion: string | null } | null>(null)
-  const priceBasisEdited = useRef(false)
-  const taxRateEdited = useRef(false)
-  const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
+  const priceBasisEdited = useRef(!!handed)
+  const taxRateEdited = useRef(!!handed)
+  const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>(handed?.vatEvidence ?? {})
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [contactId, setContactId] = useState("")
+  const [contactId, setContactId] = useState(handed?.contactId ?? "")
   const [dueDate, setDueDate] = useInvoiceDueDate()
-  const [notes, setNotes] = useState("")
-  const [taxRate, setTaxRate] = useState("25")
-  const [items, setItems] = useState<LineItem[]>([
+  const [notes, setNotes] = useState(handed?.notes ?? "")
+  const [taxRate, setTaxRate] = useState(handed?.taxRate ?? "25")
+  const [items, setItems] = useState<LineItem[]>(handed?.items.length ? handed.items : [
     { description: "", quantity: "1", unitPrice: "0", catalogItemId: undefined },
   ])
   const [saving, setSaving] = useState(false)
@@ -100,6 +104,8 @@ function NewInvoicePage() {
     aiInvoiceDraft?.enabled &&
       (aiInvoiceDraft.byok || aiInvoiceDraft.localAgent || aiInvoiceDraft.managed)
   )
+
+  useEffect(() => { if (handed?.dueDate) setDueDate(handed.dueDate) }, [])
 
   useEffect(() => {
     trpc.contacts.list
@@ -189,6 +195,11 @@ function NewInvoicePage() {
     })
     setFieldIssues(issues)
     return issues.length === 0
+  }
+  function backToRequest() {
+    if (!handed) return
+    handOff("card", { input: handed.input, contactId, dueDate, issuance, taxRate, pricesIncludeTax, vatEvidence, notes, items: items.map(item => normalizeInvoiceQuantity(item, locale)) })
+    void navigate({ to: "/" })
   }
   async function requestSend() {
     if (submitPending.current || !validateForm(true)) return
@@ -351,6 +362,7 @@ function NewInvoicePage() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl">
       {bankNudge.dialog}
+      {handed && <Button type="button" variant="link" className="mb-2 px-0" onClick={backToRequest}><ArrowLeft className="size-4" />{t("invoices.new.backToRequest")}</Button>}
       <Card>
         <CardHeader>
           <CardTitle>{t("invoices.new.title")}</CardTitle>
@@ -397,6 +409,7 @@ function NewInvoicePage() {
                   </p>
                 )}
             </div>
+            {handed && <p className="text-xs text-muted-foreground">{t("invoices.new.fromRequest")}</p>}
             {aiError && <p className="text-sm text-destructive">{aiError}</p>}
             {aiInfo && <p className="text-sm text-muted-foreground">{aiInfo}</p>}
           </div>

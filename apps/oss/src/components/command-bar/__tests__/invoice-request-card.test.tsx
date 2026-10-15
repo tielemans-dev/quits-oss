@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn() }))
@@ -16,7 +16,9 @@ vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" 
 vi.mock("../../../hooks/use-invoice-due-date", () => ({ useInvoiceDueDate: () => ["2026-11-14", () => {}] }))
 
 import { I18nProvider } from "../../../lib/i18n/react"
+import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../../lib/request-handoff"
 import { InvoiceRequestCard } from "../invoice-request-card"
+import { onRequestDone } from "../request-events"
 
 const ready = { issues: [], recipientVersion: "v1", taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" }
 const text = () => (document.body.textContent ?? "").replace(/ /g, " ")
@@ -43,7 +45,9 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.resetAllMocks()
+  clearHandoff()
 })
 
 describe("invoice request card", () => {
@@ -64,11 +68,15 @@ describe("invoice request card", () => {
     expect((screen.getByRole("button", { name: "Send faktura" }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it("sends through the form's create and send, then opens the invoice as the form does", async () => {
+  it("sends through the form's create and send, shows the check, then lets go and tells the page", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const done = vi.fn()
+    const off = onRequestDone(done)
     const onDismiss = renderCard("faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent")
+
     await send()
 
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
+    await screen.findByText("Faktura sendt")
     expect(api.create).toHaveBeenCalledWith(
       expect.objectContaining({
         contactId: "buyer",
@@ -78,7 +86,47 @@ describe("invoice request card", () => {
       })
     )
     expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-1", reviewedVersion: "r1" }))
-    expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ params: { invoiceId: "inv-1" } }))
+    expect(text()).toContain("10.625,00 kr. · Havbrise Logistik A/S")
+    expect(onDismiss).not.toHaveBeenCalled()
+    expect(done).not.toHaveBeenCalled()
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(1950) })
+    expect(done).toHaveBeenCalledWith({ kind: "invoice", invoiceId: "inv-1" })
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    off()
+  })
+
+  it("hands the invoice to the form on Rediger without creating anything", async () => {
+    const onDismiss = renderCard("faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent")
+    await waitFor(() => expect((screen.getByRole("button", { name: "Rediger" }) as HTMLButtonElement).disabled).toBe(false))
+
+    fireEvent.click(screen.getByRole("button", { name: "Rediger" }))
+
+    expect(readHandoff("form")).toMatchObject({ contactId: "buyer", dueDate: "2026-11-14", taxRate: "25", items: [{ description: "konsulent", quantity: "10", unitPrice: "850" }] })
+    expect(api.navigate).toHaveBeenCalledWith({ to: "/invoices/new" })
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(api.create).not.toHaveBeenCalled()
+  })
+
+  it("comes back from the form with the edits, not the request", async () => {
+    const edited: InvoiceHandoff = {
+      input: "faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent", contactId: "buyer", dueDate: "2026-12-01",
+      issuance: { supplyDate: "2026-10-01", exchangeRate: "", rateDate: "2026-10-01" }, taxRate: "25", pricesIncludeTax: false, vatEvidence: {}, notes: "Tak",
+      items: [{ description: "konsulent", quantity: "2,5", unitPrice: "850" }, { description: "rejse", quantity: "1", unitPrice: "400" }],
+    }
+    handOff("card", edited)
+    renderCard(edited.input)
+
+    await waitFor(() => expect(text()).toContain("3.156,25 kr."))
+    expect(text()).toContain("rejse")
+    expect(text()).toContain("1. dec. 2026")
+    await send()
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
+      notes: "Tak",
+      items: [expect.objectContaining({ description: "konsulent", quantity: "2.5" }), expect.objectContaining({ description: "rejse" })],
+    })))
+    expect(readHandoff("card")).toBeNull()
   })
 
   it("shows the invoice's own error when the send fails after the draft exists", async () => {

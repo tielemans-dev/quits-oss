@@ -54,6 +54,7 @@ export function DashboardView({
   onRemindersSettled,
   userName,
   commandBar,
+  newInvoiceId,
 }: {
   summary: Summary
   readyCompany?: string
@@ -65,6 +66,8 @@ export function DashboardView({
   /** Queues a reminder job for several invoices at once; the tracker toast follows it. */
   sendReminderBatch?: (invoiceIds: string[]) => Promise<unknown>
   onRemindersSettled?: () => void
+  /** An invoice just sent from the command bar: its row arrives with a highlight that fades. */
+  newInvoiceId?: string
 }) {
   const { t, locale } = useI18n()
   const state = classifyDashboard(summary)
@@ -144,6 +147,7 @@ export function DashboardView({
                     inAttention={inAttention}
                     reminders={reminders}
                     onRemind={remind}
+                    newInvoiceId={newInvoiceId}
                   />
                   <ReceivedChart chart={chart} streak={summary.streak} />
                   <ActivityFeed events={summary.activity} asOf={summary.asOf} timezone={summary.timezone} />
