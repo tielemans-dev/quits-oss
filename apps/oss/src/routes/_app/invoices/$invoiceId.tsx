@@ -268,8 +268,8 @@ function InvoiceDetailPage() {
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
   // The edit values as of this render, so a save can tell which fields changed while it was in flight.
-  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editItems: EditItem[] } | null>(null)
-  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editItems }), [editContactId, editDueDate, editNotes, editItems])
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems])
   editSnapshot.current = editValues
   // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
   useEffect(() => {
@@ -373,6 +373,11 @@ function InvoiceDetailPage() {
     setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
   }
 
+  function changeEditVat(items: EditItem[]) {
+    clearIssues((issue) => issue.field === "items" && issue.column === "vat" && issue.line !== undefined && items[issue.line]?.vat !== editItems[issue.line]?.vat)
+    setEditItems(items)
+  }
+
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
     clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
@@ -401,7 +406,7 @@ function InvoiceDetailPage() {
   function applyCatalogItemToEditItem(index: number, catalogItemId: string) {
     // A catalog item replaces the description and unit price, so their issues no longer apply.
     if (catalogItems.some((item) => item.id === catalogItemId)) {
-      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity")
+      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity" && issue.column !== "vat")
     }
     setEditItems((prev) =>
       prev.map((item, i) => {
@@ -428,6 +433,11 @@ function InvoiceDetailPage() {
     const follow = (issue: ReadableIssue): ReadableIssue | null => {
       const now = editSnapshot.current!
       if (issue.field === "items") return followLineIssue(issue, submitted.editItems, now.editItems)
+      if (issue.field === "taxRate") return now.editTaxRate === submitted.editTaxRate ? issue : null
+      if (issue.field === "vatEvidence") {
+        const key = issue.evidence as keyof DraftVatEvidence | undefined
+        return (key ? now.editVatEvidence[key] === submitted.editVatEvidence[key] : now.editVatEvidence === submitted.editVatEvidence) ? issue : null
+      }
       const value = ({ contact: "editContactId", dueDate: "editDueDate", notes: "editNotes" } as const)[issue.field as "contact" | "dueDate" | "notes"]
       return !value || now[value] === submitted[value] ? issue : null
     }
@@ -608,18 +618,18 @@ function InvoiceDetailPage() {
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
       [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
     const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
-      editIssues.some((issue) => issue.field === field && issue.line === line && (!issue.column || !column || issue.column === column))
+      editIssues.some((issue) => issue.field === field && issue.line === line && (column === "vat" ? issue.column === "vat" : !issue.column || !column || issue.column === column))
     const fieldMessage = (id: string, match: (issue: ReadableIssue) => boolean) => {
       const messages = issueMessages(match)
       return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
     }
     const a11y = (id: string, invalid: boolean) => ({ "aria-invalid": invalid || undefined, "aria-describedby": invalid ? id : undefined })
     // Each line column has its own message element; a control is described only by its column's message and any whole-line message.
-    const lineColumns = ["line", "description", "quantity", "unitPrice"] as const
+    const lineColumns = ["line", "description", "quantity", "unitPrice", "vat"] as const
     const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
     const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
       const id = (at: (typeof lineColumns)[number]) => editIssues.some((issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === at) ? lineIssueId(index, at) : null
-      return [id(column), id("line")].filter(Boolean).join(" ") || undefined
+      return [id(column), column === "vat" ? null : id("line")].filter(Boolean).join(" ") || undefined
     }
     const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
@@ -792,7 +802,8 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
+            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -810,13 +821,15 @@ function InvoiceDetailPage() {
                       disabled={!!invoice.agreementId}
                       step="0.01"
                       value={editTaxRate || ""}
-                      onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      {...a11y("edit-taxRate-error", hasIssue("taxRate"))}
+                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate" || (issue.field === "items" && issue.column === "vat")); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
                     <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
                   </div>
                 </div>
+                {fieldMessage("edit-taxRate-error", (issue) => issue.field === "taxRate")}
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
                   <span className="num">{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>

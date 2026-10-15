@@ -257,7 +257,7 @@ function SummaryItem({
   )
 }
 
-function RecordPaymentDialog({
+export function RecordPaymentDialog({
   invoiceId,
   invoiceNumber,
   currency,
@@ -289,7 +289,8 @@ function RecordPaymentDialog({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     const value = Number(amount.replace(",", "."))
-    if (!Number.isFinite(value) || value <= 0 || !hasAtMostTwoDecimals(value)) {
+    // The form skips native validation, so enforce the input's min="0.01" here: tiny values would store as 0.00.
+    if (!Number.isFinite(value) || value < 0.01 || !hasAtMostTwoDecimals(value)) {
       setError(t("payments.record.error.amount"))
       return
     }
@@ -325,7 +326,7 @@ function RecordPaymentDialog({
   return (
     <Dialog open onOpenChange={(open) => (!open && !submitting ? onClose() : undefined)}>
       <DialogContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t("payments.record.title")}</DialogTitle>
             <DialogDescription>
@@ -345,7 +346,7 @@ function RecordPaymentDialog({
                 max={balanceDue}
                 required
                 value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                onChange={(event) => { setAmount(event.target.value); setError(null) }}
               />
             </div>
             <div className="grid gap-2">
@@ -353,7 +354,7 @@ function RecordPaymentDialog({
               <LocalizedDateField
                 id="payment-date"
                 value={paidAt}
-                onChange={setPaidAt}
+                onChange={(value) => { setPaidAt(value); setError(null) }}
                 locale={locale}
                 placeholder={t("payments.record.datePlaceholder")}
                 required
@@ -459,7 +460,7 @@ function VoidPaymentDialog({
   return (
     <Dialog open onOpenChange={(open) => (!open && !submitting ? onClose() : undefined)}>
       <DialogContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t("payments.void.title")}</DialogTitle>
             <DialogDescription>
