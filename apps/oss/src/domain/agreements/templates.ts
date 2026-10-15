@@ -1,24 +1,30 @@
 import type { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
+import { translate } from "../../lib/i18n/translate"
 
-const templates = [
-  {
-    name: "Fixed-scope project",
-    termsMarkdown:
-      "# {{agreement.title}}\n\n{{seller.name}} will provide the following work for {{buyer.name}}.\n\n{{deliverables}}\n\nThe agreed total is {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nChanges to the agreed scope require a new agreement. Payment is due according to the agreement's payment terms.\n\nThis template is not legal advice.",
-  },
-  {
-    name: "Milestone project",
-    termsMarkdown:
-      "# {{agreement.title}}\n\n{{seller.name}} will provide these milestones for {{buyer.name}}.\n\n{{deliverables}}\n\nThe milestones, including any deposit, total {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nEach milestone follows its agreed date and payment terms. Changes to scope require a new agreement.\n\nThis template is not legal advice.",
-  },
-]
+/** The built-in templates in a language; the catalog holds their name and terms. */
+export function defaultAgreementTemplates(locale?: string | null) {
+  return (["fixed", "milestone"] as const).map(kind => ({
+    name: translate(`agreements.templates.${kind}.name`, locale),
+    termsMarkdown: translate(`agreements.templates.${kind}.terms`, locale),
+  }))
+}
+
+/** Translate only untouched built-in content, without updating the persisted template. */
+export function presentAgreementTemplate<T extends { name: string; termsMarkdown: string }>(template: T, locale?: string | null): T {
+  for (const language of ["en", "da"]) {
+    const index = defaultAgreementTemplates(language).findIndex(seed => seed.name === template.name && seed.termsMarkdown === template.termsMarkdown)
+    if (index !== -1) return { ...template, ...defaultAgreementTemplates(locale)[index]! }
+  }
+  return template
+}
 
 export async function seedAgreementTemplates(db: Prisma.TransactionClient, organizationId: string) {
   // Serialize first opens and any future default changes on the parent organization.
   await db.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`
-  const organization = await db.organization.findUniqueOrThrow({ where: { id: organizationId } })
+  const organization = await db.organization.findUniqueOrThrow({ where: { id: organizationId }, include: { settings: { select: { locale: true } } } })
   if (organization.agreementTemplatesSeeded) return
+  const templates = defaultAgreementTemplates(organization.settings?.locale)
   for (const template of templates) {
     await db.agreementTemplate.upsert({
       where: { organizationId_name: { organizationId, name: template.name } },
@@ -38,10 +44,12 @@ export async function seedAgreementTemplates(db: Prisma.TransactionClient, organ
 export async function listAgreementTemplates(organizationId: string) {
   return prisma.$transaction(async (db) => {
     await seedAgreementTemplates(db, organizationId)
-    return db.agreementTemplate.findMany({
+    const settings = await db.orgSettings.findUnique({ where: { organizationId }, select: { locale: true } })
+    const templates = await db.agreementTemplate.findMany({
       where: { organizationId },
       orderBy: [{ isDefault: "desc" }, { name: "asc" }],
       select: { id: true, name: true, termsMarkdown: true, isDefault: true },
     })
+    return templates.map(template => presentAgreementTemplate(template, settings?.locale))
   })
 }

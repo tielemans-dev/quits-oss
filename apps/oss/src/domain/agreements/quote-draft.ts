@@ -9,7 +9,7 @@ import { lockDocument } from "../documents/locks"
 import { refuseWhileSending } from "../documents/document-delivery"
 import { storedDraftItems } from "../documents/pricing"
 import { InvalidState, NotFound } from "../errors"
-import { seedAgreementTemplates } from "./templates"
+import { presentAgreementTemplate, seedAgreementTemplates } from "./templates"
 
 /** The quote lock serializes both conversion paths, including requests with different ids. */
 export function resolveQuoteDraft(
@@ -75,12 +75,19 @@ export function resolveQuoteDraft(
         code: "invalid_template",
         message: "Invalid template for this organization",
       })
+    let termsMarkdown = request.termsMarkdown
+    if (termsMarkdown === undefined && template) {
+      const settings = yield* Effect.promise(() =>
+        db.orgSettings.findUnique({ where: { organizationId }, select: { locale: true } }),
+      )
+      termsMarkdown = presentAgreementTemplate(template, settings?.locale).termsMarkdown
+    }
     const input = agreementCreateDraftInputSchema.parse({
       contactId: quote.contactId,
       title: request.title ?? quote.number,
       validUntil: request.validUntil,
       templateId,
-      termsMarkdown: request.termsMarkdown ?? template?.termsMarkdown ?? "",
+      termsMarkdown: termsMarkdown ?? "",
       dueInDays: request.dueInDays,
       billingTrigger: request.billingTrigger,
       currency: quote.currency,

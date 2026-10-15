@@ -182,4 +182,8 @@ export const daAgreementsMessages = {
   "agreements.quoteHasAgreement": "Dette tilbud har allerede en aftale. Fakturer aftalens leverancer i stedet.",
   "agreements.quoteHasInvoices": "Tilbuddet er allerede faktureret, så det kan ikke laves om til en aftale.",
   "agreements.quoteConversionNotice": "Vælg en ny gyldighedsdato. Kladden kopierer kunden, ydelserne og momsoplysningerne fra tilbuddet og bruger din standardskabelon. Totalerne genberegnes med den aktuelle prisberegning; afrunding kan være anderledes for ældre tilbud. Gennemgå kladden, før du sender den.",
+  "agreements.templates.fixed.name": "Projekt med fast omfang",
+  "agreements.templates.milestone.name": "Projekt med milepæle",
+  "agreements.templates.fixed.terms": "# {{agreement.title}}\n\n{{seller.name}} leverer følgende arbejde til {{buyer.name}}.\n\n{{deliverables}}\n\nDet aftalte beløb er {{agreement.total}}. Tilbuddet er gyldigt til {{agreement.validUntil}}.\n\nÆndringer i det aftalte omfang kræver en ny aftale. Betaling sker efter aftalens betalingsbetingelser.\n\nDenne skabelon er ikke juridisk rådgivning.",
+  "agreements.templates.milestone.terms": "# {{agreement.title}}\n\n{{seller.name}} leverer følgende milepæle til {{buyer.name}}.\n\n{{deliverables}}\n\nMilepælene, inklusive eventuelt depositum, udgør {{agreement.total}}. Tilbuddet er gyldigt til {{agreement.validUntil}}.\n\nHver milepæl følger den aftalte dato og de aftalte betalingsbetingelser. Ændringer i omfanget kræver en ny aftale.\n\nDenne skabelon er ikke juridisk rådgivning.",
 } as const
