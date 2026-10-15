@@ -25,7 +25,7 @@ describe("structured refusals stay backward compatible", () => {
     expect(error.fieldIssues).toHaveLength(1)
   })
 
-  it("reads field issues from a tRPC error and ignores legacy issues", () => {
+  it("reads field issues from a tRPC error and ignores the legacy issues", () => {
     expect(invoiceFieldIssues({ data: { fieldIssues: [issue], issues: [{ path: "customer.country", message: "customer.country.unsupported" }] } })).toEqual([issue])
     expect(invoiceFieldIssues({ data: { issues: [{ path: "amount", message: "bad" }] } })).toEqual([])
   })
