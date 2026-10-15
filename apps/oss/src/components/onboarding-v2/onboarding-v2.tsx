@@ -134,8 +134,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const epoch = useRef(0)
   const TT = (suffix: string, vars?: Record<string, string | number>) => t(key(suffix), vars)
 
-  // The answer lives in the draft, so editing other fields or reloading keeps it.
-  const sellerVatChoice = draft?.vatChoiceConfirmed ? draft.values.momsRegistered : null
+  // Keep unsupported registry answers unanswered, including when restoring a draft.
+  const sellerVatChoice = draft && (!confirmationEnabled || draft.vatChoiceConfirmed) &&
+    (nonVatEnabled || draft.values.momsRegistered !== false) ? draft.values.momsRegistered : null
 
   function discard() {
     epoch.current++
@@ -344,8 +345,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       current
         ? {
             ...current,
-            // Another CVR number is another company, whose VAT status must be answered again.
-            ...(field === "cvr" && value !== current.values.cvr ? { vatChoiceConfirmed: false } : {}),
             ...(field === "momsRegistered" ? { vatChoiceConfirmed: value !== null } : {}),
             values: {
               ...current.values,
@@ -358,21 +357,29 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    // An unanswered VAT question keeps the submit button disabled, so this only guards programmatic submits.
-    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
+    if (!draft || saving.current) return
     const v = draft.values
     // The form opts out of native (English-only) browser validation; required text fields the schema allows empty are checked here.
-    const empty = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
-    if (
-      (v.bankRegNumber || v.bankAccountNumber) &&
+    const empty: string[] = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
+    const invalidBank = Boolean((v.bankRegNumber || v.bankAccountNumber) &&
       (!/^\d{4}$/.test(v.bankRegNumber) || !/^\d{1,10}$/.test(v.bankAccountNumber))
-    ) {
-      setBankErrors(true)
-      return
-    }
-    const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload(draft))
-    if (!validated.success || empty.length) {
-      reject([...new Set([...empty, ...(validated.success ? [] : validated.error.issues.map((issue) => String(issue.path.at(-1))))])])
+    )
+    setBankErrors(invalidBank)
+    // Validate the other fields even when VAT is unanswered. This temporary value is
+    // only for validation; the missing answer below always prevents submission.
+    const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload({
+      ...draft, values: { ...v, momsRegistered: v.momsRegistered ?? true },
+    }))
+    const fields = [...new Set([
+      ...empty,
+      ...(sellerVatChoice === null ? ["momsRegistered"] : []),
+      ...(validated.success ? [] : validated.error.issues.map((issue) => {
+        const name = String(issue.path.at(-1))
+        return name === "regNumber" ? "bankRegNumber" : name === "accountNumber" ? "bankAccountNumber" : name
+      })),
+    ])]
+    if (fields.length) {
+      reject(fields)
       return
     }
     setValidationErrors([])
@@ -704,20 +711,26 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             </SourceField>
             {confirmationEnabled ? <div className="grid gap-3">
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
-              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} required disabled={busy} onChange={value => update("momsRegistered", value)} />
+              {/* Not natively required: confirm() shows, focuses and explains a missing answer (QUI-56). */}
+              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} invalid={validationErrors.includes("momsRegistered")} aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined} disabled={busy} onChange={value => update("momsRegistered", value)} />
+              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
             </div> : (
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
                 aria-label={TT("field.vat")}
-                value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
-                required
+                name="momsRegistered"
+                aria-invalid={validationErrors.includes("momsRegistered")}
+                aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined}
+                value={sellerVatChoice === null ? "" : String(sellerVatChoice)}
+                aria-required
                 disabled={busy}
                 onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >
-                {draft.values.momsRegistered === null && <option value="" disabled>{TT("vatUnknown")}</option>}
+                {sellerVatChoice === null && <option value="" disabled>{TT(draft.values.momsRegistered === null ? "vatUnknown" : "vatChoose")}</option>}
                 <option value="true">{TT("yes")}</option>
                 {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
+              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
             </SourceField>
             )}
             {field("taxRate", "field.rate", TT("defaultTag"), {
@@ -928,7 +941,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           </aside>
           <div className="ob-confirm">
             <span>{TT("unsaved.hint")}</span>
-            <Button type="submit" disabled={busy || (confirmationEnabled && sellerVatChoice === null) || draft.values.momsRegistered === null}>
+            <Button type="submit" disabled={busy}>
               {busy ? <LoaderCircle size={16} className="ob-spin" aria-hidden="true" /> : null}
               {TT(busy ? "busy" : draft.source === "manual" ? "manual.confirm" : "confirm")}
             </Button>

@@ -24,6 +24,7 @@ provider; other Stripe SDK imports and hosted subscription or billing portal cal
 ## Pull Request Expectations
 
 - This is a Bun repo. Use Bun for install, scripts, and local verification.
+- To opt in to staged-file linting, see the README's [Local commit hook](README.md#local-commit-hook) section.
 - Keep OSS runtime self-deployable.
 - Keep cloud-specific logic outside OSS runtime paths.
 - Add or update tests for behavior changes.
