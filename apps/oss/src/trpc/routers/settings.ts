@@ -255,7 +255,10 @@ export const settingsRouter = router({
     })
     // Cached readiness alone does not supply the runtime's Connect checkout client.
     const stripeTarget = stripeState.configured
-      ? await resolveStripeCheckoutTarget({ organizationId: ctx.organizationId }).catch(() => {
+      ? await resolveStripeCheckoutTarget(
+          { organizationId: ctx.organizationId },
+          { connectReady: settings.stripeAccountStatus === "active" },
+        ).catch(() => {
           console.warn("Settings could not resolve Stripe checkout target", { organizationId: ctx.organizationId })
           return null
         })

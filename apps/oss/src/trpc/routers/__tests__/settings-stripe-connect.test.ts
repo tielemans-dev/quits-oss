@@ -238,17 +238,19 @@ describe("settings stripe account contract", () => {
       // Current self-hosted main has no Connect checkout target, even for active accounts.
       expect((await createCaller().get()).stripePaymentsEnabled).toBe(byok)
 
+      const resolveTarget = vi.fn(async () => ({
+        kind: "connect" as const,
+        stripeAccount: "acct_test",
+        client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
+      }))
       setRuntimeExtensions([{
         id: "test-connect-checkout",
-        resolveStripeCheckoutTarget: async () => ({
-          kind: "connect",
-          stripeAccount: "acct_test",
-          client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
-        }),
+        resolveStripeCheckoutTarget: resolveTarget,
       }])
       const result = await createCaller().get()
       expect(result.stripePaymentsEnabled).toBe(byok || status === "active")
-      expect(result.stripeCheckoutKind).toBe(byok || status === "active" ? "connect" : null)
+      expect(result.stripeCheckoutKind).toBe(status === "active" ? "connect" : byok ? "byok" : null)
+      expect(resolveTarget).toHaveBeenCalledTimes(byok || status === "active" ? 1 : 0)
       expect(result.stripeByokConfigured).toBe(byok)
     })
   })
@@ -276,6 +278,16 @@ describe("settings stripe account contract", () => {
     }])
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
+    expect(warn).toHaveBeenCalledWith("Settings could not resolve Stripe checkout target", { organizationId: "org-1" })
+    warn.mockRestore()
+  })
+
+  it("warns and reports payments unavailable when stored keys cannot be decrypted", async () => {
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeSecretKeyEnc: "invalid-ciphertext" }))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const result = await createCaller().get()
+    expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutKind).toBeNull()
     expect(warn).toHaveBeenCalledWith("Settings could not resolve Stripe checkout target", { organizationId: "org-1" })
     warn.mockRestore()
   })
