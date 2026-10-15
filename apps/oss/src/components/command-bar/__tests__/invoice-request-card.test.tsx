@@ -3,17 +3,21 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn() }))
+const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn(), learned: vi.fn(), clear: vi.fn(), restore: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => api.navigate }))
 vi.mock("../../../trpc/client", () => ({
   trpc: {
     contacts: { list: { query: async () => [{ id: "buyer", name: "Havbrise Logistik A/S", email: "buyer@example.test" }] } },
     catalog: { list: { query: async () => [] } },
-    invoices: { sendReadiness: { query: api.readiness }, createV2: { mutate: api.create }, send: { mutate: api.send } },
+    invoices: {
+      sendReadiness: { query: api.readiness }, createV2: { mutate: api.create }, send: { mutate: api.send },
+      learnedDefaults: { query: api.learned }, clearLearnedDefault: { mutate: api.clear }, restoreLearnedDefault: { mutate: api.restore },
+    },
   },
 }))
 vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" }))
-vi.mock("../../../hooks/use-invoice-due-date", () => ({ useInvoiceDueDate: () => ["2026-11-14", () => {}] }))
+vi.mock("../../../hooks/use-invoice-due-date", async importActual => ({ ...await importActual<typeof import("../../../hooks/use-invoice-due-date")>(), useInvoiceDueDate: () => ["2026-11-14", () => {}] }))
+vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ timezone: "UTC" }) }))
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../../lib/request-handoff"
@@ -42,6 +46,9 @@ beforeEach(() => {
   api.readiness.mockResolvedValue(ready)
   api.create.mockResolvedValue({ id: "inv-1", reviewedVersion: "r1" })
   api.send.mockResolvedValue({})
+  api.learned.mockResolvedValue({ paymentTerms: null })
+  api.clear.mockResolvedValue({ cleared: true })
+  api.restore.mockResolvedValue(undefined)
 })
 afterEach(() => {
   cleanup()
@@ -120,7 +127,7 @@ describe("invoice request card", () => {
 
     await waitFor(() => expect(text()).toContain("3.156,25 kr."))
     expect(text()).toContain("rejse")
-    expect(text()).toContain("1. dec. 2026")
+    expect(text()).toContain("01.12.2026")
     await send()
     await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
       notes: "Tak",
@@ -149,5 +156,68 @@ describe("invoice request card", () => {
     await screen.findByRole("alert")
     expect(api.navigate).not.toHaveBeenCalled()
     expect(api.send).not.toHaveBeenCalled()
+  })
+
+  describe("som sidst", () => {
+    const request = "faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent"
+    const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+
+    it("pre-fills the learned due date with a hint, counted by code, and sends what the field holds", async () => {
+      api.learned.mockResolvedValue({ paymentTerms: { days: 8, count: 3 } })
+      renderCard(request)
+
+      await screen.findByText("som sidst · 8 dage")
+      expect(api.learned).toHaveBeenCalledWith({ contactId: "buyer" })
+      await send()
+      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: inDays(8) })))
+    })
+
+    it("shows no hint and keeps the organization's date without a learned default", async () => {
+      renderCard(request)
+
+      await waitFor(() => expect(api.learned).toHaveBeenCalled())
+      expect(text()).not.toContain("som sidst")
+      await send()
+      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: "2026-11-14" })))
+    })
+
+    it("drops the hint when the date is changed on the card", async () => {
+      api.learned.mockResolvedValue({ paymentTerms: { days: 8, count: 2 } })
+      renderCard(request)
+      await screen.findByText("som sidst · 8 dage")
+
+      fireEvent.click(screen.getByRole("button", { name: "Forfaldsdato" }))
+      fireEvent.click(await screen.findByRole("button", { name: /Ryd/ }))
+
+      await waitFor(() => expect(text()).not.toContain("som sidst"))
+      expect(api.clear).not.toHaveBeenCalled()
+    })
+
+    it("clears a learned default, sends the organization's date, and brings the hint back with Fortryd", async () => {
+      api.learned.mockResolvedValue({ paymentTerms: { days: 8, count: 3 } })
+      renderCard(request)
+      await screen.findByText("som sidst · 8 dage")
+
+      fireEvent.click(screen.getByRole("button", { name: "Fjern det lærte forfald" }))
+      await screen.findByText("Det lærte forfald er fjernet.")
+      expect(api.clear).toHaveBeenCalledWith({ contactId: "buyer" })
+      expect(text()).not.toContain("som sidst")
+
+      fireEvent.click(screen.getByRole("button", { name: "Fortryd" }))
+      await screen.findByText("som sidst · 8 dage")
+      expect(api.restore).toHaveBeenCalledWith({ contactId: "buyer" })
+    })
+
+    it("says so and keeps the hint when clearing fails", async () => {
+      api.learned.mockResolvedValue({ paymentTerms: { days: 8, count: 3 } })
+      api.clear.mockRejectedValue(new Error("down"))
+      renderCard(request)
+      await screen.findByText("som sidst · 8 dage")
+
+      fireEvent.click(screen.getByRole("button", { name: "Fjern det lærte forfald" }))
+
+      await screen.findByText("Det lærte forfald kunne ikke ændres. Prøv igen.")
+      expect(text()).toContain("som sidst · 8 dage")
+    })
   })
 })

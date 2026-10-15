@@ -74,5 +74,12 @@ export const enNavMessages = {
   "shell.request.invoice.sent": "Invoice sent",
   "shell.request.invoice.gap": "Missing: {field}",
   "shell.request.invoice.foreignCurrency": "Invoices in a foreign currency need an exchange rate and are sent from the full form.",
+  "shell.request.invoice.asLast.one": "as last time · {count} day",
+  "shell.request.invoice.asLast.other": "as last time · {count} days",
+  "shell.request.invoice.asLastWhy": "Same due date on the customer's last {count} invoices",
+  "shell.request.invoice.asLastClear": "Clear the learned due date",
+  "shell.request.invoice.asLastCleared": "The learned due date was cleared.",
+  "shell.request.invoice.asLastUndo": "Undo",
+  "shell.request.invoice.asLastError": "The learned due date could not be changed. Try again.",
   "shell.org.switch": "Switch organization",
 } as const
