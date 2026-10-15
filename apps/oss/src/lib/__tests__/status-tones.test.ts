@@ -52,7 +52,7 @@ describe("status tones", () => {
         (status) => !statuses?.includes(status)
       )
       // The invoice domain also holds statuses derived from payments and reminder jobs.
-      expect(extra, domain).toEqual(domain === "invoice" ? ["partially_paid", "reminder_sent"] : [])
+      expect(extra, domain).toEqual(domain === "invoice" ? ["sending", "partially_paid", "reminder_sent"] : [])
     }
   })
 

@@ -22,7 +22,12 @@ export async function readEmailDelivery(deliveryKey: string, noun: string) {
     })
   }
   if (result.outcome === "withdrawn") {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.message ?? `The ${noun} email was not sent.` })
+    const message = result.message ?? `The ${noun} email was not sent.`
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message,
+      cause: new DomainRefusal({ tag: "ExternalFailure", code: "email_not_sent", message }),
+    })
   }
   return result.outcome === "delivered" ? "sent" : result.outcome
 }

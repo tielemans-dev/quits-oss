@@ -101,6 +101,33 @@ describe("StatusBadge", () => {
     expect(solid?.className).not.toContain("border-current")
   })
 
+  it.each([["en-US", "Sending"], ["da-DK", "Sender"]])(
+    "shows an invoice whose email is still being delivered as %s, not as a draft",
+    (locale, label) => {
+      state.locale = locale
+      const status = invoiceDisplayStatus(
+        { status: "draft", paymentStatus: "unpaid", balanceDue: 100, lastEmailAttemptOutcome: "sending" },
+        "Europe/Copenhagen"
+      )
+      render(<StatusBadge domain="invoice" status={status} />)
+      expect(screen.getByText(label).dataset.tone).toBe("info")
+      expect(screen.queryByText("Draft")).toBeNull()
+      expect(screen.queryByText("Kladde")).toBeNull()
+    }
+  )
+
+  it.each([["en-US", "Sent"], ["da-DK", "Sendt"]])("shows an issued invoice as %s after a failed resend", (locale, label) => {
+    state.locale = locale
+    const status = invoiceDisplayStatus(
+      { status: "sent", paymentStatus: "unpaid", balanceDue: 100, lastEmailAttemptOutcome: "failed" },
+      "Europe/Copenhagen"
+    )
+    render(<StatusBadge domain="invoice" status={status} />)
+    expect(screen.getByText(label)).toBeTruthy()
+    expect(screen.queryByText("Draft")).toBeNull()
+    expect(screen.queryByText("Kladde")).toBeNull()
+  })
+
   it("translates the label", () => {
     state.locale = "da-DK"
     render(<StatusBadge domain="invoice" status="partially_paid" />)

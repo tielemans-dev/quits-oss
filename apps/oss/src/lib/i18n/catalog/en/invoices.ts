@@ -121,6 +121,9 @@ export const enInvoicesMessages = {
   "invoices.detail.paymentLink.description.bankTransfer":
     "Share this hosted link with the customer so they can pay by bank transfer.",
   "invoices.detail.paymentLink.copy": "Copy link",
+  "invoices.detail.email.sendFailed.title": "Invoice not sent",
+  "invoices.detail.email.sendFailed.body": "We couldn't send the email just now. Your invoice is saved, so you can try again in a moment.",
+  "invoices.detail.email.sendFailed.retry": "Try again",
   "invoices.detail.email.status.sending": "Sending",
   "invoices.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The invoice cannot be edited until delivery is confirmed or given up.",
   "invoices.detail.email.status.unconfirmed": "Delivery unconfirmed",
