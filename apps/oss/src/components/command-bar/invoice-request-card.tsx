@@ -12,6 +12,7 @@ import { useI18n } from "../../lib/i18n/react"
 import { defaultDocumentTaxRate } from "../../lib/invoice-defaults"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import { localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../lib/invoice-quantity"
+import { DURATION, EASE_ENTER } from "../../lib/motion"
 import { parseRequest, type RequestCustomer } from "../../lib/request-parser"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../lib/request-handoff"
 import { submitInvoice } from "../../lib/submit-invoice"
@@ -23,11 +24,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { announceRequestDone } from "./request-events"
-import { MORPH_EASING, useMorph } from "./use-morph"
+import { useMorph } from "./use-morph"
 
-const SHRINK_MS = 400
+const SHRINK_MS = DURATION.card
 const HOLD_MS = 1500
-const LEAVE_MS = 250
+const LEAVE_MS = DURATION.leave
 /** The check's content arrives this long into the shrink, once the surface has made room. */
 const CHECK_DELAY_MS = 90
 
@@ -164,7 +165,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         ref={morph.ref}
         role="status"
         className={cn("request-stagger flex items-center gap-3 overflow-hidden p-6", leaving && "scale-90 opacity-0 transition-[opacity,transform] motion-reduce:scale-100")}
-        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: MORPH_EASING }) } as CSSProperties}
+        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: EASE_ENTER }) } as CSSProperties}
       >
         <span {...stagger(0)} className="bg-tone-success/15 text-tone-success flex size-9 shrink-0 items-center justify-center rounded-full">
           <Check className="size-5" aria-hidden="true" />
