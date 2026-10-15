@@ -51,7 +51,7 @@ const RouteComponent = (Route as unknown as { component: ComponentType }).compon
 
 const creditNote = {
   id: "cn_1",
-  number: "CN-0001",
+  number: "CN-0001", status: "issued",
   currency: "DKK",
   timezone: "UTC",
   issueDate: "2026-10-01T00:00:00.000Z",

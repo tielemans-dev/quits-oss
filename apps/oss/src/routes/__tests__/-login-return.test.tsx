@@ -253,7 +253,7 @@ describe('return after required organization flow', () => {
     expect(screen.getByRole('button', { name: 'Look up' }).closest('form')?.className).toContain('gap-6')
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
     fireEvent.click(await screen.findByRole('button', { name: /Use Nordlys Studio ApS/ }))
-    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2', metadata: { cvr: '24256790' } }))
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2', metadata: { cvr: '24256790', onboardingAutoSlug: 'nordlys-studio-aps-2' } }))
     expect(state.load).toHaveBeenCalledWith('/')
 
     cleanup()

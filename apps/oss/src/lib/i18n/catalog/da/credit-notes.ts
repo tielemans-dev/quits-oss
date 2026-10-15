@@ -78,4 +78,12 @@ export const daCreditNotesMessages = {
   "creditNotes.email.greeting": "Hej {name}, her er en kreditnota til faktura {invoiceNumber}.",
   "creditNotes.email.reference": "Krediterer faktura",
   "creditNotes.email.reason": "Årsag",
+  "shell.request.title.creditNote": "Kreditnota",
+  "creditNotes.request.reason.quantity": "Fejl i antal",
+  "creditNotes.request.reason.discount": "Rabat",
+  "creditNotes.request.reason.cancelled": "Annulleret",
+  "creditNotes.request.optionalReason": "Årsagstekst (valgfri)",
+  "creditNotes.request.created": "Kreditnota {number} oprettet som kladde",
+  "creditNotes.request.undo": "Fortryd",
+  "creditNotes.request.draftHint": "Gemmes som kladde. Intet sendes.",
 } as const

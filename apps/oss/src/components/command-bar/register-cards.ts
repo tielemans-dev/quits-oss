@@ -1,3 +1,4 @@
+import { CreditNoteRequestCard } from "./credit-note-request-card"
 import { InvoiceRequestCard } from "./invoice-request-card"
 import { CustomerRequestCard } from "./customer-request-card"
 import { OverdueRequestCard } from "./overdue-request-card"
@@ -9,3 +10,5 @@ registerRequestCard("repeat", InvoiceRequestCard)
 registerRequestCard("customer", CustomerRequestCard)
 registerRequestCard("overdue", OverdueRequestCard)
 registerRequestCard("payment", PaymentMatchCard)
+
+registerRequestCard("creditNote", CreditNoteRequestCard)

@@ -70,7 +70,7 @@ export async function exportAccounting(
     }
     case "creditNotes": {
       const creditNotes = await prisma.creditNote.findMany({
-        where: { organizationId, status: { not: "draft" }, issueDate: { gte: start, lt: end } },
+        where: { organizationId, status: "issued", issueDate: { gte: start, lt: end } },
         include: { contact, invoice: { select: { number: true } } },
         orderBy: [{ issueDate: "asc" }, { number: "asc" }],
       })

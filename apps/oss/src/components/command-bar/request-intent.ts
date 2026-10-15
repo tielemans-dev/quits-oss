@@ -4,7 +4,7 @@ import { parsePaymentRequest } from "../../lib/payments/payment-match"
 import { parseRequest, type RequestContext, type RequestDraft } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment" | "repeat"; input: string; suggested?: RequestDraft }
+export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment" | "creditNote" | "repeat"; input: string; suggested?: RequestDraft }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
 export type RequestRecognizer = (input: string, suggested?: RequestDraft) => RequestIntent | null
@@ -15,13 +15,14 @@ const noContext: RequestContext = { customers: [], catalogItems: [] }
 export const recognizeRequest: RequestRecognizer = (input, suggested) => {
   if (suggested) return { kind: suggested.intent, input, suggested }
   if (/^\s*(?:\d{8}|(?:ny\s+kunde|cvr)\b.*)\s*$/iu.test(input)) return { kind: "customer", input: input.trim() }
+  if (/^\s*kreditnota\s+[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*\s*$/iu.test(input)) return { kind: "creditNote", input: input.trim() }
   const draft = parseRequest(input, noContext)
   if (draft) return { kind: draft.intent, input: input.trim() }
   return parsePaymentRequest(input) ? { kind: "payment", input: input.trim() } : null
 }
 
-/** The permission a card's confirming click needs: creating an invoice or a customer, sending the rykkere, or recording a payment. */
-const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create" } as const
+/** The permission each card's confirming click needs. */
+const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create", creditNote: "creditNote:create" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(

@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "../../../components/ui/table"
 import type { CreditNoteDetail } from "../../../components/credit-notes/types"
+import { StatusBadge } from "../../../components/status-badge"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys } from "../../../lib/documents/line-amounts"
 
@@ -53,6 +54,7 @@ function CreditNoteDetailPage() {
   const [notice, setNotice] = useState<{ kind: "info" | "warning"; text: string } | null>(null)
   const [sending, setSending] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [canCreate, setCanCreate] = useState(false)
   const [canSend, setCanSend] = useState(false)
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
@@ -79,6 +81,7 @@ function CreditNoteDetailPage() {
     if (request !== latestLoad.current || !isCurrent()) return
     setCreditNote(data)
     const [settingsResult, capabilitiesResult] = context
+    setCanCreate(capabilitiesResult.status === "fulfilled" && capabilitiesResult.value.canCreate)
     setCanSend(capabilitiesResult.status === "fulfilled" && capabilitiesResult.value.canSend)
     if (settingsResult.status === "fulfilled") {
       const settings = settingsResult.value
@@ -114,6 +117,7 @@ function CreditNoteDetailPage() {
   // Another credit note (or organization) keeps the page mounted, so start over with nothing
   // allowed and nothing reported about the previous one.
   useEffect(() => {
+    setCanCreate(false)
     setCanSend(false)
     setError(null)
     setNotice(null)
@@ -163,6 +167,17 @@ function CreditNoteDetailPage() {
         await load().catch(() => undefined)
       }
     }
+  }
+
+  async function handleDraft(action: "issueDraft" | "discardDraft") {
+    if (!creditNote || sending) return
+    const isCurrent = beginRequest(creditNote.id)
+    setSending(true); setError(null)
+    try {
+      await trpc.creditNotes[action].mutate({ id: creditNote.id })
+      if (isCurrent()) await load()
+    } catch (err) { if (isCurrent()) setError(err instanceof Error ? err.message : t("creditNotes.error.generic")) }
+    finally { if (isCurrent()) setSending(false) }
   }
 
   async function handleDownload() {
@@ -227,7 +242,7 @@ function CreditNoteDetailPage() {
     <div className="p-6 max-w-3xl grid gap-6">
       <div className="flex items-center justify-between">
         {backLink}
-        <Button variant="outline" size="sm" disabled={downloading} onClick={() => void handleDownload()}>
+        <Button variant="outline" size="sm" disabled={downloading || creditNote.status !== "issued"} onClick={() => void handleDownload()}>
           <Download className="size-4" />
           {downloading ? t("creditNotes.action.downloading") : t("creditNotes.action.downloadPdf")}
         </Button>
@@ -250,6 +265,13 @@ function CreditNoteDetailPage() {
         </p>
       )}
 
+      {creditNote.status === "draft" && <div className="grid gap-3">
+        <p>{t("creditNotes.request.draftHint")}</p>
+        {canCreate && <div className="flex gap-2">
+          <Button disabled={sending} onClick={() => void handleDraft("issueDraft")}>{t("creditNotes.action.issue")}</Button>
+          <Button variant="outline" disabled={sending} onClick={() => void handleDraft("discardDraft")}>{t("creditNotes.action.cancel")}</Button>
+        </div>}
+      </div>}
       <Card>
         <CardContent className="p-6 grid gap-6">
           <div className="flex items-start justify-between gap-4">
@@ -257,6 +279,7 @@ function CreditNoteDetailPage() {
               <h1 className="text-2xl font-bold">
                 {t("creditNotes.detail.title", { number: creditNote.number })}
               </h1>
+              <StatusBadge domain="creditNote" status={creditNote.status} />
               <Link
                 to="/invoices/$invoiceId"
                 params={{ invoiceId: creditNote.invoice.id }}
@@ -339,7 +362,7 @@ function CreditNoteDetailPage() {
                   : emailStatus}
             </CardDescription>
           </div>
-          {canSend && org.emailAvailable && recipientValid && (
+          {creditNote.status === "issued" && canSend && org.emailAvailable && recipientValid && (
             // A queued email settles on its own; sending again is refused meanwhile.
             <Button size="sm" disabled={sending || emailSending} onClick={() => void handleSend()}>
               <Mail className="size-4" />

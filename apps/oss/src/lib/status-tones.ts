@@ -53,6 +53,8 @@ export const statusTones = {
     expired: { tone: "muted", labelKey: "quotes.status.expired" },
   },
   creditNote: {
+    draft: { tone: "neutral", labelKey: "status.draft" },
+    cancelled: { tone: "muted", labelKey: "status.cancelled" },
     issued: { tone: "info", labelKey: "status.issued" },
   },
   recurring: {

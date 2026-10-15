@@ -42,7 +42,7 @@ function DashboardPage() {
   const recognize = useCallback(permittedRequest(recognizeRequest, can), [can])
   const [newInvoiceId, setNewInvoiceId] = useState<string>()
   // A card finished something over this page (an invoice was sent): show it in the figures and lists.
-  useEffect(() => onRequestDone(done => { setNewInvoiceId(done.invoiceId); void refresh() }), [refresh])
+  useEffect(() => onRequestDone(done => { if (done.kind !== "invoice") return; setNewInvoiceId(done.invoiceId); void refresh() }), [refresh])
 
   if (load.status === "loading") {
     return (
