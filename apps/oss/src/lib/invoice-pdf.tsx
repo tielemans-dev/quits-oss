@@ -1,4 +1,6 @@
-import { invoiceTaxIds, pdfBuyerAddress } from "./documents/invoice-identity"
+import { deviationVatLabel } from "./documents/line-amounts"
+import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
+import { pdfBuyerAddress, sellerPresentationTaxIds } from "./documents/invoice-identity"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
@@ -12,7 +14,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 import type { BankAccountSnapshot } from "@quits/contracts/payment-details"
-import { formatCurrency, formatDate } from "./i18n/format"
+import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import { canRenderLogo } from "./documents/logo"
 import { buildPaymentDetailsBlock } from "./payment-details-block"
@@ -23,6 +25,7 @@ import { documentColors as C } from "./brand/document-colors"
 const styles = StyleSheet.create({
   page: {
     padding: 40,
+    paddingBottom: 70,
     fontSize: 10,
     fontFamily: "Helvetica",
     color: C.ink,
@@ -235,6 +238,7 @@ export type InvoiceForPdf = {
   /** The date of supply, as `YYYY-MM-DD`. Absent when the invoice has none. */
   supplyDate?: string | null
   /** VAT by rate. Absent on inputs frozen before they carried it; the VAT row is then the single `taxAmount`. */
+  taxRate?: number
   vatRows?: VatRow[]
   /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
   rounding?: string
@@ -251,6 +255,7 @@ export type InvoiceForPdf = {
   paymentReference?: string | null
   contact: {
     name: string
+    taxIds?: DocumentTaxId[]
     email?: string | null
     company?: string | null
     address?: string | null
@@ -262,6 +267,7 @@ export type InvoiceForPdf = {
   /** Unit price and total are the stored amounts on the document's price basis; never derive one from the other. */
   items: Array<{
     description: string
+    vatTreatment?: string
     taxRate?: number
     quantity: number
     unitPrice: number
@@ -313,18 +319,18 @@ export function InvoicePdfDocument({
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
-            <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "long" })}</Text>
+            <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "short" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("pdf.dueDate", locale)}
             </Text>
-            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</Text>
+            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "short" })}</Text>
             {invoice.supplyDate && (
               <>
                 <Text style={[styles.label, { marginTop: 6 }]}>
                   {translate("pdf.supplyDate", locale)}
                 </Text>
                 {/* A calendar date, not an instant: formatting it in the organization's zone could move it a day. */}
-                <Text>{formatDate(invoice.supplyDate, locale, "UTC", { month: "long" })}</Text>
+                <Text>{formatDate(invoice.supplyDate, locale, "UTC", { month: "short" })}</Text>
               </>
             )}
           </View>
@@ -338,14 +344,16 @@ export function InvoicePdfDocument({
             {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
             {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
             {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-            {invoiceTaxIds(org.taxIds, org.cvrLabel, momsRegistered).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
           </View>
 
           {/* Bill To */}
           <View style={styles.buyer}>
             <Text style={styles.sectionTitle}>{translate("pdf.billTo", locale)}</Text>
             <Text style={styles.contactName}>{contact.name}</Text>
-            {contact.company && <Text style={styles.contactLine}>{contact.company}</Text>}
+            {distinctCompany(contact) && <Text style={styles.contactLine}>{distinctCompany(contact)}</Text>}
+            {formatTaxIds(contact.taxIds, locale).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {contact.email && <Text style={styles.contactLine}>{contact.email}</Text>}
             {pdfBuyerAddress(contact, locale).map((line, index) => <Text key={index} style={styles.contactLine}>{line}</Text>)}
           </View>
         </View>
@@ -367,8 +375,8 @@ export function InvoicePdfDocument({
           {invoice.items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
               <View style={styles.colDescription}>
-                <Text>{item.description}</Text>
-                {sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
+                <Text>{item.description}</Text>{deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate, momsRegistered) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}
+                {!deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate, momsRegistered) && sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
               </View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>
@@ -427,7 +435,10 @@ export function InvoicePdfDocument({
             <Text style={styles.notesText}>{notes}</Text>
           </View>
         )}
-        <Text style={styles.footer} fixed>quits.</Text>
+        <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
+          <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel), org.companyEmail].filter(Boolean).join(" · ")}</Text>
+          <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
+        </View>
       </Page>
     </Document>
   )

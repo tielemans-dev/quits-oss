@@ -113,7 +113,7 @@ describe("invoice PDF lines", () => {
       const text = invoiceText(danish, { locale: "da-DK", timezone })
       const label = text.indexOf("Leveringsdato")
       expect(label).toBeGreaterThan(-1)
-      expect(text[label + 1]).toBe("1. oktober 2026")
+      expect(text[label + 1]).toBe("1. okt. 2026")
     }
   })
 
@@ -223,4 +223,9 @@ describe("credit note PDF lines", () => {
     const buffer = await renderToBuffer(CreditNotePdfDocument({ creditNote: credit }))
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
   })
+})
+
+it("prints a deviating 25 percent PDF line label once", () => {
+  const output = invoiceText({ ...danish, momsRegistered: true, taxRate: 5, items: [5, 25].map(taxRate => ({ description: `Service ${taxRate}`, taxRate, quantity: 1, unitPrice: 100, total: 100 })) }, { locale: "da-DK" })
+  expect(output.filter(value => value === "25 % moms")).toHaveLength(1)
 })

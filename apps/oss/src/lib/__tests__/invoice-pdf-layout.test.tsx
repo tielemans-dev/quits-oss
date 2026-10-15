@@ -29,12 +29,14 @@ describe("invoice PDF layout", () => {
     expect(lines[0]).toBe("Test Seller ApS")
     expect(lines).toContain("9000 Aalborg")
     expect(lines).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
-    expect(lines).toContain(locale === "da-DK" ? "11. oktober 2026" : "October 11, 2026")
-    expect(lines).not.toContain("buyer@example.test")
+    expect(lines).toContain(locale === "da-DK" ? "11. okt. 2026" : "Oct 11, 2026")
+    expect(lines).toContain("buyer@example.test")
     expect(lines).not.toContain("DK")
     expect(lines).not.toContain(locale === "da-DK" ? "Sendt" : "Sent")
-    expect(lines.at(-1)).toBe("quits.")
-    expect(nodes.find(node => node.type === Text && text(node) === "quits.")?.props.fixed).toBe(true)
+    expect(lines).not.toContain("quits.")
+    const footer = nodes.find(node => node.type === View && node.props.fixed)
+    expect(footer).toBeDefined()
+    expect(text(footer)).toContain("Test Seller ApS")
     const parties = nodes.find(node => node.type === View &&
       Array.isArray(node.props.children) && node.props.children.length === 2 &&
       text(node.props.children[0]).includes(locale === "da-DK" ? "Fra" : "From") &&
