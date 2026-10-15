@@ -421,7 +421,7 @@ export function RecordPaymentDialog({
   )
 }
 
-function VoidPaymentDialog({
+export function VoidPaymentDialog({
   payment,
   locale,
   onClose,
@@ -479,7 +479,7 @@ function VoidPaymentDialog({
               rows={3}
               placeholder={t("payments.void.reasonPlaceholder")}
               value={reason}
-              onChange={(event) => setReason(event.target.value)}
+              onChange={(event) => { setReason(event.target.value); setError(null) }}
             />
           </div>
 

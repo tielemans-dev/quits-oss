@@ -17,12 +17,16 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
   classificationReadOnly?: boolean
   /** Id of the message describing a VAT error on this line, when there is one. */
   lineErrorId?: (index: number) => string | undefined
-  /** Id of the message describing a VAT evidence error, when there is one. */
-  evidenceErrorId?: string
+  /** Id of the message describing an error on one evidence entry, when there is one. */
+  evidenceErrorId?: (entry: keyof DraftVatEvidence) => string | undefined
 }) {
   const { t } = useI18n()
   const treatments = items.map((item) => documentVat(item, taxRate || "0").treatment)
-  const evidenceA11y = { "aria-invalid": evidenceErrorId ? true : undefined, "aria-describedby": evidenceErrorId }
+  // Each control is flagged only for the evidence entry it edits.
+  const evidenceA11y = (entry: keyof DraftVatEvidence) => {
+    const id = evidenceErrorId?.(entry)
+    return { "aria-invalid": id ? true : undefined, "aria-describedby": id }
+  }
   const patchEvidence = (patch: Partial<DraftVatEvidence>) => onEvidenceChange({ ...evidence, ...patch })
   const intra = treatments.includes("intra_community")
   const statement = intra || treatments.includes("exempt") || treatments.includes("reverse_charge_domestic")
@@ -59,29 +63,29 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
       </div>
     })}
     {statement && <label className="grid gap-1 text-sm">{t("vat.statement")}
-      <Input {...evidenceA11y} aria-label={t("vat.statement")} value={evidence.statementText ?? ""} onChange={(event) => patchEvidence({ statementText: event.target.value || undefined })} />
+      <Input {...evidenceA11y("statementText")} aria-label={t("vat.statement")} value={evidence.statementText ?? ""} onChange={(event) => patchEvidence({ statementText: event.target.value || undefined })} />
     </label>}
     {buyerId && <label className="grid gap-1 text-sm">{t("vat.buyerId")}
-      <Input {...evidenceA11y} value={evidence.buyerVatId ?? ""} onChange={(event) => patchEvidence({ buyerVatId: event.target.value || undefined })} />
+      <Input {...evidenceA11y("buyerVatId")} value={evidence.buyerVatId ?? ""} onChange={(event) => patchEvidence({ buyerVatId: event.target.value || undefined })} />
     </label>}
     {intra && <>
       <label className="grid gap-1 text-sm">{t("vat.viesResult")}
-        <select {...evidenceA11y} className="h-9 rounded-md border bg-background px-2" value={evidence.viesCheck?.result ?? "unavailable"} onChange={(event) => patchEvidence({ viesCheck: { at: evidence.viesCheck?.at ?? new Date().toISOString(), result: event.target.value as "valid" | "invalid" | "unavailable" } })}>
+        <select {...evidenceA11y("viesCheck")} className="h-9 rounded-md border bg-background px-2" value={evidence.viesCheck?.result ?? "unavailable"} onChange={(event) => patchEvidence({ viesCheck: { at: evidence.viesCheck?.at ?? new Date().toISOString(), result: event.target.value as "valid" | "invalid" | "unavailable" } })}>
           {(["unavailable", "valid", "invalid"] as const).map((value) => <option key={value} value={value}>{t(`vat.vies.${value}`)}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm">{t("vat.viesAt")}
-        <Input {...evidenceA11y} value={evidence.viesCheck?.at ?? ""} onChange={(event) => patchEvidence({ viesCheck: { at: event.target.value, result: evidence.viesCheck?.result ?? "unavailable" } })} />
+        <Input {...evidenceA11y("viesCheck")} value={evidence.viesCheck?.at ?? ""} onChange={(event) => patchEvidence({ viesCheck: { at: event.target.value, result: evidence.viesCheck?.result ?? "unavailable" } })} />
       </label>
     </>}
     {treatments.includes("export") && <>
       <label className="grid gap-1 text-sm">{t("vat.exportKind")}
-        <select {...evidenceA11y} className="h-9 rounded-md border bg-background px-2" value={evidence.exportEvidence?.kind ?? "customs_declaration"} onChange={(event) => patchEvidence({ exportEvidence: { kind: event.target.value as "customs_declaration" | "carrier_document" | "other", ref: evidence.exportEvidence?.ref ?? "" } })}>
+        <select {...evidenceA11y("exportEvidence")} className="h-9 rounded-md border bg-background px-2" value={evidence.exportEvidence?.kind ?? "customs_declaration"} onChange={(event) => patchEvidence({ exportEvidence: { kind: event.target.value as "customs_declaration" | "carrier_document" | "other", ref: evidence.exportEvidence?.ref ?? "" } })}>
           {(["customs_declaration", "carrier_document", "other"] as const).map((value) => <option key={value} value={value}>{t(`vat.export.${value}`)}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm">{t("vat.exportRef")}
-        <Input {...evidenceA11y} value={evidence.exportEvidence?.ref ?? ""} onChange={(event) => patchEvidence({ exportEvidence: { kind: evidence.exportEvidence?.kind ?? "customs_declaration", ref: event.target.value } })} />
+        <Input {...evidenceA11y("exportEvidence")} value={evidence.exportEvidence?.ref ?? ""} onChange={(event) => patchEvidence({ exportEvidence: { kind: evidence.exportEvidence?.kind ?? "customs_declaration", ref: event.target.value } })} />
       </label>
     </>}
   </div>

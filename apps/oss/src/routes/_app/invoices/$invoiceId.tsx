@@ -631,6 +631,9 @@ function InvoiceDetailPage() {
       const id = (at: (typeof lineColumns)[number]) => editIssues.some((issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === at) ? lineIssueId(index, at) : null
       return [id(column), column === "vat" ? null : id("line")].filter(Boolean).join(" ") || undefined
     }
+    // A VAT evidence message is tied only to the controls of the entry it was reported for.
+    const evidenceEntries = ["statementText", "buyerVatId", "viesCheck", "exportEvidence"] as const
+    const evidenceIssueId = (entry: keyof DraftVatEvidence) => editIssues.some((issue) => issue.field === "vatEvidence" && issue.evidence === entry) ? `edit-vatEvidence-${entry}-error` : undefined
     const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
@@ -802,8 +805,9 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
-            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
+            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence" && !issue.evidence)}
+            {evidenceEntries.map((entry) => <div key={entry}>{fieldMessage(`edit-vatEvidence-${entry}-error`, (issue) => issue.field === "vatEvidence" && issue.evidence === entry)}</div>)}
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">

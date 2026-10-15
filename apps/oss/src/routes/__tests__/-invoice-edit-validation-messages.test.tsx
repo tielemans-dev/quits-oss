@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { I18nProvider } from "../../lib/i18n/react"
+import { translate } from "../../lib/i18n/translate"
 // MOCK: transport responses and route context only. The edit form, error mapping and catalogs are real.
 const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), update: vi.fn() }))
 vi.mock("../../trpc/client", () => ({ trpc: {
@@ -148,6 +149,28 @@ describe.each([
     await screen.findByText(copy.unknown)
     fireEvent.change(document.querySelector<HTMLInputElement>("input[max='100']")!, { target: { value: "25" } })
     expect(screen.queryByText(copy.unknown)).toBeNull()
+  })
+
+  it("flags only the VAT evidence control whose entry failed, and clears each entry on its own edit", async () => {
+    const intra = { ...draft, items: [{ ...draft.items[0], vatTreatment: "intra_community", vatCountry: "SE", vatReasonCode: "services_b2b", vatRateInput: "0" }, draft.items[1]] }
+    api.get.mockResolvedValue(intra)
+    api.update.mockRejectedValue(new Error(JSON.stringify([
+      { origin: "string", code: "too_big", maximum: 5000, path: ["vatEvidence", "statementText"] },
+      { origin: "string", code: "too_big", maximum: 200, path: ["vatEvidence", "buyerVatId"] },
+    ])))
+    fireEvent.click(await openEditor())
+    const statementMessage = await screen.findByText(copy.notes5000)
+    const buyerMessage = screen.getByText(translate("validation.tooLong", locale, { max: 200 }))
+    const statement = screen.getByLabelText(translate("vat.statement", locale))
+    const buyer = screen.getByLabelText(translate("vat.buyerId", locale))
+    expect(statement.getAttribute("aria-describedby")).toBe(statementMessage.closest("div")!.id)
+    expect(buyer.getAttribute("aria-describedby")).toBe(buyerMessage.closest("div")!.id)
+    // Only the two failed entries are flagged; the VIES controls and the line controls are not.
+    expect([...document.querySelectorAll('[aria-invalid="true"]')]).toEqual([statement, buyer])
+    fireEvent.change(buyer, { target: { value: "SE123" } })
+    expect(screen.queryByText(translate("validation.tooLong", locale, { max: 200 }))).toBeNull()
+    expect(screen.getByText(copy.notes5000)).toBeTruthy()
+    expect([...document.querySelectorAll('[aria-invalid="true"]')]).toEqual([statement])
   })
 
   it("keeps earlier server issues when a retry stops at the local quantity check", async () => {
