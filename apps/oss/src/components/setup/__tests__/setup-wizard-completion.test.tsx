@@ -3,9 +3,9 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const state = vi.hoisted(() => ({ complete: vi.fn(), initialize: vi.fn() }))
+const state = vi.hoisted(() => ({ complete: vi.fn(), initialize: vi.fn(), setLocale: vi.fn() }))
 
-vi.mock("../../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock("../../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key, setLocale: state.setLocale }) }))
 vi.mock("../../../trpc/client", () => ({
   trpc: { setup: { initialize: { mutate: state.initialize }, complete: { mutate: state.complete } } },
 }))

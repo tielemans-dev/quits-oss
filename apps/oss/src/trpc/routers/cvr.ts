@@ -4,7 +4,7 @@ import { cvrCompanySchema, onboardingSuggestionsSchema } from "@quits/contracts/
 import { isCloudDistribution } from "../../lib/distribution"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
-import { authorizedProcedure, router } from "../init"
+import { authorizedProcedure, protectedProcedure, router } from "../init"
 
 function provider() {
   const lookup = getCvrLookupProvider()
@@ -14,14 +14,18 @@ function provider() {
   return lookup
 }
 
+function cvrOnboardingEnabled() {
+  return isCloudDistribution && getRuntimeCapabilities().onboardingV2?.enabled === true && Boolean(getCvrLookupProvider())
+}
+
 export const cvrRouter = router({
   available: authorizedProcedure("settings:read").query(() => ({
-    enabled:
-      isCloudDistribution &&
-      getRuntimeCapabilities().onboardingV2?.enabled === true &&
-      Boolean(getCvrLookupProvider()),
+    enabled: cvrOnboardingEnabled(),
     suggestions: Boolean(getCvrLookupProvider()?.suggestions),
   })),
+  // Signed-in users without an organization use the same predicate as `available`, so the
+  // name-only v2 start is only offered when the v2 wizard will actually render after creation.
+  setupAvailable: protectedProcedure.query(() => ({ enabled: cvrOnboardingEnabled() })),
   search: authorizedProcedure("settings:update")
     .input(z.object({ q: z.string().trim().min(3).max(120) }))
     .output(z.array(cvrCompanySchema).max(8))

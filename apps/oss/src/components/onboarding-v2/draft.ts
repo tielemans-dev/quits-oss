@@ -13,7 +13,8 @@ export const reviewValuesSchema = z.object({
   companyForm: z.string().max(80),
   companyEmail: z.string().max(254),
   companyPhone: z.string().max(30),
-  momsRegistered: z.boolean(),
+  /** null until the user answers when CVR VAT status is unknown. */
+  momsRegistered: z.boolean().nullable(),
   countryCode: z.string().length(2),
   defaultCurrency: z.string().max(3),
   locale: z.string().max(20),
@@ -57,7 +58,7 @@ export function newDraft(
       companyForm: company?.companyForm ?? "ApS",
       companyEmail: company?.advertisingProtected ? email : (company?.email ?? email),
       companyPhone: company?.advertisingProtected ? "" : (company?.phone ?? ""),
-      momsRegistered: company?.momsRegistered ?? true,
+      momsRegistered: company ? company.momsRegistered : true,
       countryCode: "DK",
       defaultCurrency: "DKK",
       locale: "da-DK",
@@ -105,6 +106,7 @@ export function clearDraft(key: string) {
 
 export function confirmationPayload(draft: OnboardingDraft) {
   const v = draft.values
+  if (v.momsRegistered === null) throw new Error("VAT status must be confirmed before onboarding")
   return {
     idempotencyKey: draft.idempotencyKey,
     source: draft.source,

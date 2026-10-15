@@ -338,7 +338,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false)) return
+    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
     const v = draft.values
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
@@ -602,7 +602,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               {TT("warning", { status: TT(`statusPhrase.${draft.company.status}`) })}
             </StateNotice>
           ) : null}
-          {!draft.values.momsRegistered && draft.source === "cvr" ? (
+          {/* Only a registry fact of "not registered" may claim CVR said so; a user answer to an unknown status may not. */}
+          {draft.values.momsRegistered === false && draft.source === "cvr" && draft.company?.momsRegistered === false ? (
             <StateNotice>{TT("noVat.notice")}</StateNotice>
           ) : null}
           <p className="ob-edit">{TT("review.edit")}</p>
@@ -665,10 +666,12 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
                 aria-label={TT("field.vat")}
-                value={String(draft.values.momsRegistered)}
+                value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
+                required
                 disabled={busy}
-                onChange={(e) => update("momsRegistered", e.target.value === "true")}
+                onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >
+                {draft.values.momsRegistered === null && <option value="" disabled>{TT("vatUnknown")}</option>}
                 <option value="true">{TT("yes")}</option>
                 {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
@@ -880,7 +883,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           </aside>
           <div className="ob-confirm">
             <span>{TT("unsaved.hint")}</span>
-            <Button type="submit" disabled={busy || (confirmationEnabled && sellerVatChoice === null)}>
+            <Button type="submit" disabled={busy || (confirmationEnabled && sellerVatChoice === null) || draft.values.momsRegistered === null}>
               {busy ? <LoaderCircle size={16} className="ob-spin" aria-hidden="true" /> : null}
               {TT(busy ? "busy" : draft.source === "manual" ? "manual.confirm" : "confirm")}
             </Button>
