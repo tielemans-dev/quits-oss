@@ -1,3 +1,5 @@
+import { enSellerVatMessages } from "./seller-vat"
+import { enOnboardingV2Messages } from "./onboarding-v2"
 import { enAgreementsMessages } from "./agreements"
 import { enPaymentDetailsMessages } from "./payment-details"
 import { enPaymentsMessages } from "./payments"
@@ -26,8 +28,11 @@ import { enSetupMessages } from "./setup"
 import { enStatusMessages } from "./status"
 import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
+import { enValidationMessages } from "./validation"
 
 export const enCatalog = {
+  ...enSellerVatMessages,
+  ...enOnboardingV2Messages,
   ...enAgreementsMessages,
   ...enPaymentDetailsMessages,
   ...enPaymentsMessages,
@@ -56,4 +61,5 @@ export const enCatalog = {
   ...enStatusMessages,
   ...enUiMessages,
   ...enUserMessages,
+  ...enValidationMessages,
 } as const

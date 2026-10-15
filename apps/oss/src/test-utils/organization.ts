@@ -59,6 +59,7 @@ export async function createTestOrganization(
   options: {
     roles?: Role[]
     settings?: Partial<{
+      momsRegistered: boolean | null
       countryCode: string
       locale: string
       timezone: string
@@ -86,6 +87,7 @@ export async function createTestOrganization(
   await prisma.orgSettings.create({
     data: {
       organizationId,
+      momsRegistered: settings.momsRegistered === undefined ? true : settings.momsRegistered,
       countryCode: settings.countryCode ?? "US",
       locale: settings.locale ?? "en-US",
       timezone: settings.timezone ?? "UTC",
@@ -94,6 +96,8 @@ export async function createTestOrganization(
       currency: settings.currency ?? "USD",
       taxRegime: settings.taxRegime ?? "us_sales_tax",
       pricesIncludeTax: settings.pricesIncludeTax ?? false,
+      // MOCK: an onboarded synthetic seller has a known postal identity for linked issuance.
+      companyAddress: "1 Synthetic Street, Test City",
       companyName: settings.companyName ?? `Test Org ${suffix}`,
       companyEmail: settings.companyEmail ?? `billing-${suffix}@example.com`,
       onboardingStatus: "completed",

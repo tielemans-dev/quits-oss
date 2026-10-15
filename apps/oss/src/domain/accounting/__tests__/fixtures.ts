@@ -17,8 +17,8 @@ export function invoiceFixture(input: Partial<CalculateDocumentInput> = {}): Inv
     provenance: { agreementId: null, quoteId: null, recurringInvoiceId: null, candidateId: "candidate", commandId: null },
   }
 }
-export function creditFixture() {
-  const invoice = invoiceFixture(), g = invoice.vatGroups[0]!
+export function creditFixture(invoice = invoiceFixture()) {
+  const g = invoice.vatGroups[0]!
   const c = creditComponents({ group: g as Parameters<typeof creditComponents>[0]["group"], cumulativeBefore: "0", creditedGross: g.gross })
   const { purpose: _purpose, dueDate: _dueDate, coveredByAdvances: _advances, depositApplications: _applications, ...rest } = invoice
   return { ...rest, documentId: "credit", correctsInvoiceId: invoice.documentId, correctsNumber: invoice.number, correctsPurpose: "sale", mode: "amount", reason: "Correction",
@@ -26,7 +26,7 @@ export function creditFixture() {
       cumulativeBefore: "0.00", cumulativeAfter: c.gross, cumulativeTaxBefore: "0.00", cumulativeTaxAfter: c.tax, cumulativeRoundingBefore: "0.00", cumulativeRoundingAfter: c.payableRounding,
       remainingGross: "0.00", remainingTax: "0.00", remainingNet: "0.00", remainingRounding: "0.00", grossBase: c.grossBase, netBase: c.netBase, taxBase: c.taxBase, payableRoundingBase: c.payableRoundingBase }],
     historicalReversal: [{ key: g.key, revenueBase: c.netBase, taxBase: c.taxBase, roundingBase: c.payableRoundingBase }],
-    debtorDischarge: { quantity: { minor: "125", currency: "DKK", exponent: 2 }, carryingBase: c.grossBase, valuationSource: "frozen_components" },
+    debtorDischarge: { quantity: { minor: c.gross.replace(".", ""), currency: "DKK", exponent: 2 }, carryingBase: c.grossBase, valuationSource: "frozen_components" },
     customerCreditCreated: null, allocationsReleased: [], fxDifferenceBase: "0.00", postable: true }
 }
 const invoice = (change: (p: InvoiceIssued) => void): PostingEvent => { const p = invoiceFixture(); change(p); return { type: "invoice.issued", schemaVersion: 1, payload: p } }

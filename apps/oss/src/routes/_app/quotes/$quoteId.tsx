@@ -18,7 +18,7 @@ import { EmailDeliveryPanel } from "../../../components/documents/email-delivery
 import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import {
   formatCurrency as formatCurrencyIntl,
-  formatDate as formatDateIntl,
+  formatShortDate as formatDateIntl,
 } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
@@ -60,6 +60,8 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 
@@ -118,6 +120,8 @@ type Quote = {
   taxAmount: number
   total: number
   currency: string
+  countryCode: string
+  timezone: string
   notes: string | null
   publicViewUrl: string | null
   publicDecisionAt: string | null
@@ -239,7 +243,7 @@ function QuoteDetailPage() {
     setEditContactId(quote.contact.id)
     setEditExpiryDate(new Date(quote.expiryDate).toISOString().split("T")[0])
     setEditNotes(quote.notes ?? "")
-    setEditTaxRate(String(quote.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
+    setEditTaxRate(storedDocumentTaxRate(quote.items))
     const evidence = draftVatEvidenceSchema.safeParse(quote.vatEvidence ?? {})
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
@@ -680,9 +684,10 @@ function QuoteDetailPage() {
     ? {
         outcome: emailAttempt.lastEmailAttemptOutcome,
         label: t(`quotes.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
-        detail: t("quotes.detail.email.lastAttempt", {
+        detail: t(emailAttempt.lastEmailAttemptOutcome === "sent" ? "quotes.detail.email.sentAt" : "quotes.detail.email.lastAttempt", {
           status: t(`quotes.detail.email.status.${emailAttempt.lastEmailAttemptOutcome}`),
-          at: formatDate(toDateString(emailAttempt.lastEmailAttemptAt), locale),
+          at: formatDateIntl(toDateString(emailAttempt.lastEmailAttemptAt), locale, quote.timezone),
+          date: formatDateIntl(toDateString(emailAttempt.lastEmailAttemptAt), locale, quote.timezone),
         }),
         message:
           emailAttempt.lastEmailAttemptOutcome === "unconfirmed"
@@ -845,7 +850,7 @@ function QuoteDetailPage() {
                 <span className="font-medium text-foreground">
                   {t("quotes.table.issueDate")}:
                 </span>{" "}
-                {formatDate(quote.issueDate, locale)}
+                {formatDateIntl(quote.issueDate, locale, quote.timezone)}
               </p>
               <p>
                 <span className="font-medium text-foreground">
@@ -860,16 +865,15 @@ function QuoteDetailPage() {
           {quote.status === "accepted" && quote.invoices.length > 0 && (
             <div className="rounded-md border border-tone-success/30 bg-tone-success/10 p-3">
               <p className="text-sm font-medium">
-                {t("quotes.detail.convertedToInvoice")}{" "}
-                {quote.invoices.map((inv) => (
+                                {quote.invoices.map((inv) => (
                   <Link
                     key={inv.id}
                     to="/invoices/$invoiceId"
                     params={{ invoiceId: inv.id }}
                     search={{ emailWarning: undefined }}
-                    className="text-brand-text underline underline-offset-4 hover:text-brand-text/90"
+                    className="block text-brand-text underline underline-offset-4 hover:text-brand-text/90"
                   >
-                    {inv.number ?? t("invoices.number.draft")}
+                    {inv.number ? t("quotes.detail.convertedToInvoice", { number: inv.number }) : t("quotes.detail.convertedToDraft")}
                   </Link>
                 ))}
               </p>
@@ -877,6 +881,7 @@ function QuoteDetailPage() {
           )}
 
           <EmailDeliveryPanel
+            embedded
             title={t("quotes.detail.email.title")}
             description={t("quotes.detail.email.description")}
             status={deliveryStatus}
@@ -947,13 +952,7 @@ function QuoteDetailPage() {
             {contact.email && (
               <p className="text-sm text-muted-foreground">{contact.email}</p>
             )}
-            {contact.address && <p className="text-sm">{contact.address}</p>}
-            {(contact.city || contact.state || contact.zip) && (
-              <p className="text-sm">
-                {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
-              </p>
-            )}
-            {contact.country && <p className="text-sm">{contact.country}</p>}
+            {detailBuyerAddress(contact, quote.countryCode, locale).map((line, index) => <p key={index} className="text-sm">{line}</p>)}
           </div>
 
           {/* Items Table */}

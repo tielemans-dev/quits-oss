@@ -1,3 +1,6 @@
+import { withoutNonVatStatement } from "../documents/non-vat-presentation"
+import { sellerVatPresentationStatus } from "../documents/seller-vat"
+import { withNonVatStatement } from "../documents/non-vat-note"
 import { getDocumentArtifactStore } from "../runtime/services"
 import { hashBytes } from "../../domain/documents/hash"
 import { creditedGroupsSchema } from "@quits/contracts/pricing"
@@ -82,9 +85,11 @@ type SellerSource = {
     companyAddress: string | null
     companyEmail: string | null
     countryCode: string
+    momsRegistered?: boolean | null
   } | null
   taxIds: TaxIdLike[]
   documentCountryCode: string
+  taxRegime?: string | null
 }
 
 function primaryFirst<T extends { isPrimary: boolean }>(rows: T[]) {
@@ -97,14 +102,17 @@ export function buildSellerParty(source: SellerSource): EinvoiceParty {
     toCountryCode(source.documentCountryCode) ?? toCountryCode(source.settings?.countryCode)
   const addressText = source.snapshot?.companyAddress || source.settings?.companyAddress || null
   const taxIds = source.snapshot?.taxIds?.length ? source.snapshot.taxIds : source.taxIds
-  const vatId = vatIdentifier(taxIds, countryCode)
+  const momsRegistered = sellerVatPresentationStatus(source.snapshot ? source.snapshot.momsRegistered : source.settings?.momsRegistered, source.taxRegime)
+  const vatId = momsRegistered === false ? null : vatIdentifier(taxIds, countryCode)
+  const legalId = legalIdentifier(taxIds, countryCode, vatId)
   return {
     ...parseFreeTextAddress(addressText, countryCode),
     name: source.snapshot?.companyName || source.settings?.companyName || null,
     countryCode,
     vatId,
-    legalId: legalIdentifier(taxIds, countryCode, vatId),
-    electronicAddress: electronicAddressFromVat(vatId),
+    ...(typeof momsRegistered === "boolean" ? { momsRegistered } : {}),
+    legalId,
+    electronicAddress: electronicAddressFromVat(vatId) ?? (countryCode === "DK" && legalId?.scheme === "0184" ? explicitElectronicAddress(legalId.id, legalId.scheme) : null),
     email: source.snapshot?.companyEmail || source.settings?.companyEmail || null,
   }
 }
@@ -193,10 +201,11 @@ async function loadSellerContext(organizationId: string) {
   const [settings, taxIds] = await Promise.all([
     prisma.orgSettings.findUnique({
       where: { organizationId },
-      select: { companyName: true, companyAddress: true, companyEmail: true, countryCode: true },
+      select: { companyName: true, companyAddress: true, companyEmail: true, countryCode: true, momsRegistered: true },
     }),
     prisma.organizationTaxId.findMany({
       where: { organizationId },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       select: { scheme: true, value: true, countryCode: true, isPrimary: true },
     }),
   ])
@@ -224,6 +233,7 @@ export async function loadEinvoiceDocument(
       settings: seller.settings,
       taxIds: seller.taxIds,
       documentCountryCode: invoice.countryCode,
+      taxRegime: invoice.taxRegime,
     })
     // A draft has no number yet. Its export is never produced: `document.notIssued` is reported.
     const number = invoice.number ?? ""
@@ -245,7 +255,7 @@ export async function loadEinvoiceDocument(
       buyerReference: invoice.purchaseOrderRef || buyer.name,
       orderReference: invoice.purchaseOrderRef,
       billingReference: null,
-      note: invoice.notes,
+      note: withNonVatStatement(withoutNonVatStatement(invoice.notes, sellerSnapshot?.momsRegistered, invoice.taxRegime) ?? null, sellerVatPresentationStatus(sellerSnapshot?.momsRegistered, invoice.taxRegime), invoice.locale),
       seller: sellerParty,
       buyer,
       ...(payment ? { payment } : {}),
@@ -285,12 +295,13 @@ export async function loadEinvoiceDocument(
       invoice.status === "draft"
         ? null
         : { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
-    note: creditNote.reason,
+    note: withNonVatStatement(withoutNonVatStatement(creditNote.reason, parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime) ?? null, sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime), creditNote.locale),
     seller: buildSellerParty({
       snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
       settings: seller.settings,
       taxIds: seller.taxIds,
       documentCountryCode: creditNote.countryCode,
+      taxRegime: creditNote.taxRegime,
     }),
     buyer,
     calculationVersion: creditNote.calculationVersion,

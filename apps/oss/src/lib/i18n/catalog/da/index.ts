@@ -1,3 +1,5 @@
+import { daSellerVatMessages } from "./seller-vat"
+import { daOnboardingV2Messages } from "./onboarding-v2"
 import { daAgreementsMessages } from "./agreements"
 import { daPaymentDetailsMessages } from "./payment-details"
 import { daPaymentsMessages } from "./payments"
@@ -26,8 +28,11 @@ import { daSetupMessages } from "./setup"
 import { daStatusMessages } from "./status"
 import { daUiMessages } from "./ui"
 import { daUserMessages } from "./user"
+import { daValidationMessages } from "./validation"
 
 export const daCatalog = {
+  ...daSellerVatMessages,
+  ...daOnboardingV2Messages,
   ...daAgreementsMessages,
   ...daPaymentDetailsMessages,
   ...daPaymentsMessages,
@@ -56,4 +61,5 @@ export const daCatalog = {
   ...daStatusMessages,
   ...daUiMessages,
   ...daUserMessages,
+  ...daValidationMessages,
 } as const

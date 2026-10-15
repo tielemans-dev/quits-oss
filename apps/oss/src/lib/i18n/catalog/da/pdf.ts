@@ -1,4 +1,6 @@
 export const daPdfMessages = {
+  "invoice.noVatNote": "Der er ikke beregnet moms, da sælger ikke er momsregistreret.",
+  "pdf.nonVatRegistered": "Der er ikke beregnet moms, da sælger ikke er momsregistreret.",
   "pdf.invoice": "Faktura",
   "pdf.issueDate": "Udstedelsesdato",
   "pdf.dueDate": "Forfaldsdato",
@@ -28,5 +30,5 @@ export const daPdfMessages = {
   "pdf.bic": "BIC",
   "pdf.accountHolder": "Kontohaver",
   "pdf.bankName": "Bank",
-  "pdf.paymentReference": "Betalingsreference",
+  "pdf.paymentReference": "Betalingsbesked",
 } as const

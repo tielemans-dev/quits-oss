@@ -15,7 +15,14 @@ vi.mock("../../../lib/db", () => ({
     organizationTaxId: { findFirst: mocks.findFirst },
     orgSettings: { findUnique: mocks.findUnique },
     $transaction: vi.fn(async (run: (tx: unknown) => unknown) =>
-      run({ orgSettings: { findUnique: mocks.txFindUnique, upsert: mocks.txUpsert } })
+      run({
+        orgSettings: {
+          findUnique: mocks.txFindUnique,
+          findUniqueOrThrow: mocks.txFindUnique,
+          upsert: mocks.txUpsert,
+        },
+        organizationTaxId: { findFirst: mocks.findFirst },
+      })
     ),
   },
 }))
@@ -129,6 +136,7 @@ describe("settings stripe account contract", () => {
       countryCode: "DK",
       aiProvider: "openrouter",
       aiBaseUrl: null,
+      momsRegistered: null,
     })
     mocks.txUpsert.mockImplementation(async ({ update }: { update: Record<string, unknown> }) => update)
   })

@@ -1,0 +1,91 @@
+name: QUI-52 main dark evidence
+
+on:
+  push:
+    branches: [fix/qui-52-email-payment-block]
+    paths:
+      - .github/workflows/qui52-baseline-capture.yml
+      - apps/oss/e2e/qui52-capture.mjs
+      - apps/oss/tests/shared/invoice-payment-capture.spec.ts
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # MOCK: dedicated synthetic email sink. No external email provider.
+      mailpit:
+        image: axllent/mailpit:v1.27.8
+        ports:
+          - 127.0.0.1:1025:1025
+          - 127.0.0.1:8025:8025
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: evidence
+      - name: Checkout the recorded main UI baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 4931661dd7e53d83555590e06a2e2cf97448743b
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: baseline/.bun-version
+      - name: Copy only the opt-in capture fixture and runner
+        run: |
+          cp evidence/apps/oss/tests/shared/invoice-payment-capture.spec.ts baseline/apps/oss/tests/shared/
+          cp evidence/apps/oss/e2e/qui52-capture.mjs baseline/apps/oss/e2e/
+          git -C baseline diff --exit-code
+          test "$(git -C baseline rev-parse HEAD)" = 4931661dd7e53d83555590e06a2e2cf97448743b
+      - run: bun install --frozen-lockfile
+        working-directory: baseline
+      - name: Install Chromium
+        working-directory: baseline/apps/oss
+        run: bunx playwright install --with-deps chromium
+      - name: Prepare disposable PostgreSQL
+        env:
+          POSTGRES_IMAGE: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        run: |
+          docker pull "$POSTGRES_IMAGE"
+          docker tag "$POSTGRES_IMAGE" postgres:16-alpine
+      - name: Capture main dark UI with MOCK data, one worker
+        working-directory: baseline/apps/oss
+        run: |
+          mkdir -p "$PWD/test-results/tmp"
+          TMPDIR="$PWD/test-results/tmp" node e2e/qui52-capture.mjs
+      - name: Record provenance and image hashes
+        working-directory: baseline
+        env:
+          CAPTURE_HEAD: ${{ github.sha }}
+          CAPTURE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, struct
+          from pathlib import Path
+          root = Path('apps/oss/test-results/qui52-before')
+          images = []
+          for p in sorted((root / 'dark').glob('*.png')):
+              data = p.read_bytes()
+              width, height = struct.unpack('>II', data[16:24])
+              images.append(dict(path='before/dark/' + p.name, width=width, height=height, sha256=hashlib.sha256(data).hexdigest()))
+          assert len(images) == 8, images
+          manifest = dict(issue='QUI-52', source='Pinned origin/main UI, unmodified runtime; PR capture fixture and runner only', codeHead='4931661dd7e53d83555590e06a2e2cf97448743b', captureHead=os.environ['CAPTURE_HEAD'], ciRun=os.environ['CAPTURE_RUN'], theme='dark', fullPage=True, viewports=dict(desktop=dict(width=1440,height=1000),mobile=dict(width=390,height=844)), emailSource='Actual UI resend to disposable CI Mailpit; returned HTML rendered with prefers-color-scheme dark. Main email may retain its original light styling.', mocks=['Synthetic seller/customer/invoice/bank details', 'In-memory PDF renderer and artifact store', 'Deterministic historical invoice dates and number', 'Disposable PostgreSQL and SMTP Mailpit'], screenshots=images)
+          (root / 'before-dark-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+      - name: Upload baseline screenshots, provenance and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qui52-main-dark-${{ github.sha }}
+          path: |
+            baseline/apps/oss/test-results/qui52-before
+            baseline/apps/oss/test-results/shared-logs
+            baseline/apps/oss/test-results/shared
+            baseline/apps/oss/playwright-report/shared
+          retention-days: 30

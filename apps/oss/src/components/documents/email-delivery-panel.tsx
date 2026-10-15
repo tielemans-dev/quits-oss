@@ -76,6 +76,7 @@ export function EmailDeliveryPanel({
   fallback,
   publicLink,
   className,
+  embedded = false,
 }: {
   title: string
   description: string
@@ -85,10 +86,13 @@ export function EmailDeliveryPanel({
   fallback?: EmailDeliveryPanelFallback | null
   publicLink?: EmailDeliveryPanelPublicLink | null
   className?: string
+  /** A section inside an existing document card. */
+  embedded?: boolean
 }) {
+  const Container = embedded ? "section" : Card
   return (
-    <Card className={className}>
-      <CardHeader className="gap-3">
+    <Container className={className}>
+      <CardHeader className={embedded ? "gap-3 px-0" : "gap-3"}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle>{title}</CardTitle>
@@ -101,7 +105,7 @@ export function EmailDeliveryPanel({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="grid gap-4 divide-y">
+      <CardContent className={embedded ? "grid gap-4 divide-y px-0" : "grid gap-4 divide-y"}>
         {status ? (
           <div className="grid gap-2 pb-4 last:pb-0">
             <p className="text-sm font-medium">{status.detail}</p>
@@ -178,6 +182,6 @@ export function EmailDeliveryPanel({
           </div>
         ) : null}
       </CardContent>
-    </Card>
+    </Container>
   )
 }

@@ -41,6 +41,7 @@ export function serializePublicInvoiceSession(session: {
     amountCredited: Decimalish
     totalTax: Decimalish
     subtotalNet: Decimalish
+    taxRegime?: string
     currency: string
     /** The document's own language and timezone, the ones its PDF is rendered with. */
     locale?: string | null
@@ -66,6 +67,7 @@ export function serializePublicInvoiceSession(session: {
     items: Array<{
       id: string
       description: string
+      taxRate?: Decimalish
       quantity: Decimalish
       unitPriceNet?: Decimalish
       lineNet?: Decimalish
@@ -78,6 +80,7 @@ export function serializePublicInvoiceSession(session: {
   stripeEnabled: boolean
 }, token: string) {
   const { invoice } = session
+  // Amounts come from the invoice row, the single source of truth (immutable after issue).
   const totalGross = toNumber(invoice.totalGross)
   const amountPaid = toNumber(invoice.amountPaid)
   const amountCredited = toNumber(invoice.amountCredited)
@@ -118,6 +121,7 @@ export function serializePublicInvoiceSession(session: {
       totalTax: toNumber(invoice.totalTax),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
+      taxRegime: invoice.taxRegime,
       timezone: presentation.timezone,
       notes: invoice.notes,
       paymentReference: invoice.paymentReference?.trim() || issuedNumber(invoice),
@@ -128,6 +132,7 @@ export function serializePublicInvoiceSession(session: {
         id: item.id,
         description: item.description,
         quantity: toNumber(item.quantity),
+        ...(item.taxRate !== undefined ? { taxRate: toNumber(item.taxRate) } : {}),
         ...(item.unitPriceNet !== undefined ? { unitPriceNet: toNumber(item.unitPriceNet) } : {}),
         ...(item.lineNet !== undefined ? { lineNet: toNumber(item.lineNet) } : {}),
         unitPriceGross: toNumber(item.unitPriceGross),

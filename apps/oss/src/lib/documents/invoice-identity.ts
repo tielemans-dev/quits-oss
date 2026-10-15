@@ -12,9 +12,19 @@ export function sellerCvr(ids: readonly DocumentTaxId[] | undefined): string | n
   return null
 }
 
-export function invoiceTaxIds(ids: readonly DocumentTaxId[] | undefined): string[] {
+const VAT_SCHEMES = new Set(["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
+
+/** Explicit non-registration cannot claim a VAT identifier, including migrated bare VAT IDs. */
+export function sellerPresentationTaxIds(ids: readonly DocumentTaxId[] | undefined, momsRegistered?: boolean | null) {
+  return momsRegistered === false
+    ? ids?.filter(id => !VAT_SCHEMES.has(id.scheme?.trim().toLowerCase() ?? ""))
+    : ids
+}
+
+export function invoiceTaxIds(taxIds: readonly DocumentTaxId[] | undefined, cvrLabel = "CVR", momsRegistered?: boolean | null): string[] {
+  const ids = sellerPresentationTaxIds(taxIds, momsRegistered)
   const cvr = sellerCvr(ids)
-  return cvr ? [`CVR: ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
+  return cvr ? [`${cvrLabel}: ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
 }
 
 export function buyerAddress(buyer: BuyerSnapshot | null | undefined): string[] {

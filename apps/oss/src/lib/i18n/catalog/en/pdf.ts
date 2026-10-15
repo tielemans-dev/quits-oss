@@ -1,4 +1,6 @@
 export const enPdfMessages = {
+  "invoice.noVatNote": "No VAT charged – the seller is not VAT-registered.",
+  "pdf.nonVatRegistered": "No VAT charged – the seller is not VAT-registered.",
   "pdf.invoice": "Invoice",
   "pdf.issueDate": "Issue Date",
   "pdf.dueDate": "Due Date",
@@ -28,5 +30,5 @@ export const enPdfMessages = {
   "pdf.bic": "BIC",
   "pdf.accountHolder": "Account holder",
   "pdf.bankName": "Bank",
-  "pdf.paymentReference": "Payment reference",
+  "pdf.paymentReference": "Payment message",
 } as const

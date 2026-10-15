@@ -8,6 +8,8 @@ import { useMemo, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Textarea } from "../ui/textarea"
+import type { TranslationKey } from "../../lib/i18n/messages"
+import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
 
 type AiAssistantPanelProps = {
@@ -27,6 +29,7 @@ export function AiAssistantPanel({
   disabled = false,
   onApplied,
 }: AiAssistantPanelProps) {
+  const { t } = useI18n()
   const [prompt, setPrompt] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +52,7 @@ export function AiAssistantPanel({
       })
       setSuggestion(nextSuggestion)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to generate suggestion")
+      setError(cause instanceof Error ? cause.message : t("auth.onboarding.ai.suggestError"))
     } finally {
       setBusy(false)
     }
@@ -71,7 +74,7 @@ export function AiAssistantPanel({
       })
       setSuggestion(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to apply suggestion")
+      setError(cause instanceof Error ? cause.message : t("auth.onboarding.ai.applyError"))
     } finally {
       setBusy(false)
     }
@@ -80,7 +83,7 @@ export function AiAssistantPanel({
   return (
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
-        <CardTitle className="text-base">AI setup assistant</CardTitle>
+        <CardTitle className="text-base">{t("auth.onboarding.ai.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (
@@ -91,13 +94,13 @@ export function AiAssistantPanel({
 
         <div className="space-y-2">
           <label htmlFor="onboarding-ai-prompt" className="text-sm font-medium">
-            Describe your company setup
+            {t("auth.onboarding.ai.prompt")}
           </label>
           <Textarea
             id="onboarding-ai-prompt"
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Example: We are a Danish consultancy, VAT registered, billing email is billing@acme.example."
+            placeholder={t("auth.onboarding.ai.placeholder")}
             rows={4}
             disabled={disabled || busy}
           />
@@ -109,30 +112,30 @@ export function AiAssistantPanel({
             onClick={handleSuggest}
             disabled={disabled || busy || prompt.trim().length < 4}
           >
-            {busy ? "Thinking..." : "Suggest patch"}
+            {busy ? t("auth.onboarding.ai.thinking") : t("auth.onboarding.ai.suggest")}
           </Button>
         </div>
 
         {suggestion ? (
           <div className="space-y-3 rounded-md border border-border bg-background p-3">
-            <p className="text-sm font-medium">Proposed changes</p>
+            <p className="text-sm font-medium">{t("auth.onboarding.ai.proposed")}</p>
             {patchEntries.length > 0 ? (
               <ul className="space-y-1 text-sm text-muted-foreground">
                 {patchEntries.map(([key, value]) => (
                   <li key={key}>
-                    <span className="font-medium text-foreground">{key}:</span>{" "}
+                    <span className="font-medium text-foreground">{t(`auth.onboarding.field.${key}` as TranslationKey)}:</span>{" "}
                     {String(value)}
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No confident field updates found. Try adding more detail.
+                {t("auth.onboarding.ai.none")}
               </p>
             )}
 
             <p className="text-xs text-muted-foreground">
-              Confidence: {(suggestion.confidence * 100).toFixed(0)}%
+              {t("auth.onboarding.ai.confidence", { percent: (suggestion.confidence * 100).toFixed(0) })}
             </p>
             <p className="text-xs text-muted-foreground">{suggestion.rationale}</p>
 
@@ -150,7 +153,7 @@ export function AiAssistantPanel({
                 onClick={handleApply}
                 disabled={disabled || busy || patchEntries.length === 0}
               >
-                Apply patch
+                {t("auth.onboarding.ai.apply")}
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { formatDocumentNumber } from "@quits/shared/documents"
-import type { OrgSettings } from "../../../generated/prisma/client"
+import type { OrgSettings, Prisma } from "../../../generated/prisma/client"
 import { InvalidState } from "../errors"
 import { Command, Db, type PendingEvent } from "../services"
 
@@ -109,6 +109,28 @@ export const numberForIssuance = (kind: "invoice" | "quote" | "agreement", docum
     }
     return number
   })
+
+/**
+ * Gives back the number an invoice took when its email was refused before reaching the customer, so
+ * the draft is not left holding a number that was never issued. Only the most recent number can be
+ * returned: if another invoice was numbered in the meantime, the draft keeps its number and the
+ * retry reuses it, as before. The counter is moved with a compare-and-set on the value that was
+ * read, so a concurrent allocation either happened first (nothing is released) or follows (and
+ * takes the released number). Call it inside the delivery completion transaction, with the invoice locked.
+ */
+export async function releaseInvoiceNumber(
+  tx: Prisma.TransactionClient, organizationId: string, invoiceId: string, number: string
+) {
+  const settings = await tx.orgSettings.findUnique({ where: { organizationId }, select: NUMBER_SETTINGS_SELECT })
+  if (!settings || formatDocumentNumber(settings.invoicePrefix, settings.invoiceNextNum - 1) !== number) return false
+  const { count } = await tx.orgSettings.updateMany({
+    where: { organizationId, invoicePrefix: settings.invoicePrefix, invoiceNextNum: settings.invoiceNextNum },
+    data: { invoiceNextNum: { decrement: 1 } },
+  })
+  if (count === 0) return false
+  await tx.invoice.updateMany({ where: { id: invoiceId, organizationId, number }, data: { number: null } })
+  return true
+}
 
 export const DOCUMENT_NOT_ISSUED = "document_not_issued"
 

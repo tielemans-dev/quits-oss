@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest"
 import { settingsUpdateSchema } from "../settings"
 
 describe("settingsUpdateSchema", () => {
+  it("preserves unknown, registered, and deregistered registration values", () => {
+    for (const momsRegistered of [null, false, true]) {
+      expect(settingsUpdateSchema.parse({ momsRegistered })).toEqual({ momsRegistered })
+    }
+    expect(settingsUpdateSchema.parse({})).not.toHaveProperty("momsRegistered")
+    expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
+  })
+  it("accepts configurable payment terms including immediate payment and rejects invalid days", () => {
+    for (const paymentTermsDays of [0, 14, 30, 3650]) expect(settingsUpdateSchema.parse({ paymentTermsDays })).toEqual({ paymentTermsDays })
+    for (const paymentTermsDays of [-1, 1.5, 3651, null]) expect(() => settingsUpdateSchema.parse({ paymentTermsDays })).toThrow()
+  })
   it("accepts global locale and compliance fields", () => {
     const parsed = settingsUpdateSchema.parse({
       countryCode: "DK",
@@ -104,5 +115,15 @@ describe("settingsUpdateSchema", () => {
     expect(settingsUpdateSchema.safeParse({ aiBaseUrl: "https://llm.example.com/v1" }).success).toBe(
       true
     )
+  })
+})
+
+describe("seller VAT status settings", () => {
+  it.each([null, true, false])("accepts the explicit status %s", momsRegistered => {
+    expect(settingsUpdateSchema.parse({ momsRegistered }).momsRegistered).toBe(momsRegistered)
+  })
+  it("does not infer a status and refuses truthy string coercion", () => {
+    expect(settingsUpdateSchema.parse({}).momsRegistered).toBeUndefined()
+    expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
   })
 })

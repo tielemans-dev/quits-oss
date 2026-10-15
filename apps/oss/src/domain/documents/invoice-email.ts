@@ -1,5 +1,6 @@
-import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
-import { issuedInvoiceSnapshot } from "./issued-invoice"
+import { parseBuyerSnapshot } from "@quits/contracts/documents"
+import { issuedInvoiceSnapshot, issuedSeller } from "./issued-invoice"
+import { computeSettlement } from "./settlement"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -18,6 +19,11 @@ import { documentVatSummary } from "./vat-summary"
 
 type Decimalish = { toNumber(): number }
 
+/** Keep a stored decimal exact (Prisma.Decimal stringifies losslessly). */
+function decimalString(value: Decimalish): string {
+  return typeof (value as { toFixed?: unknown }).toFixed === "function" ? String(value) : String(value.toNumber())
+}
+
 type OrgEmailSettings = {
   companyName: string | null
   companyEmail: string | null
@@ -31,6 +37,7 @@ type OrgEmailSettings = {
 export type InvoiceForEmail = {
   id: string
   number: string
+  paymentReference?: string | null
   /** Copied from the organization when the draft was created. Required so no caller can drop them. */
   locale: string
   timezone: string
@@ -40,10 +47,13 @@ export type InvoiceForEmail = {
   supplyDate?: Date | null
   issueDate: Date
   dueDate: Date
+  taxRegime?: string
   currency: string
   notes: string | null
   subtotalNet: Decimalish
   totalTax: Decimalish
+  amountPaid: Decimalish
+  amountCredited: Decimalish
   totalGross: Decimalish
   pricesIncludeTax: boolean
   contact: { name: string; email: string | null }
@@ -123,8 +133,14 @@ export function composeInvoiceEmail(input: {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
   const frozen = issuedInvoiceSnapshot(invoice.issuanceSnapshot)
-  const seller = frozen?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot)
+  const seller = issuedSeller(invoice.issuanceSnapshot, invoice.sellerSnapshot)
   const buyer = frozen?.buyer ?? parseBuyerSnapshot(invoice.buyerSnapshot)
+  // Amounts come from the invoice row, the single source of truth (immutable after issue).
+  const settlement = computeSettlement({
+    totalGross: decimalString(invoice.totalGross),
+    amountPaid: decimalString(invoice.amountPaid),
+    amountCredited: decimalString(invoice.amountCredited),
+  })
   const vatSummary = documentVatSummary(invoice, frozen ? vatRowsByRate(frozen.vatGroups, frozen.currency) : undefined)
   const content = buildInvoiceEmailContent({
     fromName: envelope.fromName,
@@ -132,18 +148,23 @@ export function composeInvoiceEmail(input: {
     replyTo: envelope.replyTo,
     invoice: {
       ...invoice,
-      subtotal: frozen ? Number(frozen.totals.net) : invoice.subtotalNet.toNumber(),
-      taxAmount: frozen ? Number(frozen.totals.tax) : invoice.totalTax.toNumber(),
-      total: frozen ? Number(frozen.totals.gross) : invoice.totalGross.toNumber(),
+      momsRegistered: seller?.momsRegistered,
+      subtotal: invoice.subtotalNet.toNumber(),
+      taxAmount: invoice.totalTax.toNumber(),
+      balanceDue: settlement.balanceDue.toNumber(),
+      total: settlement.totalGross.toNumber(),
       issueDate: frozen?.occurredAt ?? invoice.issueDate,
       supplyDate: frozen ? frozen.supplyDate : invoice.supplyDate?.toISOString().slice(0, 10),
       buyer,
+      bankAccount: seller?.bankAccount,
+      paymentNote: seller?.paymentNote,
       priceBasis: "net",
       ...vatSummary,
       items: invoice.items.map((item) => {
         const shown = lineAmounts("net", item)
         return {
           description: item.description,
+          taxRate: item.taxRate.toNumber(),
           quantity: item.quantity.toNumber(),
           unitPrice: shown.unitPrice.toNumber(),
           total: shown.amount.toNumber(),

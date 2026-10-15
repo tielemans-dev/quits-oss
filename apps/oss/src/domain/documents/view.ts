@@ -136,7 +136,8 @@ export type DocumentViewResult = {
 export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: string): Promise<DocumentViewResult | null> {
   const organizationId = actor.organizationId
   return prisma.$transaction(async db => {
-    const include = { items: { orderBy: { sortOrder: "asc" as const } } }
+    // Legacy rows can share a position. Their unique ID breaks ties without overriding position.
+    const include = { items: { orderBy: [{ sortOrder: "asc" as const }, { id: "asc" as const }] } }
     const document = kind === "invoice"
       ? await db.invoice.findFirst({ where: { id, organizationId }, include })
       : kind === "quote"
@@ -144,8 +145,8 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
         : await db.creditNote.findFirst({ where: { id, organizationId }, include })
     if (!document) return null
     const isDraft = kind !== "creditNote" && document.status === "draft"
-    const settings = await db.orgSettings.findUnique({ where: { organizationId }, select: { companyPhone: true, companyLogo: true } })
-    let branding = settings
+    const settings = await db.orgSettings.findUnique({ where: { organizationId }, select: { companyPhone: true, companyLogo: true, momsRegistered: true } })
+    let branding: Branding | null = settings
     let purchaseOrderRef = "purchaseOrderRef" in document ? document.purchaseOrderRef : null
     if (!isDraft && kind !== "quote") {
       // Only a published candidate can supply issued branding. A failed re-email must not replace it.
@@ -167,7 +168,8 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
     const corrected = kind === "creditNote" && "invoiceId" in document
       ? await db.invoice.findFirst({ where: { id: document.invoiceId, organizationId }, select: { number: true, issuanceSnapshot: true } }) : null
     const correctionDate = correctedIssueDate(corrected?.issuanceSnapshot)
-    let view = isDraft ? buildDraftView(draftViewInputFromRows(kind === "quote" ? "quote" : "invoice", document, { branding, previewNumber })) : null
+    const effectiveDraft = isDraft ? { ...document, sellerSnapshot: { ...parseSellerSnapshot(document.sellerSnapshot), momsRegistered: settings?.momsRegistered ?? null } } : document
+    let view = isDraft ? buildDraftView(draftViewInputFromRows(kind === "quote" ? "quote" : "invoice", effectiveDraft, { branding, previewNumber })) : null
     let historical = false
     if (!isDraft && kind !== "quote") {
       view = snapshotView("issuanceSnapshot" in document ? document.issuanceSnapshot : null, {

@@ -1,3 +1,5 @@
+import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
+import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
 import { TRPCError } from "@trpc/server"
@@ -85,10 +87,9 @@ function assertCloudOnboardingAiEnabled() {
 }
 
 async function loadSnapshot(organizationId: string) {
-  const settings = await prisma.orgSettings.upsert({
+  await initializeDkSettings(organizationId, prisma)
+  const settings = await prisma.orgSettings.findUniqueOrThrow({
     where: { organizationId },
-    update: {},
-    create: { organizationId },
     select: {
       onboardingStatus: true,
       onboardingMethod: true,
@@ -317,46 +318,57 @@ async function applyPatchToOrgSettings(
   if ("quotePrefix" in patch) updateData.quotePrefix = patch.quotePrefix
 
   await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
+    await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
+    const settings = await tx.orgSettings.findUnique({ where: { organizationId } })
+    if (settings?.onboardingVersion === 2 && (settings.onboardingCompletedAt || ["complete", "completed"].includes(settings.onboardingStatus))) {
+      throw new TRPCError({ code: "CONFLICT", message: "Onboarding v2 is already complete" })
+    }
+    if (!settings) {
+      // Currency resolution reads the saved book, so initialize it before a sparse first patch.
+      await initializeDkSettings(organizationId, tx)
+    }
     updateData.baseCurrency = await resolveBaseCurrency(tx, organizationId, { countryCode: updateData.countryCode as string | undefined })
     await tx.orgSettings.upsert({
-    where: { organizationId },
-    update: updateData,
-    create: {
-      organizationId,
-      ...updateData,
-    },
-  })
-  })
-
-  const primaryTaxId = patch.primaryTaxId
-  if (typeof primaryTaxId === "string" && primaryTaxId.length > 0) {
-    const existing = await prisma.organizationTaxId.findFirst({
       where: { organizationId },
-      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-      select: { id: true },
+      update: updateData,
+      create: {
+        organizationId,
+        ...buildDkSettingsDefaults(),
+        ...updateData,
+      },
     })
-    const scheme = patch.primaryTaxIdScheme ?? "vat"
 
-    if (existing) {
-      await prisma.organizationTaxId.update({
-        where: { id: existing.id },
-        data: {
-          value: primaryTaxId,
-          scheme,
-          isPrimary: true,
-        },
+    const primaryTaxId = patch.primaryTaxId
+    if (typeof primaryTaxId === "string" && primaryTaxId.length > 0) {
+      const existing = await tx.organizationTaxId.findFirst({
+        where: { organizationId },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        select: { id: true },
       })
-    } else {
-      await prisma.organizationTaxId.create({
-        data: {
-          organizationId,
-          value: primaryTaxId,
-          scheme,
-          isPrimary: true,
-        },
-      })
+      const scheme = patch.primaryTaxIdScheme ?? "vat"
+
+      if (existing) {
+        await tx.organizationTaxId.update({
+          where: { id: existing.id },
+          data: {
+            value: primaryTaxId,
+            scheme,
+            isPrimary: true,
+          },
+        })
+      } else {
+        await tx.organizationTaxId.create({
+          data: {
+            organizationId,
+            value: primaryTaxId,
+            scheme,
+            isPrimary: true,
+          },
+        })
+      }
     }
-  }
+  }, { timeout: 60_000 })
 }
 
 export const onboardingAiRouter = router({

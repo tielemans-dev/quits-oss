@@ -40,6 +40,7 @@ export function serializePublicQuoteSession(session: {
     subtotalNet: Decimalish
     vatRows?: VatRow[]
     rounding?: string
+    taxRegime?: string
     currency: string
     /** The document's own language and timezone, the ones its PDF and email use. */
     locale?: string | null
@@ -67,8 +68,11 @@ export function serializePublicQuoteSession(session: {
       id: string
       description: string
       quantity: Decimalish
+      unitPriceNet: Decimalish
+      lineNet: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
+      taxRate?: Decimalish
       sortOrder: number
     }>
     invoices: Array<{
@@ -105,6 +109,7 @@ export function serializePublicQuoteSession(session: {
       vatRows: quote.vatRows,
       rounding: quote.rounding,
       currency: quote.currency,
+      taxRegime: quote.taxRegime,
       timezone: presentation.timezone,
       notes: quote.notes,
       sellerSnapshot,
@@ -116,8 +121,11 @@ export function serializePublicQuoteSession(session: {
         id: item.id,
         description: item.description,
         quantity: toNumber(item.quantity),
+        unitPriceNet: toNumber(item.unitPriceNet),
+        lineNet: toNumber(item.lineNet),
         unitPriceGross: toNumber(item.unitPriceGross),
         lineGross: toNumber(item.lineGross),
+        taxRate: item.taxRate == null ? undefined : toNumber(item.taxRate),
         sortOrder: item.sortOrder,
       })),
       // A draft invoice is not the customer's to see; it has no number until it is issued.

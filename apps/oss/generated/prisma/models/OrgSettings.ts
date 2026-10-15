@@ -28,6 +28,7 @@ export type AggregateOrgSettings = {
 
 export type OrgSettingsAvgAggregateOutputType = {
   taxRate: runtime.Decimal | null
+  paymentTermsDays: number | null
   invoiceNextNum: number | null
   agreementNextNum: number | null
   quoteNextNum: number | null
@@ -38,6 +39,7 @@ export type OrgSettingsAvgAggregateOutputType = {
 
 export type OrgSettingsSumAggregateOutputType = {
   taxRate: runtime.Decimal | null
+  paymentTermsDays: number | null
   invoiceNextNum: number | null
   agreementNextNum: number | null
   quoteNextNum: number | null
@@ -61,6 +63,9 @@ export type OrgSettingsMinAggregateOutputType = {
   companyName: string | null
   companyAddress: string | null
   companyEmail: string | null
+  momsRegistered: boolean | null
+  paymentTermsDays: number | null
+  onboardingV2Key: string | null
   companyPhone: string | null
   companyLogo: string | null
   bankAccountHolder: string | null
@@ -121,6 +126,9 @@ export type OrgSettingsMaxAggregateOutputType = {
   companyName: string | null
   companyAddress: string | null
   companyEmail: string | null
+  momsRegistered: boolean | null
+  paymentTermsDays: number | null
+  onboardingV2Key: string | null
   companyPhone: string | null
   companyLogo: string | null
   bankAccountHolder: string | null
@@ -181,6 +189,10 @@ export type OrgSettingsCountAggregateOutputType = {
   companyName: number
   companyAddress: number
   companyEmail: number
+  momsRegistered: number
+  paymentTermsDays: number
+  onboardingV2Key: number
+  onboardingV2Result: number
   companyPhone: number
   companyLogo: number
   bankAccountHolder: number
@@ -232,6 +244,7 @@ export type OrgSettingsCountAggregateOutputType = {
 
 export type OrgSettingsAvgAggregateInputType = {
   taxRate?: true
+  paymentTermsDays?: true
   invoiceNextNum?: true
   agreementNextNum?: true
   quoteNextNum?: true
@@ -242,6 +255,7 @@ export type OrgSettingsAvgAggregateInputType = {
 
 export type OrgSettingsSumAggregateInputType = {
   taxRate?: true
+  paymentTermsDays?: true
   invoiceNextNum?: true
   agreementNextNum?: true
   quoteNextNum?: true
@@ -265,6 +279,9 @@ export type OrgSettingsMinAggregateInputType = {
   companyName?: true
   companyAddress?: true
   companyEmail?: true
+  momsRegistered?: true
+  paymentTermsDays?: true
+  onboardingV2Key?: true
   companyPhone?: true
   companyLogo?: true
   bankAccountHolder?: true
@@ -325,6 +342,9 @@ export type OrgSettingsMaxAggregateInputType = {
   companyName?: true
   companyAddress?: true
   companyEmail?: true
+  momsRegistered?: true
+  paymentTermsDays?: true
+  onboardingV2Key?: true
   companyPhone?: true
   companyLogo?: true
   bankAccountHolder?: true
@@ -385,6 +405,10 @@ export type OrgSettingsCountAggregateInputType = {
   companyName?: true
   companyAddress?: true
   companyEmail?: true
+  momsRegistered?: true
+  paymentTermsDays?: true
+  onboardingV2Key?: true
+  onboardingV2Result?: true
   companyPhone?: true
   companyLogo?: true
   bankAccountHolder?: true
@@ -534,6 +558,10 @@ export type OrgSettingsGroupByOutputType = {
   companyName: string | null
   companyAddress: string | null
   companyEmail: string | null
+  momsRegistered: boolean | null
+  paymentTermsDays: number | null
+  onboardingV2Key: string | null
+  onboardingV2Result: runtime.JsonValue | null
   companyPhone: string | null
   companyLogo: string | null
   bankAccountHolder: string | null
@@ -619,6 +647,10 @@ export type OrgSettingsWhereInput = {
   companyName?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyAddress?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyEmail?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  momsRegistered?: Prisma.BoolNullableFilter<"OrgSettings"> | boolean | null
+  paymentTermsDays?: Prisma.IntNullableFilter<"OrgSettings"> | number | null
+  onboardingV2Key?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  onboardingV2Result?: Prisma.JsonNullableFilter<"OrgSettings">
   companyPhone?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   bankAccountHolder?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -682,6 +714,10 @@ export type OrgSettingsOrderByWithRelationInput = {
   companyName?: Prisma.SortOrderInput | Prisma.SortOrder
   companyAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   companyEmail?: Prisma.SortOrderInput | Prisma.SortOrder
+  momsRegistered?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  onboardingV2Key?: Prisma.SortOrderInput | Prisma.SortOrder
+  onboardingV2Result?: Prisma.SortOrderInput | Prisma.SortOrder
   companyPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
   bankAccountHolder?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -749,6 +785,10 @@ export type OrgSettingsWhereUniqueInput = Prisma.AtLeast<{
   companyName?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyAddress?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyEmail?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  momsRegistered?: Prisma.BoolNullableFilter<"OrgSettings"> | boolean | null
+  paymentTermsDays?: Prisma.IntNullableFilter<"OrgSettings"> | number | null
+  onboardingV2Key?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
+  onboardingV2Result?: Prisma.JsonNullableFilter<"OrgSettings">
   companyPhone?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
   bankAccountHolder?: Prisma.StringNullableFilter<"OrgSettings"> | string | null
@@ -811,6 +851,10 @@ export type OrgSettingsOrderByWithAggregationInput = {
   companyName?: Prisma.SortOrderInput | Prisma.SortOrder
   companyAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   companyEmail?: Prisma.SortOrderInput | Prisma.SortOrder
+  momsRegistered?: Prisma.SortOrderInput | Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  onboardingV2Key?: Prisma.SortOrderInput | Prisma.SortOrder
+  onboardingV2Result?: Prisma.SortOrderInput | Prisma.SortOrder
   companyPhone?: Prisma.SortOrderInput | Prisma.SortOrder
   companyLogo?: Prisma.SortOrderInput | Prisma.SortOrder
   bankAccountHolder?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -881,6 +925,10 @@ export type OrgSettingsScalarWhereWithAggregatesInput = {
   companyName?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   companyAddress?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   companyEmail?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  momsRegistered?: Prisma.BoolNullableWithAggregatesFilter<"OrgSettings"> | boolean | null
+  paymentTermsDays?: Prisma.IntNullableWithAggregatesFilter<"OrgSettings"> | number | null
+  onboardingV2Key?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
+  onboardingV2Result?: Prisma.JsonNullableWithAggregatesFilter<"OrgSettings">
   companyPhone?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   companyLogo?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
   bankAccountHolder?: Prisma.StringNullableWithAggregatesFilter<"OrgSettings"> | string | null
@@ -942,6 +990,10 @@ export type OrgSettingsCreateInput = {
   companyName?: string | null
   companyAddress?: string | null
   companyEmail?: string | null
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number | null
+  onboardingV2Key?: string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: string | null
   companyLogo?: string | null
   bankAccountHolder?: string | null
@@ -1005,6 +1057,10 @@ export type OrgSettingsUncheckedCreateInput = {
   companyName?: string | null
   companyAddress?: string | null
   companyEmail?: string | null
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number | null
+  onboardingV2Key?: string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: string | null
   companyLogo?: string | null
   bankAccountHolder?: string | null
@@ -1066,6 +1122,10 @@ export type OrgSettingsUpdateInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1129,6 +1189,10 @@ export type OrgSettingsUncheckedUpdateInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1191,6 +1255,10 @@ export type OrgSettingsCreateManyInput = {
   companyName?: string | null
   companyAddress?: string | null
   companyEmail?: string | null
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number | null
+  onboardingV2Key?: string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: string | null
   companyLogo?: string | null
   bankAccountHolder?: string | null
@@ -1252,6 +1320,10 @@ export type OrgSettingsUpdateManyMutationInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1314,6 +1386,10 @@ export type OrgSettingsUncheckedUpdateManyInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1381,6 +1457,10 @@ export type OrgSettingsCountOrderByAggregateInput = {
   companyName?: Prisma.SortOrder
   companyAddress?: Prisma.SortOrder
   companyEmail?: Prisma.SortOrder
+  momsRegistered?: Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrder
+  onboardingV2Key?: Prisma.SortOrder
+  onboardingV2Result?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
   bankAccountHolder?: Prisma.SortOrder
@@ -1430,6 +1510,7 @@ export type OrgSettingsCountOrderByAggregateInput = {
 
 export type OrgSettingsAvgOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
@@ -1453,6 +1534,9 @@ export type OrgSettingsMaxOrderByAggregateInput = {
   companyName?: Prisma.SortOrder
   companyAddress?: Prisma.SortOrder
   companyEmail?: Prisma.SortOrder
+  momsRegistered?: Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrder
+  onboardingV2Key?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
   bankAccountHolder?: Prisma.SortOrder
@@ -1513,6 +1597,9 @@ export type OrgSettingsMinOrderByAggregateInput = {
   companyName?: Prisma.SortOrder
   companyAddress?: Prisma.SortOrder
   companyEmail?: Prisma.SortOrder
+  momsRegistered?: Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrder
+  onboardingV2Key?: Prisma.SortOrder
   companyPhone?: Prisma.SortOrder
   companyLogo?: Prisma.SortOrder
   bankAccountHolder?: Prisma.SortOrder
@@ -1560,6 +1647,7 @@ export type OrgSettingsMinOrderByAggregateInput = {
 
 export type OrgSettingsSumOrderByAggregateInput = {
   taxRate?: Prisma.SortOrder
+  paymentTermsDays?: Prisma.SortOrder
   invoiceNextNum?: Prisma.SortOrder
   agreementNextNum?: Prisma.SortOrder
   quoteNextNum?: Prisma.SortOrder
@@ -1608,6 +1696,10 @@ export type NullableDecimalFieldUpdateOperationsInput = {
   divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
+export type NullableBoolFieldUpdateOperationsInput = {
+  set?: boolean | null
+}
+
 export type NullableIntFieldUpdateOperationsInput = {
   set?: number | null
   increment?: number
@@ -1634,6 +1726,10 @@ export type OrgSettingsCreateWithoutOrganizationInput = {
   companyName?: string | null
   companyAddress?: string | null
   companyEmail?: string | null
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number | null
+  onboardingV2Key?: string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: string | null
   companyLogo?: string | null
   bankAccountHolder?: string | null
@@ -1695,6 +1791,10 @@ export type OrgSettingsUncheckedCreateWithoutOrganizationInput = {
   companyName?: string | null
   companyAddress?: string | null
   companyEmail?: string | null
+  momsRegistered?: boolean | null
+  paymentTermsDays?: number | null
+  onboardingV2Key?: string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: string | null
   companyLogo?: string | null
   bankAccountHolder?: string | null
@@ -1772,6 +1872,10 @@ export type OrgSettingsUpdateWithoutOrganizationInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1833,6 +1937,10 @@ export type OrgSettingsUncheckedUpdateWithoutOrganizationInput = {
   companyName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  momsRegistered?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  paymentTermsDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  onboardingV2Key?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  onboardingV2Result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   companyPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   companyLogo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bankAccountHolder?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1897,6 +2005,10 @@ export type OrgSettingsSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   companyName?: boolean
   companyAddress?: boolean
   companyEmail?: boolean
+  momsRegistered?: boolean
+  paymentTermsDays?: boolean
+  onboardingV2Key?: boolean
+  onboardingV2Result?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
   bankAccountHolder?: boolean
@@ -1960,6 +2072,10 @@ export type OrgSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   companyName?: boolean
   companyAddress?: boolean
   companyEmail?: boolean
+  momsRegistered?: boolean
+  paymentTermsDays?: boolean
+  onboardingV2Key?: boolean
+  onboardingV2Result?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
   bankAccountHolder?: boolean
@@ -2023,6 +2139,10 @@ export type OrgSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   companyName?: boolean
   companyAddress?: boolean
   companyEmail?: boolean
+  momsRegistered?: boolean
+  paymentTermsDays?: boolean
+  onboardingV2Key?: boolean
+  onboardingV2Result?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
   bankAccountHolder?: boolean
@@ -2086,6 +2206,10 @@ export type OrgSettingsSelectScalar = {
   companyName?: boolean
   companyAddress?: boolean
   companyEmail?: boolean
+  momsRegistered?: boolean
+  paymentTermsDays?: boolean
+  onboardingV2Key?: boolean
+  onboardingV2Result?: boolean
   companyPhone?: boolean
   companyLogo?: boolean
   bankAccountHolder?: boolean
@@ -2133,7 +2257,7 @@ export type OrgSettingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "companyPhone" | "companyLogo" | "bankAccountHolder" | "bankName" | "bankRegNumber" | "bankAccountNumber" | "bankIban" | "bankBic" | "paymentNote" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "stripeAccountId" | "stripeAccountStatus" | "stripeAccountStatusAt" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
+export type OrgSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "countryCode" | "locale" | "timezone" | "defaultCurrency" | "baseCurrency" | "taxRegime" | "pricesIncludeTax" | "currency" | "taxRate" | "companyName" | "companyAddress" | "companyEmail" | "momsRegistered" | "paymentTermsDays" | "onboardingV2Key" | "onboardingV2Result" | "companyPhone" | "companyLogo" | "bankAccountHolder" | "bankName" | "bankRegNumber" | "bankAccountNumber" | "bankIban" | "bankBic" | "paymentNote" | "invoicePrefix" | "invoiceNextNum" | "agreementPrefix" | "agreementNextNum" | "quotePrefix" | "quoteNextNum" | "creditNotePrefix" | "creditNoteNextNum" | "reminderPolicy" | "eventSequence" | "onboardingStatus" | "onboardingMethod" | "onboardingProfile" | "onboardingInvoicingIdentity" | "onboardingVersion" | "onboardingCompletedAt" | "aiProvider" | "aiBaseUrl" | "aiApiKeyEnc" | "aiModel" | "stripePublishableKey" | "stripeSecretKeyEnc" | "stripeWebhookSecretEnc" | "stripeAccountId" | "stripeAccountStatus" | "stripeAccountStatusAt" | "documentSendingDomain" | "documentSendingDomainProviderId" | "documentSendingDomainStatus" | "documentSendingDomainRecords" | "documentSendingDomainFailureReason" | "documentSendingDomainVerifiedAt" | "documentSendingLastSyncedAt" | "documentSendingLastSyncSource" | "createdAt" | "updatedAt", ExtArgs["result"]["orgSettings"]>
 export type OrgSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
 }
@@ -2164,6 +2288,10 @@ export type $OrgSettingsPayload<ExtArgs extends runtime.Types.Extensions.Interna
     companyName: string | null
     companyAddress: string | null
     companyEmail: string | null
+    momsRegistered: boolean | null
+    paymentTermsDays: number | null
+    onboardingV2Key: string | null
+    onboardingV2Result: runtime.JsonValue | null
     companyPhone: string | null
     companyLogo: string | null
     bankAccountHolder: string | null
@@ -2647,6 +2775,10 @@ export interface OrgSettingsFieldRefs {
   readonly companyName: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly companyAddress: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly companyEmail: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly momsRegistered: Prisma.FieldRef<"OrgSettings", 'Boolean'>
+  readonly paymentTermsDays: Prisma.FieldRef<"OrgSettings", 'Int'>
+  readonly onboardingV2Key: Prisma.FieldRef<"OrgSettings", 'String'>
+  readonly onboardingV2Result: Prisma.FieldRef<"OrgSettings", 'Json'>
   readonly companyPhone: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly companyLogo: Prisma.FieldRef<"OrgSettings", 'String'>
   readonly bankAccountHolder: Prisma.FieldRef<"OrgSettings", 'String'>

@@ -6,10 +6,10 @@ const usd = (cents) => `$${(cents / 100).toLocaleString('en-US', { minimumFracti
 function nextMonthDue() {
   const now = new Date()
   const due = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 15))
-  const part = (options) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(due)
+  const part = (options, locale = 'en-US') => new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(due)
   return {
     calendarLabel: new RegExp(`${part({ month: 'long' })} 15th, ${due.getUTCFullYear()}`),
-    detailText: part({ year: 'numeric', month: 'short', day: 'numeric' }),
+    detailText: part({ year: 'numeric', month: 'short', day: 'numeric' }, 'en-GB'),
   }
 }
 
@@ -51,7 +51,7 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByRole('link', { name: 'Create your first invoice', exact: true })).toHaveCount(0)
   }
 
-  /** Reads the line-item grid row `index`; the inputs have no labels, so scope by the description box. */
+  /** Reads the line-item grid row `index`, scoped by its description box. */
   const lineRow = (page, index) => page.getByPlaceholder('Description', { exact: true }).nth(index).locator('xpath=..')
 
   /** Summary block under the line items, shared by the new and edit forms. */
@@ -86,8 +86,8 @@ export function registerProductScenarios(test, expect) {
       if (index > 0) await page.getByRole('button', { name: 'Add Item', exact: true }).click()
       const row = lineRow(page, index)
       await row.getByPlaceholder('Description', { exact: true }).fill(line.description)
-      await row.getByRole('spinbutton').nth(0).fill(String(line.quantity))
-      await row.getByRole('spinbutton').nth(1).fill((line.unitPriceCents / 100).toFixed(2))
+      await row.getByLabel('Qty', { exact: true }).fill(String(line.quantity))
+      await row.getByRole('spinbutton').fill((line.unitPriceCents / 100).toFixed(2))
     }
     await summaryOf(page).getByRole('spinbutton').fill(String(taxPercent))
     const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCents, 0)
@@ -136,13 +136,22 @@ export function registerProductScenarios(test, expect) {
   test.beforeEach(async ({ page, account, entryURL }) => {
     await page.goto(entryURL)
     await expect(page).toHaveURL(/\/login(?:\?|$)/)
-    await page.getByLabel('Email', { exact: true }).fill(account.email)
-    await page.getByLabel('Password', { exact: true }).fill(account.password)
+    // SSR inputs can be filled before React attaches their handlers, then reset
+    // during hydration. Refill and verify both together before submitting.
+    await expect(async () => {
+      const email = page.getByLabel('Email', { exact: true })
+      const password = page.getByLabel('Password', { exact: true })
+      await email.fill(account.email)
+      await password.fill(account.password)
+      // One-shot reads let a hydration mismatch return control to the retry.
+      expect(await email.inputValue()).toBe(account.email)
+      expect(await password.inputValue()).toBe(account.password)
+    }).toPass({ timeout: 15_000 })
     // Shared loopback clients can hit the auth service's per-IP limit. Retry only
     // an explicit 429; authentication errors still fail immediately.
     for (let attempt = 0; ; attempt++) {
       const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/sign-in/email' && response.request().method() === 'POST')
-      await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+      await page.getByRole('button', { name: 'Log in', exact: true }).click()
       const response = await pending
       if (response.status() !== 429 || attempt === 2) {
         expect(response.ok(), `Browser sign-in returned ${response.status()}`).toBeTruthy()
@@ -191,12 +200,12 @@ export function registerProductScenarios(test, expect) {
     const expected = { ...input, ...created }
     await expectInvoiceDetail(page, expected)
     await expect(page.getByText(input.notes, { exact: true })).toBeVisible()
-    await expect(page.getByText('Due Date:', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
+    await expect(page.getByText('Due Date', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
 
     await page.reload()
     await expectInvoiceDetail(page, expected)
     await expect(page.getByText(input.notes, { exact: true })).toBeVisible()
-    await expect(page.getByText('Due Date:', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
+    await expect(page.getByText('Due Date', { exact: true }).locator('xpath=..')).toContainText(created.due.detailText)
 
     await page.goto(new URL('/invoices', entryURL).href)
     // The list names a draft by its customer: it has no number to find it by.
@@ -217,7 +226,7 @@ export function registerProductScenarios(test, expect) {
     await expect(page.getByText('Edit Invoice', { exact: true })).toBeVisible()
     const first = lineRow(page, 0)
     await expect(first.getByPlaceholder('Description', { exact: true })).toHaveValue(input.lines[0].description)
-    await first.getByRole('spinbutton').nth(0).fill('4')
+    await first.getByLabel('Qty', { exact: true }).fill('4')
     // 4 x 150.00 + 1 x 49.50 = 649.50; 10% tax = 64.95; total 714.45.
     const edited = { subtotal: 64950, tax: 6495, total: 71445 }
     await expectSummary(page, edited)

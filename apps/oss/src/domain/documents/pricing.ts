@@ -3,6 +3,7 @@ import { InvalidState } from "../errors"
 import { calculateDraft, calculateLegacyDocument, decimalInput, decimalReferencePrices, percentageToFraction, fractionToPercentage } from "@quits/shared/pricing"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
+import { findTaxRegime } from "../../lib/compliance"
 import { currencyFractionDigits } from "../../lib/payments/stripe-amounts"
 
 /** Document amounts are stored with two decimals, so three-decimal currencies round to two. */
@@ -66,8 +67,20 @@ export function priceDocumentV2(input: {
   pricesIncludeTax: boolean
   currency: string
   vatEvidence?: DraftVatEvidence
+  vatDefaults?: { momsRegistered: boolean | null; taxRegime: string; countryCode: string | null; buyerCountry: string | null }
 }) {
-  const calculation = calculateDraft(input)
+  const defaults = input.vatDefaults
+  // A positive document rate is stored as sent and refused at issuance. Only a zero rate, the
+  // forced non-VAT default, classifies ordinary lines. Missing buyer country stays domestic.
+  const nonRegisteredEu = defaults?.momsRegistered === false && defaults.taxRegime === "eu_vat"
+    && findTaxRegime(defaults.countryCode)?.id === "eu_vat"
+  const domestic = !defaults?.buyerCountry || defaults.buyerCountry === defaults?.countryCode
+  const ordinaryZero = nonRegisteredEu && Number(input.taxRate) === 0
+  const calculation = calculateDraft({ ...input, items: ordinaryZero
+    ? input.items.map(line => line.vat ? line : { ...line, vat: domestic
+      ? { treatment: "unclassified_zero" as const, rate: "0" }
+      : { treatment: "out_of_scope" as const, rate: "0" } })
+    : input.items })
   return {
     calculation,
     calculationVersion: "v2" as const,

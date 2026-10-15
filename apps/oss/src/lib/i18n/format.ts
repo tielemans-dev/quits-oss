@@ -28,12 +28,34 @@ export function formatDate(
   timeZone?: string | null,
   options?: {
     month?: "numeric" | "2-digit" | "long" | "short" | "narrow"
+    /** Compact Gregorian invoice dates use day-month-year in Danish and English. */
+    dayFirst?: boolean
   }
 ): string {
-  return new Intl.DateTimeFormat(normalizeLocale(locale), {
+  const formatter = new Intl.DateTimeFormat(normalizeLocale(locale), {
     year: "numeric",
     month: options?.month ?? "short",
     day: "numeric",
     timeZone: normalizeTimeZone(timeZone),
-  }).format(new Date(date))
+  })
+  const value = new Date(date)
+  const language = new Intl.Locale(normalizeLocale(locale)).language
+  // Other locales/calendars need Intl's era, related year and native date notation.
+  if (!options?.dayFirst || formatter.resolvedOptions().calendar !== "gregory" || (language !== "da" && language !== "en")) {
+    return formatter.format(value)
+  }
+  const parts = formatter.formatToParts(value)
+  if (parts.some(piece => piece.type !== "day" && piece.type !== "month" && piece.type !== "year" && piece.type !== "literal")) {
+    return formatter.format(value)
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(piece => piece.type === type)?.value ?? ""
+  const daySuffix = language === "da" ? "." : ""
+  return `${part("day")}${daySuffix} ${part("month")} ${part("year")}`
+}
+
+/** Compact document dates, with day before month in both supported languages. */
+export function formatShortDate(date: Date | string, locale?: string | null, timeZone?: string | null): string {
+  const configuredLocale = normalizeLocale(locale)
+  const language = configuredLocale.toLowerCase().startsWith("en") ? "en-GB" : configuredLocale
+  return formatDate(date, language, timeZone, { month: "short" })
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { Text, renderToBuffer } from "@react-pdf/renderer"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { InvoicePdfDocument, type InvoiceForPdf } from "../invoice-pdf"
+import { withInvoicePaymentDetails } from "../../domain/documents/snapshots"
 import { buildPaymentDetailsBlock } from "../payment-details-block"
 
 const bankAccount = {
@@ -60,7 +61,7 @@ describe("payment details block", () => {
         { label: "Bank", value: "Danske Bank" },
       ],
       note: "MobilePay Box 12345",
-      reference: { label: "Payment reference", value: "INV-0042" },
+      reference: { label: "Payment message", value: "INV-0042" },
     })
   })
 
@@ -75,7 +76,7 @@ describe("payment details block", () => {
         { label: "Kontohaver", value: "Nordic Design ApS" },
         { label: "Bank", value: "Danske Bank" },
       ],
-      reference: { label: "Betalingsreference", value: "INV-0042" },
+      reference: { label: "Betalingsbesked", value: "INV-0042" },
     })
   })
 
@@ -102,14 +103,14 @@ describe("payment details block reference", () => {
   it("has no reference row for a null or blank reference", () => {
     expect(buildPaymentDetailsBlock(details, null, "en")?.reference).toBeNull()
     expect(buildPaymentDetailsBlock(details, "  ", "en")?.reference).toBeNull()
-    expect(buildPaymentDetailsBlock(details, " KID 123 ", "en")?.reference).toEqual({ label: "Payment reference", value: "KID 123" })
+    expect(buildPaymentDetailsBlock(details, " KID 123 ", "en")?.reference).toEqual({ label: "Payment message", value: "KID 123" })
   })
 })
 
 describe("invoice PDF payment details", () => {
   it("shows the block after the totals and before the notes", () => {
     const text = renderedText({ ...invoice, notes: "Thank you", ...payment }, "en-US")
-    const order = ["Subtotal", "Payment details", "Payment reference: INV-0042", "Notes", "Thank you"].map((needle) =>
+    const order = ["Subtotal", "Payment details", "Payment message: INV-0042", "Notes", "Thank you"].map((needle) =>
       text.lastIndexOf(needle)
     )
     expect(order.every((index) => index >= 0)).toBe(true)
@@ -119,20 +120,20 @@ describe("invoice PDF payment details", () => {
   })
 
   it("prints the payment reference as one line", () => {
-    expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment reference: INV-0042")
-    expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsreference: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "en-US").split("\n")).toContain("Payment message: INV-0042")
+    expect(renderedText({ ...invoice, ...payment }, "da-DK").split("\n")).toContain("Betalingsbesked: INV-0042")
   })
 
   it("prints the invoice's own payment reference instead of the number", () => {
     const text = renderedText({ ...invoice, ...payment, paymentReference: "+71 1234 5678" }, "en-US")
-    expect(text.split("\n")).toContain("Payment reference: +71 1234 5678")
-    expect(text).not.toContain("Payment reference: INV-0042")
+    expect(text.split("\n")).toContain("Payment message: +71 1234 5678")
+    expect(text).not.toContain("Payment message: INV-0042")
   })
 
   it("leaves the reference row out of a draft, which has no reference yet", () => {
     const text = renderedText({ ...invoice, number: "draft", status: "draft", ...payment, paymentReference: null }, "en-US")
     expect(text).toContain("Payment details")
-    expect(text).not.toContain("Payment reference")
+    expect(text).not.toContain("Payment message")
     expect(text).not.toContain(": draft")
   })
 
@@ -141,7 +142,7 @@ describe("invoice PDF payment details", () => {
     expect(text).toContain("Betalingsoplysninger")
     expect(text).toContain("Reg.nr.")
     expect(text).toContain("Kontonr.")
-    expect(text).toContain("Betalingsreference")
+    expect(text).toContain("Betalingsbesked")
     expect(text).not.toContain("Payment details")
   })
 
@@ -149,7 +150,7 @@ describe("invoice PDF payment details", () => {
     for (const empty of [{}, { bankAccount: null, paymentNote: null }, { bankAccount: {} }] as const) {
       const text = renderedText({ ...invoice, ...empty }, "en-US")
       expect(text).not.toContain("Payment details")
-      expect(text).not.toContain("Payment reference")
+      expect(text).not.toContain("Payment message")
     }
   })
 
@@ -185,4 +186,41 @@ describe("invoice PDF calendar dates", () => {
       expect(text).toContain(timezone === "Europe/Copenhagen" ? "October 1, 2026" : "September 30, 2026")
     }
   )
+})
+
+
+describe("registration changes in future PDF snapshots", () => {
+  it.each([["da-DK", "CVR-nr."], ["en-US", "CVR no."]])("uses the frozen CVR label in %s and preserves historical inputs", (locale, cvrLabel) => {
+    const org = { locale, taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345678" }] }
+    const historical = textOf(InvoicePdfDocument({ invoice, org })).join("\n")
+    const future = textOf(InvoicePdfDocument({ invoice, org: { ...org, cvrLabel } })).join("\n")
+    expect(historical).toContain("CVR: 12345678")
+    expect(future).toContain(`${cvrLabel}: 12345678`)
+    expect(future).not.toContain("CVR: 12345678")
+    expect(textOf(InvoicePdfDocument({ invoice, org })).join("\n")).toBe(historical)
+  })
+  it.each(["da-DK", "en-US"])("keeps old PDFs frozen and normalizes future declarations in %s", locale => {
+    const statement = locale === "da-DK" ? "Der er ikke beregnet moms, da sælger ikke er momsregistreret." : "No VAT charged – the seller is not VAT-registered."
+    const seller = { companyName: "Synthetic seller", companyEmail: null, companyAddress: null, taxIds: [], momsRegistered: false }
+    const old = withInvoicePaymentDetails(seller, { paymentNote: "Custom payment instruction" }, locale)
+    const oldPdf = renderedText({ ...invoice, ...old }, locale)
+    expect(oldPdf).toContain(statement)
+    expect(oldPdf).toContain("Custom payment instruction")
+    const registered = withInvoicePaymentDetails({ ...seller, momsRegistered: true }, { paymentNote: parseSellerSnapshot(old)?.paymentNote }, locale)
+    const registeredPdf = renderedText({ ...invoice, ...registered }, locale)
+    expect(registeredPdf).not.toContain(statement)
+    expect(registeredPdf).toContain("Custom payment instruction")
+    const unregistered = withInvoicePaymentDetails(seller, { paymentNote: parseSellerSnapshot(registered)?.paymentNote }, locale)
+    expect(renderedText({ ...invoice, ...unregistered }, locale)).toContain(statement)
+    expect(renderedText({ ...invoice, ...old }, locale)).toBe(oldPdf)
+  })
+})
+
+
+describe("historical generated payment declarations", () => {
+  it.each(["Virksomheden er ikke momsregistreret.", "The company is not VAT registered."])("removes %s only from future registered snapshots", oldNote => {
+    const seller = { companyName: "Synthetic seller", companyEmail: null, companyAddress: null, taxIds: [], momsRegistered: true }
+    const future = withInvoicePaymentDetails(seller, { paymentNote: `${oldNote}\nCustom instruction` }, "en-US")
+    expect(parseSellerSnapshot(future)?.paymentNote).toBe("Custom instruction")
+  })
 })

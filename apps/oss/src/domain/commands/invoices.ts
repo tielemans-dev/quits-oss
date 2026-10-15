@@ -2,7 +2,7 @@ import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { resolveCountryProfile } from "../../lib/compliance"
 import { requireInvoiceIssuancePolicy } from "../documents/issuance-policy"
-import { parseSellerSnapshot, parseBuyerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import type { RenderInput } from "../documents/render-input"
 import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
@@ -36,7 +36,7 @@ import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
-import { buildBuyerSnapshot, buildSellerSnapshot, buyerContactSelect } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withSellerVatStatus, buyerContactSelect } from "../documents/snapshots"
 import { requireVatIssuance } from "../documents/vat-issuance"
 import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
@@ -116,6 +116,7 @@ export const buildInvoiceDraft = (
     yield* requireDraftCurrency(currency)
     const calculated = yield* priceCurrentDraft({
       items: input.items,
+      vatDefaults: { ...settings, buyerCountry: contact.country },
       vatEvidence: input.vatEvidence,
       taxRate: input.taxRate,
       pricesIncludeTax: settings.pricesIncludeTax,
@@ -234,8 +235,11 @@ export const updateInvoiceDraft = defineCommand({
       const pricedItems = input.taxRate === undefined ? items : items.map((item) => ({ ...item, vat: undefined }))
       const storedEvidence = draftVatEvidenceSchema.safeParse(existing.vatEvidence ?? {})
       const evidence = input.vatEvidence ?? (storedEvidence.success ? storedEvidence.data : {})
+      const { settings: currentSettings } = yield* loadDocumentContext
+      const pricingContact = input.contactId ? yield* findContact(input.contactId) : existing.contact
       const priced = yield* priceCurrentDraft({
         items: input.items ?? pricedItems,
+        vatDefaults: { ...currentSettings, taxRegime: existing.taxRegime, countryCode: existing.countryCode, buyerCountry: pricingContact.country },
         taxRate: input.taxRate ?? impliedTaxRate(existing),
         pricesIncludeTax: existing.pricesIncludeTax,
         currency,
@@ -320,13 +324,16 @@ const invoiceEmailApprovalContext = (id: string, action: "send" | "resend", ackn
     const invoice = { ...found, contact: { ...found.contact, ...(yield* lockedContact(found.contactId)) } }
     const recipient = invoice.contact.email?.trim() || null
     const { settings, sellerTaxIds } = yield* loadDocumentContext
+    const seller = action === "send"
+      ? buildInvoiceSellerSnapshot(invoice, settings, sellerTaxIds)
+      : { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds }
     const total = `${invoice.totalGross.toFixed(2)} ${invoice.currency}`
     return {
       summary:
         action === "send"
           ? `Send ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name}`
           : `Email ${documentRef("invoice", invoice.number)} (${total}) to ${recipient ?? invoice.contact.name} again`,
-      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...invoice.sellerSnapshot as object, taxIds: sellerTaxIds, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
+      version: `${documentFingerprint({ ...invoice, buyerSnapshot: buildBuyerSnapshot(invoice.contact), sellerSnapshot: { ...seller, baseCurrency: settings.baseCurrency, valuationInput } }, recipient, [invoice.dueDate, invoice.supplyDate])}:${invoice.disputedRevision}`,
       details: {
         disputed: String(invoice.disputed),
         acknowledgeDisputed: String(acknowledgeDisputed),
@@ -377,7 +384,10 @@ export const sendInvoice = defineCommand({
       yield* requireDepositInvoiceEnabled(found)
       yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
-      const seller = (found.agreementId || found.quoteId) ? parseSellerSnapshot(found.sellerSnapshot) ?? {} : buildSellerSnapshot(settings, sellerTaxIds)
+      const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
+      const seller = (found.agreementId || found.quoteId)
+        ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller, found.taxRegime)
+        : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)
@@ -472,6 +482,7 @@ export const sendInvoice = defineCommand({
         recipient,
         message: email.message,
         idempotencyKey: `invoice-send:${invoice.id}:${now.getTime()}`,
+        numberTaken: found.number === null,
         publicLinkIssuedAt: publicPaymentIssuedAt,
         markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data: { ...data, number: invoice.number } }),
       })

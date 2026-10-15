@@ -61,4 +61,5 @@ export const daPublicMessages = {
   "public.agreement.status.expired": "Udløbet",
   "public.agreement.status.completed": "Gennemført",
   "public.agreement.status.cancelled": "Annulleret",
+  "public.quote.decision.accepted.body": "Du accepterede tilbuddet den {date}.",
 } as const

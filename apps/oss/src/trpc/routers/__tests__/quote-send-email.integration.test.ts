@@ -69,6 +69,7 @@ async function createQuoteFixture(options?: {
       defaultCurrency: "DKK",
       currency: "DKK",
       taxRegime: "eu_vat",
+      momsRegistered: true,
       pricesIncludeTax: false,
       companyName: "Acme",
       companyEmail: "billing@acme.com",
@@ -139,6 +140,8 @@ describeIfDatabase("quote send email delivery", () => {
       const reloaded = await prisma.quote.findUniqueOrThrow({
         where: { id: quote.id },
         select: {
+          sellerSnapshot: true,
+          items: true,
           status: true,
           publicAccessIssuedAt: true,
           lastEmailAttemptOutcome: true,
@@ -146,6 +149,9 @@ describeIfDatabase("quote send email delivery", () => {
         },
       })
 
+      expect(reloaded.sellerSnapshot).toMatchObject({ momsRegistered: true, companyName: "Acme" })
+      expect(reloaded.items[0]!.taxRate.toNumber()).toBe(25)
+      expect(vi.mocked(deliver).mock.calls[0]?.[0].html).toContain("25 % moms")
       expect(reloaded.status).toBe("sent")
       expect(reloaded.publicAccessIssuedAt).toBeTruthy()
       expect(reloaded.lastEmailAttemptOutcome).toBe("sent")

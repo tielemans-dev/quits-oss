@@ -14,27 +14,31 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
   await page.goto("/setup")
   await waitForClientReady(page)
 
-  await expect(page.getByText("Set up your Quits instance")).toBeVisible()
+  await expect(page.getByText("Opsæt din Quits-instans")).toBeVisible()
 
-  await page.getByRole("button", { name: "Next" }).click()
-  await page.getByLabel("Organization name").fill("Setup Smoke Org")
-  await page.getByLabel("Admin name").fill("Setup Smoke Admin")
-  await page.getByLabel("Admin email").fill(adminEmail)
-  await page.getByLabel("Admin password").fill(adminPassword)
-  await page.getByRole("button", { name: "Next" }).click()
-  await page.getByRole("button", { name: "Next" }).click()
-  await page.getByLabel("Email from name (optional)").fill("Setup Billing")
-  await page.getByLabel("Email reply-to (optional)").fill("billing@example.com")
-  await page.getByRole("button", { name: "Finish setup" }).click()
+  await page.getByRole("button", { name: "Næste" }).click()
+  await page.getByLabel("Organisationsnavn").fill("Setup Smoke Org")
+  await page.getByLabel("Administratornavn").fill("Setup Smoke Admin")
+  await page.getByLabel("Administrator-e-mail").fill(adminEmail)
+  await page.getByLabel("Administratoradgangskode").fill(adminPassword)
+  await page.getByRole("button", { name: "Næste" }).click()
+  await page.getByRole("button", { name: "Næste" }).click()
+  await expect(page.getByLabel("Sprog")).toHaveValue("da-DK")
+  await expect(page.getByLabel("Landekode")).toHaveValue("DK")
+  await expect(page.getByLabel("Tidszone")).toHaveValue("Europe/Copenhagen")
+  await expect(page.getByLabel("Valuta")).toHaveValue("DKK")
+  await page.getByLabel("E-mail-afsendernavn (valgfrit)").fill("Setup Billing")
+  await page.getByLabel("E-mail-svar-til (valgfrit)").fill("billing@example.com")
+  await page.getByRole("button", { name: "Afslut opsætning" }).click()
 
   await expect(page).toHaveURL(/\/login/)
   await expect(page.getByRole("status")).toContainText(
-    "Setup complete. Please sign in to continue."
+    "Opsætningen er fuldført. Log ind for at fortsætte."
   )
 
   await page.getByLabel("Email").fill(adminEmail)
   await page.getByLabel("Password").fill(adminPassword)
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Log in" }).click()
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
     timeout: 10_000,
   })
@@ -43,6 +47,6 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
   await page.goto("/settings")
   await waitForClientReady(page)
 
-  await expect(page.getByLabel("Company Name")).toHaveValue("Setup Billing")
-  await expect(page.getByLabel("Company Email")).toHaveValue("billing@example.com")
+  await expect(page.getByLabel("Virksomhedsnavn")).toHaveValue("Setup Billing")
+  await expect(page.getByLabel("Virksomheds-e-mail")).toHaveValue("billing@example.com")
 })

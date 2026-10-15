@@ -1,3 +1,7 @@
+import type { CompanyLookupService } from "./company-lookup"
+export type { CompanyLookupService, CompanyLookupResult } from "./company-lookup"
+import type { SellerVatConfirmationService } from "./seller-vat-confirmation"
+export type { SellerVatConfirmationService, SellerVatConfirmationActor, SellerVatConfirmationTransaction } from "./seller-vat-confirmation"
 import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 export type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
 import type {
@@ -6,6 +10,11 @@ import type {
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
+import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
+export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
+
+/** Released distributions can require the factual company lookup/review contract. */
+export const COMPANY_LOOKUP_CONTRACT_VERSION = 1
 
 /**
  * Verifies connected-account webhook events with one platform secret, then maps
@@ -18,6 +27,8 @@ export type StripeConnectWebhookVerifier = {
 
 export type RuntimeExtension = {
   id: string
+  companyLookup?: CompanyLookupService
+  sellerVatConfirmation?: SellerVatConfirmationService
   resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
@@ -31,6 +42,13 @@ export type RuntimeExtension = {
     | StripeConnectWebhookVerifier
     | undefined
     | Promise<StripeConnectWebhookVerifier | undefined>
+  /**
+   * Overrides the default BYOK checkout target. A returned target is used as-is.
+   * Null and undefined leave BYOK in place.
+   */
+  resolveStripeCheckoutTarget?: (
+    context: StripeCheckoutTargetContext
+  ) => StripeCheckoutTarget | null | undefined | Promise<StripeCheckoutTarget | null | undefined>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000
@@ -45,6 +63,7 @@ function mergeCapabilities(
   }
 
   return {
+    sellerVatConfirmation: { enabled: base.sellerVatConfirmation?.enabled ?? false, ...patch.sellerVatConfirmation },
     documents: { ...base.documents, ...patch.documents },
     agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
@@ -55,6 +74,7 @@ function mergeCapabilities(
       ...base.onboardingAi,
       ...patch.onboardingAi,
     },
+    onboardingV2: { ...base.onboardingV2, enabled: base.onboardingV2?.enabled ?? false, ...patch.onboardingV2 },
     payments: {
       ...base.payments,
       ...patch.payments,
@@ -93,6 +113,8 @@ function readDefaultCapabilities(
   )
 
   return {
+    onboardingV2: { enabled: false, nonVatEnabled: false },
+    sellerVatConfirmation: { enabled: false },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {
@@ -163,7 +185,22 @@ export function getRuntimeCapabilities(
   const ai = capabilities.aiInvoiceDraft
   ai.enabled = enabledByExtension !== false && (ai.byok || ai.managed || ai.localAgent)
 
+  // V2 is opt-in for hosted deployments; self-hosted installations stay on manual setup.
+  capabilities.onboardingV2 = {
+    enabled: isHostedRuntime(env) && capabilities.onboardingV2?.enabled === true,
+    nonVatEnabled: isHostedRuntime(env) && capabilities.onboardingV2?.nonVatEnabled === true,
+  }
+  capabilities.sellerVatConfirmation = { enabled: isHostedRuntime(env) && capabilities.sellerVatConfirmation?.enabled === true }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
   return capabilities
+}
+
+function isHostedRuntime(env: Record<string, string | undefined>) {
+  return readProductEnv(env, "DISTRIBUTION")?.trim().toLowerCase() === "cloud"
+}
+
+/** The hosted extension can opt in after it supports non-VAT onboarding. OSS remains configurable. */
+export function isNonVatRegistrationAllowed() {
+  return !isHostedRuntime(getRuntimeEnv()) || getRuntimeCapabilities().onboardingV2?.nonVatEnabled === true
 }

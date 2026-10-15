@@ -25,6 +25,38 @@ Source-available invoicing for freelancers and small businesses.
 - [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS — UI components
 - [Turbo](https://turbo.build/repo) — Repository task orchestration
 
+## Runtime Settings UI extension
+
+Runtime adopters can supply an organization company-details component in the app's Settings
+page. With no component configured, Settings renders no additional UI. The slot adds no access
+rules or business logic.
+
+```tsx
+import { getRouter } from "@quits/oss"
+import type { SettingsCompanyDetailsProps } from "@quits/oss/runtime/ui"
+
+function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps) {
+  // Render the adopter's organization details here.
+  return <OrganizationDetails organizationId={organizationId} locale={locale} />
+}
+
+export function createAppRouter() {
+  return getRouter({ runtimeUi: { settingsCompanyDetails: CompanyDetails } })
+}
+```
+
+The component receives the organization ID pinned by the authenticated layout and the current
+display locale. It renders immediately after the company card, outside the OSS save form, and
+can own its own form.
+The existing authenticated layout and its permission and capability context still surround it.
+Adopters remain responsible for authorizing their own data operations.
+
+`getRouter` creates a `RuntimeUiProvider` for each router tree. Adopters that create their own
+router can instead import that provider from `@quits/oss/runtime/ui` and use it in the router's
+`Wrap`, with `value={{ settingsCompanyDetails: CompanyDetails }}`. Configuration stays in React
+context rather than a process-wide registry, so separate router trees and server renders do not
+share components. Configure the same component on the server and client for hydration.
+
 ## Getting Started
 
 ### Prerequisites
@@ -238,8 +270,15 @@ override `SMTP_PORT`, pair `SMTP_PORT=587` with `SMTP_SECURE=false`, or
 is required. `SMTP_PASSWORD` remains a compatibility alias for `SMTP_PASS`. Docker
 Compose forwards these settings to the app.
 
-For a development mail catcher or a trusted local plaintext relay, set its port and
-`SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
+For a development mail catcher such as Mailpit (port 1025) or a trusted local plaintext
+relay, set its port and `SMTP_REQUIRE_TLS=false` (keep `SMTP_SECURE=false`), because the
+default requires STARTTLS. Do not use plaintext for a relay reached over the internet.
+When the app runs on the host, set `SMTP_HOST=127.0.0.1`, not `localhost`: `localhost`
+may resolve to IPv6 `::1` first and time out if the catcher listens only on IPv4. When the
+app runs in Compose, `127.0.0.1` is the app container itself; use the Mailpit service
+name, or `host.docker.internal` when Mailpit runs on the host (Docker Desktop only; on
+Docker Engine for Linux, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the
+app service, or run Mailpit as a Compose service).
 Settings shows missing or invalid SMTP configuration using environment variable names;
 it never returns relay credentials. Configuration readiness does not test relay connectivity.
 

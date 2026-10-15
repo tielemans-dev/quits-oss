@@ -22,7 +22,18 @@ export function buildPaymentDetailsBlock(
   locale: string | null | undefined
 ): PaymentDetailsBlock | null {
   if (!details || !hasPaymentDetails(details)) return null
-  const account = details.bankAccount
+  return {
+    title: translate("pdf.paymentDetails", locale),
+    rows: bankAccountRows(details.bankAccount, locale).map(({ label, value }) => ({ label, value })),
+    note: details.note?.trim() || null,
+    reference: paymentReference?.trim()
+      ? { label: translate("pdf.paymentReference", locale), value: paymentReference.trim() }
+      : null,
+  }
+}
+
+/** Shared bank fields and formatting for document payment instructions. */
+export function bankAccountRows(account: BankAccountSnapshot | null | undefined, locale?: string | null) {
   const entries: Array<[TranslationKey, string | null | undefined]> = [
     ["pdf.regNumber", account?.regNumber],
     ["pdf.accountNumber", account?.accountNumber],
@@ -31,14 +42,7 @@ export function buildPaymentDetailsBlock(
     ["pdf.accountHolder", account?.accountHolder],
     ["pdf.bankName", account?.bankName],
   ]
-  return {
-    title: translate("pdf.paymentDetails", locale),
-    rows: entries.flatMap(([key, value]) =>
-      value?.trim() ? [{ label: translate(key, locale), value: value.trim() }] : []
-    ),
-    note: details.note?.trim() || null,
-    reference: paymentReference?.trim()
-      ? { label: translate("pdf.paymentReference", locale), value: paymentReference.trim() }
-      : null,
-  }
+  return entries.flatMap(([key, value]) =>
+    value?.trim() ? [{ key, label: translate(key, locale), value: value.trim() }] : []
+  )
 }

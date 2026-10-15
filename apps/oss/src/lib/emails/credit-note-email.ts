@@ -1,3 +1,7 @@
+import { sellerVatPresentationStatus } from "../documents/seller-vat"
+import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { nonVatStatement } from "../documents/non-vat-note"
+import { withoutNonVatStatement } from "../documents/non-vat-presentation"
 import { documentColors as C } from "../brand/document-colors"
 import { formatSenderAddress } from "../email-sender"
 import {
@@ -22,15 +26,17 @@ export type SendCreditNoteEmailParams = {
     number: string
     issueDate: Date | string
     reason: string
+    sellerSnapshot?: unknown
     subtotal: number
     taxAmount: number
     total: number
+    taxRegime?: string
     currency: string
     /** The basis `items` state their amounts on. Absent, the headers stay plain. */
     priceBasis?: PriceBasis
     vatRows?: VatRow[]
     rounding?: string
-    items: { description: string; quantity: number; unitPrice: number; total: number }[]
+    items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   invoice: { number: string; issueDate: Date | string }
   org: {
@@ -54,6 +60,8 @@ export function buildCreditNoteEmailContent({
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
+  const reason = withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)
   const locale = org.locale
   const timezone = org.timezone
   const label = `font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;`
@@ -79,12 +87,13 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis)}
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, false, momsRegistered)}
     ${totalsBlock(creditNote, locale)}
+    ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 
     <div style="margin-top:24px;border-top:1px solid ${C.hairline};padding-top:16px;">
       <div style="${label}">${t("creditNotes.email.reason", locale)}</div>
-      <p style="margin:0;color:${C.body};font-size:14px;">${formatMultilineHtml(creditNote.reason)}</p>
+      <p style="margin:0;color:${C.body};font-size:14px;">${formatMultilineHtml(reason ?? "")}</p>
     </div>
   `,
     locale

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatCurrency, formatDate, formatNumber } from "../format"
+import { formatCurrency, formatDate, formatNumber, formatShortDate } from "../format"
 
 describe("i18n format helpers", () => {
   it.each([
@@ -15,6 +15,14 @@ describe("i18n format helpers", () => {
     expect(formatDate("2026-10-11T00:00:00Z", "da-DK", "America/New_York")).toBe("10. okt. 2026")
   })
 
+  it("formats quote dates day first with a short month in both languages", () => {
+    expect(formatShortDate("2026-10-11T12:00:00Z", "da-DK", "Europe/Copenhagen")).toBe("11. okt. 2026")
+    expect(formatShortDate("2026-10-11T12:00:00Z", "en-US", "UTC")).toBe("11 Oct 2026")
+    expect(formatShortDate("2026-10-11T00:00:00Z", "en-US", "America/New_York")).toBe("10 Oct 2026")
+  })
+  it.each(["de-DE", "fr-FR", "nl-NL"])("preserves the configured short month for %s", locale => {
+    expect(formatShortDate("2026-10-11T12:00:00Z", locale, "UTC")).toBe(formatDate("2026-10-11T12:00:00Z", locale, "UTC", { month: "short" }))
+  })
   it("formats US currency with en-US locale", () => {
     expect(formatCurrency(1234.56, "USD", "en-US")).toBe("$1,234.56")
   })
@@ -33,6 +41,27 @@ describe("i18n format helpers", () => {
 
   it("formats DKK with the Danish separators and currency suffix", () => {
     expect(formatCurrency(1250, "DKK", "da-DK")).toBe("1.250,00\u00a0kr.")
+  })
+
+  it("uses compact day-first invoice dates without changing the shared default", () => {
+    expect(formatDate("2026-03-09", "da-DK", "UTC", { month: "short", dayFirst: true })).toBe("9. mar. 2026")
+    expect(formatDate("2026-03-09", "en-US", "UTC", { month: "short", dayFirst: true })).toBe("9 Mar 2026")
+    expect(formatDate("2026-03-09T23:30:00Z", "en-US", "Europe/Copenhagen", { month: "short", dayFirst: true })).toBe("10 Mar 2026")
+    expect(formatDate("2026-03-09", "en-US", "UTC", { month: "long" })).toBe("March 9, 2026")
+  })
+
+  it.each(["ja-JP-u-ca-japanese", "en-US-u-ca-japanese", "zh-CN-u-ca-chinese", "ja-JP"])("preserves calendar parts and locale notation in compact dates for %s", locale => {
+    const date = new Date("2026-03-09T00:00:00Z")
+    const formatter = new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })
+    const formatted = formatDate(date, locale, "UTC", { month: "short", dayFirst: true })
+    expect(formatted).toBe(formatter.format(date))
+    for (const part of formatter.formatToParts(date).filter(part => ["era", "relatedYear", "yearName"].includes(part.type))) {
+      expect(formatted).toContain(part.value)
+    }
+  })
+
+  it("retains the Japanese era alongside its year", () => {
+    expect(formatDate("2026-03-09", "ja-JP-u-ca-japanese", "UTC", { month: "short", dayFirst: true })).toContain("令和8")
   })
 
   it("formats a quantity with the locale's decimal separator", () => {

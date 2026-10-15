@@ -16,6 +16,36 @@ describe("Phase A pure postings", () => {
     ledger.apply({ type: "credit_note.issued", schemaVersion: 2, payload: creditFixture() })
     ledger.assertEnding({}, { [key]: {} })
   })
+  it("posts and fully reverses an unclassified-zero invoice using its frozen non-registration", () => {
+    const p = invoiceFixture({ lines: [{ quantity: "1", unitPrice: "100", sortOrder: 0, vat: { treatment: "unclassified_zero", rate: "0", country: "DK" } }] })
+    p.seller.momsRegistered = false
+    const event = { type: "invoice.issued", schemaVersion: 1, payload: p }
+    const frozen = JSON.stringify(event)
+    const ledger = new TestLedger(), key = p.vatGroups[0]!.key
+    const lines = ledger.apply(event)
+    expect(lines.some(line => line.role === "output_vat")).toBe(false)
+    expect(lines).toContainEqual({ role: "debtor", debitMinor: "10000", creditMinor: "0", currency: "DKK", exponent: 2, vatGroup: null })
+    ledger.assertEnding({ debtor: "10000", revenue: "-10000" }, { [key]: { revenue: "-10000" } })
+    const creditLines = ledger.apply({ type: "credit_note.issued", schemaVersion: 2, payload: creditFixture(p) })
+    expect(creditLines.some(line => line.role === "output_vat")).toBe(false)
+    ledger.assertEnding({}, { [key]: {} })
+    expect(JSON.stringify(event)).toBe(frozen)
+  })
+  it.each([true, null, undefined])("refuses unclassified-zero postings with frozen registration %s", momsRegistered => {
+    const p = invoiceFixture({ lines: [{ quantity: "1", unitPrice: "100", sortOrder: 0, vat: { treatment: "unclassified_zero", rate: "0" } }] })
+    p.seller.momsRegistered = momsRegistered
+    expect(postingsFor({ type: "invoice.issued", schemaVersion: 1, payload: p })).toMatchObject({ code: "unsupported_treatment_combination" })
+    expect(postingsFor({ type: "credit_note.issued", schemaVersion: 2, payload: creditFixture(p) })).toMatchObject({ code: "unsupported_treatment_combination" })
+  })
+  it("preserves standard tax postings with a remembered Danish choice when events carry no tax regime", () => {
+    const p = invoiceFixture()
+    p.seller.momsRegistered = false
+    const ledger = new TestLedger(), key = p.vatGroups[0]!.key
+    ledger.apply({ type: "invoice.issued", schemaVersion: 1, payload: p })
+    ledger.assertEnding({ debtor: "125", revenue: "-100", output_vat: "-25" }, { [key]: { revenue: "-100", output_vat: "-25" } })
+    ledger.apply({ type: "credit_note.issued", schemaVersion: 2, payload: creditFixture(p) })
+    ledger.assertEnding({}, { [key]: {} })
+  })
   it("preserves decimal strings beyond safe integers and ignores reporting-only VAT valuation", () => {
     const p = invoiceFixture({ lines: [{ quantity: "1000000", unitPrice: "1000000000000", sortOrder: 0, vat: { treatment: "standard", rate: "0.25" } }] })
     const event = { type: "invoice.issued", schemaVersion: 1, payload: p }

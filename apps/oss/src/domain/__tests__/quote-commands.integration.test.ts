@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto"
+import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
 import { signQuotePublicToken } from "../../lib/quotes/public"
@@ -95,6 +98,22 @@ describeIfDatabase("quote commands", () => {
     const sent = await executeCommand(sendQuote, { id: created.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
     expect(sent).toMatchObject({ status: "completed", result: { number: "QTE-0042" } })
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(1)
+  })
+
+  it("rejects onboarding over a numbered legacy draft and preserves subsequent quote issuance", async () => {
+    const { org, contactId } = await setupWithContact()
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { onboardingStatus: "in_progress", onboardingCompletedAt: null, quoteNextNum: 2 } })
+    const legacy = await executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })
+    if (legacy.status !== "completed") throw new Error("create failed")
+    await prisma.quote.update({ where: { id: legacy.result.id }, data: { number: "QTE-0001" } })
+    const before = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })
+    await expect(confirmOnboardingV2(org.organizationId, confirmOnboardingV2Schema.parse({ idempotencyKey: randomUUID(), companyName: "Test ApS", companyAddress: "Testvej 1", source: "manual", cvr: "24256790", companyForm: "ApS", momsRegistered: true, vatId: "DK24256790" }), "signup@example.test")).rejects.toMatchObject({ code: "CONFLICT" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).toEqual(before)
+    const sentLegacy = await executeCommand(sendQuote, { id: legacy.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+    expect(sentLegacy).toMatchObject({ status: "completed", result: { number: "QTE-0001" } })
+    const next = await executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })
+    if (next.status !== "completed") throw new Error("create failed")
+    expect(await executeCommand(sendQuote, { id: next.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })).toMatchObject({ status: "completed", result: { number: "QTE-0002" } })
   })
 
   it("does not consume a number when sending fails", async () => {

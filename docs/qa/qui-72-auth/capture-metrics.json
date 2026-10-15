@@ -1,0 +1,130 @@
+[
+  {
+    "file": "login-da-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nLog ind\nLog ind for at se dine fakturaer og tilbud\nE-mail\nAdgangskode\nGlemt adgangskode?\nLog ind\n\nHar du ikke en konto? Opret konto"
+  },
+  {
+    "file": "forgot-password-da-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nNulstil din adgangskode\nSkriv din e-mail, så sender vi dig et link til at vælge en ny adgangskode.\nE-mail\nSend link\nTilbage til log ind"
+  },
+  {
+    "file": "signup-da-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nOpret konto\nDu skal have en invitation for at oprette en konto. Har du fået en, kan du oprette din konto her.\nNavn\nE-mail\nAdgangskode\n\nBrug mellem 8 og 128 tegn.\n\nInvitationskode\n\nEr din e-mail allerede inviteret, kan du lade feltet stå tomt.\n\nOpret konto\n\nHar du allerede en konto? Log ind"
+  },
+  {
+    "file": "reset-password-da-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nVælg en ny adgangskode\nSkriv din nye adgangskode to gange.\nNy adgangskode\n\nBrug mellem 8 og 128 tegn.\n\nGentag adgangskode\nGem ny adgangskode\nTilbage til log ind"
+  },
+  {
+    "file": "login-en-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nLog in\nLog in to see your invoices and quotes\nEmail\nPassword\nForgot password?\nLog in\n\nDon't have an account? Sign up"
+  },
+  {
+    "file": "forgot-password-en-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nReset your password\nEnter your email and we'll send you a link to choose a new password.\nEmail\nSend reset link\nBack to log in"
+  },
+  {
+    "file": "signup-en-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nCreate account\nYou need an invitation to create an account. Got one? Create your account here.\nName\nEmail\nPassword\n\nUse 8 to 128 characters.\n\nInvite code\n\nIf your email was invited, you can leave this blank.\n\nCreate account\n\nAlready have an account? Log in"
+  },
+  {
+    "file": "reset-password-en-1440.png",
+    "width": 1440,
+    "height": 900,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nChoose a new password\nEnter your new password twice.\nNew password\n\nUse 8 to 128 characters.\n\nRepeat password\nSave new password\nBack to log in"
+  },
+  {
+    "file": "login-da-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nLog ind\nLog ind for at se dine fakturaer og tilbud\nE-mail\nAdgangskode\nGlemt adgangskode?\nLog ind\n\nHar du ikke en konto? Opret konto"
+  },
+  {
+    "file": "forgot-password-da-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nNulstil din adgangskode\nSkriv din e-mail, så sender vi dig et link til at vælge en ny adgangskode.\nE-mail\nSend link\nTilbage til log ind"
+  },
+  {
+    "file": "signup-da-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nOpret konto\nDu skal have en invitation for at oprette en konto. Har du fået en, kan du oprette din konto her.\nNavn\nE-mail\nAdgangskode\n\nBrug mellem 8 og 128 tegn.\n\nInvitationskode\n\nEr din e-mail allerede inviteret, kan du lade feltet stå tomt.\n\nOpret konto\n\nHar du allerede en konto? Log ind"
+  },
+  {
+    "file": "reset-password-da-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nVælg en ny adgangskode\nSkriv din nye adgangskode to gange.\nNy adgangskode\n\nBrug mellem 8 og 128 tegn.\n\nGentag adgangskode\nGem ny adgangskode\nTilbage til log ind"
+  },
+  {
+    "file": "login-en-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nLog in\nLog in to see your invoices and quotes\nEmail\nPassword\nForgot password?\nLog in\n\nDon't have an account? Sign up"
+  },
+  {
+    "file": "forgot-password-en-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nReset your password\nEnter your email and we'll send you a link to choose a new password.\nEmail\nSend reset link\nBack to log in"
+  },
+  {
+    "file": "signup-en-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nCreate account\nYou need an invitation to create an account. Got one? Create your account here.\nName\nEmail\nPassword\n\nUse 8 to 128 characters.\n\nInvite code\n\nIf your email was invited, you can leave this blank.\n\nCreate account\n\nAlready have an account? Log in"
+  },
+  {
+    "file": "reset-password-en-390.png",
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "wordmark": 72.21875,
+    "text": "DA\nEN\nChoose a new password\nEnter your new password twice.\nNew password\n\nUse 8 to 128 characters.\n\nRepeat password\nSave new password\nBack to log in"
+  }
+]

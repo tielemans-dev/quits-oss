@@ -105,7 +105,7 @@ describe("PaymentDetailsCard", () => {
     expect(within(preview).getByText("DK50 0040 0440 1162 43")).toBeTruthy()
     expect(within(preview).getByText("DABADKKK")).toBeTruthy()
     expect(within(preview).getByText("MobilePay Box 12345")).toBeTruthy()
-    expect(preview.textContent).toContain("Payment reference: INV-0001")
+    expect(preview.textContent).toContain("Payment message: INV-0001")
     expect(screen.queryByText("settings.paymentDetails.preview.empty")).toBeNull()
   })
 
@@ -114,7 +114,7 @@ describe("PaymentDetailsCard", () => {
     const preview = screen.getByTestId("payment-details-preview")
     expect(within(preview).getByText("Betalingsoplysninger")).toBeTruthy()
     expect(within(preview).getByText("Kontohaver")).toBeTruthy()
-    expect(preview.textContent).toContain("Betalingsreference: INV-0001")
+    expect(preview.textContent).toContain("Betalingsbesked: INV-0001")
     cleanup()
 
     await renderAs(complete, { locale: "en-US" })

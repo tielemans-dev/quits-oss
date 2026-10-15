@@ -1,0 +1,17 @@
+export const daSellerVatMessages = {
+  "vatStatus.label": "Er du momsregistreret?",
+  "vatStatus.yes": "Jeg er momsregistreret",
+  "vatStatus.no": "Jeg er ikke momsregistreret",
+  "vatStatus.noHint": "Du fakturerer uden moms. Bliv momsregistreret, når du sælger for mere end 50.000 kr. på 12 måneder.",
+  "sellerCard.body": "Før du kan sende en faktura, skal dit CVR-nummer stå på den, og du skal bekræfte, om du er momsregistreret.",
+  "onboardingV2.lookupLabel": "Virksomhedsnavn eller CVR",
+  "sellerSetup.lookup": "Find virksomhed",
+  "onboardingV2.lookupUnavailable": "Virksomhedsopslag er utilgængeligt eller gav ingen resultater. Du kan indtaste oplysningerne manuelt.",
+  "onboardingV2.statusUnknown": "Denne juridiske status kan ikke bruges til automatisk opsætning. Gennemgå oplysningerne, og indtast din virksomhed manuelt.",
+  "sellerSetup.manual": "Indtast virksomhed manuelt",
+  "onboardingV2.backToLookup": "Tilbage til virksomhedsopslag",
+  "onboardingV2.reviewTitle": "Gennemgå virksomheden",
+  "onboardingV2.companyForm": "Virksomhedsform",
+  "vatStatus.withdraw": "Træk alle sælgerbekræftelser tilbage",
+  "line.noVat": "Ingen moms",
+} as const

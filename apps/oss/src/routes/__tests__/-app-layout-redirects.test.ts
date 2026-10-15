@@ -16,7 +16,10 @@ vi.mock("../../lib/auth-session", () => ({ getAppLayoutSession: state.getAppLayo
 // layout must follow what the server says instead.
 vi.mock("../../lib/distribution", () => ({ isCloudDistribution: false, billingEnabled: false }))
 vi.mock("../../lib/auth-client", () => ({ useSession: () => ({ data: null }) }))
-vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ setLocale: vi.fn() }) }))
+vi.mock("../../lib/i18n/react", () => ({
+  useI18n: () => ({ setLocale: vi.fn() }),
+  I18nProvider: ({ children }: { children: unknown }) => children,
+}))
 vi.mock("../../trpc/client", () => ({ trpc: { settings: { get: { query: () => new Promise(() => undefined) } } } }))
 vi.mock("../../components/app-sidebar", () => ({ AppSidebar: () => null }))
 vi.mock("../../components/organization-changed-banner", () => ({ OrganizationChangedBanner: () => null }))
@@ -47,7 +50,7 @@ function layout(
 
 async function load(pathname: string, preload = false) {
   try {
-    return await route.beforeLoad({ location: { pathname }, preload })
+    return await route.beforeLoad({ location: { pathname: pathname.split("?")[0], href: pathname, search: Object.fromEntries(new URLSearchParams(pathname.split("?")[1])) }, preload })
   } catch (redirect) {
     return redirect
   }
@@ -71,7 +74,30 @@ describe("app layout redirects on a cloud server", () => {
 
   it("sends a user without an active organization to onboarding", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout(null, null))
-    expect(await load("/invoices")).toEqual({ to: "/onboarding" })
+    expect(await load("/invoices")).toEqual({ href: "/onboarding?next=%2Finvoices" })
+  })
+
+  it("retains exact path, query and locale while requiring setup", async () => {
+    state.getAppLayoutSession.mockResolvedValue(layout("org_1", false))
+    const result = await load("/invoices?filter=a%20b&lang=da") as { href: string }
+    expect(new URL(result.href, "http://app.test").searchParams.get("next")).toBe("/invoices?filter=a%20b&lang=da")
+    expect(result.href).toContain("&lang=da")
+  })
+
+  it("resumes a safe carried target after completed cloud setup", async () => {
+    state.getAppLayoutSession.mockResolvedValue(layout("org_1", true))
+    expect(await load("/onboarding?next=%2Fhosted%2Faccount%3Ftab%3Dvat&lang=en"))
+      .toEqual({ href: "/hosted/account?tab=vat&lang=en" })
+  })
+
+  it("does not loop when the carried target is onboarding itself", async () => {
+    state.getAppLayoutSession.mockResolvedValue(layout("org_1", true))
+    expect(await load("/onboarding?next=%2Fonboarding%3Flang%3Den")).toEqual({ to: "/" })
+  })
+
+  it("rejects an external carried target after completed setup", async () => {
+    state.getAppLayoutSession.mockResolvedValue(layout("org_1", true))
+    expect(await load("/onboarding?next=https%3A%2F%2Fevil.example")).toEqual({ to: "/" })
   })
 
   it("lets a user without an active organization stay on onboarding", async () => {
@@ -81,7 +107,7 @@ describe("app layout redirects on a cloud server", () => {
 
   it("sends an incomplete organization to cloud onboarding from an app page, in the browser", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", false))
-    expect(await load("/invoices")).toEqual({ to: "/onboarding" })
+    expect(await load("/invoices")).toEqual({ href: "/onboarding?next=%2Finvoices" })
   })
 
   it("keeps an incomplete organization on onboarding", async () => {
@@ -101,7 +127,7 @@ describe("app layout redirects on a cloud server", () => {
 
   it("treats a missing onboarding status as incomplete", async () => {
     state.getAppLayoutSession.mockResolvedValue(layout("org_a", null))
-    expect(await load("/invoices")).toEqual({ to: "/onboarding" })
+    expect(await load("/invoices")).toEqual({ href: "/onboarding?next=%2Finvoices" })
   })
 
   it("hands the server's distribution to every page through the route context", async () => {
@@ -184,7 +210,7 @@ describe("app layout server calls", () => {
 
   it("sees a change straight away once the reuse is invalidated (sign-out, organization switch, onboarding)", async () => {
     state.getAppLayoutSession.mockResolvedValueOnce(layout("org_a", false))
-    expect(await load("/invoices")).toEqual({ to: "/onboarding" })
+    expect(await load("/invoices")).toEqual({ href: "/onboarding?next=%2Finvoices" })
 
     // Onboarding completed: the next navigation must not be sent back by the earlier answer.
     state.getAppLayoutSession.mockResolvedValueOnce(layout("org_a", true))

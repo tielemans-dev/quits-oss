@@ -61,4 +61,5 @@ export const enPublicMessages = {
   "public.agreement.status.expired": "Expired",
   "public.agreement.status.completed": "Completed",
   "public.agreement.status.cancelled": "Cancelled",
+  "public.quote.decision.accepted.body": "You accepted the quote on {date}.",
 } as const

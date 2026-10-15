@@ -1,7 +1,10 @@
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { nonVatStatement } from "../../../lib/documents/non-vat-note"
+import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
-import { parseBuyerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
@@ -204,6 +207,7 @@ function CreditNoteDetailPage() {
 
   const timezone = creditNote.timezone
   const money = (value: number) => formatCurrency(value, creditNote.currency, locale)
+  const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
   const buyer = parseBuyerSnapshot(creditNote.buyerSnapshot)
   const contact = { ...creditNote.contact, ...buyer, name: buyer?.name ?? creditNote.contact.name }
   const recipientValid = isValidEmailAddress(creditNote.contact.email)
@@ -299,7 +303,7 @@ function CreditNoteDetailPage() {
               <TableBody>
                 {creditNote.items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.description}</TableCell>
+                    <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
                     <TableCell className="text-right num">{item.quantity}</TableCell>
                     <TableCell className="text-right num">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>
                     <TableCell className="text-right num">{money(item.displayAmount ?? item.total)}</TableCell>
@@ -317,7 +321,8 @@ function CreditNoteDetailPage() {
 
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("creditNotes.detail.reason")}</h3>
-            <p className="text-sm whitespace-pre-wrap">{creditNote.reason}</p>
+            {momsRegistered === false && <p className="mb-4 text-sm text-muted-foreground">{nonVatStatement(locale)}</p>}
+            <p className="text-sm whitespace-pre-wrap">{withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)}</p>
           </div>
         </CardContent>
       </Card>

@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "./documents"
 
 describe("document snapshots", () => {
+  it.each([true, false, null])("retains seller registration %s when parsing a frozen snapshot", momsRegistered => {
+    expect(parseSellerSnapshot({ companyName: "Seller", momsRegistered })?.momsRegistered).toBe(momsRegistered)
+  })
+
   it("parses stored seller snapshots", () => {
     expect(
       parseSellerSnapshot({

@@ -4,6 +4,10 @@ import dotenv from "dotenv"
 import { spawnSync } from "node:child_process"
 import { resolveDatabaseTarget } from "./predev-bootstrap-lib.mjs"
 import { discoverWorkspaceEnvFile } from "./workspace-env.js"
+import { worktreeEnvironment } from "./slot.mjs"
+
+const worktree = await worktreeEnvironment()
+if (worktree) Object.assign(process.env, worktree.env)
 
 const envFile = discoverWorkspaceEnvFile()
 if (envFile) {
@@ -20,6 +24,8 @@ function run(command, args) {
     process.exit(result.status ?? 1)
   }
 }
+
+run(process.platform === "win32" ? "bun.exe" : "bun", ["run", "prisma:generate"])
 
 if ((process.env.QUITS_SKIP_PREDEV_BOOTSTRAP ?? process.env.YAIP_SKIP_PREDEV_BOOTSTRAP) === "1") {
   process.exit(0)
