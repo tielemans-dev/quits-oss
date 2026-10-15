@@ -83,8 +83,8 @@ for (const locale of ["da-DK", "en-US"]) {
           images.push({ file, locale, width, state, url: page.url(), countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", validation: state === "invalid-submit" ? message : null })
         }
         const message = locale.startsWith("da")
-          ? "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."
-          : "Fill in company name, address and email to continue."
+          ? "Udfyld de markerede felter for at gøre din profil klar til fakturering."
+          : "Fill in the marked fields to get your profile ready for invoicing."
         await capture("fresh-initial")
         await page.locator("#companyName").fill("Synthetic Onboarding ApS")
         await expect(page.getByRole("alert")).toHaveCount(0)

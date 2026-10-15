@@ -1,0 +1,17 @@
+export const enValidationMessages = {
+  "validation.required": "Fill in this field",
+  "validation.customer.required": "Choose a customer",
+  "validation.email.invalid": "Enter a valid email, like name@company.com",
+  "validation.email.required": "Enter an email",
+  "validation.line.description.required": "Describe what you're invoicing for",
+  "validation.line.qty.invalid": "Enter a quantity, like 1 or 2.5",
+  "validation.line.price.invalid": "Enter a price, like 1,250.00",
+  "validation.lines.empty": "Add at least one line",
+  "validation.date.invalid": "Enter a date, like 24/10/2026",
+  "validation.dueDate.beforeIssue": "Due date must be after the invoice date",
+  "validation.cvr.invalid": "A CVR number has 8 digits",
+  "validation.tooLong": "{max} characters max",
+  "validation.unknown": "Check this field and try again",
+  "validation.onboarding.banner": "Fill in the marked fields to get your profile ready for invoicing.",
+  "validation.save.failed": "We couldn't save right now. Try again in a moment.",
+} as const

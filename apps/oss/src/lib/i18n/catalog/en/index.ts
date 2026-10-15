@@ -28,6 +28,7 @@ import { enSetupMessages } from "./setup"
 import { enStatusMessages } from "./status"
 import { enUiMessages } from "./ui"
 import { enUserMessages } from "./user"
+import { enValidationMessages } from "./validation"
 
 export const enCatalog = {
   ...enSellerVatMessages,
@@ -60,4 +61,5 @@ export const enCatalog = {
   ...enStatusMessages,
   ...enUiMessages,
   ...enUserMessages,
+  ...enValidationMessages,
 } as const

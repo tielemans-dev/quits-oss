@@ -71,6 +71,7 @@ import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
+import { readableIssues, type ReadableIssue } from "../../../lib/validation/readable-errors"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
@@ -250,6 +251,7 @@ function InvoiceDetailPage() {
   const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
+  const [editIssues, setEditIssues] = useState<ReadableIssue[]>([])
   const [editDueDate, setEditDueDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
@@ -342,7 +344,13 @@ function InvoiceDetailPage() {
     setEditing(true)
   }
 
+  // An issue belongs to the field it was reported for; editing that field clears it (as on new invoices).
+  function clearIssues(drop: (issue: ReadableIssue) => boolean) {
+    setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
+  }
+
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
+    clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     )
@@ -369,6 +377,7 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
+    setEditIssues([])
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
     try {
@@ -391,11 +400,9 @@ function InvoiceDetailPage() {
       setInvoice(updated as unknown as Invoice)
       setEditing(false)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("invoices.detail.error.updateFailed")
-      )
+      const issues = readableIssues(err)
+      if (issues) setEditIssues(issues)
+      else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
       setActing(false)
     }
@@ -540,6 +547,12 @@ function InvoiceDetailPage() {
   if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
     const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
+      editIssues.filter(match).map((issue) => t(issue.key, issue.params))
+    const fieldMessage = (match: (issue: ReadableIssue) => boolean) => {
+      const messages = issueMessages(match)
+      return messages.length > 0 ? <>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</> : null
+    }
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
@@ -563,7 +576,7 @@ function InvoiceDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>{t("docForm.contact")} *</Label>
-                <Select disabled={!!invoice.agreementId} value={editContactId} onValueChange={setEditContactId}>
+                <Select disabled={!!invoice.agreementId} value={editContactId} onValueChange={(value) => { setEditContactId(value); clearIssues((issue) => issue.field === "contact") }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
@@ -575,23 +588,27 @@ function InvoiceDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldMessage((issue) => issue.field === "contact")}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="editDueDate">{t("invoices.new.field.dueDate")} *</Label>
                 <LocalizedDateField
                   id="editDueDate"
                   value={editDueDate}
-                  onChange={setEditDueDate}
+                  onChange={(value) => { setEditDueDate(value); clearIssues((issue) => issue.field === "dueDate") }}
                   locale={locale}
                   placeholder={t("docForm.selectDate")}
                   clearLabel={t("docForm.clear")}
                 />
+                {fieldMessage((issue) => issue.field === "dueDate")}
               </div>
             </div>
+            {fieldMessage((issue) => issue.field === "form" || issue.field === "email" || issue.field === "cvr")}
 
             {/* Line Items */}
             <div className="grid gap-3">
               <Label>{t("docForm.lineItems")}</Label>
+              {fieldMessage((issue) => issue.field === "items" && issue.line === undefined)}
               <div className="rounded-md border">
                 <div className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                   <span>{t("docForm.column.item")}</span>
@@ -666,6 +683,11 @@ function InvoiceDetailPage() {
                     >
                       <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
+                    {editIssues.some((issue) => issue.field === "items" && issue.line === index) && (
+                      <div className="col-span-full">
+                        {fieldMessage((issue) => issue.field === "items" && issue.line === index)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
