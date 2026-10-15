@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { PublicInvoicePaymentPage } from "../../components/invoices/public-invoice-payment-page"
 import { LocalizedDocument } from "../../components/documents/localized-document"
+import { publicInvoiceLogo } from "../documents/public-logo-access"
+import { publicInvoicePdf } from "../documents/pdf-access"
 import { signInvoicePaymentToken } from "../payments/public"
 import { loadPublicInvoiceByToken } from "../payments/public-access"
 import { serializePublicInvoiceSession } from "../payments/public-session"
@@ -22,11 +24,25 @@ type Settings = {
   stripeAccountStatus: StripeAccountStatus
 }
 
+const logo = "data:image/png;base64,AAAA"
+type ExpireInput = { secretKey?: string; target?: { kind: string }; sessionId: string }
+
 const state = vi.hoisted(() => ({
   createCheckout: vi.fn(),
   resolveTarget: vi.fn(),
+  decryptSecret: vi.fn(() => "sk_test_synthetic"),
+  expireCheckout: vi.fn(async (_input: ExpireInput) => "expired" as "expired" | "missing" | "not_open"),
   updateInvoice: vi.fn(async () => ({ count: 1 })),
-  invoice: { status: "sent", paymentStatus: "unpaid", amountPaid: 0, amountCredited: 0, totalGross: 1250, currency: "DKK", locale: "en-US" },
+  invoice: {
+    status: "sent",
+    paymentStatus: "unpaid",
+    amountPaid: 0,
+    amountCredited: 0,
+    totalGross: 1250,
+    currency: "DKK",
+    locale: "en-US",
+    stripeCheckoutSessionId: null as string | null,
+  },
   settings: {} as Settings,
 }))
 
@@ -34,13 +50,16 @@ vi.mock("../db", () => ({
   prisma: {
     invoice: {
       findFirst: async (query: {
-        where: { id: string; publicPaymentKeyVersion: number; status: { in: string[] } }
+        where: { id: string; organizationId?: string; publicPaymentKeyVersion?: number; status?: { in: string[] } }
         include?: {
           organization?: { select?: { settings?: { select?: Record<string, boolean> } } }
         }
       }) => {
-        if (query.where.id !== invoiceId || query.where.publicPaymentKeyVersion !== 1 ||
-            !query.where.status.in.includes(state.invoice.status)) return null
+        if (query.where.id !== invoiceId) return null
+        // The public loader checks the payment link. The PDF route then loads the same invoice by id.
+        if (query.where.publicPaymentKeyVersion !== undefined || query.where.status) {
+          if (query.where.publicPaymentKeyVersion !== 1 || !query.where.status?.in.includes(state.invoice.status)) return null
+        } else if (query.where.organizationId !== "org-pay-gate") return null
         const select = query.include?.organization?.select?.settings?.select
         const settings = select
           ? Object.fromEntries(
@@ -52,7 +71,6 @@ vi.mock("../db", () => ({
         return {
           id: invoiceId,
           organizationId: "org-pay-gate",
-          stripeCheckoutSessionId: null,
           number: "INV-0001",
           publicPaymentKeyVersion: 1,
           publicPaymentIssuedAt: new Date("2026-03-01T00:00:00.000Z"),
@@ -84,14 +102,16 @@ vi.mock("../db", () => ({
       updateMany: state.updateInvoice,
       findUniqueOrThrow: async () => state.invoice,
     },
+    payment: { findUnique: async () => null },
     orgSettings: { findUnique: async () => state.settings },
   },
 }))
 vi.mock("../payments/stripe", async importOriginal => ({
   ...(await importOriginal<typeof import("../payments/stripe")>()),
   createStripeInvoiceCheckoutSession: state.createCheckout,
+  expireOpenStripeCheckoutSession: state.expireCheckout,
 }))
-vi.mock("../secrets", () => ({ decryptSecret: () => "sk_test_synthetic" }))
+vi.mock("../secrets", () => ({ decryptSecret: state.decryptSecret }))
 
 const token = signInvoicePaymentToken({ invoiceId, keyVersion: 1, scope: "invoice_payment" }, secret)
 async function publicSession() {
@@ -122,9 +142,11 @@ describe("public pay card gating", () => {
       stripePublishableKey: null, stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null,
       stripeAccountStatus: "none",
     }
-    state.invoice = { status: "sent", paymentStatus: "unpaid", amountPaid: 0, amountCredited: 0, totalGross: 1250, currency: "DKK", locale: "en-US" }
+    state.invoice = { status: "sent", paymentStatus: "unpaid", amountPaid: 0, amountCredited: 0, totalGross: 1250, currency: "DKK", locale: "en-US", stripeCheckoutSessionId: null }
     state.createCheckout.mockReset().mockResolvedValue({ id: "cs_test", url: "https://checkout.example/cs_test" })
-    state.updateInvoice.mockClear()
+    state.decryptSecret.mockReset().mockReturnValue("sk_test_synthetic")
+    state.expireCheckout.mockReset().mockResolvedValue("expired")
+    state.updateInvoice.mockReset().mockResolvedValue({ count: 1 })
     state.resolveTarget.mockReset().mockReturnValue({
       kind: "connect", stripeAccount: "acct_test",
       client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
@@ -253,6 +275,86 @@ describe("public pay card gating", () => {
     const serialized = JSON.stringify(session)
     for (const value of [...Object.keys(configuredByok), ...Object.values(configuredByok), "sk_test_synthetic", "webhookSecret", "secretKey", "checkoutTarget"]) {
       expect(serialized).not.toContain(value)
+    }
+  })
+
+  async function expectInvoiceReadableWithoutCard() {
+    const loaded = await loadPublicInvoiceByToken(token, secret)
+    expect(loaded?.invoice).toMatchObject({ id: invoiceId, number: "INV-0001", organizationId: "org-pay-gate" })
+    expect(loaded?.stripeEnabled).toBe(false)
+    const html = await publicPayPage()
+    expect(html).toContain("0440116243")
+    expect(html).toContain(`/pay/${encodeURIComponent(token)}/logo`)
+    expect(html).toContain("Acme Studio")
+    expect(html).not.toContain("Pay now")
+    expect((await publicInvoiceLogo(token)).status).toBe(200)
+    const pdf = await publicInvoicePdf(token)
+    expect(pdf.status).not.toBe(404)
+    expect(await pdf.text()).not.toBe("This link is no longer valid")
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.createCheckout).not.toHaveBeenCalled()
+  }
+
+  it("keeps the invoice readable when the checkout extension throws", async () => {
+    state.settings.stripeAccountStatus = "active"
+    state.settings.companyLogo = logo
+    state.resolveTarget.mockRejectedValue(new Error("connect resolver failed"))
+    await expectInvoiceReadableWithoutCard()
+  })
+
+  it("keeps the invoice readable when BYOK ciphertext cannot be decrypted", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "pending", companyLogo: logo })
+    state.decryptSecret.mockImplementation(() => { throw new Error("encryption secret changed") })
+    await expectInvoiceReadableWithoutCard()
+  })
+
+  it("expires a tracked BYOK session with its own key before opening Connect", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.invoice.stripeCheckoutSessionId = "cs_byok_open"
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => input.secretKey ? "expired" : "missing")
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "redirect", url: "https://checkout.example/cs_test" })
+    expect(state.expireCheckout).toHaveBeenNthCalledWith(1, { secretKey: "sk_test_synthetic", sessionId: "cs_byok_open" })
+    expect(state.expireCheckout).toHaveBeenCalledTimes(1)
+    expect(state.expireCheckout.mock.invocationCallOrder[0]).toBeLessThan(state.createCheckout.mock.invocationCallOrder[0])
+    expect(state.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ target: expect.objectContaining({ kind: "connect" }) }))
+  })
+
+  it("does not treat resource_missing on BYOK as expiry of a Connect session", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.invoice.stripeCheckoutSessionId = "cs_connect_open"
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => input.secretKey ? "missing" : "expired")
+    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
+    expect(state.expireCheckout.mock.calls.map(call => call[0].secretKey ? "byok" : "connect")).toEqual(["byok", "connect"])
+    expect(state.expireCheckout).toHaveBeenLastCalledWith(expect.objectContaining({
+      sessionId: "cs_connect_open",
+      target: expect.objectContaining({ kind: "connect" }),
+    }))
+    expect(state.expireCheckout.mock.invocationCallOrder[1]).toBeLessThan(state.createCheckout.mock.invocationCallOrder[0])
+  })
+
+  it("refuses a new Connect session when the BYOK session cannot be expired", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.invoice.stripeCheckoutSessionId = "cs_byok_open"
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => {
+      if (input.secretKey) throw new Error("byok unavailable")
+      return "missing"
+    })
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.createCheckout).not.toHaveBeenCalled()
+    expect(state.expireCheckout).toHaveBeenCalledTimes(1)
+    expect(state.expireCheckout).toHaveBeenCalledWith({ secretKey: "sk_test_synthetic", sessionId: "cs_byok_open" })
+  })
+
+  it("expires a session opened in this request on the Connect account that created it", async () => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.updateInvoice.mockResolvedValue({ count: 0 })
+    state.expireCheckout.mockImplementation(async (input: ExpireInput) => input.secretKey ? "expired" : "expired")
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
+    expect(state.createCheckout).toHaveBeenCalledTimes(3)
+    expect(state.expireCheckout).toHaveBeenCalledTimes(3)
+    for (const [input] of state.expireCheckout.mock.calls) {
+      expect(input.secretKey).toBeUndefined()
+      expect(input).toEqual(expect.objectContaining({ sessionId: "cs_test", target: expect.objectContaining({ kind: "connect" }) }))
     }
   })
 })
