@@ -46,6 +46,9 @@ export class TerminalJobError extends Error {
   override readonly name = "TerminalJobError"
 }
 
+/** A multi-step job is waiting for its outbox, without consuming a failure attempt. */
+export class WaitingJobError extends Error {}
+
 const handlers = new Map<string, JobHandler>()
 
 /**
@@ -67,7 +70,7 @@ function backoffMs(attempts: number) {
  * What happened to one job run: not claimed (another runner has it), done, failed and queued for a
  * retry, failed after its last attempt, or failed permanently (`TerminalJobError`).
  */
-export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "terminal" | "deferred"
+export type JobRunOutcome = "skipped" | "done" | "retrying" | "exhausted" | "terminal" | "deferred" | "waiting"
 
 async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
   // Claim atomically so concurrent runners never execute the same job twice.
@@ -95,6 +98,13 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
     await prisma.job.updateMany({ where: owned, data: { status: "done", lastError: null, claimToken: null } })
     return "done"
   } catch (error) {
+    if (error instanceof WaitingJobError) {
+      await prisma.job.updateMany({ where: owned, data: {
+        status: "pending", attempts: { decrement: 1 }, claimToken: null,
+        runAfter: new Date(now.getTime() + 1000),
+      } })
+      return "waiting"
+    }
     if (error instanceof OperationDenied) {
       await prisma.job.updateMany({ where: owned, data: {
         status: "pending", attempts: { decrement: 1 }, claimToken: null,
@@ -151,6 +161,7 @@ async function runJobBatch(ids: readonly string[], now: Date, deadline?: number)
     if (outcome === "skipped") continue
     if (outcome === "deferred") { result.deferred += 1; continue }
     result.processed += 1
+    if (outcome === "waiting") continue
     if (outcome === "done") result.succeeded += 1
     else if (outcome === "retrying") result.retrying += 1
     else result.failed += 1

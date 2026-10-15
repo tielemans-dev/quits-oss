@@ -840,6 +840,8 @@ model Job {
   id             String   @id @default(cuid())
   organizationId String
   type           String
+  title          String?
+  steps          JobStep[]
   payload        Json
   status         String   @default("pending")
   attempts       Int      @default(0)
@@ -854,7 +856,34 @@ model Job {
   updatedAt      DateTime @updatedAt
 
   @@index([status, runAfter])
+  @@index([organizationId, type, createdAt])
   @@map("job")
+}
+
+enum JobStepStatus {
+  pending
+  running
+  succeeded
+  failed
+}
+
+model JobStep {
+  id          String        @id @default(cuid())
+  jobId       String
+  job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  position    Int
+  label       String
+  labelParams Json?
+  invoiceId   String?
+  status      JobStepStatus @default(pending)
+  error       String?
+  attempts    Int           @default(0)
+  deliveryKey String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([jobId, position])
+  @@map("job_step")
 }
 
 /// When a scheduler task last claimed an organization; ticks claim the least recently scanned.

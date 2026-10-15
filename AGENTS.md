@@ -91,6 +91,9 @@ suites. Do not run a full suite or build to prove a small change.
   touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
   bunx vitest run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
   `vitest.global.config.ts` instead when that config owns the test.
+- Direct `bunx vitest` needs the generated Prisma client. Run
+  `bun run prisma:generate` from the root first. T3 worktree setup also
+  generates the client.
 - Lint changed source files with `bunx oxlint --deny-warnings
   --report-unused-disable-directives <changed-files>` from the owning workspace.
   For app types, use `bun run typecheck:app` from the root. For contracts, shared

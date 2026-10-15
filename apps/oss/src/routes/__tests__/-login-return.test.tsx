@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '../../lib/i18n/react'
-import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, onboardingShellLanguage } from '../../lib/login-return'
+import { loginRedirectHref, loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, onboardingShellLanguage } from '../../lib/login-return'
 
 const state = vi.hoisted(() => ({
   search: {} as Record<string, string>, cloud: false, active: false,
@@ -66,6 +66,20 @@ describe('login return contract', () => {
     expect(loginReturnSearchSchema.parse({ next: '/a', redirect: '/b', lang: 'da' })).toEqual({ next: '/a', redirect: '/b', lang: 'da' })
     expect(loginReturnTarget({ next: '/a', redirect: '/b' })).toBe('/a')
     expect(loginReturnTarget({ next: 'https://evil.example', redirect: '/b' })).toBeNull()
+    for (const unsafe of ['//evil.example', '/\\evil.example', 'https://evil.example/x', '/login', '/login?redirect=%2Fa', '/login/', '/LOGIN', '/Login?x=1', '/%6Cogin', '/%6cOGIN/', '/login//', '/login/%2e', '/lo%09gin', '/login%00', '/lo%7Fgin']) {
+      expect(loginReturnTarget({ redirect: unsafe })).toBeNull()
+    }
+  })
+  it('builds the login address a signed-out visitor is sent to', () => {
+    expect(loginRedirectHref('/invoices/new?a=b#c')).toBe('/login?redirect=%2Finvoices%2Fnew%3Fa%3Db%23c')
+    expect(loginRedirectHref('/settings', 'da')).toBe('/login?redirect=%2Fsettings&lang=da')
+    expect(loginRedirectHref('/')).toBe('/login')
+    expect(loginRedirectHref('/login?redirect=%2Fsettings')).toBe('/login')
+    expect(loginRedirectHref('/%6Cogin')).toBe('/login')
+    expect(loginRedirectHref('/LOGIN/')).toBe('/login')
+    expect(loginRedirectHref('/lo%09gin')).toBe('/login')
+    expect(loginRedirectHref('/loginx')).toBe('/login?redirect=%2Floginx')
+    expect(loginRedirectHref('//evil.example')).toBe('/login')
     expect(loginReturnSearchSchema.parse({ lang: 'de' }).lang).toBeUndefined()
   })
   for (const alias of ['next', 'redirect']) for (const value of ['123', 'true', 'false', 'null', '%5B1%5D', '%7B%7D']) for (const cloud of [false, true]) {
