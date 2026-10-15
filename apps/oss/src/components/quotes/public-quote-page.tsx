@@ -34,7 +34,6 @@ type PublicQuoteItem = {
   lineNet: Decimalish
   unitPriceGross: Decimalish
   lineGross: Decimalish
-  vatTreatment?: string
   taxRate?: Decimalish
   sortOrder: number
 }

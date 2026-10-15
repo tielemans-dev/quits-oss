@@ -73,7 +73,6 @@ export function serializePublicQuoteSession(session: {
       lineNet: Decimalish
       unitPriceGross: Decimalish
       lineGross: Decimalish
-      vatTreatment?: string
       taxRate?: Decimalish
       sortOrder: number
     }>
@@ -123,7 +122,6 @@ export function serializePublicQuoteSession(session: {
       items: quote.items.map((item) => ({
         id: item.id,
         description: item.description,
-        vatTreatment: item.vatTreatment,
         quantity: toNumber(item.quantity),
         unitPriceNet: toNumber(item.unitPriceNet),
         lineNet: toNumber(item.lineNet),
