@@ -121,7 +121,7 @@ describe("reminder unsubscribe state and POST", () => {
 
 describe("quote and invoice unsubscribe footer", () => {
   it("keeps mail unchanged without an absolute origin and warns once without recipient data", async () => {
-    const warn = vi.spyOn(appLogger, "warn").mockImplementation(() => {})
+    const warn = vi.spyOn(appLogger, "warn")
     vi.stubEnv("YAIP_APP_ORIGIN", "")
     vi.stubEnv("BETTER_AUTH_URL", "")
     const { db } = fixture()
