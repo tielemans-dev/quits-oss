@@ -132,6 +132,11 @@ suites. Do not run a full suite or build to prove a small change.
 
 ## Docs rules
 
+- Copy changes: `bun run i18n:check` also runs the copy gates (Danish values left as English, glossary
+  wording). Rules and allowlists are in `scripts/i18n/copy-rules.json`; opt out inline with
+  `// copy-check: allow <rule-id> <reason>`. Reviewers: when a diff changes price, trial, non-VAT or B2B
+  wording or behavior, check `docs/public-promises.md`.
+
 - Do not hardcode version strings in prose; use package metadata as the authority.
 - Keep plans, evidence dumps, research notes, scratch files, and PR-only assets
   out of git. The issue and merged PR hold the implementation record.
