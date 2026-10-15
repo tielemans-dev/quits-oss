@@ -1,5 +1,6 @@
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
+import { nominalLineTaxRate } from "../documents/line-amounts"
 import { payableRoundingOf } from "../../domain/documents/vat-summary"
 import { createServerFn } from "@tanstack/react-start"
 import {
@@ -67,6 +68,7 @@ export function serializePublicInvoiceSession(session: {
     items: Array<{
       id: string
       description: string
+      vatTreatment?: string
       taxRate?: Decimalish
       quantity: Decimalish
       unitPriceNet?: Decimalish
@@ -119,6 +121,7 @@ export function serializePublicInvoiceSession(session: {
       amountCredited,
       balanceDue,
       totalTax: toNumber(invoice.totalTax),
+      taxRate: nominalLineTaxRate([...invoice.items].sort((a, b) => a.sortOrder - b.sortOrder).map(item => item.taxRate === undefined ? undefined : toNumber(item.taxRate))),
       subtotalNet: toNumber(invoice.subtotalNet),
       currency: invoice.currency,
       taxRegime: invoice.taxRegime,
@@ -131,6 +134,7 @@ export function serializePublicInvoiceSession(session: {
       items: invoice.items.map((item) => ({
         id: item.id,
         description: item.description,
+        vatTreatment: item.vatTreatment,
         quantity: toNumber(item.quantity),
         ...(item.taxRate !== undefined ? { taxRate: toNumber(item.taxRate) } : {}),
         ...(item.unitPriceNet !== undefined ? { unitPriceNet: toNumber(item.unitPriceNet) } : {}),
