@@ -31,6 +31,8 @@ import {
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
 import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
+import { EmailSendFailureNotice } from "../../../components/invoices/email-send-failure-notice"
+import { EMAIL_SEND_FAILED_PARAM, isEmailSendFailure, isUnexpectedFailure } from "../../../lib/email-send-failure"
 import {
   formatCurrency as formatCurrencyIntl,
   formatDate as formatDateIntl,
@@ -229,8 +231,10 @@ function InvoiceDetailPage() {
   const [depositsEnabled, setDepositsEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [emailDelivery, setEmailDelivery] = useState<EmailDeliveryRuntimeStatus | null>(null)
+  // The invoice was saved but its email did not go out; shown as a notice with a way to try again.
+  const [emailFailed, setEmailFailed] = useState(sendError === EMAIL_SEND_FAILED_PARAM)
   const [error, setError] = useState<string | null>(
-    sendError
+    sendError && sendError !== EMAIL_SEND_FAILED_PARAM
       ? sendError
       : emailWarning
         ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
@@ -550,6 +554,7 @@ function InvoiceDetailPage() {
   async function handleSend(allowSendWithoutEmail = false) {
     if (!invoice) return
     setError(null)
+    setEmailFailed(false)
     setFieldIssues([])
     setActing(true)
     try {
@@ -575,7 +580,9 @@ function InvoiceDetailPage() {
     } catch (err) {
       const issues = invoiceFieldIssues(err)
       setFieldIssues(issues)
-      setError(issues.length ? null : invoice.disputed && !acknowledgeDisputed ? t("agreements.disputedSendRefused") : err instanceof Error ? err.message : t("invoices.detail.error.sendFailed"))
+      const emailDidNotGoOut = isEmailSendFailure(err)
+      setEmailFailed(emailDidNotGoOut)
+      setError(issues.length || emailDidNotGoOut ? null : invoice.disputed && !acknowledgeDisputed ? t("agreements.disputedSendRefused") : err instanceof Error && !isUnexpectedFailure(err) ? err.message : t("invoices.detail.error.sendFailed"))
       await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
@@ -585,6 +592,7 @@ function InvoiceDetailPage() {
   async function handleResendEmail() {
     if (!invoice) return
     setError(null)
+    setEmailFailed(false)
     setFieldIssues([])
     setActing(true)
     try {
@@ -594,7 +602,9 @@ function InvoiceDetailPage() {
       const issues = invoiceFieldIssues(err)
       setFieldIssues(issues)
       // Without field issues the refusal's own message (a missing payment method, a provider failure) beats a generic one.
-      setError(issues.length ? null : err instanceof Error && err.message ? err.message : t("invoices.detail.error.sendFailed"))
+      const emailDidNotGoOut = isEmailSendFailure(err)
+      setEmailFailed(emailDidNotGoOut)
+      setError(issues.length || emailDidNotGoOut ? null : err instanceof Error && err.message && !isUnexpectedFailure(err) ? err.message : t("invoices.detail.error.sendFailed"))
       await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
@@ -1163,6 +1173,14 @@ function InvoiceDetailPage() {
         <p className="text-sm text-destructive mb-4 no-print" role="alert">
           {error}
         </p>
+      )}
+
+      {emailFailed && (
+        <EmailSendFailureNotice
+          disabled={acting}
+          // A draft goes through the send review again; an issued invoice only has its email resent.
+          onRetry={() => (invoice.status === "draft" ? void requestSend() : void handleResendEmail())}
+        />
       )}
 
       <div className="mb-4 no-print empty:hidden">

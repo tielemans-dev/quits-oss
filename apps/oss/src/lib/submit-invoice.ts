@@ -5,6 +5,7 @@ import type { Translate } from "../components/dashboard/i18n"
 import { issuanceInput, type IssuanceValues } from "../components/invoices/issuance-fields"
 import { trpc } from "../trpc/client"
 import { createThenSend, type CreatedDocumentTarget } from "./create-and-send"
+import { EMAIL_SEND_FAILED_PARAM, isEmailSendFailure, isUnexpectedFailure } from "./email-send-failure"
 import { invoiceFieldIssues, invoiceIssueKey } from "./invoice-field-issues"
 import { clearDraftValuation, retainDraftValuation } from "./invoice-issuance-draft"
 
@@ -67,10 +68,12 @@ export function submitInvoice(
     sendImmediately,
     sendFailedMessage: t("invoices.detail.error.sendFailed"),
     sendErrorMessage: (error) => {
+      // The invoice page words this itself; neither the provider's text nor ours goes into the URL.
+      if (isEmailSendFailure(error)) return EMAIL_SEND_FAILED_PARAM
       const issues = invoiceFieldIssues(error)
       if (issues.length) return issues.map((issue) => t(invoiceIssueKey(issue.code), issue.params)).join(" · ")
       // The refusal's own message (missing exemption statement, provider failure, ...) beats a generic one.
-      return error instanceof Error && error.message ? error.message : t("invoiceValidation.unknown")
+      return error instanceof Error && error.message && !isUnexpectedFailure(error) ? error.message : t("invoiceValidation.unknown")
     },
   })
 }
