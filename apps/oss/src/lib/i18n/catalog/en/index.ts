@@ -9,6 +9,7 @@ import { enUndoMessages } from "./undo"
 import { enRecurringMessages } from "./recurring"
 import { enExportsMessages } from "./exports"
 import { enAgentsMessages } from "./agents"
+import { enAccountingMessages } from "./accounting"
 import { enActivityMessages } from "./activity"
 import { enAuthMessages } from "./auth"
 import { enBillingMessages } from "./billing"
@@ -43,6 +44,7 @@ export const enCatalog = {
   ...enRecurringMessages,
   ...enExportsMessages,
   ...enAgentsMessages,
+  ...enAccountingMessages,
   ...enActivityMessages,
   ...enAuthMessages,
   ...enBillingMessages,

@@ -1,9 +1,9 @@
 # Accounting integrations
 
 QUI-77 includes pure e-conomic and Dinero payload preparation, persisted encrypted
-connections and scheduled delivery through injectable adapters. There is no live
-transport or UI yet. It is available to the self-hostable runtime without hosted gates.
-Billy follows e-conomic and Dinero.
+connections, scheduled delivery through injectable adapters and a read-only Settings
+section. There is no live transport or connect flow yet. It is available to the
+self-hostable runtime without hosted gates. Billy follows e-conomic and Dinero.
 
 ## Provider boundary
 
@@ -153,6 +153,11 @@ generation on each authorization. `disconnectAccounting` pauses delivery and
 clears local credentials idempotently. The lookup selects the pure provider and
 returns metadata without reading credentials. Remote revocation remains OAuth work.
 
+Settings shows each provider as not connected, connected or error. Error is derived: a
+connected organization whose current generation has a failed delivery. It also shows
+the last delivery, the failed count and the last stored error code in plain language.
+Disconnect needs `settings:update`; connect stays disabled until OAuth ships.
+
 `RuntimeServices.accountingDelivery` supplies the transport factory and immutable
 event-specific settings resolver. Settings include customer links, layout, dueDate
 payment term, product/VAT mappings, receivable and bank/clearing accounts. Requests
@@ -193,4 +198,5 @@ stays inside the app.
 - Live transport/reconciliation, remote total checks, booking operation records,
   invoice dependency resolution, sync start positions and audited requeue/skip.
 - Persisted settings resolution and live delivery safeguards before enabling transport.
-- Settings UI for connection status, account/VAT mapping, failures and disconnect.
+- Settings UI for account/VAT mapping, a connect button that starts authorization,
+  audit entries for disconnect, and requeue or skip for failed deliveries.

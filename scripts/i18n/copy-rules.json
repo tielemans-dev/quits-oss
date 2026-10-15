@@ -9,6 +9,8 @@
       { "value": "BIC", "reason": "Banking code" },
       { "value": "Claude Code", "reason": "Product name" },
       { "value": "Data", "reason": "Same word in Danish" },
+      { "value": "Dinero", "reason": "Product name" },
+      { "value": "e-conomic", "reason": "Product name" },
       { "value": "Download CSV", "reason": "Common Danish UI wording, CSV is a format name" },
       { "value": "Download PDF", "reason": "Common Danish UI wording, PDF is a format name" },
       { "value": "Euro", "reason": "Currency name, same in Danish" },

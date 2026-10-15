@@ -8,6 +8,7 @@ import { remindersRouter } from "./routers/reminders"
 import { jobsRouter } from "./routers/jobs"
 import { recurringRouter } from "./routers/recurring"
 import { exportsRouter } from "./routers/exports"
+import { accountingRouter } from "./routers/accounting"
 import { agentsRouter } from "./routers/agents"
 import { activityRouter } from "./routers/activity"
 import { aiRouter } from "./routers/ai"
@@ -32,6 +33,7 @@ export const appRouter = router({
   jobs: jobsRouter,
   recurring: recurringRouter,
   exports: exportsRouter,
+  accounting: accountingRouter,
   agents: agentsRouter,
   activity: activityRouter,
   ai: aiRouter,

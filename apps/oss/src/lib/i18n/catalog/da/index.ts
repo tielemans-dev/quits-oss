@@ -9,6 +9,7 @@ import { daUndoMessages } from "./undo"
 import { daRecurringMessages } from "./recurring"
 import { daExportsMessages } from "./exports"
 import { daAgentsMessages } from "./agents"
+import { daAccountingMessages } from "./accounting"
 import { daActivityMessages } from "./activity"
 import { daAuthMessages } from "./auth"
 import { daBillingMessages } from "./billing"
@@ -43,6 +44,7 @@ export const daCatalog = {
   ...daRecurringMessages,
   ...daExportsMessages,
   ...daAgentsMessages,
+  ...daAccountingMessages,
   ...daActivityMessages,
   ...daAuthMessages,
   ...daBillingMessages,
