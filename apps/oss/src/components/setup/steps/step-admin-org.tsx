@@ -40,11 +40,10 @@ export function AdminOrgStep({
         <p className="text-sm text-muted-foreground">{t("setup.step.adminOrg.description")}</p>
       </div>
 
-      <p className="text-sm text-muted-foreground">{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="setup-org-cvr">{t("auth.onboarding.primary.dkLabel")}</Label>
-          <Input id="setup-org-cvr" inputMode="numeric" maxLength={8} pattern="[0-9]{8}" required value={organizationCvr}
+          <Label htmlFor="setup-org-cvr">{t("auth.onboarding.cvrLabel")}</Label>
+          <Input id="setup-org-cvr" inputMode="numeric" maxLength={8} pattern="[0-9]{8}" value={organizationCvr}
             onChange={event => onOrganizationCvrChange(event.target.value)} />
         </div>
         <div className="space-y-2 sm:col-span-2">

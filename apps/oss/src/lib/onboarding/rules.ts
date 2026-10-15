@@ -88,7 +88,7 @@ export function getOnboardingRules(input: OnboardingRulesInput): OnboardingRules
   const invoicingIdentity = normalizeInvoicingIdentity(input.invoicingIdentity)
   const defaults = getDefaults(countryCode, invoicingIdentity)
   const taxRegime = (input.taxRegime ?? defaults.taxRegime) as OnboardingTaxRegime
-  const showPrimaryTaxId = countryCode === "DK" || (taxRegime === "eu_vat" && invoicingIdentity === "registered_business")
+  const showPrimaryTaxId = taxRegime === "eu_vat" && invoicingIdentity === "registered_business"
 
   return {
     defaults,

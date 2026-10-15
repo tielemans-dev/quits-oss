@@ -4,8 +4,12 @@ import { getCvrLookupProvider } from "../runtime/services"
 
 /** Registry checks belong to the hosted provider; self-host only checks the CVR format. */
 export async function requireOnboardingCvr(input: {
-  cvr: unknown; cloud: boolean; userId: string; organizationId?: string
+  cvr: unknown; cloud: boolean; userId: string; organizationId?: string; scheme?: string
 }) {
+  if (!input.cloud && (input.cvr == null || input.cvr === "")) return null
+  if (input.cloud && input.scheme && !["cvr", "dk_cvr", "vat", "dk_vat"].includes(input.scheme.trim().toLowerCase())) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.invalid" })
+  }
   if (typeof input.cvr !== "string" || !isValidDanishCvr(input.cvr)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.invalid" })
   }
@@ -14,7 +18,7 @@ export async function requireOnboardingCvr(input: {
   if (!provider) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" })
   const company = await provider.get(input.cvr, {
     userId: input.userId, organizationId: input.organizationId, signal: AbortSignal.timeout(10_000),
-  })
+  }).catch(() => { throw new TRPCError({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" }) })
   if (!company || company.cvr !== input.cvr || company.status !== "active" || company.statusClass !== "active") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.inactive" })
   }

@@ -84,7 +84,7 @@ test("shows adaptive cloud onboarding after organization creation", async ({ pag
   await expect(page).toHaveURL(/\/onboarding/)
   await page.getByRole("button", { name: "Enter manually" }).click()
   await page.getByLabel("Company name").fill("Nordic Advisory")
-  await page.getByLabel("VAT/CVR number").fill("24256790")
+  await page.getByLabel("CVR number").fill("24256790")
   await page.getByRole("button", { name: "Create organization" }).click()
 
   await expect(page.getByText("Finish organization setup")).toBeVisible()

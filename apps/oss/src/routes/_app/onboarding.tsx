@@ -482,7 +482,7 @@ function OnboardingPageContent() {
   async function createOrganizationFromCompanyName(name: string, company?: CvrLookupCompany) {
     setError(null)
     const cvr = company?.cvr ?? manualCvr.trim()
-    if (!isValidDanishCvr(cvr)) { setError(t('cvr.invalid')); return }
+    if ((isCloud || cvr) && !isValidDanishCvr(cvr)) { setError(t('cvr.invalid')); return }
     setSubmitting(true)
     let confirmedCompany = company
     let created: Awaited<ReturnType<typeof createNamedOrganization>>
@@ -725,7 +725,7 @@ function OnboardingPageContent() {
               {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          <p className="px-6 pb-4 text-sm text-muted-foreground">{t('auth.onboarding.b2bOnly')}. {t('auth.onboarding.cvrFree')}</p>
+          {isCloud && <p className="px-6 pb-4 text-sm text-muted-foreground">{t('auth.onboarding.b2bOnly')}. {t('auth.onboarding.cvrFree')}</p>}
           {nameOnly ? (
             <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
@@ -735,8 +735,8 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="company-cvr">{t('auth.onboarding.primary.dkLabel')}</Label>
-                  <Input id="company-cvr" inputMode="numeric" maxLength={8} required value={manualCvr}
+                  <Label htmlFor="company-cvr">{t('auth.onboarding.cvrLabel')}</Label>
+                  <Input id="company-cvr" inputMode="numeric" maxLength={8} required={isCloud} value={manualCvr}
                     onChange={event => setManualCvr(event.target.value)} />
                   <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
                   <Input
@@ -1059,9 +1059,9 @@ function OnboardingPageContent() {
                     }`}
                     onClick={() => applySuggestedDefaults(values.countryCode, 'individual')}
                   >
-                    <p className="text-sm font-semibold">{t('auth.onboarding.identity.individual')}</p>
+                    <p className="text-sm font-semibold">{t(isCloud ? 'auth.onboarding.identity.soleTrader' : 'auth.onboarding.identity.individual')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {t('auth.onboarding.identity.individualHelp')}
+                      {t(isCloud ? 'auth.onboarding.identity.soleTraderHelp' : 'auth.onboarding.identity.individualHelp')}
                     </p>
                   </button>
                   <button

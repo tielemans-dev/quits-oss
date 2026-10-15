@@ -241,7 +241,7 @@ export const onboardingRouter = router({
   }),
   confirmV2: authorizedProcedure("settings:update")
     .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
-      const result = (getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
+      const result = (isCloudDistribution || getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })
@@ -321,6 +321,10 @@ export const onboardingRouter = router({
       return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
         if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
           settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
+        }
+        if (isCloudDistribution && input.primaryTaxId !== undefined) {
+          await requireOnboardingCvr({ cvr: input.primaryTaxId?.trim().replace(/^DK/, ""),
+            scheme: input.primaryTaxIdScheme, cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
         }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({

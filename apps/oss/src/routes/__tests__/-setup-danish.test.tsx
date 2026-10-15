@@ -34,7 +34,6 @@ async function openFinalStep() {
   await screen.findByText("Opsæt din Quits-instans")
   fireEvent.click(screen.getByRole("button", { name: "Næste" }))
   for (const [label, value] of [
-    ["CVR-nr.", "24256790"],
     ["Organisationsnavn", "Test ApS"],
     ["Administratornavn", "Test Admin"],
     ["Administrator-e-mail", "admin@example.invalid"],
@@ -56,6 +55,7 @@ describe("Danish first-run setup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Afslut opsætning" }))
     await waitFor(() => expect(api.complete).toHaveBeenCalledOnce())
     expect(api.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      organization: { name: "Test ApS", slug: "test-aps", cvr: undefined },
       locale: { locale: "da-DK", countryCode: "DK", timezone: "Europe/Copenhagen", currency: "DKK" },
     }))
     expect(api.navigate).toHaveBeenCalledWith({ to: "/login", search: { message: "Opsætningen er fuldført. Log ind for at fortsætte." } })

@@ -125,16 +125,23 @@ export function buildQuitsAuthOptions(input: {
       },
       async afterCreateOrganization({ organization }) {
         const facts = organization.metadata?.onboardingCompany
-        await input.prisma.$transaction(async tx => {
-          await tx.orgSettings.create({ data: {
-            organizationId: organization.id, ...buildDkSettingsDefaults(),
-            companyName: organization.name, companyAddress: facts?.address ?? null,
-          } })
-          await tx.organizationTaxId.create({ data: {
-            organizationId: organization.id, scheme: "cvr", value: organization.metadata!.cvr,
-            countryCode: "DK", isPrimary: true,
-          } })
-        })
+        try {
+          await input.prisma.$transaction(async tx => {
+            await tx.orgSettings.create({ data: {
+              organizationId: organization.id, ...buildDkSettingsDefaults(),
+              companyName: organization.name, companyAddress: facts?.address ?? null,
+            } })
+            if (organization.metadata?.cvr) await tx.organizationTaxId.create({ data: {
+              organizationId: organization.id, scheme: "cvr", value: organization.metadata!.cvr,
+              countryCode: "DK", isPrimary: true,
+            } })
+          })
+        } catch {
+          // Settings/tax IDs rolled back; deleting the new org cascades its member.
+          // Better Auth sets the active organization only after this hook succeeds.
+          await input.prisma.organization.delete({ where: { id: organization.id } })
+          throw new APIError("BAD_REQUEST", { code: "cvr.unavailable", message: "cvr.unavailable" })
+        }
       },
     },
     creatorRole: "admin",

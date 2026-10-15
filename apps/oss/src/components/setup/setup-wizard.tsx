@@ -59,7 +59,7 @@ export function buildSetupInitializePayload(state: SetupWizardState) {
   return {
     instanceProfile: state.instanceProfile,
     organization: {
-      cvr: state.organizationCvr.trim(),
+      cvr: state.organizationCvr.trim() || undefined,
       name: state.organizationName.trim(),
       slug: state.organizationSlug.trim(),
     },
@@ -109,7 +109,7 @@ function isStepValid(step: number, state: SetupWizardState) {
   }
   if (step === 2) {
     return Boolean(
-      isValidDanishCvr(state.organizationCvr.trim()) &&
+      (!state.organizationCvr.trim() || isValidDanishCvr(state.organizationCvr.trim())) &&
       state.organizationName.trim() &&
         state.organizationSlug.trim() &&
         state.adminName.trim() &&

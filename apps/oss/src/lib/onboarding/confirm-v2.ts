@@ -59,13 +59,6 @@ async function registryContactsAllowed(organizationId: string, input: ConfirmOnb
 
 /** One final save. The organization lock also serializes confirms before a settings row exists. */
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
-  await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? "", organizationId })
-  const sellerVatConfirmation = getSellerVatConfirmationService()
-  if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
-  // Hosted confirmation must present a token before any settings, identity, or trial write.
-  if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
-  // Client-supplied protection metadata cannot attest to a trusted registry lookup.
-  input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId)) }
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
   let renamed = null as { name: string; slug: string } | null
@@ -74,6 +67,17 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     // Match the settings lock used by document issuance before checking/resetting its counters.
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
+    if (existing?.onboardingV2Key === input.idempotencyKey) {
+      return onboardingV2ConfirmationResultSchema.parse(existing.onboardingV2Result)
+    }
+    if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
+      return { status: "already_complete" as const }
+    }
+    await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId })
+    const sellerVatConfirmation = getSellerVatConfirmationService()
+    if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
+    if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
+    input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId)) }
     // Use one set of defaults for the whole confirmation, even across midnight.
     const presets = {
       ...buildDkPresets(input, signupEmail),
@@ -87,12 +91,6 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       await tx.orgSettings.upsert({ where: { organizationId }, create: { organizationId, ...presets }, update: {} })
       await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
       existing = await tx.orgSettings.findUniqueOrThrow({ where: { organizationId } })
-    }
-    if (existing?.onboardingV2Key === input.idempotencyKey) {
-      return onboardingV2ConfirmationResultSchema.parse(existing.onboardingV2Result)
-    }
-    if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
-      return { status: "already_complete" as const }
     }
     if (!input.momsRegistered && !isNonVatRegistrationAllowed()) {
       throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })

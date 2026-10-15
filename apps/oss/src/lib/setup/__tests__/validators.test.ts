@@ -3,13 +3,20 @@ import { setupInitializeSchema } from "../validators"
 
 const input = (countryCode: string, locale = "en-GB") => ({
   instanceProfile: "smb",
-  organization: { cvr: "24256790", name: "Acme", slug: "acme" },
+  organization: { name: "Acme", slug: "acme" },
   admin: { name: "Admin", email: "admin@example.com", password: "Passw0rd!234" },
   auth: { mode: "local_only" },
   locale: { locale, countryCode, timezone: "UTC", currency: "GBP" },
 })
 
 describe("setupInitializeSchema", () => {
+  it.each([undefined, "", "24256790"])("keeps setup CVR optional and validates it only when supplied: %s", cvr => {
+    expect(setupInitializeSchema.safeParse({ ...input("GB"), organization: { ...input("GB").organization, cvr } }).success).toBe(true)
+  })
+  it("rejects an invalid supplied CVR in any locale", () => {
+    expect(setupInitializeSchema.safeParse({ ...input("GB"), organization: { ...input("GB").organization, cvr: "12345678" } }).success).toBe(false)
+  })
+
   it("accepts any ISO country, including ones without a module", () => {
     expect(setupInitializeSchema.parse(input("gb")).locale.countryCode).toBe("GB")
   })

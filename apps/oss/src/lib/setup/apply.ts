@@ -125,7 +125,7 @@ export async function applySetupInitialization(
     )
   }
 
-  if (!isValidDanishCvr(input.organization.cvr)) throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.invalid" })
+  if (input.organization.cvr && !isValidDanishCvr(input.organization.cvr)) throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.invalid" })
   requireCurrencyExponent(input.locale.currency)
   const profile = resolveCountryProfile(input.locale.countryCode)
   // An unsupported country has no default currency; the currency chosen at setup stands in.
@@ -195,8 +195,8 @@ export async function applySetupInitialization(
       },
     })
 
-    await tx.organizationTaxId.create({ data: {
-      organizationId: organization.id, scheme: "cvr", value: input.organization.cvr, countryCode: "DK", isPrimary: true,
+    if (input.organization.cvr) await tx.organizationTaxId.create({ data: {
+      organizationId: organization.id, scheme: "cvr", value: input.organization.cvr, countryCode: input.locale.countryCode, isPrimary: true,
     } })
     await tx.member.create({
       data: {
