@@ -22,6 +22,7 @@ import { useI18n } from '../lib/i18n/react'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
+import { listOrganizationsAfterSignIn } from '../lib/auth/post-login'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../lib/login-return'
 
 const loginSearchSchema = loginReturnSearchSchema.extend({
@@ -68,9 +69,11 @@ function LoginPageContent() {
       )
     } catch {
       setError(t('auth.error.network'))
+      setLoading(false)
       return
-    } finally { setLoading(false) }
+    }
 
+    if (!result.data) setLoading(false)
     if (result.error) setError(t(result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.login.error'))
     if (result.data) {
       // The next page load must not reuse an answer given before signing in. (Mainly matters for a
@@ -81,9 +84,15 @@ function LoginPageContent() {
       const target = loginReturnTarget(search)
       const redirectPath = loginReturnDestination(target ?? '/', lang)
       try {
-        const organizations = await authClient.organization.list()
+        const listed = await listOrganizationsAfterSignIn(() => authClient.organization.list())
+        if (listed.kind === 'no-session') {
+          // The server does not see the session yet: navigating on would only bounce to /login.
+          setError(t('auth.login.sessionPending'))
+          setLoading(false)
+          return
+        }
         const accessState = getOrganizationAccessState({
-          organizations: organizations.data ?? [],
+          organizations: listed.kind === 'listed' ? listed.organizations : [],
         })
 
         if (accessState.kind === 'auto-select') {

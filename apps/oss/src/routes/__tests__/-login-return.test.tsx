@@ -134,6 +134,30 @@ describe('login return contract', () => {
   })
 })
 
+describe('first login after sign-out (QUI-76)', () => {
+  it('does not navigate into a bounce while the server cannot see the new session', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ error: { status: 401 } })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain("couldn't confirm the session"), { timeout: 4000 })
+    expect(state.load).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Log in' })).toHaveProperty('disabled', false)
+  })
+
+  it('continues once the session becomes visible on a retry', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    state.list.mockResolvedValueOnce({ error: { status: 401 } }).mockResolvedValue({ data: [orgs[0]] })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalledWith('/'), { timeout: 4000 })
+  })
+
+  it('keeps the form locked while the page load is on its way', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] }); state.setActive.mockResolvedValue({ data: {} })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Logging in…' })).toHaveProperty('disabled', true)
+  })
+})
+
 describe('return after required organization flow', () => {
   for (const cloud of [false, true]) for (const create of [false, true]) {
     it(`returns after ${create ? 'create' : 'choose'} in ${cloud ? 'cloud' : 'selfhost'}, retaining cloud setup`, async () => {
