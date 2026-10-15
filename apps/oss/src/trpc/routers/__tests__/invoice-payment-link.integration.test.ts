@@ -120,6 +120,8 @@ describeIfDatabase("invoice payment links", () => {
 
       expect(loaded?.invoice.id).toBe(invoice.id)
       expect(loaded?.paymentState).toBe("unpaid")
+      // The share-link copy follows what the pay page offers.
+      expect((await caller.invoices.get({ id: invoice.id })).publicPaymentCardEnabled).toBe(loaded?.stripeEnabled)
 
       await caller.invoices.markPaid({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
 
