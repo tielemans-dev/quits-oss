@@ -1,3 +1,4 @@
+import type { RenderInput } from "../documents/render-input"
 import { Effect } from "effect"
 import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "../documents/vat-summary"
@@ -166,6 +167,11 @@ export const sendCreditNote = defineCommand({
       }
 
       yield* refuseWhileSending("creditNote", creditNote)
+      const candidate = yield* Effect.promise(() => db.issuanceCandidate.findFirst({
+        where: { organizationId, documentKind: "creditNote", documentId: creditNote.id, status: "published" },
+        orderBy: { createdAt: "desc" }, select: { renderInput: true },
+      }))
+      const frozen = (candidate?.renderInput as Extract<RenderInput, { kind: "creditNote" }> | undefined)?.pdf?.creditNote
       const content = buildCreditNoteEmailContent({
         fromName: envelope.fromName,
         fromEmail: envelope.fromEmail,
@@ -177,7 +183,7 @@ export const sendCreditNote = defineCommand({
           sellerSnapshot: creditNote.sellerSnapshot,
           buyerSnapshot: creditNote.buyerSnapshot,
           contact: creditNote.contact,
-          taxRate: (creditNote.issuanceSnapshot as { taxRate?: number } | null)?.taxRate ?? nominalLineTaxRate(creditNote.items.map(item => num(item.taxRate))),
+          taxRate: frozen?.taxRate ?? nominalLineTaxRate(creditNote.items.map(item => num(item.taxRate))),
           subtotal: num(creditNote.subtotalNet),
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),

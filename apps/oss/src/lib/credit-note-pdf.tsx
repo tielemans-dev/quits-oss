@@ -139,7 +139,7 @@ export function CreditNotePdfDocument({
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
-            <Text>{formatDate(creditNote.issueDate, locale, timezone, { month: "short" })}</Text>
+            <Text>{formatDate(creditNote.issueDate, locale, timezone, { month: "long" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("creditNotes.pdf.reference", locale)}
             </Text>
@@ -147,7 +147,7 @@ export function CreditNotePdfDocument({
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("creditNotes.pdf.invoiceDate", locale)}
             </Text>
-            <Text>{formatDate(creditNote.invoice.issueDate, locale, timezone, { month: "short" })}</Text>
+            <Text>{formatDate(creditNote.invoice.issueDate, locale, timezone, { month: "long" })}</Text>
           </View>
         </View>
 
