@@ -164,7 +164,7 @@ function PublicQuoteDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      {sellerTaxIds.length > 0 && <div className="text-sm text-muted-foreground"><h2 className="text-xs font-medium uppercase tracking-wide">{t("pdf.from")}</h2>{sellerTaxIds.map(id => <p key={id}>{id}</p>)}</div>}
+      {(sellerTaxIds.length > 0 || quote.sellerSnapshot?.companyAddress) && <div className="text-sm text-muted-foreground"><h2 className="text-xs font-medium uppercase tracking-wide">{t("pdf.from")}</h2>{quote.sellerSnapshot?.companyAddress && <p className="whitespace-pre-line">{quote.sellerSnapshot.companyAddress}</p>}{sellerTaxIds.map(id => <p key={id}>{id}</p>)}</div>}
       <div className="grid w-full items-start gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
