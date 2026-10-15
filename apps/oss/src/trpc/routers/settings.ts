@@ -27,7 +27,7 @@ import {
   type AiProviderKind,
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
-import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget } from "../../lib/payments/stripe"
+import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget, usesStripeConnectCheckout } from "../../lib/payments/stripe"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
@@ -247,6 +247,8 @@ export const settingsRouter = router({
       hasIssuedDocuments(prisma, ctx.organizationId),
     ])
     const settings = existingSettings ?? (await createDefaultOrgSettings(ctx.organizationId))
+    const runtimeCapabilities = getRuntimeCapabilities()
+    const connectMode = runtimeCapabilities.payments.managed || usesStripeConnectCheckout()
     const stripeState = getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
@@ -254,7 +256,7 @@ export const settingsRouter = router({
       stripeAccountStatus: settings.stripeAccountStatus,
     })
     // Cached readiness alone does not supply the runtime's Connect checkout client.
-    const stripeTarget = stripeState.configured
+    const resolvedStripeTarget = stripeState.configured && (!connectMode || settings.stripeAccountStatus === "active")
       ? await resolveStripeCheckoutTarget(
           { organizationId: ctx.organizationId },
           { connectReady: settings.stripeAccountStatus === "active" },
@@ -263,7 +265,7 @@ export const settingsRouter = router({
           return null
         })
       : null
-    const runtimeCapabilities = getRuntimeCapabilities()
+    const stripeTarget = connectMode && resolvedStripeTarget?.kind !== "connect" ? null : resolvedStripeTarget
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
     const environment = getRuntimeEnv()
     const emailDelivery = getEmailDeliveryRuntimeStatus({
@@ -314,7 +316,7 @@ export const settingsRouter = router({
       stripeCheckoutKind: stripeTarget?.kind ?? null,
       stripePublishableKey: settings.stripePublishableKey,
       stripeAccount: readStripeAccount({
-        managed: runtimeCapabilities.payments.managed,
+        managed: connectMode,
         accountId: settings.stripeAccountId,
         status: settings.stripeAccountStatus,
         statusAt: settings.stripeAccountStatusAt,

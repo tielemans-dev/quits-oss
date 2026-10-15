@@ -137,6 +137,7 @@ describe("settings stripe account contract", () => {
     resetRuntimeServices()
     setRuntimeExtensions([])
     vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-at-least-16")
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
     mocks.paymentsManaged = false
     mocks.canUpdateSettings = true
     mocks.findFirst.mockResolvedValue(null)
@@ -164,6 +165,17 @@ describe("settings stripe account contract", () => {
     expect(settings.stripeConnectActions).toBe(false)
     expect(settings.stripePublishableKey).toBe("pk_test_123456789")
     expect(settings.stripeByokConfigured).toBe(true)
+    expect(settings.stripePaymentsEnabled).toBe(true)
+    expect(settings.stripeCheckoutKind).toBe("byok")
+  })
+
+  it("requires Connect in cloud settings even before capabilities or handlers are registered", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeAccountStatus: "active" }))
+    const result = await createCaller().get()
+    expect(result.stripeAccount.mode).toBe("connect")
+    expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutKind).toBeNull()
   })
 
   it("does not report BYOK keys for an active Connect account without keys", async () => {
@@ -235,8 +247,8 @@ describe("settings stripe account contract", () => {
         } : {}),
       }))
 
-      // Current self-hosted main has no Connect checkout target, even for active accounts.
-      expect((await createCaller().get()).stripePaymentsEnabled).toBe(byok)
+      // Managed settings never advertise stored BYOK keys as a checkout fallback.
+      expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
 
       const resolveTarget = vi.fn(async () => ({
         kind: "connect" as const,
@@ -248,9 +260,9 @@ describe("settings stripe account contract", () => {
         resolveStripeCheckoutTarget: resolveTarget,
       }])
       const result = await createCaller().get()
-      expect(result.stripePaymentsEnabled).toBe(byok || status === "active")
-      expect(result.stripeCheckoutKind).toBe(status === "active" ? "connect" : byok ? "byok" : null)
-      expect(resolveTarget).toHaveBeenCalledTimes(byok || status === "active" ? 1 : 0)
+      expect(result.stripePaymentsEnabled).toBe(status === "active")
+      expect(result.stripeCheckoutKind).toBe(status === "active" ? "connect" : null)
+      expect(resolveTarget).toHaveBeenCalledTimes(status === "active" ? 1 : 0)
       expect(result.stripeByokConfigured).toBe(byok)
     })
   })
