@@ -1,5 +1,5 @@
 /** Settings actions the hosted runtime may register. This module does not call Stripe. */
-export const stripeConnectSettingsActions = ["connect", "resume", "fix", "disconnect"] as const
+export const stripeConnectSettingsActions = ["connect", "resume", "fix", "dashboard", "disconnect"] as const
 
 export type StripeConnectSettingsAction = (typeof stripeConnectSettingsActions)[number]
 

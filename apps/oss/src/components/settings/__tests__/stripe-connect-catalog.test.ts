@@ -13,10 +13,12 @@ describe("Connect Stripe catalog", () => {
     for (const key of enKeys) {
       expect(daCatalog[key as keyof typeof daCatalog]?.trim().length).toBeGreaterThan(0)
     }
-    expect(enCatalog["settings.payments.connect.description"]).toContain("active Stripe Connect")
-    expect(daCatalog["settings.payments.connect.description"]).toContain("aktiv Stripe Connect")
-    expect(enCatalog["settings.payments.connect.payments.unavailable"]).toContain("Bank transfer")
-    expect(daCatalog["settings.payments.connect.payments.unavailable"]).toContain("Bankoverførsel")
+    expect(enCatalog["settings.payments.connect.action.connect"]).toBe("Connect Stripe")
+    expect(daCatalog["settings.payments.connect.action.connect"]).toBe("Forbind Stripe")
+    expect(enCatalog["settings.payments.connect.help.none"]).toContain("Bank transfer")
+    expect(daCatalog["settings.payments.connect.help.none"]).toContain("Bankoverførsel")
+    expect(enCatalog["settings.payments.connect.status.pending"]).toBe(enCatalog["settings.payments.connect.status.restricted"])
+    expect(daCatalog["settings.payments.connect.status.pending"]).toBe("Mangler oplysninger hos Stripe")
     expect(enKeys).not.toContain("settings.payments.connect.payments.byok")
   })
 })

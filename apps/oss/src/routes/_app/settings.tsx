@@ -61,6 +61,7 @@ import type { OrgStripeAccount } from "@quits/contracts/payments"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
+import { AiDraftsCard } from "../../components/settings/ai-drafts-card"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
@@ -152,6 +153,8 @@ type SettingsData = {
   aiBaseUrl: string | null
   aiModel: string
   aiByokConfigured: boolean
+  /** Hosted runs the model: `managed` swaps the provider fields for one switch, hidden unless `available`. */
+  aiDrafts?: { managed: boolean; available: boolean; enabled: boolean }
   stripeByokConfigured: boolean
   stripePaymentsEnabled?: boolean
   stripeCheckoutKind?: "byok" | "connect" | null
@@ -219,6 +222,9 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  // Confirms changes that save on their own (Connect, AI drafts) outside the form's Save button.
+  const [notice, setNotice] = useState<string | null>(null)
+  const [savingAiDrafts, setSavingAiDrafts] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   // An explicit radio change. Without one, Save confirms the displayed stored choice (see handleSubmit).
@@ -485,9 +491,25 @@ function SettingsPage() {
     setWithdrawSellerVatEvidence(false)
   }
 
+  async function saveAiDrafts(enabled: boolean) {
+    setError(null)
+    setNotice(null)
+    setSavingAiDrafts(true)
+    try {
+      await trpc.settings.update.mutate({ aiDraftsEnabled: enabled })
+      setSettings((current) => current?.aiDrafts ? { ...current, aiDrafts: { ...current.aiDrafts, enabled } } : current)
+      setNotice(t(enabled ? "settings.ai.drafts.saved.on" : "settings.ai.drafts.saved.off"))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    } finally {
+      setSavingAiDrafts(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setNotice(null)
     setSuccess(false)
     setSaving(true)
 
@@ -506,7 +528,7 @@ function SettingsPage() {
     const aiApiKeyInput = aiApiKeyDraft.trim()
     // With no provider the organisation may choose (managed-only distributions), leave the AI
     // settings untouched rather than submitting a provider the server would reject.
-    const sendAiSettings = aiProviderOptions.length > 0
+    const sendAiSettings = aiProviderOptions.length > 0 && !settings?.aiDrafts?.managed
     if (sendAiSettings && aiProvider === "openai_compatible" && !aiBaseUrlInput) {
       setSaving(false)
       setError(t("settings.aiBaseUrl.required"))
@@ -882,6 +904,11 @@ function SettingsPage() {
         {success && (
           <p className="text-sm text-tone-success" role="status">
             {t("settings.success.saved")}
+          </p>
+        )}
+        {notice && (
+          <p className="text-sm text-tone-success" role="status">
+            {notice}
           </p>
         )}
 
@@ -1319,13 +1346,13 @@ function SettingsPage() {
         <StripePaymentsSection
           account={settings.stripeAccount}
           stripeByokConfigured={settings.stripeByokConfigured}
-          stripePaymentsEnabled={settings.stripePaymentsEnabled}
           clearStripeSecretKey={clearStripeSecretKey}
           clearStripeWebhookSecret={clearStripeWebhookSecret}
           onClearStripeSecretKeyChange={setClearStripeSecretKey}
           onClearStripeWebhookSecretChange={setClearStripeWebhookSecret}
           connectActions={settings.stripeConnectActions}
           onConnectError={setError}
+          onConnectDone={(action) => { if (action === "disconnect") setNotice(t("settings.payments.connect.disconnected")) }}
           onConnectSettings={(next) => setSettings((current) => current ? { ...current, ...next } : current)}
         >
         <Card>
@@ -1424,6 +1451,11 @@ function SettingsPage() {
         </StripePaymentsSection>
 
         {/* AI invoice drafting */}
+        {settings.aiDrafts?.managed ? (
+          settings.aiDrafts.available ? (
+            <AiDraftsCard enabled={settings.aiDrafts.enabled} busy={savingAiDrafts} onChange={(enabled) => { void saveAiDrafts(enabled) }} />
+          ) : null
+        ) : (
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.section.ai.title")}</CardTitle>
@@ -1632,6 +1664,7 @@ function SettingsPage() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Save */}
         <div className="flex justify-end">

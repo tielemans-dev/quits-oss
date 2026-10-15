@@ -18,6 +18,7 @@ export function stripeConnectActionHandlers(
   onConnect?: () => void
   onResume?: () => void
   onFixInStripe?: () => void
+  onOpenStripe?: () => void
   onDisconnect?: () => void
 } {
   if (!registered) return {}
@@ -25,6 +26,7 @@ export function stripeConnectActionHandlers(
     onConnect: () => run("connect"),
     onResume: () => run("resume"),
     onFixInStripe: () => run("fix"),
+    onOpenStripe: () => run("dashboard"),
     onDisconnect: () => run("disconnect"),
   }
 }
@@ -55,7 +57,6 @@ export function StripePaymentsSection({
   account,
   children,
   stripeByokConfigured,
-  stripePaymentsEnabled = false,
   clearStripeSecretKey,
   clearStripeWebhookSecret,
   onClearStripeSecretKeyChange,
@@ -63,11 +64,11 @@ export function StripePaymentsSection({
   connectActions = false,
   onConnectSettings,
   onConnectError,
+  onConnectDone,
 }: {
   children?: ReactNode
   account?: OrgStripeAccount
   stripeByokConfigured: boolean
-  stripePaymentsEnabled?: boolean
   clearStripeSecretKey: boolean
   clearStripeWebhookSecret: boolean
   onClearStripeSecretKeyChange: (clear: boolean) => void
@@ -76,6 +77,8 @@ export function StripePaymentsSection({
   connectActions?: boolean
   onConnectSettings?: (next: { stripeAccount: OrgStripeAccount; stripeConnectActions: boolean; stripePaymentsEnabled: boolean; stripeByokConfigured: boolean; stripeCheckoutKind: "byok" | "connect" | null }) => void
   onConnectError?: (message: string | null) => void
+  /** Called after an action that finished in place (no Stripe redirect), so the page can confirm it. */
+  onConnectDone?: (action: StripeConnectSettingsAction) => void
 }) {
   const { t } = useI18n()
 
@@ -90,6 +93,7 @@ export function StripePaymentsSection({
       }
       const next = await trpc.settings.get.query()
       onConnectSettings?.(next)
+      onConnectDone?.(action)
     } catch (err) {
       onConnectError?.(err instanceof Error ? err.message : t("settings.error.saveFailed"))
     }
@@ -101,7 +105,6 @@ export function StripePaymentsSection({
     <div className="grid gap-4">
       <StripeConnectCard
         account={account}
-        paymentsEnabled={stripePaymentsEnabled}
         {...stripeConnectActionHandlers(connectActions, (action) => { void runConnectAction(action) })}
       />
       {stripeByokConfigured ? (

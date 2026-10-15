@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { FALLBACK_AI_MODELS } from "../../../lib/ai/invoice-draft"
 import { aiRouter } from "../ai"
 import { settingsRouter } from "../settings"
@@ -157,6 +157,34 @@ describe("managed AI", () => {
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
     expect(complete).not.toHaveBeenCalled()
     resetRuntimeServices()
+  })
+})
+
+describe("hosted AI drafts switch", () => {
+  const draft = () =>
+    aiRouter.createCaller(createContext()).generateInvoiceDraft({ prompt: "Invoice Acme for three hours of consulting" })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetRuntimeServices()
+    mocks.aiCapabilities = { ...defaultAiCapabilities, managed: true }
+  })
+
+  afterEach(() => vi.unstubAllEnvs())
+
+  it("refuses drafting on hosted when the organisation turned AI drafts off", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    mocks.findUnique.mockResolvedValue({ aiDraftsEnabled: false })
+
+    await expect(draft()).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+  })
+
+  it("ignores the switch on self-hosted installs", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
+    mocks.findUnique.mockResolvedValue({ aiDraftsEnabled: false, aiModel: null })
+
+    // It gets past the switch and fails later on the unconfigured provider, not with the switch message.
+    await expect(draft()).rejects.not.toThrow(/turned off in Settings/)
   })
 })
 

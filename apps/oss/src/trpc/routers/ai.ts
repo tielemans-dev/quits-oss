@@ -19,6 +19,7 @@ import { resolveDraftItemUnitPrice } from "../../lib/ai/pricing"
 import { prisma } from "../../lib/db"
 import { decryptSecret } from "../../lib/secrets"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { usesStripeConnectCheckout } from "../../lib/payments/stripe"
 import { getBillingProvider } from "../../lib/runtime/services"
 import { authorizedProcedure, router } from "../init"
 
@@ -162,6 +163,20 @@ export const aiRouter = router({
           code: "PRECONDITION_FAILED",
           message: "AI invoice drafting is disabled",
         })
+      }
+
+      // Hosted organisations switch drafting on and off in Settings; self-hosted installs have no switch.
+      if (usesStripeConnectCheckout()) {
+        const orgSettings = await prisma.orgSettings.findUnique({
+          where: { organizationId: ctx.organizationId },
+          select: { aiDraftsEnabled: true },
+        })
+        if (orgSettings?.aiDraftsEnabled === false) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "AI invoice drafting is turned off in Settings",
+          })
+        }
       }
 
       // The organisation's saved model was chosen for its own provider, so the managed provider

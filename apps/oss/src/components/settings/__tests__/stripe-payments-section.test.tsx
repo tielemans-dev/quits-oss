@@ -44,12 +44,11 @@ const byokAccount: OrgStripeAccount = {
   statusAt: null,
 }
 
-function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false, stripePaymentsEnabled = false) {
+function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false) {
   return render(
     <StripePaymentsSection
       account={account}
       stripeByokConfigured={stripeByokConfigured}
-      stripePaymentsEnabled={stripePaymentsEnabled}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
       onClearStripeSecretKeyChange={noop}
@@ -68,27 +67,27 @@ const actionFor = {
 function LiveSection({
   initial,
   connectActions,
+  onDone,
 }: {
   initial: OrgStripeAccount
   connectActions: boolean
+  onDone?: (action: string) => void
 }) {
   const [account, setAccount] = useState(initial)
   const [enabled, setEnabled] = useState(connectActions)
-  const [paymentsEnabled, setPaymentsEnabled] = useState(true)
   return (
     <StripePaymentsSection
       account={account}
       connectActions={enabled}
       stripeByokConfigured={false}
-      stripePaymentsEnabled={paymentsEnabled}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
       onClearStripeSecretKeyChange={noop}
       onClearStripeWebhookSecretChange={noop}
+      onConnectDone={onDone}
       onConnectSettings={(next) => {
         setAccount(next.stripeAccount)
         setEnabled(next.stripeConnectActions)
-        setPaymentsEnabled(next.stripePaymentsEnabled)
       }}
     />
   )
@@ -101,11 +100,6 @@ afterEach(() => {
 })
 
 describe("StripePaymentsSection", () => {
-  it("passes checkout readiness to the Connect card independently of BYOK keys", () => {
-    renderSection(connectAccount("active"), false, true)
-    expect(screen.getByText("settings.payments.connect.payments.enabled")).toBeTruthy()
-  })
-
   it.each([byokAccount, undefined])("preserves the route's BYOK form for %s", (account) => {
     renderSection(account, true)
     expect(screen.getByTestId("byok-content")).toBeTruthy()
@@ -115,11 +109,9 @@ describe("StripePaymentsSection", () => {
   it.each(["none", "pending", "active", "restricted"] as const)(
     "never offers BYOK checkout in Connect mode (%s)",
     (status) => {
-      renderSection(connectAccount(status), true, true)
+      renderSection(connectAccount(status), true)
       expect(screen.queryByTestId("byok-content")).toBeNull()
       expect(screen.getByText("settings.payments.connect.legacy.active")).toBeTruthy()
-      expect(screen.queryByText("settings.payments.connect.payments.byok")).toBeNull()
-      expect(screen.queryByText("settings.payments.connect.payments.enabled") !== null).toBe(status === "active")
       expect(screen.getByRole("button", { name: "settings.payments.connect.legacy.remove" })).toBeTruthy()
     }
   )
@@ -175,10 +167,10 @@ describe("StripePaymentsSection", () => {
       stripePaymentsEnabled: false,
       stripeCheckoutKind: null,
     })
-    render(<LiveSection initial={connectAccount("active")} connectActions />)
+    const done = vi.fn()
+    render(<LiveSection initial={connectAccount("active")} connectActions onDone={done} />)
 
     expect(screen.getByText("settings.payments.connect.status.active")).toBeTruthy()
-    expect(screen.getByText("settings.payments.connect.payments.enabled")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: actionFor.active }))
     fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.disconnect.confirm" }))
 
@@ -187,11 +179,22 @@ describe("StripePaymentsSection", () => {
     })
     expect(screen.queryByText("settings.payments.connect.status.active")).toBeNull()
     expect(screen.queryByText("acct_test")).toBeNull()
-    expect(screen.getByText("settings.payments.connect.payments.unavailable")).toBeTruthy()
-    expect(screen.queryByText("settings.payments.connect.payments.enabled")).toBeNull()
     expect(api.run).toHaveBeenCalledWith({ action: "disconnect" })
+    expect(done).toHaveBeenCalledWith("disconnect")
     expect(api.get).toHaveBeenCalledOnce()
     expect((screen.getByRole("button", { name: actionFor.none }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("opens the Stripe dashboard from an active account", async () => {
+    const follow = vi.spyOn(connectSettings, "followStripeConnectUrl").mockImplementation(() => {})
+    api.run.mockResolvedValue({ url: "https://dashboard.stripe.com/" })
+    render(<LiveSection initial={connectAccount("active")} connectActions />)
+
+    fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.action.open" }))
+
+    await waitFor(() => expect(follow).toHaveBeenCalledWith("https://dashboard.stripe.com/"))
+    expect(api.run).toHaveBeenCalledWith({ action: "dashboard" })
+    follow.mockRestore()
   })
 
   it("leaves the account in place when the action opens a URL", async () => {

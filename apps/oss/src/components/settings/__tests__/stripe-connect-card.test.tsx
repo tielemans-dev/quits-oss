@@ -24,17 +24,6 @@ afterEach(() => {
 })
 
 describe("StripeConnectCard", () => {
-  describe.each(["none", "pending", "restricted", "active"] as const)("%s account", (status) => {
-    it.each([false, true])("shows payment readiness from Settings (%s)", (paymentsEnabled) => {
-      render(<StripeConnectCard account={account(status)} paymentsEnabled={paymentsEnabled} />)
-      const ready = paymentsEnabled && status === "active"
-      const shown = ready ? "enabled" : "unavailable"
-      const hidden = ready ? "unavailable" : "enabled"
-      expect(screen.getByText(`settings.payments.connect.payments.${shown}`)).toBeTruthy()
-      expect(screen.queryByText(`settings.payments.connect.payments.${hidden}`)).toBeNull()
-    })
-  })
-
   it("shows not connected with a connect action and no disconnect", () => {
     const onConnect = vi.fn()
     render(<StripeConnectCard account={account("none")} onConnect={onConnect} />)
@@ -43,6 +32,7 @@ describe("StripeConnectCard", () => {
     expect(screen.getByText("settings.payments.connect.status.none")).toBeTruthy()
     expect(screen.getByText("settings.payments.connect.help.none")).toBeTruthy()
     expect(screen.queryByText("settings.payments.connect.account.label")).toBeNull()
+    expect(button("settings.payments.connect.action.open")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.action.connect" }))
     expect(onConnect).toHaveBeenCalledOnce()
     expect(button("settings.payments.connect.action.resume")).toBeNull()
@@ -64,12 +54,15 @@ describe("StripeConnectCard", () => {
     expect((button("settings.payments.connect.action.disconnect") as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it("shows an active account with disconnect and no setup actions", () => {
-    render(<StripeConnectCard account={account("active", "acct_live")} />)
+  it("shows an active account with open Stripe and disconnect, and no setup actions", () => {
+    const onOpenStripe = vi.fn()
+    render(<StripeConnectCard account={account("active", "acct_live")} onOpenStripe={onOpenStripe} />)
 
     expect(screen.getByText("settings.payments.connect.status.active")).toBeTruthy()
     expect(screen.getByText("settings.payments.connect.help.active")).toBeTruthy()
     expect(screen.getByText("acct_live")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.action.open" }))
+    expect(onOpenStripe).toHaveBeenCalledOnce()
     expect(button("settings.payments.connect.action.connect")).toBeNull()
     expect(button("settings.payments.connect.action.resume")).toBeNull()
     expect(button("settings.payments.connect.action.fix")).toBeNull()
@@ -89,11 +82,12 @@ describe("StripeConnectCard", () => {
     expect(button("settings.payments.connect.action.disconnect")).toBeTruthy()
   })
 
-  it("disables Connect, Resume, Fix in Stripe, and Disconnect until a handler is passed", () => {
+  it("disables Connect, Resume, Fix in Stripe, Open Stripe, and Disconnect until a handler is passed", () => {
     const actions = [
       { status: "none", name: "settings.payments.connect.action.connect", prop: "onConnect" },
       { status: "pending", name: "settings.payments.connect.action.resume", prop: "onResume" },
       { status: "restricted", name: "settings.payments.connect.action.fix", prop: "onFixInStripe" },
+      { status: "active", name: "settings.payments.connect.action.open", prop: "onOpenStripe" },
       { status: "active", name: "settings.payments.connect.action.disconnect", prop: "onDisconnect" },
     ] as const
 

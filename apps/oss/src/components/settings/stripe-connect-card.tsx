@@ -35,17 +35,17 @@ const HELP_KEYS = {
  */
 export function StripeConnectCard({
   account,
-  paymentsEnabled = false,
   onConnect,
   onResume,
   onFixInStripe,
+  onOpenStripe,
   onDisconnect,
 }: {
   account: Pick<OrgStripeAccount, "accountId" | "status">
-  paymentsEnabled?: boolean
   onConnect?: () => void
   onResume?: () => void
   onFixInStripe?: () => void
+  onOpenStripe?: () => void
   onDisconnect?: () => void
 }) {
   const { t } = useI18n()
@@ -54,7 +54,7 @@ export function StripeConnectCard({
   return (
     <Card data-testid="stripe-connect-card" data-stripe-connect-status={status}>
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
           <div className="space-y-1">
             <CardTitle>{t("settings.payments.connect.title")}</CardTitle>
             <CardDescription>{t("settings.payments.connect.description")}</CardDescription>
@@ -64,11 +64,6 @@ export function StripeConnectCard({
       </CardHeader>
       <CardContent className="grid gap-4">
         <p className="text-sm text-muted-foreground">{t(HELP_KEYS[status])}</p>
-        <p className="text-sm text-muted-foreground">
-          {t(paymentsEnabled && status === "active"
-            ? "settings.payments.connect.payments.enabled"
-            : "settings.payments.connect.payments.unavailable")}
-        </p>
         {status !== "none" && accountId ? (
           <div className="grid gap-1">
             <div className="text-sm font-medium">{t("settings.payments.connect.account.label")}</div>
@@ -89,6 +84,11 @@ export function StripeConnectCard({
           {status === "restricted" ? (
             <Button type="button" disabled={!onFixInStripe} onClick={onFixInStripe}>
               {t("settings.payments.connect.action.fix")}
+            </Button>
+          ) : null}
+          {status === "active" ? (
+            <Button type="button" disabled={!onOpenStripe} onClick={onOpenStripe}>
+              {t("settings.payments.connect.action.open")}
             </Button>
           ) : null}
           {status !== "none" ? (

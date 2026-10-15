@@ -100,8 +100,8 @@ describe("status tones", () => {
     expect(getStatusTone("reminder", "failed")).toBe("danger")
     expect(getStatusTone("stripeAccount", "none")).toBe("neutral")
     expect(getStatusTone("stripeAccount", "pending")).toBe("warning")
-    expect(getStatusTone("stripeAccount", "active")).toBe("success")
-    expect(getStatusTone("stripeAccount", "restricted")).toBe("danger")
+    expect(getStatusTone("stripeAccount", "active")).toBe("neutral")
+    expect(getStatusTone("stripeAccount", "restricted")).toBe("warning")
   })
 
   it("reads an unknown status as neutral and shows it as it is", () => {
