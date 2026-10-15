@@ -267,7 +267,6 @@ export type InvoiceForPdf = {
   /** Unit price and total are the stored amounts on the document's price basis; never derive one from the other. */
   items: Array<{
     description: string
-    vatTreatment?: string
     taxRate?: number
     quantity: number
     unitPrice: number
@@ -319,18 +318,18 @@ export function InvoicePdfDocument({
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
-            <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "short" })}</Text>
+            <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "long" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
               {translate("pdf.dueDate", locale)}
             </Text>
-            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "short" })}</Text>
+            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</Text>
             {invoice.supplyDate && (
               <>
                 <Text style={[styles.label, { marginTop: 6 }]}>
                   {translate("pdf.supplyDate", locale)}
                 </Text>
                 {/* A calendar date, not an instant: formatting it in the organization's zone could move it a day. */}
-                <Text>{formatDate(invoice.supplyDate, locale, "UTC", { month: "short" })}</Text>
+                <Text>{formatDate(invoice.supplyDate, locale, "UTC", { month: "long" })}</Text>
               </>
             )}
           </View>

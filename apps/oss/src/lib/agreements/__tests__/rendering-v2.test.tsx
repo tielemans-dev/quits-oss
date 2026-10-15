@@ -23,7 +23,7 @@ describe("v2 offer rendering", () => {
     const groups = [
       { ...snapshot.vatGroups[0]!, rate: "0.25", treatment: "standard" as const, reasonCode: null, net: "100", tax: "25", gross: "125" },
       { ...snapshot.vatGroups[0]!, rate: "0", treatment: "exempt" as const, reasonCode: "health", net: "20", tax: "0", gross: "20" },
-      { ...snapshot.vatGroups[0]!, rate: "0", treatment: "export" as const, reasonCode: "goods", net: "30", tax: "0", gross: "30" },
+      { ...snapshot.vatGroups[0]!, rate: "0", treatment: "export" as const, reasonCode: "goods_outside_eu", net: "30", tax: "0", gross: "30" },
     ].map(group => ({ ...group, evidence: { statementText: "Synthetic exemption statement" } }))
     const rows = agreementVatPresentation({ ...snapshot, vatGroups: groups } as typeof snapshot, "en-US").totals!.lines
     expect(rows.filter(row => row.reason?.includes("Synthetic exemption statement"))).toHaveLength(2)

@@ -4,7 +4,6 @@ import type { Prisma, Invoice, InvoiceItem } from "../../../generated/prisma/cli
 import type { BuyerSnapshot, SellerSnapshot } from "@quits/contracts/documents"
 import type { InvoiceIssued } from "../events/money"
 import { toDecimal, formatIsoDate } from "../../lib/exports/format"
-import { nominalLineTaxRate } from "../../lib/documents/line-amounts"
 import { frozenVatGroups } from "./frozen-vat-groups"
 import { InvalidState } from "../errors"
 
@@ -66,7 +65,6 @@ export function creditMoneySnapshot(invoice: Invoice, note: {
   const valuation = unknown ? { base: { minor: null, currency: baseCurrency, exponent: baseExponent }, rate: null, rateScale: null, rateDate: null, rateSource: "unknown" }
     : { ...original.valuation, base: { ...original.valuation.base, minor: moneyMinor(grossBase!, baseExponent) } }
   return {
-    taxRate: nominalLineTaxRate(note.built.lines.map(line => line.taxRate)) ?? 0,
     documentId: note.id, number: note.number, occurredAt: note.issuedAt.toISOString(), postingDate: issueDate, issueDate,
     taxPointDate: original?.taxPointReason === "invoice_issued" ? issueDate : null,
     taxPointReason: original?.taxPointReason ?? "tax_point_review", supplyDate: original?.supplyDate ?? null,
