@@ -390,7 +390,7 @@ for (const locale of ["da-DK", "en-US"]) {
       if (!actor) throw new Error("Synthetic admin is missing")
       bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
       await loginAsAdmin(page)
-      const statementText = `Synthetic ${treatment} evidence`
+      const statementText = `Synthetic ${treatment.replaceAll("_", " ")} evidence`
       const reasonCode = treatment === "intra_community" ? "goods" : treatment === "export" ? "goods_outside_eu" : "construction"
       const vatEvidence = { statementText, ...(treatment === "intra_community" ? { buyerVatId, viesCheck: { at: "2026-10-15T12:00:00Z", result: "valid" as const } } : {}),
         ...(treatment === "export" ? { exportEvidence: { kind: "carrier_document" as const, ref: "SYNTHETIC-EXPORT" } } : {}),
