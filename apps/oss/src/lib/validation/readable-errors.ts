@@ -73,5 +73,13 @@ export function readableIssues(error: unknown): ReadableIssue[] | null {
   const message = error instanceof Error ? error.message : typeof error === "string" ? error : null
   if (message === null || !looksStructured(message)) return null
   const issues = rawIssues(message)
-  return issues && issues.length > 0 ? issues.map(mapIssue) : [UNKNOWN]
+  if (!issues || issues.length === 0) return [UNKNOWN]
+  // One value can fail several checks (format and range); each maps to the same message, so keep one.
+  const seen = new Set<string>()
+  return issues.map(mapIssue).filter((issue) => {
+    const id = [issue.field, issue.line ?? "", issue.column ?? "", issue.key, issue.params?.max ?? ""].join("|")
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 }
