@@ -18,6 +18,7 @@ test('shared login retains the email when hydration occurs after the first fill'
   }
   const page = {
     async goto() {},
+    locator: () => ({ async waitFor() { hydrate() } }),
     getByLabel(label) {
       return {
         async fill(value) {

@@ -5,7 +5,7 @@ import { I18nProvider } from '../../lib/i18n/react'
 import { loginRedirectHref, loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, onboardingShellLanguage } from '../../lib/login-return'
 
 const state = vi.hoisted(() => ({
-  search: {} as Record<string, string>, cloud: false, active: false,
+  search: {} as Record<string, string>, cloud: false, active: false, fallback: false,
   load: vi.fn(), navigate: vi.fn(), signIn: vi.fn(), list: vi.fn(), setActive: vi.fn(), create: vi.fn(),
   checkSlug: vi.fn(), searchCvr: vi.fn(),
   status: vi.fn(), complete: vi.fn(), draft: vi.fn(),
@@ -27,8 +27,9 @@ vi.mock('../../lib/auth-client', () => ({
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
   cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) }, setupAvailable: { query: async () => ({ enabled: false }) } },
-  runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
+  runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false }, onboardingV2: { enabled: state.fallback }, sellerVatConfirmation: { enabled: state.fallback } }) } },
 } }))
+vi.mock('../../components/onboarding/company-setup', () => ({ CompanySetup: ({ onComplete }: { onComplete: () => void }) => <button onClick={onComplete}>Complete fallback</button> }))
 import { Route as LoginRoute } from '../login'
 import { Route as OnboardingRoute } from '../_app/onboarding'
 import { asMockedRoute } from '../../test-utils/mocked-route'
@@ -44,7 +45,7 @@ function submitLogin(lang = 'en') {
 }
 afterEach(() => {
   cleanup(); vi.resetAllMocks(); vi.restoreAllMocks()
-  state.search = {}; state.cloud = false; state.active = false
+  state.search = {}; state.cloud = false; state.active = false; state.fallback = false
 })
 
 describe('login return contract', () => {
@@ -260,6 +261,24 @@ describe('return after required organization flow', () => {
     renderPage(Onboarding)
     expect(await screen.findByText('Choose your organization')).toBeTruthy()
     expect(screen.queryByText('Look up your own CVR')).toBeNull()
+  })
+  it.each([
+    { next: '/invoices?filter=a%20b#details', lang: 'da' },
+    { redirect: '/contacts#details', lang: 'en' },
+    { lang: 'da' },
+    {},
+  ])('preserves the fallback onboarding return destination for %j', async search => {
+    state.cloud = true; state.active = true; state.fallback = true; state.search = search
+    state.status.mockResolvedValue({ isComplete: false, missing: [] })
+    renderPage(Onboarding)
+    fireEvent.click(await screen.findByRole('button', { name: 'Complete fallback' }))
+    if (Object.keys(search).length) {
+      expect(state.load).toHaveBeenCalledWith(loginReturnDestination(loginReturnTarget(search) ?? '/', search.lang))
+      expect(state.navigate).not.toHaveBeenCalled()
+    } else {
+      expect(state.navigate).toHaveBeenCalledWith({ to: '/' })
+      expect(state.load).not.toHaveBeenCalled()
+    }
   })
   it('resumes after completing required cloud setup', async () => {
     state.cloud = true; state.active = true; state.search = { next: '/hosted/account?tab=vat', lang: 'da' }
