@@ -156,8 +156,8 @@ describe("OnboardingPage cloud flow", () => {
 
   it("shows neither the legacy setup form nor v2 until v2 availability resolves", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
-    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
-    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    onboardingStatusQuery.mockRejectedValueOnce(new Error("temporary status failure")).mockResolvedValue({ isComplete: false, values: { companyName: "Recovered" }, missing: [] })
     let resolveAvailability!: (value: unknown) => void
     vi.mocked(trpc.cvr.available.query).mockImplementationOnce(() => new Promise((resolve) => { resolveAvailability = resolve }) as never)
     render(<RouteComponent />)
@@ -165,7 +165,8 @@ describe("OnboardingPage cloud flow", () => {
     expect(screen.queryByText("Finish organization setup")).toBeNull()
     expect(screen.queryByText("Business basics")).toBeNull()
     resolveAvailability({ enabled: false, suggestions: false })
-    await waitFor(() => expect(screen.queryByRole("status")?.textContent).not.toBe("Loading onboarding state…"))
+    expect(await screen.findByDisplayValue("Recovered")).toBeTruthy()
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 
   it("offers a retry instead of the legacy form when v2 availability fails", async () => {

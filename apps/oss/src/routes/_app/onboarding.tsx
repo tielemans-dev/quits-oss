@@ -299,6 +299,7 @@ function OnboardingPageContent() {
 
     let cancelled = false
     setStatusLoading(true)
+    setError(null)
 
     trpc.onboarding.getStatus
       .query()

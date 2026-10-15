@@ -141,6 +141,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     (nonVatEnabled || draft.values.momsRegistered !== false) ? draft.values.momsRegistered : null
 
   function discard() {
+    clearSelectedCompany(userId, organizationId)
     epoch.current++
     request.current?.abort()
     suggestionRequest.current?.abort()
@@ -534,7 +535,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               placeholder={TT("search.placeholder")}
               value={query}
               maxLength={120}
-              onChange={(event) => { epoch.current++; request.current?.abort(); setQuery(event.target.value) }}
+              onChange={(event) => { discard(); setQuery(event.target.value) }}
             />
           </label>
           {invalid ? (
