@@ -8,6 +8,7 @@ import { lockedAgreement } from "./issuance"
 
 import { isBillable } from "./billing-rules"
 export { isBillable } from "./billing-rules"
+export { requireUnallocatedAconto } from "./aconto-allocation"
 
 /** The invoice line currently allocating a deliverable, and the document that holds it. */
 const currentAllocation = (line: Pick<Deliverable, "id" | "billingGeneration">) => Effect.gen(function* () {
@@ -66,13 +67,6 @@ export function frozenTotals(lines: Array<{ lineNet: Prisma.Decimal | string; li
   const sum = (field: "lineNet" | "lineTax" | "lineGross") => lines.reduce((value, line) => value.plus(line[field]), new Prisma.Decimal(0))
   return { subtotalNet: sum("lineNet"), totalTax: sum("lineTax"), totalGross: sum("lineGross") }
 }
-/** Credit preparation and commit use the same guard under the agreement lock. */
-export const requireUnallocatedAconto = (invoiceId: string, items: ReadonlyArray<{ sourceKind?: string | null }>) => Effect.gen(function* () {
-  const db = yield* Db
-  const allocated = yield* Effect.promise(() => db.invoiceItem.count({ where: { sourceKind: "aconto", sourceRevision: invoiceId } }))
-  if (allocated || items.some(line => line.sourceKind === "aconto"))
-    return yield* new InvalidState({ code: "aconto_allocated", message: "Remove draft aconto deductions before crediting their source. Issued deductions require an allocation reversal." })
-})
 export const reserveLines = (agreementId: string, invoiceId: string, lines: Deliverable[]) => Effect.gen(function* () {
   const db = yield* Db, command = yield* Command
   for (const line of lines) {
