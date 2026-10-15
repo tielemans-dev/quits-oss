@@ -2,7 +2,8 @@ import { Effect } from "effect"
 import type { Invoice, Payment } from "../../../generated/prisma/client"
 import { composeMessage } from "../../lib/email"
 import { buildPaymentReceivedEmailContent } from "../../lib/emails/payment-received-email"
-import { registerDeliveryCompletion, enqueueEmailDelivery } from "../delivery/outbox"
+import { Prisma } from "../../../generated/prisma/client"
+import { deliveryKey, registerDeliveryCompletion, enqueueEmailDelivery } from "../delivery/outbox"
 import { isValidRecipient } from "../commands/reminders"
 import { Command, Db } from "../services"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
@@ -11,9 +12,18 @@ import { issuedNumber } from "./numbering"
 
 const PAYMENT_NOTIFICATION = "payment.notification"
 
-/** Notifications settle only their job; the payment and the invoice are already recorded. */
+export const PAYMENT_VOIDED_MESSAGE = "The payment was voided or undone, or the invoice is no longer paid in full, before the email went out"
+
+/** Settles only its job. A payment undone or voided before the provider is contacted withdraws. */
 registerDeliveryCompletion(PAYMENT_NOTIFICATION, {
   pending: async () => true,
+  withdrawalReason: async (db, target) => {
+    const payment = await db.payment.findUnique({
+      where: { id: target.paymentId },
+      select: { voidedAt: true, invoice: { select: { paymentStatus: true } } },
+    })
+    return !payment || payment.voidedAt || payment.invoice.paymentStatus !== "paid" ? PAYMENT_VOIDED_MESSAGE : null
+  },
   delivered: async () => [],
   failed: async () => [],
 })
@@ -24,16 +34,40 @@ const AUDIENCES = ["client", "seller"] as const
 const idempotencyKey = (paymentId: string, audience: (typeof AUDIENCES)[number]) => `payment-received-${paymentId}-${audience}`
 
 /**
+ * Withdraws the notifications no provider request has started for, when a payment is voided or
+ * undone: its own, and, if the invoice is no longer paid in full, those of its other payments.
+ * Call it in the reversing command, so it serializes with a worker on the job rows: a worker that
+ * already passed `withdrawalReason` loses its claim and fails its next write, before the request.
+ * A request already started keeps its outcome, because the provider may have it.
+ */
+export async function withdrawPaymentNotifications(
+  db: Prisma.TransactionClient,
+  input: { paymentId: string; invoiceId: string; stillPaidInFull: boolean }
+) {
+  const own = { dedupeKey: { in: AUDIENCES.map((audience) => deliveryKey(idempotencyKey(input.paymentId, audience))) } }
+  const ofInvoice = {
+    dedupeKey: { startsWith: deliveryKey("payment-received-") },
+    payload: { path: ["completion", "target", "invoiceId"], equals: input.invoiceId },
+  }
+  await db.job.updateMany({
+    where: {
+      result: { equals: Prisma.DbNull },
+      AND: [{ payload: { path: ["requests"], equals: 0 } }, { OR: input.stillPaidInFull ? [own] : [own, ofInvoice] }],
+    },
+    data: { status: "done", claimToken: null, result: { outcome: "withdrawn", message: PAYMENT_VOIDED_MESSAGE } },
+  })
+}
+
+/**
  * Queues the emails for an invoice that this payment just paid in full: a confirmation to the
- * customer and a notice to the seller. Call it in the payment's own command, so the emails are
- * queued in the same transaction and a redelivered webhook, which records no second payment,
- * queues nothing. Each recipient has one key per payment, so a retry never sends a second copy.
+ * customer and a notice to the seller. Call it in the payment's own command, so they are queued
+ * in its transaction; a redelivered webhook records no second payment and queues nothing. Each
+ * recipient has one key per payment.
  *
- * Only a card payment confirmed by the Stripe webhook (recorded with the webhook's source and
- * checkout session) is confirmed to the customer. A payment the seller records by hand is
- * something the seller already knows about and may still undo or correct, so only the seller's
- * inbox is told about it. A recipient is skipped when it has no valid address or when this
- * installation cannot send email.
+ * Only a payment recorded by the Stripe webhook (its source and checkout session) is confirmed to
+ * the customer. A payment the seller records by hand is already known to them and may still be
+ * undone, so only the seller is told. A recipient without a valid address, or an installation that
+ * cannot send email, is skipped.
  */
 export const queuePaymentReceivedEmails = (input: { invoice: Invoice; payment: Payment }) =>
   Effect.gen(function* () {

@@ -19,7 +19,7 @@ import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { documentRef } from "../documents/numbering"
 import { Command, Db } from "../services"
 import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
-import { queuePaymentReceivedEmails } from "../documents/payment-notifications"
+import { queuePaymentReceivedEmails, withdrawPaymentNotifications } from "../documents/payment-notifications"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -453,6 +453,13 @@ export const voidPayment = defineCommand({
         })
       )
       const refreshed = yield* refreshInvoiceSettlement(invoice.id)
+      yield* Effect.promise(() =>
+        withdrawPaymentNotifications(db, {
+          paymentId: payment.id,
+          invoiceId: invoice.id,
+          stillPaidInFull: refreshed.settlement.paymentStatus === "paid",
+        })
+      )
 
       command.emit({
         aggregateType: "invoice",
