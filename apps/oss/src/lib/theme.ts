@@ -26,8 +26,8 @@ const DARK_QUERY = "(prefers-color-scheme: dark)"
  * than the OS setting.
  */
 export const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#fafaf9",
-  dark: "#0b0b0c",
+  light: "#faf9f6",
+  dark: "#0e1018",
 }
 
 /**
