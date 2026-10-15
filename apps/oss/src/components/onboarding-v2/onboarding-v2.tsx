@@ -723,7 +723,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             {field("invoicePrefix", "field.prefix", TT("defaultTag"), {
               required: true,
               maxLength: 10,
-              pattern: "[A-Z0-9-]{1,10}",
+              pattern: "[A-Z0-9\\-]{1,10}",
             })}
             {field("invoiceNextNum", "field.next", TT("defaultTag"), {
               type: "number",
