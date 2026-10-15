@@ -8,7 +8,7 @@ const hosted = process.env.QUI62_HOSTED_FIXTURE === "true"
 const baseURL = "http://127.0.0.1:3040"
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: process.env.QUI62_EVIDENCE_REVISION === "baseline" ? "seller-vat-baseline.spec.ts" : "seller-vat-status.spec.ts",
+  testMatch: process.env.QUI62_EVIDENCE_REVISION === "before" ? "seller-vat-before.spec.ts" : "seller-vat-status.spec.ts",
   reporter: [["list"], ["html", { outputFolder: "playwright-report/seller-vat", open: "never" }]],
   workers: 1,
   timeout: 300_000,
@@ -29,7 +29,7 @@ export default defineConfig({
       QUITS_PUBLIC_PAYMENT_SECRET: "qui62-browser-payment-test-secret",
       // This server does not use TanStack devtools. The bus binds a hashed port in
       // the ephemeral range and crashes vite on EADDRINUSE. "off" skips it on this
-      // branch. The baseline job still runs main's vite, which ignores that switch
+      // branch. The before job still runs main's vite, which ignores that switch
       // and needs a port outside the ephemeral range.
       QUITS_DEVTOOLS_EVENT_BUS: "off",
       QUITS_DEVTOOLS_EVENT_BUS_PORT: "3041",

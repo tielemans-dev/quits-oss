@@ -28,5 +28,5 @@ export const daDocFormMessages = {
   "docForm.validation.itemDescriptionRequired":
     "Alle linjer skal have en beskrivelse",
   "docForm.validation.quantityInvalid":
-    "Angiv et antal større end 0 og højst 1000000 med punktum og op til 6 decimaler. Eksponentnotation er ikke tilladt.",
+    "Angiv et antal større end 0 og højst 1.000.000 med komma eller punktum og op til 6 decimaler. Eksponentnotation er ikke tilladt.",
 } as const
