@@ -117,6 +117,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     controller: AbortController
   } | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
   const focusInvalid = useRef(false)
   // Long review page: after a rejected submit, take the user to the first field that needs fixing.
@@ -148,6 +149,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     suggestionRequest.current?.abort()
     suggestionPromise.current = null
     setValidationErrors([])
+    setCvrError(null)
     clearDraft(storageKey)
     setDraft(null)
     setRestored(false)
@@ -359,6 +361,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    if (field === "cvr") setCvrError(null)
     setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
     setDraft((current) =>
       current
@@ -402,6 +405,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     setValidationErrors([])
+    setCvrError(null)
     saving.current = true
     setBusy(true)
     setSaveFailed(false)
@@ -431,6 +435,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
       // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
       const message = error instanceof Error ? error.message : ""
+      if (message === "cvr.inactive" || message === "cvr.unavailable") {
+        setCvrError(message)
+        reject(["cvr"])
+        return
+      }
       const issues = message === "cvr.invalid" ? [{ field: "cvr" }] : message === "email.invalid" ? [{ field: "email" }] : readableIssues(error) ?? []
       const fields = [...new Set(issues.flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : []))]
       if (fields.length) reject(fields)
@@ -478,7 +487,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     if (!validationErrors.includes(name)) return null
     const value = String(draft!.values[name] ?? "").trim()
     const message: TranslationKey =
-      name === "cvr" ? (value ? "validation.cvr.invalid" : "validation.required")
+      name === "cvr" ? (cvrError ?? (value ? "validation.cvr.invalid" : "validation.required"))
       : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
       : value ? "validation.unknown" : "validation.required"
     return <span id={`ob-${name}-error`} className="ob-error" role="alert">{t(message)}</span>
@@ -760,6 +769,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               { type: "email", required: true },
             )}
             {field("companyPhone", "field.phone", factsTag)}
+            {draft.source === "cvr" ? <p className="ob-notice" role="note">{TT("review.contacts", { email: signupEmail })}</p> : null}
           </SummaryCard>
           <SummaryCard title={TT("vatCurrency")}>
             <SourceField label={TT("field.country")} tag={factsTag}>

@@ -1,4 +1,5 @@
 export const enOnboardingV2Messages = {
+  "onboardingV2.review.contacts": "Contact details are saved only if CVR confirms the company is not advertising-protected. Otherwise, we use {email} as the billing email and leave the phone blank. You can update both in Settings after setup.",
   "onboardingV2.statusBody.ceased": "ceased",
   "onboardingV2.statusBody.dissolved": "was dissolved",
   "onboardingV2.statusBody.bankrupt": "went bankrupt",
