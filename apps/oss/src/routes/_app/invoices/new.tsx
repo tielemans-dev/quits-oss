@@ -1,3 +1,4 @@
+import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
@@ -152,7 +153,7 @@ function NewInvoicePage() {
   if (items.some((item) => !item.description.trim())) invalidFields.add("items")
   const shownError = visibleFieldError(fieldError, invalidFields) ?? error
 
-  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
+  const preview = previewDraft({ items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate: taxRate || "0", pricesIncludeTax, currency })
   const subtotal = Number(preview.result?.net ?? "0")
   const taxAmount = Number(preview.result?.tax ?? "0")
   const total = Number(preview.result?.gross ?? "0")
@@ -260,6 +261,11 @@ function NewInvoicePage() {
       return
     }
 
+    if (items.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
+      setError(t("docForm.validation.quantityInvalid"))
+      return
+    }
+
     submitPending.current = true
     setSaving(true)
     try {
@@ -275,7 +281,7 @@ function NewInvoicePage() {
             taxRate,
             vatEvidence,
             notes: notes || undefined,
-            items: items.map((item) => ({
+            items: items.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
               description: item.description,
               quantity: String(item.quantity),
               unitPrice: String(item.unitPrice),
@@ -410,7 +416,7 @@ function NewInvoicePage() {
           <div className="grid gap-3">
             <Label>{t("docForm.lineItems")}</Label>
             <div className="rounded-md border">
-              <div className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
+              <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                 <span>{t("docForm.column.item")}</span>
                 <span>{t("docForm.column.description")}</span>
                 <span>{t("docForm.column.qty")}</span>
@@ -421,7 +427,7 @@ function NewInvoicePage() {
               {items.map((item, index) => (
                 <div
                   key={index}
-                  className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
+                  className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                 >
                   <Select
                     value={item.catalogItemId}
@@ -446,32 +452,46 @@ function NewInvoicePage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input
+                  <Textarea
+                    className="min-w-0 [overflow-wrap:anywhere]"
+                    aria-label={t("docForm.column.description")}
                     placeholder={t("docForm.column.description")}
                     value={item.description}
                     onChange={(e) => updateItem(index, "description", e.target.value)}
                   />
-                  <Input
-                    type="number"
-                    min="0.000001"
-                    step="0.000001"
-                    value={item.quantity || ""}
-                    onChange={(e) =>
-                      updateItem(index, "quantity", e.target.value)
-                    }
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={item.unitPrice || ""}
-                    onChange={(e) =>
-                      updateItem(index, "unitPrice", e.target.value)
-                    }
-                  />
-                  <span className="num text-sm text-right pr-2">
-                    {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
-                  </span>
+                  <div className="grid min-w-0 gap-1">
+                    <Label htmlFor={`invoice-new-quantity-${index}`} className="md:sr-only">{t("docForm.column.qty")}</Label>
+                    <Input
+                      id={`invoice-new-quantity-${index}`}
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={t("docForm.column.qty")}
+                      aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success}
+                      value={item.quantity || ""}
+                      onChange={(e) =>
+                        updateItem(index, "quantity", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-1">
+                    <Label htmlFor={`invoice-new-unitPrice-${index}`} className="md:sr-only">{t("docForm.column.unitPrice")}</Label>
+                    <Input
+                      id={`invoice-new-unitPrice-${index}`}
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      value={item.unitPrice || ""}
+                      onChange={(e) =>
+                        updateItem(index, "unitPrice", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-1">
+                    <span id={`invoice-new-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
+                    <output aria-labelledby={`invoice-new-total-${index}`} className="num text-sm text-right pr-2">
+                      {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
+                    </output>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"

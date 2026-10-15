@@ -1,3 +1,4 @@
+import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
@@ -328,7 +329,7 @@ function InvoiceDetailPage() {
         id: item.id, deliverableId: item.deliverableId ?? undefined,
         ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
         description: item.description,
-        quantity: item.quantityInput ?? String(item.quantity),
+        quantity: localizeInvoiceQuantity(item.quantityInput ?? String(item.quantity), locale),
         unitPrice: item.unitPriceInput ?? String(invoice.pricesIncludeTax ? item.unitPriceGross ?? item.unitPrice : item.unitPriceNet ?? item.unitPrice),
         vat: { treatment: item.vatTreatment ?? (Number(item.taxRate) > 0 ? "standard" : "unclassified_zero"), rate: item.vatRateInput ?? percentageToFraction(item.taxRate ?? 0), country: item.vatCountry, reasonCode: item.vatReasonCode },
         catalogItemId: undefined,
@@ -370,6 +371,10 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
+    if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
+      setError(t("docForm.validation.quantityInvalid"))
+      return
+    }
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
     try {
@@ -380,7 +385,7 @@ function InvoiceDetailPage() {
         notes: editNotes,
         ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
         vatEvidence: editVatEvidence,
-        items: editItems.map((item) => ({
+        items: editItems.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
           id: item.id, deliverableId: item.deliverableId,
           description: item.description,
           quantity: item.quantity,
@@ -540,7 +545,7 @@ function InvoiceDetailPage() {
   // Edit mode
   if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
-    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
@@ -594,7 +599,7 @@ function InvoiceDetailPage() {
             <div className="grid gap-3">
               <Label>{t("docForm.lineItems")}</Label>
               <div className="rounded-md border">
-                <div className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
+                <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                   <span>{t("docForm.column.item")}</span>
                   <span>{t("docForm.column.description")}</span>
                   <span>{t("docForm.column.qty")}</span>
@@ -605,7 +610,7 @@ function InvoiceDetailPage() {
                 {editItems.map((item, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
+                    className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                   >
                     <Select
                       disabled={!!item.deliverableId}
@@ -629,35 +634,49 @@ function InvoiceDetailPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
+                    <Textarea
+                      className="min-w-0 [overflow-wrap:anywhere]"
+                      aria-label={t("docForm.column.description")}
                       placeholder={t("docForm.column.description")}
                       disabled={!!item.deliverableId}
                       value={item.description}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
-                    <Input
-                      type="number"
-                      min="0.000001"
-                      step="0.000001"
-                      disabled={!!item.deliverableId}
-                      value={item.quantity || ""}
-                      onChange={(e) =>
-                        updateEditItem(index, "quantity", e.target.value)
-                      }
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      disabled={!!item.deliverableId}
-                      value={item.unitPrice || ""}
-                      onChange={(e) =>
-                        updateEditItem(index, "unitPrice", e.target.value)
-                      }
-                    />
-                    <span className="num text-sm text-right pr-2">
-                      {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
-                    </span>
+                    <div className="grid min-w-0 gap-1">
+                      <Label htmlFor={`invoice-edit-quantity-${index}`} className="md:sr-only">{t("docForm.column.qty")}</Label>
+                      <Input
+                        id={`invoice-edit-quantity-${index}`}
+                        type="text"
+                        inputMode="decimal"
+                        aria-label={t("docForm.column.qty")}
+                        aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success}
+                        disabled={!!item.deliverableId}
+                        value={item.quantity || ""}
+                        onChange={(e) =>
+                          updateEditItem(index, "quantity", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="grid min-w-0 gap-1">
+                      <Label htmlFor={`invoice-edit-unitPrice-${index}`} className="md:sr-only">{t("docForm.column.unitPrice")}</Label>
+                      <Input
+                        id={`invoice-edit-unitPrice-${index}`}
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        disabled={!!item.deliverableId}
+                        value={item.unitPrice || ""}
+                        onChange={(e) =>
+                          updateEditItem(index, "unitPrice", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="grid min-w-0 gap-1">
+                      <span id={`invoice-edit-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
+                      <output aria-labelledby={`invoice-edit-total-${index}`} className="num text-sm text-right pr-2">
+                        {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
+                      </output>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"

@@ -28,7 +28,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
       const reasons: readonly VatReasonCode[] = vatReasonCodes[vat.treatment]
       const patch = (changes: Partial<NonNullable<DocumentLineInput["vat"]>>) => onItemsChange(items.map((line, i) => i === index ? { ...line, vat: { ...vat, ...changes } } : line))
       return <div key={index} className="grid grid-cols-2 gap-2 rounded-md border p-3">
-        <Label className="col-span-2">{item.description || t("vat.line", { number: index + 1 })}</Label>
+        <Label className="col-span-2 block min-w-0 whitespace-normal [overflow-wrap:anywhere]">{item.description || t("vat.line", { number: index + 1 })}</Label>
         <label className="grid gap-1 text-sm">{t("vat.treatment")}
           <select className="h-9 rounded-md border bg-background px-2" aria-label={t("vat.lineTreatment", { number: index + 1 })} value={vat.treatment} onChange={(event) => {
             const treatment = vatTreatmentSchema.parse(event.target.value)
