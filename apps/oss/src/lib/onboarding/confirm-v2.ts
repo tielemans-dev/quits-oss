@@ -8,7 +8,7 @@ import { prisma } from "../db"
 import { getCvrLookupProvider } from "../runtime/services"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
-import { organizationSlugCandidates, organizationSlugFromName } from "../organization-slug"
+import { organizationSlugCandidate } from "../organization-slug"
 
 /**
  * Onboarding creates the organization from a typed name before the CVR review. A slug still
@@ -18,21 +18,23 @@ import { organizationSlugCandidates, organizationSlugFromName } from "../organiz
  */
 async function followConfirmedNameSlug(organizationId: string, previous: { name: string; slug: string }, companyName: string) {
   const derivedFrom = (name: string, slug: string) => {
-    const base = organizationSlugFromName(name)
-    const suffix = /-(\d+)$/.exec(slug)
-    return slug === base || (suffix !== null && Number(suffix[1]) >= 2 && Number(suffix[1]) <= 1000 && organizationSlugCandidates(name, Number(suffix[1])).at(-1) === slug)
+    const suffix = /-([1-9]\d*)$/.exec(slug)
+    return slug === organizationSlugCandidate(name, 1n) || (suffix !== null && BigInt(suffix[1]!) >= 2n && organizationSlugCandidate(name, BigInt(suffix[1]!)) === slug)
   }
   if (!derivedFrom(previous.name, previous.slug) || derivedFrom(companyName, previous.slug)) return
-  const base = organizationSlugFromName(companyName)
-  const head = base.slice(0, 36).replace(/-+$/g, "") || "organization"
-  const taken = new Set((await prisma.organization.findMany({ where: { slug: { startsWith: head } }, select: { slug: true } })).map(org => org.slug))
-  // Same order as organization creation, beyond any number of taken suffixes.
-  for (const slug of organizationSlugCandidates(companyName, taken.size + 2).filter(candidate => !taken.has(candidate))) {
-    try {
-      await prisma.organization.updateMany({ where: { id: organizationId, slug: previous.slug }, data: { slug } })
-      return
-    } catch {
-      // Taken meanwhile: try the next candidate.
+  // Same order as organization creation, checked in bounded batches of exact candidates.
+  const batch = 50n
+  for (let first = 1n; ; first += batch) {
+    const candidates = Array.from({ length: Number(batch) }, (_, i) => organizationSlugCandidate(companyName, first + BigInt(i)))
+    const taken = new Set((await prisma.organization.findMany({ where: { slug: { in: candidates } }, select: { slug: true } })).map(org => org.slug))
+    for (const slug of candidates.filter(candidate => !taken.has(candidate))) {
+      try {
+        await prisma.organization.updateMany({ where: { id: organizationId, slug: previous.slug }, data: { slug } })
+        return
+      } catch (error) {
+        // Taken meanwhile: try the next candidate. Any other failure keeps the old slug.
+        if ((error as { code?: string } | null)?.code !== "P2002") return
+      }
     }
   }
 }

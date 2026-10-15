@@ -435,18 +435,18 @@ async function caller(id: string, requestedOrganizationId?: string) {
     await api.onboarding.confirmV2({ ...summary(), reklamebeskyttet, companyEmail: "protected@example.test", companyPhone: "12345678" })
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })
   })
-  it.each([[false, ""], [true, ""], [false, "-13"]] as const)("moves a name-derived slug to the confirmed company name when that slug is taken: %s, placeholder suffix %j (QUI-56)", async (taken, suffix) => {
+  it.each([[0, ""], [1, ""], [0, "-13"], [0, "-1001"], [55, ""]] as const)("moves a name-derived slug to the confirmed company name past %s taken slugs, placeholder suffix %j (QUI-56)", async (taken, suffix) => {
     const id = await organization()
     const tag = id.slice(0, 8)
     await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}${suffix}` } })
-    const otherId = taken ? randomUUID() : null
-    if (otherId) {
+    for (let n = 1; n <= taken; n++) {
+      const otherId = randomUUID()
       ids.push(otherId)
-      await prisma.organization.create({ data: { id: otherId, name: "Other", slug: `synthetic-${tag}-aps`, createdAt: new Date() } })
+      await prisma.organization.create({ data: { id: otherId, name: "Other", slug: n === 1 ? `synthetic-${tag}-aps` : `synthetic-${tag}-aps-${n}`, createdAt: new Date() } })
     }
     const api = await caller(id)
     await api.onboarding.confirmV2({ ...summary(), companyName: `Synthetic ${tag} ApS` })
-    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: `Synthetic ${tag} ApS`, slug: taken ? `synthetic-${tag}-aps-2` : `synthetic-${tag}-aps` })
+    expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: `Synthetic ${tag} ApS`, slug: taken ? `synthetic-${tag}-aps-${taken + 1}` : `synthetic-${tag}-aps` })
   })
   it("keeps a slug that was not derived from the organization name", async () => {
     const id = await organization()
