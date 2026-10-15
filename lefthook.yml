@@ -1,0 +1,6 @@
+lefthook: sh scripts/lefthook.sh
+
+pre-commit:
+  commands:
+    oxlint:
+      run: bun run lint:staged

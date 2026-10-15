@@ -1,5 +1,7 @@
 import type { StripeAccountStatus } from "@quits/contracts/payments"
 import Stripe from "stripe"
+import { readProductEnv } from "@quits/shared/runtimeEnv"
+import { getRuntimeEnv } from "../runtime/platform"
 import { prisma } from "../db"
 import { getRuntimeExtensions } from "../runtime/extensions"
 import type {
@@ -39,17 +41,13 @@ export function getStripePaymentConfigurationState(
 
 export type CardCheckoutBlock = "card_checkout_not_ready" | "balance_not_representable_in_currency"
 
-/**
- * Whether this balance can be charged by card. The organization must be configured
- * (complete BYOK keys or an active Connect account) and the amount must be exact in
- * the currency. /pay and the checkout endpoint both use this.
- */
+/** Shared page/checkout gate: complete BYOK keys or active Connect, and an exact currency amount. */
 export function assessCardCheckout(input: {
-  configuration: StripePaymentConfigurationSnapshot
+  configuration: StripePaymentConfigurationSnapshot | null | undefined
   amount: number
   currency: string
 }): { ready: true } | { ready: false; reason: CardCheckoutBlock } {
-  if (!getStripePaymentConfigurationState(input.configuration).configured) {
+  if (!input.configuration || !getStripePaymentConfigurationState(input.configuration).configured) {
     return { ready: false, reason: "card_checkout_not_ready" }
   }
   if (!isExactInCurrency(input.amount, input.currency)) {
@@ -81,25 +79,28 @@ type _SdkFitsConnectClient = Stripe extends StripeConnectCheckoutClient ? true :
 const _sdkFitsConnectClient: _SdkFitsConnectClient = true
 void _sdkFitsConnectClient
 
-/**
- * The first extension that returns a target wins. Otherwise the organization's own
- * Stripe keys are used, and only when publishable key, secret key and webhook secret
- * are all stored. A connect target is used for a new charge only when `connectReady`
- * is not false, which checkout sets from an active card-payments status. Expiry leaves
- * it unset so an open connect session can still be expired.
- */
+export function usesStripeConnectCheckout() {
+  return readProductEnv(getRuntimeEnv(), "DISTRIBUTION")?.trim().toLowerCase() === "cloud"
+    || getRuntimeExtensions().some(extension => extension.resolveStripeCheckoutTarget)
+}
+
+/** A checkout extension owns card routing. Only active Connect may charge; BYOK is self-hosted. */
 export async function resolveStripeCheckoutTarget(
   context: StripeCheckoutTargetContext,
   options?: { connectReady?: boolean }
 ): Promise<StripeCheckoutTarget | null> {
-  for (const extension of getRuntimeExtensions()) {
-    if (!extension.resolveStripeCheckoutTarget) continue
-    const target = await extension.resolveStripeCheckoutTarget(context)
-    if (!target) continue
-    if (target.kind === "connect" && options?.connectReady === false) continue
-    return target
+  const extensions = getRuntimeExtensions().filter(extension => extension.resolveStripeCheckoutTarget)
+  if (!usesStripeConnectCheckout()) return defaultByokStripeCheckoutTarget(context.organizationId)
+  const connectReady = options?.connectReady ?? (await prisma.orgSettings.findUnique({
+    where: { organizationId: context.organizationId },
+    select: { stripeAccountStatus: true },
+  }))?.stripeAccountStatus === "active"
+  if (!connectReady) return null
+  for (const extension of extensions) {
+    const target = await extension.resolveStripeCheckoutTarget?.(context)
+    if (target?.kind === "connect") return target
   }
-  return defaultByokStripeCheckoutTarget(context.organizationId)
+  return null
 }
 
 async function defaultByokStripeCheckoutTarget(
