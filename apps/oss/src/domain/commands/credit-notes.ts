@@ -1,5 +1,6 @@
+import type { RenderInput } from "../documents/render-input"
 import { Effect } from "effect"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "../documents/vat-summary"
 import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import { Prisma } from "../../../generated/prisma/client"
@@ -166,6 +167,11 @@ export const sendCreditNote = defineCommand({
       }
 
       yield* refuseWhileSending("creditNote", creditNote)
+      const candidate = yield* Effect.promise(() => db.issuanceCandidate.findFirst({
+        where: { organizationId, documentKind: "creditNote", documentId: creditNote.id, status: "published" },
+        orderBy: { createdAt: "desc" }, select: { renderInput: true },
+      }))
+      const frozen = (candidate?.renderInput as Extract<RenderInput, { kind: "creditNote" }> | undefined)?.pdf?.creditNote
       const content = buildCreditNoteEmailContent({
         fromName: envelope.fromName,
         fromEmail: envelope.fromEmail,
@@ -175,6 +181,9 @@ export const sendCreditNote = defineCommand({
           issueDate: creditNote.issueDate,
           reason: creditNote.reason,
           sellerSnapshot: creditNote.sellerSnapshot,
+          buyerSnapshot: creditNote.buyerSnapshot,
+          contact: creditNote.contact,
+          taxRate: frozen?.taxRate ?? nominalLineTaxRate(creditNote.items.map(item => num(item.taxRate))),
           subtotal: num(creditNote.subtotalNet),
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),
@@ -197,6 +206,7 @@ export const sendCreditNote = defineCommand({
         org: {
           companyName: settings.companyName,
           companyEmail: settings.companyEmail,
+          companyAddress: settings.companyAddress,
           locale: creditNote.locale,
           timezone: creditNote.timezone,
         },
