@@ -27,9 +27,15 @@ function NewContactPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [organizationCountry, setOrganizationCountry] = useState<string | null>(null)
+  // The form stays closed to submission until the default country answered, so a quick submit cannot drop it.
+  // A failed lookup opens it with the country left to the person.
+  const [countrySettled, setCountrySettled] = useState(false)
   useEffect(() => {
     let cancelled = false
-    trpc.settings.get.query().then(settings => { if (!cancelled) setOrganizationCountry(settings.countryCode) }).catch(() => {})
+    trpc.settings.get.query()
+      .then(settings => { if (!cancelled) setOrganizationCountry(settings.countryCode) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCountrySettled(true) })
     return () => { cancelled = true }
   }, [])
 
@@ -223,7 +229,7 @@ function NewContactPage() {
             >
               {t("contacts.action.cancel")}
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !countrySettled}>
               {saving ? t("contacts.action.creating") : t("contacts.action.create")}
             </Button>
           </CardFooter>

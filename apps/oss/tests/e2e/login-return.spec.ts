@@ -35,3 +35,40 @@ for (const lang of ['da', 'en']) {
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
   })
 }
+
+test('a signed-out visit to a protected page logs in and resumes it', async ({ page }) => {
+  // The router may re-encode the query (`%20` as `+`), so compare what the path means: the
+  // origin, the path and every decoded query entry, duplicates included.
+  const origin = 'http://app.invalid'
+  const meaning = (target: string | null) => {
+    expect(target).not.toBeNull()
+    expect(target!.startsWith('/') && !target!.startsWith('//')).toBe(true)
+    const url = new URL(target!, origin)
+    return { origin: url.origin, pathname: url.pathname, query: [...url.searchParams].sort(), hash: url.hash }
+  }
+  const expected = {
+    origin,
+    pathname: '/invoices',
+    query: [['filter', 'a b'], ['tab', 'all']],
+    hash: '',
+  }
+  const redirectOf = (href: string) => new URL(href, page.url()).searchParams.get('redirect')
+  const landed = (appOrigin: string) => {
+    const url = new URL(page.url())
+    expect(url.origin).toBe(appOrigin)
+    return `${url.pathname}${url.search}${url.hash}`
+  }
+
+  await page.goto('/invoices?filter=a%20b&tab=all')
+  const appOrigin = new URL(page.url()).origin
+  await expect(page).toHaveURL(/\/login\?/)
+  expect(meaning(redirectOf(page.url()))).toEqual(expected)
+  await waitForClientReady(page)
+  const signup = await page.getByRole('link', { name: 'Sign up' }).getAttribute('href')
+  expect(meaning(redirectOf(signup!))).toEqual(expected)
+  await page.getByLabel('Email').fill(adminCredentials.email)
+  await page.getByLabel('Password').fill(adminCredentials.password)
+  await page.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page).toHaveURL(/\/invoices\?/)
+  expect(meaning(landed(appOrigin))).toEqual(expected)
+})
