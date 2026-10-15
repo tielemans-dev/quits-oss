@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
 
 const { routerState } = vi.hoisted(() => ({
-  routerState: { matches: [] as Array<{ routeId: string; context: { locale?: string } }> },
+  routerState: {
+    matches: [] as Array<{ routeId: string; context: { locale?: string } }>,
+    location: { pathname: "/", search: {} as Record<string, unknown> },
+  },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
@@ -37,7 +40,10 @@ function response(locale?: string, children: ReactNode = <I18nProvider initialLo
   return renderToStaticMarkup(<Shell>{children}</Shell>)
 }
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  routerState.location = { pathname: "/", search: {} }
+})
 
 describe("root document SSR language", () => {
   it.each([
@@ -63,6 +69,13 @@ describe("root document SSR language", () => {
     routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/setup", context: {} }]
     const html = renderToStaticMarkup(<Shell><I18nProvider initialLocale="da-DK"><Navigation /></I18nProvider></Shell>)
     expect(html).toContain('<html lang="da">')
+  })
+
+  it.each([["da", undefined, "da", "Fakturaer"], ["da", "en-US", "da", "Fakturaer"], ["en", "da-DK", "en", "Invoices"]] as const)("declares onboarding's lang=%s over organization locale %s (QUI-56)", (lang, locale, language, navigation) => {
+    routerState.location = { pathname: "/onboarding", search: { lang } }
+    const html = response(locale, <I18nProvider initialLocale={lang}><Navigation /></I18nProvider>)
+    expect(html).toContain(`<html lang="${language}">`)
+    expect(html).toContain(`<nav>${navigation}</nav>`)
   })
 
   it("does not adopt a fixed public document's locale as the editable shell language", () => {
