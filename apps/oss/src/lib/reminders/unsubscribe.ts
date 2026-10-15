@@ -97,7 +97,7 @@ export async function readReminderUnsubscribeState(db: ReminderPreferenceDb, tok
 }
 
 /** POST revalidates the recipient/organization/action binding before writing. */
-export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: string, method: "POST", acceptLanguage?: string | null): Promise<ReminderUnsubscribeState> {
+export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: string, method: "POST" | "RESUBSCRIBE", acceptLanguage?: string | null): Promise<ReminderUnsubscribeState> {
   const binding = await verifiedReminderPreference(db, token)
   if (!binding) return { kind: "invalid", locale: localeFromAcceptLanguage(acceptLanguage) }
   const { preference, organization } = binding
@@ -108,7 +108,13 @@ export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: 
       data: { unsubscribedAt: new Date() },
     })
   }
-  return { kind: "done", locale: preference.locale, organizationName: organization.name }
+  if (method === "RESUBSCRIBE") {
+    await db.recipientReminderPreference.updateMany({
+      where: { id: preference.id, organizationId: preference.organizationId, recipient: preference.recipient },
+      data: { unsubscribedAt: null },
+    })
+  }
+  return { kind: method === "POST" ? "done" : "confirm", locale: preference.locale, organizationName: organization.name }
 }
 
 export async function postReminderUnsubscribe(request: Request, db: ReminderPreferenceDb, oneClick: boolean) {
@@ -151,7 +157,11 @@ export async function postReminderUnsubscribe(request: Request, db: ReminderPref
   if (oneClick && (form.get("List-Unsubscribe") !== "One-Click" || form.getAll("List-Unsubscribe").length !== 1)) return new Response(null, { status: 400, headers })
   const token = oneClick ? new URL(request.url).searchParams.get("token") ?? "" : form.get("token") ?? ""
   if (!oneClick && form.getAll("token").length !== 1) return new Response(null, { status: 400, headers })
-  const state = await reminderUnsubscribeState(db, token, "POST", request.headers.get("accept-language"))
+  const intent = form.get("intent")
+  if (!oneClick && (form.getAll("intent").length > 1 || (intent !== null && intent !== "unsubscribe" && intent !== "resume"))) return new Response(null, { status: 400, headers })
+  // RFC 8058 requests can only unsubscribe, regardless of extra form fields.
+  const method = !oneClick && intent === "resume" ? "RESUBSCRIBE" : "POST"
+  const state = await reminderUnsubscribeState(db, token, method, request.headers.get("accept-language"))
   if (state.kind === "invalid") {
     if (oneClick) return new Response(null, { status: 400, headers })
     headers.set("Location", "/reminders/unsubscribe")

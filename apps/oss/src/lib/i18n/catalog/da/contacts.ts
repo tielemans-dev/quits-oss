@@ -41,4 +41,10 @@ export const daContactsMessages = {
   "contacts.delete.title": "Slet kunde",
   "contacts.delete.description":
     "Er du sikker på, at du vil slette {name}? Denne handling kan ikke fortrydes.",
+  "contacts.reminders.stopped": "Automatiske påmindelser er afmeldt",
+  "contacts.reminders.active": "Automatiske påmindelser er tilladt",
+  "contacts.reminders.scope": "Gælder automatiske påmindelser fra denne virksomhed til {email}. Fakturaer og andre dokumenter sendes stadig.",
+  "contacts.reminders.resume": "Genoptag automatiske påmindelser",
+  "contacts.reminders.resuming": "Genoptager…",
+  "contacts.reminders.error": "Kunne ikke genoptage påmindelser. Prøv igen.",
 } as const

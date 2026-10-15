@@ -13,7 +13,7 @@ function fixture() {
     const key = where.organizationId_recipient
     return where.id === row.id || (key?.organizationId === row.organizationId && key.recipient === row.recipient) ? { ...row } : null
   })
-  const updateMany = vi.fn(async ({ where, data }: { where: { unsubscribedAt: null }; data: { unsubscribedAt: Date } }) => {
+  const updateMany = vi.fn(async ({ where, data }: { where: { unsubscribedAt: null }; data: { unsubscribedAt: Date | null } }) => {
     if (where.unsubscribedAt === null && row.unsubscribedAt !== null) return { count: 0 }
     row.unsubscribedAt = data.unsubscribedAt
     return { count: 1 }
@@ -44,6 +44,25 @@ describe("reminder unsubscribe state and POST", () => {
     expect(row.unsubscribedAt).toBe(first)
     expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "done" })
     expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "done" })
+  })
+
+  it("resumes only through an explicit recipient form POST and keeps one-click unsubscribe-only", async () => {
+    const { row, db } = fixture()
+    row.unsubscribedAt = new Date()
+    const token = signReminderUnsubscribeToken(row, secret)
+    const post = (url: string, data: Record<string, string>) => new Request(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(data) })
+    const url = "https://app.example.test/reminders/unsubscribe"
+    expect((await postReminderUnsubscribe(post(url, { token, intent: "resume" }), db, false)).status).toBe(303)
+    expect(row.unsubscribedAt).toBeNull()
+    expect(await reminderUnsubscribeState(db, token, "GET")).toMatchObject({ kind: "confirm" })
+    expect(await automaticReminderSuppressed(db, row.organizationId, row.recipient, false)).toBe(false)
+    await postReminderUnsubscribe(post(`${url}?token=${token}`, { "List-Unsubscribe": "One-Click", intent: "resume" }), db, true)
+    expect(row.unsubscribedAt).not.toBeNull()
+    const wrongToken = signReminderUnsubscribeToken({ ...row, organizationId: "other" }, secret)
+    await postReminderUnsubscribe(post(url, { token: wrongToken, intent: "resume" }), db, false)
+    expect(row.unsubscribedAt).not.toBeNull()
+    expect((await postReminderUnsubscribe(post(url, { token, intent: "unknown" }), db, false)).status).toBe(400)
+    expect(row.unsubscribedAt).not.toBeNull()
   })
 
   it("fails closed for unknown, tampered or cross-organization bindings", async () => {

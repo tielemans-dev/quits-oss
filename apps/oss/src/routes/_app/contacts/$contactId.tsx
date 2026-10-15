@@ -36,6 +36,8 @@ type ContactData = {
   peppolEndpointId: string | null
   peppolEndpointScheme: string | null
   notes: string | null
+  reminderUnsubscribedAt: Date | string | null
+  canResumeReminders: boolean
 }
 
 function EditContactPage() {
@@ -45,6 +47,7 @@ function EditContactPage() {
   const [contact, setContact] = useState<ContactData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [resuming, setResuming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -54,6 +57,19 @@ function EditContactPage() {
       .catch(() => setError(t("contacts.edit.error.notFound")))
       .finally(() => setLoading(false))
   }, [contactId])
+
+  async function resumeReminders() {
+    setResuming(true)
+    setError(null)
+    try {
+      await trpc.contacts.resumeReminders.mutate({ id: contactId })
+      setContact(await trpc.contacts.get.query({ id: contactId }))
+    } catch {
+      setError(t("contacts.reminders.error"))
+    } finally {
+      setResuming(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -134,6 +150,20 @@ function EditContactPage() {
               <p className="text-sm text-destructive" role="alert">
                 {error}
               </p>
+            )}
+
+            {contact.email && (
+              <div className="grid gap-2 rounded-md border p-4" aria-busy={resuming}>
+                <p className="text-sm font-medium" role="status">
+                  {t(contact.reminderUnsubscribedAt ? "contacts.reminders.stopped" : "contacts.reminders.active")}
+                </p>
+                <p className="text-sm text-muted-foreground">{t("contacts.reminders.scope", { email: contact.email })}</p>
+                {contact.reminderUnsubscribedAt && contact.canResumeReminders && (
+                  <Button type="button" variant="outline" disabled={resuming} onClick={resumeReminders}>
+                    {t(resuming ? "contacts.reminders.resuming" : "contacts.reminders.resume")}
+                  </Button>
+                )}
+              </div>
             )}
 
             <div className="grid gap-2">

@@ -1,4 +1,6 @@
 import { Effect } from "effect"
+import { z } from "zod"
+import { normalizeReminderRecipient } from "../../lib/reminders/unsubscribe-token"
 import {
   contactCreateInputSchema,
   contactDeleteInputSchema,
@@ -230,4 +232,25 @@ export const deleteContact = defineCommand({
     }),
 })
 
-export const contactCommands = [createContact, updateContact, deleteContact] as const
+export const resumeContactReminders = defineCommand({
+  type: "contact.reminders.resume",
+  permission: "contact:update",
+  outwardFacing: false,
+  input: z.object({ id: z.string() }),
+  summarize: (input) => `Resume automatic reminders for contact ${input.id}`,
+  handle: (input) => Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    const contact = yield* Effect.promise(() => db.contact.findFirst({ where: { id: input.id, organizationId: command.organizationId } }))
+    if (!contact) return yield* new NotFound({ message: "Contact not found", entity: "contact", id: input.id })
+    if (!contact.email) return yield* new InvalidState({ message: "Contact has no email address", code: "contact_email_missing" })
+    yield* Effect.promise(() => db.recipientReminderPreference.updateMany({
+      where: { organizationId: command.organizationId, recipient: normalizeReminderRecipient(contact.email!) },
+      data: { unsubscribedAt: null },
+    }))
+    command.emit({ aggregateType: "contact", aggregateId: contact.id, type: "contact.updated", payload: { fields: ["reminderUnsubscribedAt"] } })
+    return { id: contact.id }
+  }),
+})
+
+export const contactCommands = [createContact, updateContact, deleteContact, resumeContactReminders] as const
