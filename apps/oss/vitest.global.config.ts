@@ -1,5 +1,5 @@
 import { configDefaults, defineConfig } from "vitest/config"
-import { globalStateTests } from "./vitest.config"
+import { globalStateTests, playwrightTests } from "./vitest.config"
 
 /** Runs the tests that depend on database-wide state, alone and one file at a time. */
 export default defineConfig({
@@ -12,6 +12,6 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
     include: [globalStateTests.replace("**/*", "src/**/*") + ".test.ts"],
-    exclude: [...configDefaults.exclude, "tests/e2e/**"],
+    exclude: [...configDefaults.exclude, ...playwrightTests],
   },
 })
