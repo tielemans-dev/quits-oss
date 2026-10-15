@@ -161,4 +161,22 @@ describeIfDatabase("setup router integration", () => {
     expect(typeof status.isSetupComplete).toBe("boolean")
     expect(typeof status.hasSeedData).toBe("boolean")
   })
+
+  it.each([
+    { countryCode: "DK", locale: "da-DK", timezone: "Europe/Copenhagen", currency: "DKK", taxRate: "25" },
+    { countryCode: "US", locale: "en-US", timezone: "America/New_York", currency: "USD", taxRate: null },
+    { countryCode: "GB", locale: "en-GB", timezone: "Europe/London", currency: "GBP", taxRate: null },
+  ])("saves the setup defaults for $countryCode", async ({ taxRate, ...locale }) => {
+    const seed = randomUUID()
+    const initialized = await caller.setup.initialize({
+      instanceProfile: "smb",
+      organization: { name: "Defaults test", slug: `${TEST_SLUG_PREFIX}${seed}` },
+      admin: { name: "Test Admin", email: `${TEST_EMAIL_PREFIX}${seed}@example.test`, password: "Passw0rd!234" },
+      auth: { mode: "local_only" },
+      locale,
+    })
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: initialized.organizationId } })
+    expect(settings).toMatchObject({ ...locale, defaultCurrency: locale.currency, baseCurrency: locale.currency, momsRegistered: null })
+    expect(settings.taxRate?.toString() ?? null).toBe(taxRate)
+  })
 })

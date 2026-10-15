@@ -156,8 +156,8 @@ describe("onboarding Prisma create payloads", () => {
     mocks.baseCurrency = "EUR"
     await caller().saveDraft({ countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", pricesIncludeTax: true, primaryTaxId: undefined })
     expect(mocks.creates).toHaveLength(3)
-    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
-    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
+    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", currency: "EUR", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
+    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", currency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
   })
   it("validates profile completion creates even with an existing row", async () => {
     await caller().getStatus()
@@ -250,7 +250,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
     await settingsCaller().update({ momsRegistered: false, taxRate: 0 })
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true })
-    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR: 24256790"])
+    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR-nr. 24256790"])
     expect(mocks.taxIds[1]).toMatchObject({ scheme: "vat", value: "DE123456789", countryCode: "DE" })
   })
   it("leaves an explicitly foreign primary ID unchanged", async () => {

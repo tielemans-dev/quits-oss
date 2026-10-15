@@ -17,7 +17,7 @@ describe("invoice detail seller and payment blocks", () => {
       <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} />
       <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
-    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr.: 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
+    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr. 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
     expect(html).toContain(locale === "da-DK" ? 'aria-label="Fra"' : 'aria-label="From"')
     expect(html).toContain(locale === "da-DK" ? "Skriv fakturanummeret i beskeden, så vi kan finde din betaling." : "Add the invoice number to the payment message so we can match your payment.")
     expect(html).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
@@ -147,7 +147,7 @@ describe("settled invoice detail payment instructions", () => {
       <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} />
       <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} number="INV-0042" balanceDue={1750} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
-    for (const value of ["Frozen Seller", "Testvej 42", "9000 Aalborg", "CVR-nr.: 87654321", "5678", "0123 456 789", "Issue-time note", "DKK\u00a01,750.00"]) {
+    for (const value of ["Frozen Seller", "Testvej 42", "9000 Aalborg", "CVR-nr. 87654321", "5678", "0123 456 789", "Issue-time note", "DKK\u00a01,750.00"]) {
       expect(html).toContain(value)
     }
     for (const stale of ["Synthetic Seller ApS", "12345678", "0040", "0440 116 243", "Frozen note"]) {
