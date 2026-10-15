@@ -96,6 +96,8 @@ describe("new invoice send review", () => {
     api.send.mockResolvedValue({})
     api.get.mockResolvedValue({ ...stored, supplyDate })
     fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" }))
+    const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
+    await act(async () => { fireEvent.click(confirm) })
     await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate: sendSupplyDate })))
     await waitFor(() => expect(screen.getByRole("button", { name: "invoices.detail.action.send" }).hasAttribute("disabled")).toBe(false))
     fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.edit" }))
