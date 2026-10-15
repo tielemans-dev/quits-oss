@@ -28,7 +28,7 @@ export type RequestDraft = {
   remainder: string
 }
 
-const number = String.raw`(?:\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d{1,6})?`
+const number = String.raw`(?:[1-9]\d{0,2}(?:[. \u00a0\u202f]\d{3})+|0|[1-9]\d*)(?:,\d{1,6})?`
 const boundary = String.raw`(?![\p{L}\p{N},]|\.\d|\s+\d)`
 const quantityPattern = new RegExp(String.raw`^(${number})\s*(?:(timer|time|t|stk\.?)(?![\p{L}\p{N}])|(?=[àax]\s*\d))`, "iu")
 const pricePattern = new RegExp(String.raw`^(${number})\s*kr\.?${boundary}`, "iu")
@@ -85,7 +85,7 @@ export function parseRequest(input: string, context: RequestContext): RequestDra
   const cvr = /^(?:cvr\s*:?\s*)?(?:dk\s*)?\d{8}(?![\p{L}\p{N}])/iu.exec(body)
   // Only a numeric expression with a unit, currency or price separator starts a
   // line. Digits in names such as Studio 54 ApS and 3Shape A/S remain names.
-  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)(?:[+-]\s*)?\d[\d.,\s]*(?:e[+-]?\d+)?\s*(?:timer|time|t|stk\.?|kr\.?|[àax])(?=$|[\s.,]|\d)/iu)
+  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)(?:[+\u2013\u2014\u2212-]\s*)?\d[\d.,\s]*(?:e[+-]?\d+)?\s*(?:timer|time|t|stk\.?|kr\.?|[àax])(?=$|[\s.,]|\d)/iu)
   const customer = matchCustomer((lineStart < 0 ? body : body.slice(0, lineStart)).trim(), context.customers)
   let rest = lineStart < 0 ? "" : body.slice(lineStart).trim()
   const line: RequestLine = { description: "" }

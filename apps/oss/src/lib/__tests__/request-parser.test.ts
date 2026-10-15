@@ -115,6 +115,32 @@ describe("request parser", () => {
       expect(draft?.remainder).toBe("")
     }
   })
+  it.each(["0.250", "0 250", "0\u00a0250", "0\u202f250", "00.250", "012", "00", "00,25"])("refuses leading-zero prices: %s", amount => {
+    for (const prefix of ["", "12 timer à "]) {
+      const draft = parse(`fakturer Nordlys ${prefix}${amount} kr.`)
+      expect(draft?.items[0]?.unitPrice).toBeUndefined()
+      expect(draft?.remainder).toBe(`${prefix ? "à " : ""}${amount.replace(/\s/g, " ")} kr.`)
+    }
+  })
+  it.each(["012", "00", "00,25", "0.250", "0 250"])("refuses leading-zero quantities: %s", quantity => {
+    const draft = parse(`fakturer Nordlys ${quantity} timer à 850 kr.`)
+    expect(draft?.items).toEqual([])
+    expect(draft?.remainder).toBe(`${quantity} timer à 850 kr.`)
+  })
+  it.each(["-", "\u2013", "\u2014", "\u2212"])("preserves dash signs and separators: %s", dash => {
+    for (const gap of ["", " "]) {
+      for (const prefix of ["", "12 timer à ", "12 timer "]) {
+        const draft = parse(`fakturer Nordlys ${prefix}${dash}${gap}850 kr.`)
+        expect(draft?.customer?.query).toBe("Nordlys")
+        expect(draft?.items[0]?.unitPrice).toBeUndefined()
+        expect(draft?.remainder).toBe(`${prefix.includes("à") ? "à " : ""}${dash}${gap}850 kr.`)
+      }
+    }
+  })
+  it("accepts zero prices and decimal fractions starting with zero", () => {
+    expect(parse("fakturer Nordlys 0 kr.")?.items[0]?.unitPrice).toBe("0")
+    expect(parse("fakturer Nordlys 0,25 timer à 0,250 kr.")?.items[0]).toMatchObject({ quantity: "0.25", unitPrice: "0.250" })
+  })
   it.each(["- 850 kr.", "- 2 timer à 850 kr.", "1 25 kr.", "12 timer à 1 25 kr.", "12 timer à - 850 kr.",
     "850,12345 kr.", "12 timer à 850,12345 kr.", "1.000.000.001 kr.", "12 timer à 1.000.000.001 kr."])("does not emit a price from unsupported input: %s", text => {
     const draft = parse(`fakturer Nordlys ${text}`)
