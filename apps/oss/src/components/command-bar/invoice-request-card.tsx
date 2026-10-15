@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { defaultDocumentTaxRate } from "../../lib/invoice-defaults"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
+import { loadLastInvoice, type LastInvoice } from "../../lib/last-invoice"
 import { localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../lib/invoice-quantity"
 import { parseRequest, type RequestCustomer } from "../../lib/request-parser"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../lib/request-handoff"
@@ -19,7 +20,9 @@ import { cn } from "../../lib/utils"
 import { trpc } from "../../trpc/client"
 import { initialIssuanceValues } from "../invoices/issuance-fields"
 import { Button } from "../ui/button"
+import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { holdSend } from "./held-send"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { announceRequestDone } from "./request-events"
@@ -56,6 +59,12 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const [sent, setSent] = useState<{ id: string; amount: string; customer: string } | null>(null)
   const [leaving, setLeaving] = useState(false)
   const sending = useRef(false)
+  const repeat = intent.kind === "repeat"
+  // "Som sidst": the customer's last invoice, undefined while it loads and null when there is none.
+  const [last, setLast] = useState<LastInvoice | null | undefined>()
+  // The quantities as typed, by line; the one thing the card lets the person change.
+  const [quantities, setQuantities] = useState<Record<number, string>>({})
+  const hours = useRef<HTMLInputElement>(null)
   const announced = useRef<string | null>(null)
   const dismissRef = useRef(onDismiss)
   useEffect(() => { dismissRef.current = onDismiss })
@@ -83,11 +92,25 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
     return () => { cancelled = true }
   }, [known, contactId, currency, t])
 
+  // Coming back from the form brings its own lines.
+  useEffect(() => {
+    if (!repeat || !contactId || back) return
+    let cancelled = false
+    setLast(undefined)
+    loadLastInvoice(contactId, currency)
+      .then(found => { if (!cancelled) setLast(found) })
+      .catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
+    return () => { cancelled = true }
+  }, [repeat, contactId, currency, back, t])
+  // The hours field is where the person is expected to type, so it takes focus once the lines arrive.
+  useEffect(() => { if (last) { hours.current?.focus({ preventScroll: true }); hours.current?.select() } }, [last])
+
   const parsed = draft?.items[0]
-  const items: InvoiceHandoff["items"] = back?.items ?? (parsed ? [{ description: (parsed.description || draft?.remainder || "").trim(), quantity: parsed.quantity ?? "1", unitPrice: parsed.unitPrice ?? "" }] : [])
+  const base: InvoiceHandoff["items"] = back?.items ?? (repeat ? last?.items ?? [] : parsed ? [{ description: (parsed.description || draft?.remainder || "").trim(), quantity: parsed.quantity ?? "1", unitPrice: parsed.unitPrice ?? "" }] : [])
+  const items = base.map((item, index) => quantities[index] === undefined ? item : { ...item, quantity: quantities[index] })
   const lines = items.map(item => normalizeInvoiceQuantity(item, locale))
   const taxRate = back?.taxRate ?? (readiness ? defaultDocumentTaxRate(readiness) : "0")
-  const pricesIncludeTax = back?.pricesIncludeTax ?? (readiness && readiness.standardVatRate == null ? readiness.pricesIncludeTax : false)
+  const pricesIncludeTax = back?.pricesIncludeTax ?? last?.pricesIncludeTax ?? (readiness && readiness.standardVatRate == null ? readiness.pricesIncludeTax : false)
   // The form's own arithmetic; the card never adds up a figure itself.
   const preview = previewDraft({ items: lines, taxRate, pricesIncludeTax, currency })
   const money = (value: string | number | undefined) => value === undefined || !preview.result || !readiness ? "—" : formatCurrency(Number(value), currency, locale)
@@ -105,7 +128,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const blockedBy = missing ? t("shell.request.invoice.gap", { field: missing })
     : foreign ? t("shell.request.invoice.foreignCurrency")
     : blocker ? t(invoiceIssueKey(blocker.code), blocker.params) : null
-  const note = error ?? blockedBy
+  const note = error ?? (repeat && last === null && !back ? t("shell.request.repeat.none") : blockedBy)
 
   async function send() {
     if (sending.current || blockedBy) return
@@ -118,13 +141,32 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         setError(state.policyUnavailable ? t("invoiceValidation.policyUnavailable") : state.issues[0] ? t(invoiceIssueKey(state.issues[0].code), state.issues[0].params) : t("invoiceValidation.unknown"))
         return
       }
-      const target = await submitInvoice(
+      const reviewedRecipient = state.recipientVersion
+      const submit = () => submitInvoice(
         { contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence: back?.vatEvidence ?? {}, notes: back?.notes, issuance, currency, baseCurrency: state.baseCurrency, items: lines },
-        { sendImmediately: true, reviewedRecipient: state.recipientVersion, t }
+        { sendImmediately: true, reviewedRecipient, t }
       )
-      if (target.sendError || target.emailWarning) {
-        // The draft exists; the invoice page tells what went wrong, as it does after the form.
+      // The draft exists; the invoice page tells what went wrong, as it does after the form.
+      const showFailure = (target: Awaited<ReturnType<typeof submit>>) => {
         void navigate({ to: "/invoices/$invoiceId", params: { invoiceId: target.id }, search: { emailWarning: target.emailWarning, sendError: target.sendError } })
+      }
+      if (repeat) {
+        // Fortryd needs time before anything is made: the click starts the wait, and the card is done.
+        holdSend({
+          customer: customerName ?? "",
+          amount: total,
+          run: async () => {
+            const target = await submit()
+            if (target.sendError || target.emailWarning) return showFailure(target)
+            announceRequestDone({ kind: "invoice", invoiceId: target.id })
+          },
+        })
+        onDismiss()
+        return
+      }
+      const target = await submit()
+      if (target.sendError || target.emailWarning) {
+        showFailure(target)
         onDismiss()
         return
       }
@@ -179,6 +221,12 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
 
   return (
     <div ref={morph.ref} className="space-y-4 overflow-hidden p-4">
+      {repeat && (
+        <div {...stagger(0)}>
+          <p className="font-semibold">{t("shell.request.title.repeat")}</p>
+          {last?.number && <p className="text-muted-foreground text-sm tabular-nums">{t("shell.request.repeat.copiedFrom", { number: last.number })}</p>}
+        </div>
+      )}
       <div {...stagger(0)} className="grid gap-1.5 text-sm">
         <span className="text-muted-foreground">{t("docForm.contact")}</span>
         {!known ? <span className="text-muted-foreground">{t("docForm.loadingContacts")}</span>
@@ -194,7 +242,17 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         <div key={index} {...stagger(1)} className="flex items-baseline justify-between gap-3 text-sm">
           <div className="min-w-0">
             <p className="truncate font-semibold">{line.description}</p>
-            <p className="text-muted-foreground tabular-nums">{localizeInvoiceQuantity(line.quantity, locale)} × {line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
+            <p className="text-muted-foreground tabular-nums">
+              {repeat ? (
+                <Input
+                  ref={index === 0 ? hours : undefined}
+                  inputMode="decimal"
+                  aria-label={t("shell.request.repeat.qty", { description: line.description })}
+                  value={quantities[index] ?? localizeInvoiceQuantity(base[index]!.quantity, locale)}
+                  onChange={event => { const typed = event.target.value; setQuantities(current => ({ ...current, [index]: typed })) }}
+                  className={cn("mr-1 inline-block h-7 w-16 px-2 text-right tabular-nums", index === 0 && "border-ring ring-ring/50 ring-[3px]")}
+                />
+              ) : localizeInvoiceQuantity(line.quantity, locale)} × {line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
           </div>
           <span className="tabular-nums">{money(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"])}</span>
         </div>

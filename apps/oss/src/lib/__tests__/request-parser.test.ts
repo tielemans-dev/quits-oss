@@ -175,6 +175,16 @@ describe("request parser", () => {
     const catalogItems = [{ ...context.catalogItems[0]!, defaultUnitPrice }]
     expect(parse("fakturer Nordlys 10t konsulent", { ...context, catalogItems })?.items[0]?.unitPrice).toBeUndefined()
   })
+  it.each(["fakturer Nordlys som sidst", "faktura til Nordlys ApS som sidst", "Fakturer nordlys SOM SIDST."])("recognizes repeating the last invoice: %s", input => {
+    expect(parse(input)).toEqual({
+      intent: "repeat", customer: { status: "matched", query: input.replace(/^\S+(?: til)?\s+/i, "").replace(/\s+som sidst\.?$/i, ""), candidates: context.customers },
+      items: [], confidence: 1, remainder: "",
+    })
+  })
+  it("leaves an unknown customer to the card, and does not read a quantity and price as a repeat", () => {
+    expect(parse("fakturer Ukendt som sidst")).toMatchObject({ intent: "repeat", customer: { status: "unknown", candidates: [] }, confidence: 0.5 })
+    expect(parse("fakturer Nordlys 10 timer à 850 kr.")?.intent).toBe("invoice")
+  })
   it("is deterministic and does not mutate caller input", () => {
     const snapshot = structuredClone(context)
     const first = parse("fakturer Nordlys 10t konsulent")

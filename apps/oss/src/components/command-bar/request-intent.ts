@@ -3,7 +3,7 @@ import type { ComponentType } from "react"
 import { parseRequest, type RequestContext } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue"; input: string }
+export type RequestIntent = { kind: "invoice" | "overdue" | "repeat"; input: string }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
 export type RequestRecognizer = (input: string) => RequestIntent | null
@@ -17,7 +17,7 @@ export const recognizeRequest: RequestRecognizer = (input) => {
 }
 
 /** The permission a card's confirming click needs: creating an invoice, or sending the rykkere. */
-const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send" } as const
+const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(
