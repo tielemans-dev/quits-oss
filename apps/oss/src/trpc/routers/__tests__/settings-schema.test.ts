@@ -9,6 +9,11 @@ describe("settingsUpdateSchema", () => {
     expect(settingsUpdateSchema.parse({})).not.toHaveProperty("momsRegistered")
     expect(() => settingsUpdateSchema.parse({ momsRegistered: "false" })).toThrow()
   })
+  it("accepts the moms periods and null to clear it, and refuses any other", () => {
+    for (const vatPeriod of ["quarterly", "half_yearly", null]) expect(settingsUpdateSchema.parse({ vatPeriod })).toEqual({ vatPeriod })
+    expect(settingsUpdateSchema.parse({})).not.toHaveProperty("vatPeriod")
+    for (const vatPeriod of ["monthly", "", 3]) expect(() => settingsUpdateSchema.parse({ vatPeriod })).toThrow()
+  })
   it("accepts configurable payment terms including immediate payment and rejects invalid days", () => {
     for (const paymentTermsDays of [0, 14, 30, 3650]) expect(settingsUpdateSchema.parse({ paymentTermsDays })).toEqual({ paymentTermsDays })
     for (const paymentTermsDays of [-1, 1.5, 3651, null]) expect(() => settingsUpdateSchema.parse({ paymentTermsDays })).toThrow()
