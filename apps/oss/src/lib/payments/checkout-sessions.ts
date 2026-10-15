@@ -19,9 +19,11 @@ export async function organizationStripeSecretKey(organizationId: string) {
 }
 
 /**
- * A tracked session can predate an account switch. Search extension accounts regardless of
- * readiness and the stored BYOK key in both directions. A miss on one account proves nothing
- * about the others. Throwing resolvers and Stripe failures must keep checkout blocked/jobs retrying.
+ * A tracked session can predate an account switch. Search historical extension
+ * accounts and the stored BYOK key. `resolveStripeCheckoutTarget` is only the
+ * account that may charge now, so it is not an expiry source. A caller may pass
+ * that account as `target`. A miss on one account is not expiry. Throwing
+ * resolvers and Stripe failures keep checkout blocked and jobs retrying.
  */
 export async function expireOrganizationCheckoutSession(input: {
   organizationId: string
@@ -38,8 +40,8 @@ export async function expireOrganizationCheckoutSession(input: {
   }
   if (input.target) add(input.target)
   for (const extension of getRuntimeExtensions()) {
-    const target = await extension.resolveStripeCheckoutTarget?.({ organizationId: input.organizationId })
-    if (target) add(target)
+    const historical = await extension.resolveStripeCheckoutExpiryTargets?.({ organizationId: input.organizationId })
+    for (const target of historical ?? []) add(target)
   }
   const secretKey = await organizationStripeSecretKey(input.organizationId)
   if (secretKey) add({ kind: "byok", secretKey, webhookSecret: "" })

@@ -34,6 +34,20 @@ account, a missing account, or an invoice owned by another organization is
 ignored and is not tried against BYOK secrets. A signature that does not match
 falls through to the existing BYOK loop, which is unchanged.
 
+## Checkout session expiry
+
+`resolveStripeCheckoutTarget` is the account that may charge now. The first
+extension result wins; otherwise complete BYOK keys are used. `connectReady:
+false` skips Connect for a new charge.
+
+`resolveStripeCheckoutExpiryTargets` returns accounts that may still hold an
+open Checkout session, including a connected account the seller no longer
+charges. Expiry searches those accounts and the stored BYOK secret key. A
+`resource_missing` result on one account is not expiry. Self-hosted runtimes
+leave the hook unset. Returning an old Connect account from
+`resolveStripeCheckoutTarget` would also make it the charge account, so the
+hooks stay separate.
+
 ## Deposit capability
 
 `agreements.depositsEnabled` defaults to `true`. An operator can set

@@ -55,21 +55,32 @@ describe("checkout sessions after switching Stripe accounts", () => {
     state.connectExpire.mockReset().mockResolvedValue({ status: "expired" })
     state.retrieve.mockReset()
     state.create.mockReset().mockResolvedValue({ id: "cs_new", url: "https://checkout.example/new" })
-    setRuntimeExtensions([{ id: "connect", resolveStripeCheckoutTarget: () => connect }])
+    setRuntimeExtensions([{
+      id: "connect",
+      resolveStripeCheckoutTarget: () => connect,
+      resolveStripeCheckoutExpiryTargets: () => [connect],
+    }])
   })
   afterEach(() => { setRuntimeExtensions([]); vi.restoreAllMocks(); vi.unstubAllEnvs() })
 
   it.each(["byok-to-connect", "connect-to-byok"])("expires the old %s session before creating checkout", async direction => {
+    const previous = { ...connect, stripeAccount: "acct_previous" }
     if (direction === "byok-to-connect") state.connectExpire.mockRejectedValue(missing())
     else {
       state.byokExpire.mockRejectedValue(missing())
-      // The card gate can choose BYOK while the old Connect account is no longer ready.
+      // Restricted Connect is not charged. The old session is only on the historical account.
       state.settings.stripeAccountStatus = "restricted"
+      setRuntimeExtensions([{
+        id: "connect",
+        resolveStripeCheckoutTarget: () => connect,
+        resolveStripeCheckoutExpiryTargets: () => [previous],
+      }])
     }
+    const expiredAccount = direction === "byok-to-connect" ? connect.stripeAccount : previous.stripeAccount
     state.create.mockImplementation(async (_params, options) => {
       expect(options?.stripeAccount).toBe(direction === "byok-to-connect" ? connect.stripeAccount : undefined)
       expect(state.byokExpire).toHaveBeenCalledWith("cs_previous")
-      expect(state.connectExpire).toHaveBeenCalledWith("cs_previous", expect.objectContaining({ stripeAccount: "acct_switch" }))
+      expect(state.connectExpire).toHaveBeenCalledWith("cs_previous", expect.objectContaining({ stripeAccount: expiredAccount }))
       return { id: "cs_new", url: "https://checkout.example/new" }
     })
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
