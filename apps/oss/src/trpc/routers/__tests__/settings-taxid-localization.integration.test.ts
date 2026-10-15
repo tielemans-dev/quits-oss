@@ -292,7 +292,9 @@ describeIfDatabase("Danish VAT Settings invariants", () => {
     try {
       await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", primaryTaxId: "87654321", primaryTaxIdScheme: "vat" })
       expect(await prisma.organizationTaxId.findFirst({ where: { organizationId: orgId, isPrimary: true } })).toMatchObject({ value: "87654321", scheme: "vat", countryCode: "DK", isPrimary: true })
-      await expect(caller.settings.update({ primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { issues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
+      await expect(caller.settings.update({ primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
+      // The VAT-exemption path validates the same number and answers with the same structured refusal, not a plain message.
+      await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
 })
