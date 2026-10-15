@@ -222,9 +222,18 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
       })
     ).toString()
 
-    expect(pdfString).toContain("<2d323032362d303031>")
-    expect(pdfString).toContain("<6d6172> -40 <74732032303236>")
-    expect(pdfString).toContain("<312e3235302c3530a0>")
+    // This renderer uses uncompressed WinAnsi hex text runs. Decode their text, ignoring
+    // kerning and run boundaries, which change when the layout or date labels change.
+    const pdfText = [...pdfString.matchAll(/BT([\s\S]*?)ET/g)].flatMap(block =>
+      [...block[1]!.matchAll(/\[([\s\S]*?)\]\s*TJ/g)].map(run =>
+        [...run[1]!.matchAll(/<([\da-f]+)>/gi)].map(hex =>
+          new TextDecoder("windows-1252").decode(Buffer.from(hex[1]!, "hex"))
+        ).join("")
+      )
+    ).join("")
+    expect(pdfText).toContain(invoice.number)
+    expect(pdfText).toContain("15. marts 2026")
+    expect(pdfText).toContain("1.250,50\u00a0kr.")
   })
 })
 

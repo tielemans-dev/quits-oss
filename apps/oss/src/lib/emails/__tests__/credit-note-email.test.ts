@@ -33,4 +33,5 @@ describe("credit note email", () => {
     expect(content.html).toContain("Hej Globex")
     expect(content.html).toContain("Årsag")
   })
+
 })
