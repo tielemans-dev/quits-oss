@@ -11,6 +11,7 @@ export function discoverWorkspaceEnvFile({
   exec = execFileSync,
   exists = existsSync,
 } = {}) {
+  if (process.env.QUITS_WORKTREE_ENV === "1") return null
   let worktreeRoot
   let commonGitDir
 
