@@ -107,8 +107,10 @@ export const enInvoicesMessages = {
   "invoices.detail.email.fallback.providerMissing.description":
     "You can still share the payment link manually.",
   "invoices.detail.paymentLink.title": "Customer payment link",
-  "invoices.detail.paymentLink.description":
-    "Share this hosted link with the customer to collect payment through Stripe.",
+  "invoices.detail.paymentLink.description.card":
+    "Share this hosted link with the customer so they can pay by card through Stripe.",
+  "invoices.detail.paymentLink.description.bankTransfer":
+    "Share this hosted link with the customer so they can pay by bank transfer.",
   "invoices.detail.paymentLink.copy": "Copy link",
   "invoices.detail.email.status.sending": "Sending",
   "invoices.detail.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate. The invoice cannot be edited until delivery is confirmed or given up.",

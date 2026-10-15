@@ -26,7 +26,7 @@ vi.mock("../../init", async () => {
   return { router: t.router, authorizedProcedure: () => procedure, protectedProcedure: procedure }
 })
 vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
-vi.mock("../../../lib/runtime/extensions", () => ({ isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
+vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeExtensions: () => [], isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
 vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => undefined, getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
 vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false }))
@@ -250,7 +250,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
     await settingsCaller().update({ momsRegistered: false, taxRate: 0 })
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true })
-    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR: 24256790"])
+    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR-nr. 24256790"])
     expect(mocks.taxIds[1]).toMatchObject({ scheme: "vat", value: "DE123456789", countryCode: "DE" })
   })
   it("leaves an explicitly foreign primary ID unchanged", async () => {

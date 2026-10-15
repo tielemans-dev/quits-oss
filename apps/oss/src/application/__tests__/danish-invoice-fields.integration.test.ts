@@ -55,7 +55,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     expect(await issue(context, draft.result.id)).toMatchObject({ status: "completed" })
     const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: draft.result.id } })
     const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "invoice" }>
-    expect(render.pdf.invoice).toMatchObject({ subtotal: 0.01, taxAmount: 0, total: 0.01 })
+    expect(render.pdf.invoice).toMatchObject({ subtotal: 0.01, taxAmount: 0, total: 0.01, taxRate: 25, items: [{ taxRate: 25 }] })
     expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01", treatment: "standard", treatments: ["standard"] }])
     for (const locale of ["da-DK", "en-US"]) {
       expect(buildTotals({ ...render.pdf.invoice, basis: "net", locale }).lines.filter(row => row.kind === "tax"))
@@ -81,7 +81,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const email = composeInvoiceEmail({ invoice: { ...changed, number: changed.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
     expect(email).toContain("Synthetic Seller ApS")
     expect(email).toContain("Synthetic Buyer")
-    expect(email).toContain("CVR-nr.: 12345678")
+    expect(email).toContain("CVR-nr. 12345678")
     expect(email).not.toMatch(/Changed Seller|Changed Buyer|Changed address/)
     const session = serializePublicInvoiceSession({ invoice: changed, stripeEnabled: false, paymentState: "unpaid" }, "synthetic")
     expect(session.seller.name).toBe("Synthetic Seller ApS")

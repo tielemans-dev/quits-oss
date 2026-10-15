@@ -17,7 +17,7 @@ import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
 import { I18nProvider } from '../lib/i18n/react'
-import { loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, onboardingShellLanguage } from '../lib/login-return'
+import { loginRedirectHref, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, onboardingShellLanguage } from '../lib/login-return'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/_app')({
     const { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete } =
       await reuseAppLayoutSession(() => getAppLayoutSession())
     if (!user) {
-      throw redirect({ to: '/login' })
+      throw redirect({ href: loginRedirectHref(location.href, loginReturnSearchSchema.parse(location.search).lang) })
     }
     const hasActiveOrg = !!activeOrganizationId
     // Deliberately does not set the organization this tab acts for: this also runs when a link is

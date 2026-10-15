@@ -3,7 +3,8 @@ import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { impliedTaxRate } from "./pricing"
+import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
 import { withNonVatStatement } from "../../lib/documents/non-vat-note"
 import { requireVatIssuance, requireSellerVatIssuance } from "./vat-issuance"
@@ -27,6 +28,9 @@ import { issuedNumber } from "./numbering"
 import { translate } from "../../lib/i18n/translate"
 
 type InvoiceForPdf = import("react").ComponentProps<typeof InvoicePdfDocument>["invoice"]
+
+/** The credit note's own first positive rate, independent of uncredited invoice lines. */
+export const creditNoteMainRate = (_invoice: Parameters<typeof impliedTaxRate>[0], creditedRates: readonly number[]) => nominalLineTaxRate(creditedRates) ?? 0
 
 export type ArtifactDocumentKind = "invoice" | "creditNote" | "agreement"
 type RenderIdentity = {
@@ -106,7 +110,7 @@ export const prospectiveRenderInput = (input: {
     // All PDF fields, including branding and the intended customer, are frozen here.
     const pdfInvoice: InvoiceForPdf = {
       number: input.number, status: "sent", issueDate: base.issuedAt, dueDate: invoice.dueDate.toISOString(),
-      subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
+      taxRate: impliedTaxRate(invoice), subtotal: num(invoice.subtotalNet), taxAmount: num(invoice.totalTax), total: num(invoice.totalGross),
       currency: invoice.currency, taxRegime: invoice.taxRegime, notes: invoice.notes, momsRegistered: seller.momsRegistered, ...(seller.bankAccount ? { bankAccount: seller.bankAccount } : {}), ...(seller.paymentNote ? { paymentNote: seller.paymentNote } : {}),
       // Frozen with the rest of the payment details; absent without them, so the render input of an
       // organization without payment details is unchanged. A draft preview has no number yet.
@@ -128,7 +132,7 @@ export const prospectiveRenderInput = (input: {
         taxRegime: invoice.taxRegime, paymentReference: invoice.paymentReference,
         purchaseOrderRef: invoice.purchaseOrderRef },
       pdf: { invoice: pdfInvoice, org: { ...org, companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds, locale: invoice.locale, timezone: invoice.timezone,
-        ...(seller.momsRegistered === false ? { cvrLabel: translate("creditNotes.pdf.cvrNumber", invoice.locale) } : {}),
+        ...(seller.momsRegistered === false ? { cvrLabel: translate("pdf.cvrNumber", invoice.locale) } : {}),
       } } }
   }
   if (input.kind === "creditNote") {
@@ -151,7 +155,7 @@ export const prospectiveRenderInput = (input: {
     const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
       number: input.number, issueDate: base.issuedAt, reason: withNonVatStatement(selection.reason, money.seller.momsRegistered, invoice.locale) ?? selection.reason,
-      subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
+      taxRate: creditNoteMainRate(invoice, built.lines.map(line => line.taxRate)), subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, taxRegime: invoice.taxRegime, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },

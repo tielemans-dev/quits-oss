@@ -55,15 +55,17 @@ class CiPathsTest
       JOBS.fetch(name).each do |job|
         condition = workflow.fetch('jobs').fetch(job).fetch('if')
         assert_includes condition, '!cancelled()'
-        %w[success failure skipped cancelled].product(['true', 'false', '']).each do |result, output|
+        %w[success failure skipped cancelled].product(['true', 'false', ''], ['true', 'false', '']).each do |result, output, browser|
           [false, true].each do |cancelled|
             actual = expression(condition, {
               'cancelled()' => cancelled,
               'needs.paths.result' => result,
               'needs.paths.outputs.run-expensive' => output,
+              'needs.paths.outputs.run-browser' => browser,
             })
-            expected = !cancelled && (result != 'success' || output != 'false')
-            assert_equal expected, actual, "#{name}/#{job}: #{result}, #{output}, cancelled=#{cancelled}"
+            relevant_output = job == 'shared-browser-worker' ? browser : output
+            expected = !cancelled && (result != 'success' || relevant_output != 'false')
+            assert_equal expected, actual, "#{name}/#{job}: #{result}, expensive=#{output}, browser=#{browser}, cancelled=#{cancelled}"
           end
         end
       end
@@ -73,12 +75,13 @@ class CiPathsTest
   def test_events_concurrency_and_check_names
     WORKFLOWS.each do |name, workflow|
       # YAML 1.1 interprets the unquoted GitHub key 'on' as true.
-      assert_equal %w[pull_request push], workflow.fetch(true).keys.sort
+      assert_equal %w[merge_group pull_request push], workflow.fetch(true).keys.sort
       group = workflow.fetch('concurrency').fetch('group')
       cancel = workflow.fetch('concurrency').fetch('cancel-in-progress')
       events = [
         ['pull_request', 'refs/pull/155/merge', true],
         ['push', 'refs/heads/main', false],
+        ['merge_group', 'refs/heads/gh-readonly-queue/main/pr-155', false],
         ['push', 'refs/heads/topic', false],
         ['push', 'refs/tags/v1.0.0', false],
         ['release', 'refs/tags/v1.0.0', false],
@@ -143,7 +146,8 @@ class CiPathsTest
             'RUNNER_TEMP' => dir, 'GITHUB_OUTPUT' => "#{dir}/output" }.merge(extra)
     _, stderr, status = Open3.capture3(env, 'bash', '-e', '-c', script, chdir: dir)
     output = File.exist?("#{dir}/output") ? File.read("#{dir}/output") : ''
-    [status.success?, output.strip, stderr]
+    outputs = output.lines.to_h { |line| line.strip.split('=', 2) }
+    [status.success?, outputs, stderr]
   end
 
   def test_classifier_paths_and_errors
@@ -163,17 +167,41 @@ class CiPathsTest
       fixtures.each do |paths, expected|
         ok, output, stderr = classify(workflow, 'pull_request', paths)
         assert ok, stderr
-        assert_equal "run-expensive=#{expected}", output, paths.inspect
+        assert_equal expected.to_s, output['run-expensive'], paths.inspect
       end
-      %w[push release workflow_dispatch pull_request_target].each do |event|
+      %w[push merge_group release workflow_dispatch pull_request_target].each do |event|
         ok, output, stderr = classify(workflow, event, ['docs/guide.md'])
         assert ok, stderr
-        assert_equal 'run-expensive=true', output
+        assert_equal 'true', output['run-expensive']
       end
       ok, output, = classify(workflow, 'pull_request', [], diff_failure: true)
       refute ok
       assert_empty output
     end
+  end
+
+  def test_browser_classifier_paths_and_errors
+    workflow = WORKFLOWS.fetch('ci')
+    fixtures = [
+      [['COPY.md'], false], [['README.md'], false], [['apps/oss/README.md'], false],
+      [['docs/x.json'], false], [['.github/workflows/ci.yml'], false],
+      [['docs/x.json', 'README.md', '.github/workflows/ci.yml'], false],
+      [['docs/x.json', 'README.md', '.github/workflows/ci.yml', 'apps/oss/src/x.ts'], true],
+      [['apps/oss/src/x.ts'], true], [[], true],
+    ]
+    fixtures.each do |paths, expected|
+      ok, output, stderr = classify(workflow, 'pull_request', paths)
+      assert ok, stderr
+      assert_equal expected.to_s, output['run-browser'], paths.inspect
+    end
+    %w[push merge_group release workflow_dispatch pull_request_target].each do |event|
+      ok, output, stderr = classify(workflow, event, ['docs/guide.md'])
+      assert ok, stderr
+      assert_equal 'true', output['run-browser'], event
+    end
+    ok, output, = classify(workflow, 'pull_request', [], diff_failure: true)
+    refute ok
+    assert_empty output
   end
 
   def test_real_git_rename_and_three_dot_diff
@@ -195,13 +223,13 @@ class CiPathsTest
         git.call('commit', '-qm', 'docs')
         ok, output, stderr = run_classifier(workflow, dir, 'pull_request')
         assert ok, stderr
-        assert_equal 'run-expensive=false', output
+        assert_equal 'false', output['run-expensive']
         File.delete("#{dir}/output")
         git.call('mv', 'runtime.ts', 'docs/runtime.md')
         git.call('commit', '-qm', 'rename runtime to docs')
         ok, output, stderr = run_classifier(workflow, dir, 'pull_request')
         assert ok, stderr
-        assert_equal 'run-expensive=true', output
+        assert_equal 'true', output['run-expensive']
       end
     end
   end

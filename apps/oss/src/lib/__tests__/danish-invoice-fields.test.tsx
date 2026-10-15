@@ -83,7 +83,7 @@ describe("full invoice legal fields", () => {
       items: [{ id: "line", description: "Synthetic consulting", quantity: 2, unitPriceNet: 500, unitPriceGross: 625, lineNet: 1000, lineGross: 1250, sortOrder: 0 }],
     } }} /></LocalizedDocument>))
     for (const text of [pdf, email, pay]) {
-      for (const field of ["SYNTHETIC-0042", "Synthetic Seller ApS", text === email ? "CVR-nr.: 12345678" : "CVR: 12345678", "Testvej 1", "Synthetic Buyer", "Synthetic Buyer ApS", "Testvej 2", "1000", "København", "Synthetic consulting", "2", locale === "da-DK" ? "500,00" : "500.00", locale === "da-DK" ? "1.000,00" : "1,000.00", locale === "da-DK" ? "250,00" : "250.00", locale === "da-DK" ? "1.250,00" : "1,250.00", "25", locale === "da-DK" ? "Leveringsdato" : "Supply Date", locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax"]) expect(text).toContain(field)
+      for (const field of ["SYNTHETIC-0042", "Synthetic Seller ApS", locale === "da-DK" ? "CVR-nr. 12345678" : "CVR no. 12345678", "Testvej 1", "Synthetic Buyer", "Synthetic Buyer ApS", "Testvej 2", "1000", "København", "Synthetic consulting", "2", locale === "da-DK" ? "500,00" : "500.00", locale === "da-DK" ? "1.000,00" : "1,000.00", locale === "da-DK" ? "250,00" : "250.00", locale === "da-DK" ? "1.250,00" : "1,250.00", "25", locale === "da-DK" ? "Leveringsdato" : "Supply Date", locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax"]) expect(text).toContain(field)
       expect(text).not.toContain("Changed live")
     }
     expect(pdf).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
