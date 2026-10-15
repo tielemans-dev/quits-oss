@@ -156,8 +156,8 @@ describe("onboarding Prisma create payloads", () => {
     mocks.baseCurrency = "EUR"
     await caller().saveDraft({ countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", pricesIncludeTax: true, primaryTaxId: undefined })
     expect(mocks.creates).toHaveLength(3)
-    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
-    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
+    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", currency: "EUR", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
+    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", currency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
   })
   it("validates profile completion creates even with an existing row", async () => {
     await caller().getStatus()
