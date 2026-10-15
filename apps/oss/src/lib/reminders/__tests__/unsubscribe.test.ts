@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { automaticReminderSuppressed, postReminderUnsubscribe, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
+import { buildInvoiceEmailContent, buildQuoteEmailContent, composeMessage } from "../../email"
+import { addReminderUnsubscribe, automaticReminderSuppressed, postReminderUnsubscribe, readReminderUnsubscribeState, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
 import { signReminderUnsubscribeToken } from "../unsubscribe-token"
+import { appLogger } from "../../observability"
 
 const secret = "test-reminder-secret-with-at-least-32-characters"
 const binding = { id: "ca4bc3d8-4371-4af0-9c03-6f2971a3c223", organizationId: "org-one", recipient: "buyer@example.test", locale: "da-DK", unsubscribedAt: null as Date | null }
@@ -27,20 +29,21 @@ beforeEach(() => {
   vi.stubEnv("YAIP_REMINDER_UNSUBSCRIBE_SECRET", undefined)
   vi.stubEnv("QUITS_APP_ORIGIN", "https://app.example.test")
 })
-afterEach(() => vi.unstubAllEnvs())
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
 describe("reminder unsubscribe state and POST", () => {
   it("keeps repeated GETs read-only and POSTs idempotent, using stored locale", async () => {
     const { row, db, updateMany } = fixture()
     const token = signReminderUnsubscribeToken(row, secret)
-    for (let i = 0; i < 2; i++) expect(await reminderUnsubscribeState(db, token, "GET", "en")).toMatchObject({ kind: "confirm", locale: "da-DK" })
+    for (let i = 0; i < 2; i++) expect(await readReminderUnsubscribeState(db, token, "en")).toMatchObject({ kind: "confirm", locale: "da-DK" })
     expect(updateMany).not.toHaveBeenCalled()
     expect(row.unsubscribedAt).toBeNull()
     expect(await reminderUnsubscribeState(db, token, "POST")).toMatchObject({ kind: "done" })
     const first = row.unsubscribedAt
     expect(await reminderUnsubscribeState(db, token, "POST")).toMatchObject({ kind: "done" })
     expect(row.unsubscribedAt).toBe(first)
-    expect(await reminderUnsubscribeState(db, token, "GET")).toMatchObject({ kind: "done" })
+    expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "done" })
+    expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "done" })
   })
 
   it("fails closed for unknown, tampered or cross-organization bindings", async () => {
@@ -72,6 +75,25 @@ describe("reminder unsubscribe state and POST", () => {
     expect((await postReminderUnsubscribe(form, db, false)).status).toBe(303)
   })
 
+  it("accepts RFC 8058 multipart POSTs and rejects malformed, duplicate or file fields", async () => {
+    const { db, row } = fixture()
+    const token = signReminderUnsubscribeToken(row, secret)
+    const url = `https://app.example.test/api/reminders/unsubscribe?token=${token}`
+    const malformed = new Request(url, { method: "POST", headers: { "Content-Type": "multipart/form-data" }, body: "broken" })
+    expect((await postReminderUnsubscribe(malformed, db, true)).status).toBe(400)
+    for (const value of ["One-Click", new Blob(["One-Click"])]) {
+      const invalid = new FormData()
+      invalid.append("List-Unsubscribe", "One-Click")
+      invalid.append("List-Unsubscribe", value)
+      expect((await postReminderUnsubscribe(new Request(url, { method: "POST", body: invalid }), db, true)).status).toBe(400)
+    }
+    expect(row.unsubscribedAt).toBeNull()
+    const form = new FormData()
+    form.set("List-Unsubscribe", "One-Click")
+    expect((await postReminderUnsubscribe(new Request(url, { method: "POST", body: form }), db, true)).status).toBe(204)
+    expect(row.unsubscribedAt).not.toBeNull()
+  })
+
   it("rejects unsupported, oversized and invalid POST requests without changing preferences", async () => {
     const { db, row, updateMany } = fixture()
     const url = "https://app.example.test/api/reminders/unsubscribe?token=bad"
@@ -94,5 +116,48 @@ describe("reminder unsubscribe state and POST", () => {
     findUnique.mockClear()
     expect(await automaticReminderSuppressed(db, row.organizationId, row.recipient, true)).toBe(false)
     expect(findUnique).not.toHaveBeenCalled()
+  })
+})
+
+describe("quote and invoice unsubscribe footer", () => {
+  it("keeps mail unchanged without an absolute origin and warns once without recipient data", async () => {
+    const warn = vi.spyOn(appLogger, "warn")
+    vi.stubEnv("YAIP_APP_ORIGIN", "")
+    vi.stubEnv("BETTER_AUTH_URL", "")
+    const { db } = fixture()
+    const message = { from: "seller@example.test", to: binding.recipient, subject: "Invoice", html: "<body>Invoice</body>" }
+    for (const origin of ["", "/relative"]) {
+      vi.stubEnv("QUITS_APP_ORIGIN", origin)
+      expect(await addReminderUnsubscribe({ db, organizationId: binding.organizationId, locale: binding.locale, message })).toBe(message)
+    }
+    expect(warn.mock.calls).toEqual([["reminders.unsubscribe_origin_missing"]])
+  })
+
+  it.each(["da-DK", "en-US"])("adds reminder-only %s copy, an opaque link and HTTPS one-click headers", async locale => {
+    const { db } = fixture()
+    const document = { number: "DOC-1", issueDate: "2026-10-01", dueDate: "2026-10-31", expiryDate: "2026-10-31", subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", items: [] }
+    const common = { org: { companyName: "Seller", locale }, contactName: "Buyer" }
+    const contents = [buildInvoiceEmailContent({ ...common, invoice: document }), buildQuoteEmailContent({ ...common, quote: document })]
+    for (const content of contents) {
+      expect(content.html).not.toContain("automatic-reminder-preferences")
+      const message = await addReminderUnsubscribe({ db, organizationId: "org-one", locale, message: composeMessage(binding.recipient, content) })
+      expect(message.html).toContain(locale === "da-DK" ? "Afmeld automatiske påmindelser" : "Unsubscribe from automatic reminders")
+      expect(message.html).toContain(locale === "da-DK" ? "Tilbud, fakturaer og påmindelser sendt af sælgeren kommer stadig frem." : "Quotes, invoices and reminders sent by the seller will still arrive.")
+      const href = /href="([^"]*reminders\/unsubscribe[^"]*)"/.exec(message.html)?.[1]
+      expect(href).toBeTruthy()
+      expect(href).not.toContain(binding.recipient)
+      expect(href).not.toContain(binding.organizationId)
+      expect(message.headers).toMatchObject({ "List-Unsubscribe": expect.stringMatching(/^<https:\/\/app.example.test\/api\/reminders\/unsubscribe\?token=v1\./), "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" })
+    }
+  })
+
+  it("keeps self-hosted HTTP links usable without advertising unsupported one-click", async () => {
+    vi.stubEnv("QUITS_APP_ORIGIN", "http://localhost:3000")
+    const { db, row } = fixture()
+    row.unsubscribedAt = new Date()
+    const message = await addReminderUnsubscribe({ db, organizationId: row.organizationId, locale: row.locale, message: { from: "seller@example.test", to: row.recipient, subject: "Invoice", html: "<body></body>" } })
+    expect(message.headers?.["List-Unsubscribe"]).toContain("<http://localhost:3000/reminders/unsubscribe?")
+    expect(message.headers).not.toHaveProperty("List-Unsubscribe-Post")
+    expect(row.unsubscribedAt).not.toBeNull()
   })
 })
