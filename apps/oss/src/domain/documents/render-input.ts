@@ -4,7 +4,7 @@ import { frozenEinvoiceInput } from "./einvoice-input"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
 import { impliedTaxRate } from "./pricing"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { formatIsoDate } from "../../lib/exports/format"
 import { withNonVatStatement } from "../../lib/documents/non-vat-note"
 import { requireVatIssuance, requireSellerVatIssuance } from "./vat-issuance"
@@ -152,7 +152,7 @@ export const prospectiveRenderInput = (input: {
     const creditVatSummary = { ...(creditSummary.vatRows ? { vatRows: creditSummary.vatRows } : {}), rounding: creditSummary.rounding }
     const creditNote: CreditNoteForPdf = {
       number: input.number, issueDate: base.issuedAt, reason: withNonVatStatement(selection.reason, money.seller.momsRegistered, invoice.locale) ?? selection.reason,
-      taxRate: impliedTaxRate(invoice), subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
+      taxRate: nominalLineTaxRate(built.lines.map(line => line.taxRate)) ?? impliedTaxRate(invoice), subtotal: built.subtotalNet, taxAmount: built.totalTax, total: built.totalGross,
       currency: invoice.currency, taxRegime: invoice.taxRegime, locale: invoice.locale, timezone: invoice.timezone,
       sellerSnapshot, buyerSnapshot, contact: { ...buildBuyerSnapshot(invoice.contact), name: invoice.contact.name },
       invoice: { number: issuedNumber(invoice), issueDate: invoice.issueDate.toISOString() },

@@ -154,6 +154,9 @@ function PublicQuoteDocument({
   const { quote, decisionState, seller } = state
   const momsRegistered = sellerVatPresentationStatus(quote.sellerSnapshot?.momsRegistered, quote.taxRegime)
   const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
+  // Issued identity wins over the live contact, so the tax IDs below belong to the name above them.
+  const buyerName = quote.buyerSnapshot ? quote.buyerSnapshot.name ?? quote.contact.name : quote.contact.name
+  const buyerCompany = distinctCompany({ name: buyerName, company: quote.buyerSnapshot ? quote.buyerSnapshot.company : quote.contact.company })
   const sellerTaxIds = formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
@@ -250,8 +253,8 @@ function PublicQuoteDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={quote.contact.name} />
-              {distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company }) && <InfoBlock label={t("public.document.company")} value={distinctCompany({ name: quote.contact.name, company: quote.contact.company ?? quote.buyerSnapshot?.company })!} />}
+              <InfoBlock label={t("public.document.customer")} value={buyerName} />
+              {buyerCompany && <InfoBlock label={t("public.document.company")} value={buyerCompany} />}
               {formatTaxIds(quote.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
               <div className="grid gap-2 text-sm" aria-label={t("public.document.total")}>
                 <DocumentTotals

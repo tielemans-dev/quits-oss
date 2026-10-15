@@ -183,6 +183,16 @@ describe("PublicQuotePage", () => {
     container.innerHTML = html
     expect(container.querySelectorAll('[data-slot="amount"]')[4]?.textContent).toBe("$1,200.01")
   })
+  it("shows the frozen buyer identity with its tax IDs, not the edited contact", () => {
+    const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, contact: { name: "Renamed Contact", email: null, company: "Renamed Co" },
+        buyerSnapshot: { name: "Issued Buyer", company: "Issued Buyer ApS", country: "DK", taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
+    }} />)
+    expect(html).toContain("Issued Buyer ApS")
+    expect(html).toContain("87654321")
+    expect(html).not.toContain("Renamed")
+  })
   it("keeps the seller's tax IDs out of the customer card", () => {
     const html = page("en-US", <PublicQuotePage token="signed-token" state={{
       kind: "ready", decisionState: "pending", seller,

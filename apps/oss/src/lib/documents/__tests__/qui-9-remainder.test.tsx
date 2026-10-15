@@ -37,7 +37,7 @@ describe("QUI-9 frozen legal presentation", () => {
     const result = totals([zero], "en-US")
     expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "VAT 0%"])
     expect(result.total.label).toBe("Total")
-    expect(result.note).toBe("No VAT is charged. The supply is outside the scope of Danish VAT.")
+    expect(result.note).toBe("No VAT is charged. The supply is outside the scope of VAT.")
     expect(totals([{ ...zero, treatment: "exempt" }]).lines[1]?.reason).toBe("Momsfritaget")
     expect(totals([{ ...zero, treatment: "exempt" }]).note).toBeUndefined()
   })
@@ -62,5 +62,12 @@ describe("QUI-9 frozen legal presentation", () => {
   it("localizes a fractional line VAT rate", () => {
     const snapshot = { offerFormatVersion: 2, locale: "da-DK", currency: "DKK", taxRate: "25", taxRegime: "eu_vat", sellerSnapshot: { momsRegistered: true }, vatGroups: [], serviceTotal: { net: "0", tax: "0", gross: "0", payableRounding: "0" } }
     expect(agreementVatPresentation(snapshot as never).lineLabel("5.5")).toBe("5,5 % moms")
+  })
+  it("treats a blank buyer country as missing, so a paired Danish ID prints once as CVR", () => {
+    const paired = [{ scheme: "cvr", value: "12345678" }, { scheme: "vat", value: "DK12345678", countryCode: "DK" }]
+    for (const country of ["", "  "]) expect(formatTaxIds(paired, "da-DK", country)).toEqual(["CVR-nr. 12345678"])
+  })
+  it("keeps the out-of-scope note free of any one country's VAT", () => {
+    expect(totals([zero], "da-DK").note).toBe("Der er ikke beregnet moms. Ydelsen er uden for momsens anvendelsesområde.")
   })
 })

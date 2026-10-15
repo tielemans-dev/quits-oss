@@ -5,9 +5,11 @@ import { sellerCvr, sellerPresentationTaxIds } from "./invoice-identity"
 
 /** Seller labels follow the buyer country; buyer identifiers keep their own scheme. */
 export function formatTaxIds(ids: readonly DocumentTaxId[] | undefined, locale?: string | null, buyerCountry?: string | null, momsRegistered?: boolean | null): string[] {
-  ids = buyerCountry ? sellerPresentationTaxIds(ids, momsRegistered) : ids
+  // Seller calls pass the buyer's country; a blank stored country counts as missing, which is domestic.
+  const country = buyerCountry == null ? null : buyerCountry.trim() || "DK"
+  ids = country ? sellerPresentationTaxIds(ids, momsRegistered) : ids
   const cvr = sellerCvr(ids)
-  const national = cvr && buyerCountry ? [toCountryCode(buyerCountry) === "DK" || momsRegistered === false
+  const national = cvr && country ? [toCountryCode(country) === "DK" || momsRegistered === false
     ? `${translate("pdf.cvrNumber", locale)} ${cvr}`
     : `${translate("pdf.vatNumber", locale)} DK${cvr}`] : []
   return [...national, ...(ids ?? []).filter(id => id.value.trim() && !(national.length && sellerCvr([id]) === cvr)).map(id => {

@@ -34,7 +34,7 @@ export const daPdfMessages = {
   "pdf.cvrNumber": "CVR-nr.",
   "pdf.vatNumber": "Momsnr.",
   "pdf.vatOutOfScope": "Uden for momsens anvendelsesområde",
-  "pdf.vatNote.outOfScope": "Der er ikke beregnet moms. Ydelsen er uden for momsens anvendelsesområde i Danmark.",
+  "pdf.vatNote.outOfScope": "Der er ikke beregnet moms. Ydelsen er uden for momsens anvendelsesområde.",
   "pdf.vatNote.mixed": "Linjer markeret 0 % moms er uden for momsens anvendelsesområde.",
   "pdf.lineVatRate": "{rate} % moms",
   "pdf.pageNumber": "Side {page} af {total}",

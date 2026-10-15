@@ -34,7 +34,7 @@ export const enPdfMessages = {
   "pdf.cvrNumber": "CVR no.",
   "pdf.vatNumber": "VAT no.",
   "pdf.vatOutOfScope": "Outside the scope of VAT",
-  "pdf.vatNote.outOfScope": "No VAT is charged. The supply is outside the scope of Danish VAT.",
+  "pdf.vatNote.outOfScope": "No VAT is charged. The supply is outside the scope of VAT.",
   "pdf.vatNote.mixed": "Lines marked 0% VAT are outside the scope of VAT.",
   "pdf.lineVatRate": "{rate}% VAT",
   "pdf.pageNumber": "Page {page} of {total}",
