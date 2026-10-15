@@ -8,11 +8,7 @@ import {
 } from "../payments/stripe"
 
 vi.mock("../db", () => ({
-  prisma: {
-    orgSettings: {
-      findUnique: async () => null,
-    },
-  },
+  prisma: { orgSettings: { findUnique: async () => null } },
 }))
 
 const stripeAccount = "acct_connected"
