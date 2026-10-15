@@ -286,8 +286,8 @@ test("manual review requires a CVR and keeps the VAT choice", async ({ page }) =
 })
 
 for (const [locale, refusal, free] of [
-  ["da-DK", "quits er til virksomheder med CVR-nummer", "Det er gratis at registrere et CVR-nummer på virk.dk."],
-  ["en-GB", "quits is for businesses with a CVR number", "Registering a CVR number at virk.dk is free."],
+  ["da-DK", "quits er til virksomheder med CVR-nummer", "Du kan gratis registrere en enkeltmandsvirksomhed og få et CVR-nummer på virk.dk."],
+  ["en-GB", "quits is for businesses with a CVR number", "You can register a sole proprietorship and get a CVR number for free at virk.dk."],
 ]) test(`B2B refusal and free CVR guidance appear in ${locale}`, async ({ page }) => {
   await page.goto(`/?locale=${locale}`)
   await expect(page.getByText(`${refusal}. ${free}`, { exact: true })).toBeVisible()
