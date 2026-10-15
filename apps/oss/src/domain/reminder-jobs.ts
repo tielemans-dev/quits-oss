@@ -58,21 +58,28 @@ export const retryReminderStep = defineCommand({
     // Lock the parent before the step, as the runner does; never reset a live claim.
     const parent = yield* Effect.promise(() => db.job.updateMany({
       where: { id: input.jobId, organizationId, type: REMINDER_BATCH_JOB, claimToken: null },
-      data: { status: "pending", attempts: 0, runAfter: new Date(), lastError: null },
+      data: { updatedAt: new Date() },
     }))
     if (!parent.count) return yield* new NotFound({ entity: "job", message: "Job not found or currently running" })
     const step = yield* Effect.promise(() => db.jobStep.findFirst({
-      where: { id: input.stepId, jobId: input.jobId, status: "failed" },
+      where: { id: input.stepId, jobId: input.jobId, OR: [
+        { status: "failed" }, { status: { in: ["pending", "running"] }, job: { status: "failed" } },
+      ] },
     }))
     if (!step) return yield* new InvalidState({ code: "not_failed", message: "Only failed steps can be retried" })
-    if (step.deliveryKey) {
+    if (step.status === "failed" && step.deliveryKey) {
       const delivery = yield* Effect.promise(() => readDeliveryResult(step.deliveryKey!))
       if (delivery.outcome === "unconfirmed" || delivery.outcome === "pending") return yield* new InvalidState({
         code: "delivery_uncertain", message: "Delivery is uncertain and cannot be sent again",
       })
     }
     yield* Effect.promise(() => db.jobStep.update({
-      where: { id: step.id }, data: { status: "pending", error: null, deliveryKey: null },
+      where: { id: step.id },
+      // Interrupted steps retain their attempt and delivery key so committed receipts replay.
+      data: step.status === "failed" ? { status: "pending", error: null, deliveryKey: null } : { error: null },
+    }))
+    yield* Effect.promise(() => db.job.update({ where: { id: input.jobId },
+      data: { status: "pending", attempts: 0, runAfter: new Date(), lastError: null },
     }))
     return { jobId: input.jobId, stepId: step.id }
   }),
@@ -108,6 +115,11 @@ export async function handleReminderBatch(job: Pick<Job, "id" | "organizationId"
         actor, clientRequestId: `job-step:${step.id}:${step.attempts}`,
       })
       if (outcome.status !== "completed") {
+        if (outcome.status !== "awaiting_approval" && (outcome.error.tag === "ExternalFailure" ||
+          ["email_unavailable", "operation_not_allowed"].includes(outcome.error.code ?? ""))) {
+          await write(step.id, { status: "pending", error: outcome.error.message })
+          throw new Error(outcome.error.message)
+        }
         await write(step.id, {
           status: "failed", error: outcome.status === "awaiting_approval" ? "Approval required" : outcome.error.message,
         })

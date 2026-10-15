@@ -6,7 +6,7 @@ import { createTestOrganization, hasTestDatabase } from "../../test-utils/organi
 import { jobsRouter } from "../../trpc/routers/jobs"
 import { sendReminderNow } from "../commands/reminders"
 import { executeCommand } from "../execute"
-import { reclaimStaleJobs, runDueJobs } from "../jobs"
+import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, runDueJobs } from "../jobs"
 import { handleReminderBatch, REMINDER_BATCH_JOB } from "../reminder-jobs"
 
 vi.mock("../../lib/email", async () => ({
@@ -74,7 +74,10 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     expect((await executeCommand(sendReminderNow, { invoiceId: step.invoiceId }, {
       actor: ctx.org.actors.admin, clientRequestId: `job-step:${step.id}:1`,
     })).status).toBe("completed")
-    await prisma.job.update({ where: { id: ctx.jobId }, data: { status: "running", claimToken: "dead-run", updatedAt: new Date(Date.now() - 16 * 60_000) } })
+    await prisma.job.update({ where: { id: ctx.jobId }, data: { status: "running", claimToken: "dead-run", attempts: MAX_JOB_ATTEMPTS, updatedAt: new Date(Date.now() - 16 * 60_000) } })
+    await reclaimStaleJobs(new Date(), { organizationIds: [ctx.org.organizationId] })
+    expect(await ctx.api.get({ jobId: ctx.jobId })).toMatchObject({ status: "failed", progress: { done: 1, total: 2 } })
+    await ctx.api.retryStep({ jobId: ctx.jobId, stepId: step.id })
     const done = await ctx.finish()
     expect(done).toMatchObject({ status: "done", progress: { done: 2, total: 2, succeeded: 2, failed: 0 } })
     expect(done.steps.map(s => s.attempts)).toEqual([1, 1])
@@ -99,6 +102,24 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     const done = await ctx.finish()
     expect(done.steps.map(s => [s.status, s.attempts])).toEqual([["succeeded", 2], ["succeeded", 1]])
     expect(deliver).toHaveBeenCalledTimes(3)
+  })
+
+  it("backs off transient failures and recovers unfinished steps after exhausting attempts", async () => {
+    const ctx = await setup(1)
+    vi.stubEnv("RESEND_API_KEY", "")
+    const first = await ctx.sweep()
+    expect(first.steps[0]).toMatchObject({ status: "pending", attempts: 1 })
+    const waiting = await prisma.job.findUniqueOrThrow({ where: { id: ctx.jobId } })
+    expect(waiting.status).toBe("pending")
+    expect(waiting.runAfter.getTime()).toBeGreaterThan(Date.now())
+    for (let i = 1; i < MAX_JOB_ATTEMPTS; i++) await ctx.sweep()
+    expect(await ctx.api.get({ jobId: ctx.jobId })).toMatchObject({ status: "failed", progress: { done: 0 } })
+    vi.stubEnv("RESEND_API_KEY", "test-key")
+    await ctx.api.retryStep({ jobId: ctx.jobId, stepId: first.steps[0].id })
+    const done = await ctx.finish()
+    expect(done).toMatchObject({ status: "done", progress: { done: 1, succeeded: 1 } })
+    expect(done.steps[0].attempts).toBe(MAX_JOB_ATTEMPTS + 1)
+    expect(deliver).toHaveBeenCalledTimes(1)
   })
 
   it("scopes creation, reads and retries to the org and enforces send permission", async () => {
