@@ -61,9 +61,12 @@
     "build": "node ../../scripts/run-with-workspace-env.mjs bunx vite build",
     "preview": "node ../../scripts/run-with-workspace-env.mjs bunx vite preview",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives .",
+    "pretypecheck": "bun run prisma:generate",
     "typecheck": "tsc --noEmit -p tsconfig.quality.json && tsc --noEmit -p tsconfig.json",
+    "pretypecheck:app": "bun run prisma:generate",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
     "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
+    "pretest:integration": "bun run prisma:generate",
     "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.config.ts src/trpc/routers/__tests__/*.integration.test.ts && node ../../scripts/run-with-workspace-env.mjs bunx vitest run -c vitest.global.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:shared": "node e2e/run.mjs"
