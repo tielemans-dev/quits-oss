@@ -1,7 +1,7 @@
 import { cleanupTestOrganizations } from "../../test-utils/organization"
 import "dotenv/config"
 import { randomUUID } from "node:crypto"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { prisma } from "../db"
 import { decryptSecret } from "../secrets"
 import { resolveInvoiceEmailContext } from "../../domain/documents/invoice-email"
@@ -16,6 +16,15 @@ const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 
 describe("stripe payment configuration state", () => {
+  afterEach(() => vi.unstubAllEnvs())
+  it.each(["none", "pending", "restricted", "active"] as const)("requires active Connect on cloud even with leftover keys (%s)", status => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    const settings = { companyName: "Acme", companyEmail: null, locale: "en-US", timezone: "UTC", stripePublishableKey: "pk_saved", stripeSecretKeyEnc: "saved", stripeWebhookSecretEnc: "saved", stripeAccountStatus: status }
+    expect(getStripePaymentConfigurationState(settings).configured).toBe(status === "active")
+    expect(resolveInvoiceEmailContext(settings).stripeConfigured).toBe(status === "active")
+    vi.unstubAllEnvs()
+  })
+
   it("requires all Stripe BYOK fields before payment links are considered configured", () => {
     expect(
       getStripePaymentConfigurationState({
