@@ -90,8 +90,8 @@ export function Amount({
               key={index}
               className="tabular-nums lining-nums relative"
               style={{
-                fontSize: `${spec.fraction}em`,
-                top: `${(-(1 - spec.fraction) * 0.72) / spec.fraction}em`,
+                fontSize: `var(--dec-fs, ${spec.fraction}em)`,
+                top: `var(--dec-top, ${(-(1 - spec.fraction) * 0.72) / spec.fraction}em)`,
                 lineHeight: 1,
               }}
             >

@@ -1,4 +1,9 @@
 export const daInvoicesMessages = {
+  "invoices.summary.outstanding": "Udestående",
+  "invoices.summary.overdue": "Forfaldent",
+  "invoices.summary.paidThisMonth": "Betalt denne måned",
+  "invoices.summary.count": "{count} fakturaer",
+
   "invoices.issuance.supplyDate": "Leveringsdato",
   "invoices.issuance.confirmDates": "Bekræft leveringsdatoen før udstedelse. Levering før udstedelsesdatoen kræver revisorgennemgang før bogføring.",
   "invoices.issuance.rate": "Basiskurs: {baseCurrency} pr. 1 {currency}",

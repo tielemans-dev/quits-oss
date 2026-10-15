@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
+    dashboard: { summary: { query: vi.fn().mockResolvedValue(null) } },
     invoices: { list: { query: state.invoices }, markOverdue: { mutate: vi.fn() } },
     settings: { get: { query: state.settings } },
     quotes: { list: { query: state.quotes } },
