@@ -237,6 +237,8 @@ Run the standard test suite:
 bun run test
 ```
 
+Build, test and typecheck commands generate the Prisma client first, including on a fresh checkout or a root Turbo cache hit.
+
 Run the repo quality gates:
 
 ```bash
