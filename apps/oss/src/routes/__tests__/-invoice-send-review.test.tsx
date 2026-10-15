@@ -71,18 +71,19 @@ function fillDraft() {
 }
 const deliveryDraft = { ...invoice, status: "draft", number: null, supplyDate: "2026-10-05", currency: "DKK", items: [] }
 describe("new invoice send review", () => {
-  it("composes locally and sends the reviewed payment and reminder choices without navigating", async () => {
+  it.each([false, true])("composes locally and persists reviewed choices with Stripe connected=%s", async (connected) => {
+    api.settings.mockResolvedValue({ ...await api.settings(), stripePaymentsEnabled: connected })
     const completed = vi.fn(); api.send.mockResolvedValue({}); render(<NewInvoicePage onComplete={completed} />)
     await screen.findByRole("option", { name: contact.name })
     fireEvent.change(screen.getByLabelText("invoices.flow.composer"), { target: { value: "Synthetic Buyer 2 timer à 100 kr. Design betaling 14 dage" } })
     fireEvent.click(screen.getByRole("button", { name: "invoices.flow.apply" }))
     expect((screen.getByLabelText("docForm.column.description") as HTMLInputElement).value).toBe("Design")
-    expect(screen.getByRole("switch", { name: "invoices.flow.mobilePay" }).hasAttribute("disabled")).toBe(true)
+    expect(screen.queryByRole("switch", { name: "invoices.flow.mobilePay" })?.hasAttribute("disabled") ?? null).toBe(connected ? null : true)
     fireEvent.click(screen.getByRole("button", { name: "invoices.flow.review" }))
     fireEvent.click(await screen.findByRole("switch", { name: "invoices.flow.reminders" }))
     fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" }))
     await waitFor(() => expect(completed).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, kind: "invoice" })))
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethods: ["bank_transfer"], remindersPaused: true, items: [expect.objectContaining({ quantity: "2", unitPrice: "100" })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethods: connected ? ["bank_transfer", "card"] : ["bank_transfer"], remindersPaused: true, items: [expect.objectContaining({ quantity: "2", unitPrice: "100" })] }))
     expect(api.navigate).not.toHaveBeenCalled(); expect(api.generate).not.toHaveBeenCalled()
   })
   it("opens a draft without a delivery date with an empty field", async () => {
