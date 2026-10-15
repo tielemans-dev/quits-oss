@@ -69,6 +69,7 @@ test("creates and sends an invoice with two VAT groups matching the calculator",
   await expect(groups).toContainText("Net $100.00, VAT $0.00, total $100.00")
   await page.screenshot({ path: `${artifacts}/mixed-vat-preview.png`, fullPage: true })
   await page.getByRole("button", { name: "Save & Send", exact: true }).click()
+  await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
   await page.waitForURL((url) => url.pathname.startsWith("/invoices/") && !url.pathname.endsWith("/new"))
   const id = new URL(page.url()).pathname.split("/").at(-1)!
   await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe("sent")

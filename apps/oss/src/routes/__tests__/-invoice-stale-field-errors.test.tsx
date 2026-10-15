@@ -15,6 +15,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   settings: { get: { query: fixture.settings } },
   contacts: { list: { query: async () => [{ id: "c1", name: "Acme ApS" }] } },
   catalog: { list: { query: async () => [] } },
+  invoices: { sendReadiness: { query: async () => ({ issues: [], baseCurrency: "DKK", taxRate: "25", pricesIncludeTax: false, momsRegistered: true, countryCode: "DK", recipient: null, recipientVersion: null }) } },
   runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: false } }) } },
 } }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key, locale: "da-DK" }) }))
@@ -49,9 +50,9 @@ describe("new invoice stale field errors", () => {
     render(<Component />)
     await waitFor(() => expect(screen.queryByText("docForm.loadingContacts")).toBeNull())
     await submit()
-    expect((await screen.findByRole("alert")).textContent).toBe("docForm.validation.contactRequired")
+    expect(await screen.findByText("invoiceValidation.customer.required")).toBeTruthy()
     await pickCustomer()
-    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
+    await waitFor(() => expect(screen.queryByText("invoiceValidation.customer.required")).toBeNull())
   })
 
   it("clears the line description error once a description is typed", async () => {
@@ -59,8 +60,9 @@ describe("new invoice stale field errors", () => {
     await waitFor(() => expect(screen.queryByText("docForm.loadingContacts")).toBeNull())
     await pickCustomer()
     await submit()
-    expect((await screen.findByRole("alert")).textContent).toBe("docForm.validation.itemDescriptionRequired")
-    fireEvent.change(screen.getByPlaceholderText("docForm.column.description"), { target: { value: "Consulting" } })
-    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
+    expect((await screen.findAllByText("invoiceValidation.required")).length).toBeGreaterThan(0)
+    const before = screen.getAllByText("invoiceValidation.required").length
+    fireEvent.change(screen.getByLabelText("docForm.column.description"), { target: { value: "Consulting" } })
+    await waitFor(() => expect(screen.queryAllByText("invoiceValidation.required").length).toBeLessThan(before))
   })
 })

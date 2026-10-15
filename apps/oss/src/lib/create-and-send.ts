@@ -21,6 +21,7 @@ export async function createThenSend(input: {
   beforeSend?: (id: string) => Promise<boolean>
   sendImmediately: boolean
   sendFailedMessage: string
+  sendErrorMessage?: (error: unknown) => string
 }): Promise<CreatedDocumentTarget> {
   const { id } = await input.create()
   if (!input.sendImmediately) return { id }
@@ -31,7 +32,7 @@ export async function createThenSend(input: {
   } catch (error) {
     return {
       id,
-      sendError: error instanceof Error && error.message ? error.message : input.sendFailedMessage,
+      sendError: input.sendErrorMessage ? input.sendErrorMessage(error) : error instanceof Error && error.message ? error.message : input.sendFailedMessage,
     }
   }
 }
