@@ -121,6 +121,9 @@ Source-available invoicing for freelancers and small businesses.
 
 ### Isolated worktrees in T3 Code
 
+For 60fps route recordings and before/after motion comparisons, see
+[Record motion for design review](docs/recording-motion.md).
+
 Run `bun install --frozen-lockfile` in each new worktree before Setup Worktree.
 Install Bun and PostgreSQL `psql`, `createdb`, and `dropdb`. Supply
 `QUITS_WORKTREE_POSTGRES_URL` explicitly in the process environment: a loopback

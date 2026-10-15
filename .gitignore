@@ -19,3 +19,4 @@ apps/oss/test-results/
 **/generated/prisma/
 
 apps/oss/data/artifacts/
+artifacts/motion/
