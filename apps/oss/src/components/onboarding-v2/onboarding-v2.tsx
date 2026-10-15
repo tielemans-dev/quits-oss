@@ -323,12 +323,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    if (field === "momsRegistered") setValidationErrors((errors) => errors.filter((error) => error !== "momsRegistered"))
     setDraft((current) =>
       current
         ? {
             ...current,
-            // Another CVR number is another company, whose VAT status must be answered again.
-            ...(field === "cvr" && value !== current.values.cvr ? { vatChoiceConfirmed: false } : {}),
             ...(field === "momsRegistered" ? { vatChoiceConfirmed: value !== null } : {}),
             values: {
               ...current.values,
@@ -341,7 +340,16 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
+    if (!draft || saving.current) return
+    // Never a silently disabled button: a missing VAT answer is a visible, focused validation error.
+    if ((confirmationEnabled && sellerVatChoice === null) || draft.values.momsRegistered === null) {
+      setValidationErrors(["momsRegistered"])
+      const choice = (event.currentTarget as HTMLFormElement).querySelector<HTMLElement>('input[type="radio"], select[name="momsRegistered"]')
+      choice?.focus({ preventScroll: true })
+      choice?.scrollIntoView?.({ block: "center" })
+      return
+    }
+    if (!nonVatEnabled && draft.values.momsRegistered === false) return
     const v = draft.values
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
@@ -674,6 +682,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
                 aria-label={TT("field.vat")}
+                name="momsRegistered"
+                aria-invalid={validationErrors.includes("momsRegistered")}
                 value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
                 required
                 disabled={busy}
@@ -893,7 +903,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           </aside>
           <div className="ob-confirm">
             <span>{TT("unsaved.hint")}</span>
-            <Button type="submit" disabled={busy || (confirmationEnabled && sellerVatChoice === null) || draft.values.momsRegistered === null}>
+            <Button type="submit" disabled={busy}>
               {busy ? <LoaderCircle size={16} className="ob-spin" aria-hidden="true" /> : null}
               {TT(busy ? "busy" : draft.source === "manual" ? "manual.confirm" : "confirm")}
             </Button>

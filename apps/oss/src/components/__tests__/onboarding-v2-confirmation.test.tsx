@@ -73,16 +73,21 @@ describe("production v2 seller confirmation", () => {
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios.every(radio => !radio.checked)).toBe(true)
     const save = screen.getByRole("button", { name: "Create company" }) as HTMLButtonElement
-    expect(save.disabled).toBe(true)
+    // Never a silently disabled button: submitting without a VAT answer shows and focuses it.
+    expect(save.disabled).toBe(false)
+    expect(radios[0]!.required).toBe(true)
+    fireEvent.submit(save.closest("form")!)
+    await screen.findByText("Check the highlighted fields before creating your company.")
+    expect(document.activeElement).toBe(radios[0])
+    expect(api.prepare).not.toHaveBeenCalled()
     fireEvent.click(radios[0]!)
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Edited Seller" } })
     expect(radios[0]!.checked).toBe(true)
-    expect(save.disabled).toBe(false)
-    // Another CVR number is another company: its VAT status is asked again.
+    // Noah's prod order (QUI-56): VAT first, then an invalid and a corrected CVR keeps the answer.
     fireEvent.change(screen.getByLabelText("CVR number"), { target: { value: "12345678" } })
-    expect(radios.every(radio => !radio.checked)).toBe(true)
-    expect(save.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText("CVR number"), { target: { value: "24256790" } })
+    expect(radios[0]!.checked).toBe(true)
+    expect(save.disabled).toBe(false)
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.click(save)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())

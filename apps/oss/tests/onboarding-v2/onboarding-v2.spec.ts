@@ -224,3 +224,29 @@ test("hosted without non-VAT capability hides Nej and blocks a nonregistered sav
   expect(payloads).toHaveLength(1)
   expect(payloads[0]).toMatchObject({ momsRegistered: true, vatId: "DK24256790", settings: { taxRate: 25 } })
 })
+
+test("manual setup finishes while the CVR lookup is down (QUI-56)", async ({ page }) => {
+  let payload: Record<string, unknown> = {}
+  await page.route("**/confirm", async (route) => {
+    payload = route.request().postDataJSON()
+    await route.fulfill({ json: { status: "complete" } })
+  })
+  await page.goto("/?scenario=lookup-down&profile=hosted&confirmation=1")
+  await page.getByRole("textbox", { name: "Hvad hedder din virksomhed?" }).fill("Nordlys")
+  await expect(page.getByRole("heading", { name: "Vi kunne ikke hente data fra CVR" })).toBeVisible()
+  await page.getByRole("button", { name: "Opsæt manuelt", exact: true }).click()
+  const create = page.getByRole("button", { name: "Opret virksomhed", exact: true })
+  await expect(create).toBeEnabled()
+  await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Nordlys Test ApS")
+  await page.getByRole("textbox", { name: "Adresse", exact: true }).fill("Testvej 1\n1000 København K")
+  await page.getByRole("radio", { name: "Jeg er momsregistreret" }).check()
+  // Noah's prod order: VAT first, then a rejected CVR, then a valid one.
+  const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
+  await cvr.fill("12345678")
+  await cvr.fill("24256790")
+  await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeChecked()
+  await expect(create).toBeEnabled()
+  await create.click()
+  await expect(page.getByRole("status")).toHaveText("KLAR")
+  expect(payload).toMatchObject({ source: "manual", companyName: "Nordlys Test ApS", cvr: "24256790", momsRegistered: true, vatId: "DK24256790" })
+})
