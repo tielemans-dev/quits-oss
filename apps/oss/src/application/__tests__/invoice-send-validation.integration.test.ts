@@ -136,7 +136,7 @@ async function setup(bank = true) {
     expect(readiness.standardVatRate).toBe("25")
     expect(readiness.issues.map(issue => issue.code)).toEqual(expect.arrayContaining(["cvr.invalid", "seller.vatRegistration.required", "seller.bank.required", "customer.businessName.required", "customer.country.unsupported"]))
     const invoice = await create()
-    await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({ cause: { issues: expect.arrayContaining(readiness.issues) } })
+    await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({ cause: { fieldIssues: expect.arrayContaining(readiness.issues) } })
   })
   it("keeps readiness and draft creation available when the issuance policy cannot be resolved, and refuses the send", async () => {
     const { caller, contact, create } = await setup()
