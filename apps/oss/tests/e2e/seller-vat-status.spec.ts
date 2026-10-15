@@ -7,6 +7,8 @@ import { issueDocument } from "../../src/application/issuance"
 import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { createInvoiceDraft } from "../../src/domain/commands/invoices"
+import { createQuoteDraft, sendQuote } from "../../src/domain/commands/quotes"
+import { getPublicQuoteUrl } from "../../src/lib/quotes/public-url"
 import { executeCommand } from "../../src/domain/execute"
 import { resolveUserActor } from "../../src/domain/user-actor"
 import { selfhostRuntimeServices } from "../../src/selfhost/runtime"
@@ -119,6 +121,19 @@ for (const locale of ["da-DK", "en-US"]) {
     await capture(page, "pay", locale)
     await captureInvoiceEmail(page, row.id, setup.organizationId, locale, `http://127.0.0.1:3040/pay/${encodeURIComponent(token)}`)
     await capturePdf(page, "invoice", row.id, locale)
+    const quoteDraft = await executeCommand(createQuoteDraft, { contactId: contact.id, expiryDate: "2099-12-01", taxRate: 0,
+      items: [{ description: "Synthetic consulting", quantity: 2, unitPrice: 500, vat: { treatment: "unclassified_zero", rate: "0" } }],
+    }, { actor })
+    if (quoteDraft.status !== "completed") throw new Error(JSON.stringify(quoteDraft))
+    const quoteSent = await executeCommand(sendQuote, { id: quoteDraft.result.id, allowSendWithoutEmail: true }, { actor })
+    if (quoteSent.status !== "completed") throw new Error(JSON.stringify(quoteSent))
+    const quote = await prisma.quote.findUniqueOrThrow({ where: { id: quoteDraft.result.id } })
+    const quoteUrl = getPublicQuoteUrl(quote)
+    if (!quoteUrl) throw new Error("Issued synthetic quote has no public URL")
+    await page.goto(quoteUrl)
+    await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
+    await expect(page.getByText(translate("line.noVat", locale), { exact: true })).toBeVisible()
+    await capture(page, "quote-public", locale)
     const agreementDraft = await executeCommand(createAgreementDraft, { contactId: contact.id, title: "Synthetic non-VAT agreement", validUntil: "2099-12-01", taxRate: 0,
       deliverables: [{ title: "Synthetic service", description: "Service", quantity: 1, unitPrice: 100, vat: { treatment: "unclassified_zero", rate: "0" } }],
     }, { actor })
@@ -204,6 +219,77 @@ for (const source of ["settings", "onboarding"] as const) {
       const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
       expect(issued.sellerSnapshot).toMatchObject({ momsRegistered: registered })
       expect(issued.totalTax.toNumber()).toBe(registered ? 25 : 0)
+    })
+  }
+}
+
+// Persist and issue through production commands, then capture the real recipient routes and exports.
+for (const locale of ["da-DK", "en-US"]) {
+  for (const scenario of ["buyer-tax-id-mixed-vat-multipage", "empty-company"] as const) {
+    test(`${hosted ? "hosted contract fixture" : "selfhost"} ${locale} legal evidence ${scenario}`, async ({ page }) => {
+      await resetDatabase()
+      const setup = await seedCompletedSetup({ ...danishLocale, locale })
+      const mixed = scenario === "buyer-tax-id-mixed-vat-multipage"
+      await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
+        companyName: mixed ? "Synthetic Seller" : null, companyAddress: "Testvej 1, 1000 København",
+        momsRegistered: mixed, taxRate: mixed ? 25 : 0, pricesIncludeTax: false,
+        bankRegNumber: "0040", bankAccountNumber: "0440116243",
+        ...(hosted ? { onboardingStatus: "complete", onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingInvoicingIdentity: "registered_business" } : {}),
+      } })
+      await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
+      const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId,
+        name: "Synthetic Buyer", company: null, email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK",
+        taxIds: { create: { scheme: "vat", value: "DK24256790", countryCode: "DK", isPrimary: true } },
+      } })
+      const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
+      const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
+      if (!actor) throw new Error("Synthetic admin is missing")
+      if (hosted) installHostedVatFixture()
+      else bootstrapQuitsRuntime({ services: selfhostRuntimeServices() })
+      const items = Array.from({ length: mixed ? 60 : 1 }, (_, index) => ({
+        description: `Synthetic service ${index + 1}`, quantity: 1, unitPrice: 100,
+        vat: mixed ? index % 2 === 0 ? { treatment: "standard" as const, rate: "0.25" }
+          : { treatment: "exempt" as const, reasonCode: "health" as const, rate: "0" }
+          : { treatment: "unclassified_zero" as const, rate: "0" },
+      }))
+      // Synthetic classification evidence only, not proposed customer-facing legal wording.
+      const vatEvidence = mixed ? { statementText: "Synthetic health exemption evidence" } : undefined
+      const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2099-12-01",
+        supplyDate: "2026-10-11", taxRate: mixed ? 25 : 0, items, vatEvidence,
+      }, { actor })
+      if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
+      const issued = await issueDocument({ kind: "invoice", actor, commandInput: { id: draft.result.id, allowSendWithoutEmail: true }, options: { method: "manual" } })
+      if (issued.status !== "completed") throw new Error(JSON.stringify(issued))
+      const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
+      expect(invoice.status).toBe("sent")
+      expect(invoice.buyerSnapshot).toMatchObject({ company: null, taxIds: [{ scheme: "vat", value: "DK24256790", countryCode: "DK" }] })
+      expect(invoice.sellerSnapshot).toMatchObject({ companyName: mixed ? "Synthetic Seller" : null })
+      expect(invoice.totalTax.toNumber()).toBe(mixed ? 750 : 0)
+      expect(invoice.totalGross.toNumber()).toBe(mixed ? 6750 : 100)
+      await loginAsAdmin(page)
+      const token = signInvoicePaymentToken({ invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" }, "qui62-browser-payment-test-secret")
+      await page.goto(`/pay/${encodeURIComponent(token)}`)
+      await expect(page.getByText(/DK24256790/)).toBeVisible()
+      await expect(page.getByText("Synthetic service 1", { exact: true })).toBeVisible()
+      await capture(page, `pay-${scenario}`, locale)
+      await capturePdf(page, "invoice", invoice.id, locale, { scenario, minPages: mixed ? 2 : 1,
+        expectedText: ["DK24256790", "Synthetic Buyer", `Synthetic service ${mixed ? 60 : 1}`], invoiceFooter: true })
+      const quoteDraft = await executeCommand(createQuoteDraft, { contactId: contact.id, expiryDate: "2099-12-01", taxRate: mixed ? 25 : 0, items, vatEvidence }, { actor })
+      if (quoteDraft.status !== "completed") throw new Error(JSON.stringify(quoteDraft))
+      const sent = await executeCommand(sendQuote, { id: quoteDraft.result.id, allowSendWithoutEmail: true }, { actor })
+      if (sent.status !== "completed") throw new Error(JSON.stringify(sent))
+      const quote = await prisma.quote.findUniqueOrThrow({ where: { id: quoteDraft.result.id } })
+      const url = getPublicQuoteUrl(quote)
+      if (!url) throw new Error("Issued synthetic quote has no public URL")
+      await page.goto(url)
+      await expect(page.getByText(/DK24256790/)).toBeVisible()
+      await expect(page.getByText(`Synthetic service ${mixed ? 60 : 1}`, { exact: true })).toBeVisible()
+      await capture(page, `quote-public-${scenario}`, locale)
+      const credit = await issueDocument({ kind: "creditNote", actor, commandInput: { invoiceId: invoice.id, mode: "full", reason: "Synthetic correction" } })
+      if (credit.status !== "completed") throw new Error(JSON.stringify(credit))
+      const creditNote = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: invoice.id } })
+      await capturePdf(page, "creditNote", creditNote.id, locale, { scenario, minPages: mixed ? 2 : 1,
+        expectedText: ["DK24256790", "Synthetic Buyer", `Synthetic service ${mixed ? 60 : 1}`] })
     })
   }
 }
