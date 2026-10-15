@@ -146,6 +146,15 @@ async function setup(bank = true) {
     const invoice = await create()
     await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({ cause: { code: "issuance_policy_unavailable" } })
   })
+  it("reports an unsupported invoice currency for the chosen currency before any draft exists", async () => {
+    const { org, caller } = await setup()
+    setRuntimeExtensions([{ id: "synthetic-policy", resolveInvoiceIssuancePolicy: () => ({ currencies: ["DKK"] }) }])
+    expect((await caller.invoices.sendReadiness({ currency: "DKK" })).issues).toEqual([])
+    expect((await caller.invoices.sendReadiness({ currency: "USD" })).issues).toEqual([
+      { code: "currency.unsupported", field: "currency", params: { currencies: "DKK" } },
+    ])
+    expect(await prisma.invoice.count({ where: { organizationId: org.organizationId } })).toBe(0)
+  })
   it("reports business-only customers solely when an adopter policy requires them", async () => {
     const { caller } = await setup()
     expect((await caller.invoices.sendReadiness()).businessBuyersOnly).toBe(false)
