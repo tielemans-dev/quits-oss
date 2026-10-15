@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { forgetInstallationStatus } from "../../lib/installation-cache"
@@ -136,7 +136,12 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
     setLocale(setupState.locale)
   }, [setupState.locale, setLocale])
 
+  // `step` already starts from the stage; only a later stage change may move it. Re-applying the
+  // stage on mount could land after a fast "Next" click and snap the wizard back to step 1.
+  const appliedStage = useRef(initialStatus.stage)
   useEffect(() => {
+    if (appliedStage.current === initialStatus.stage) return
+    appliedStage.current = initialStatus.stage
     setStep(deriveInitialStep(initialStatus.stage))
   }, [initialStatus.stage])
 
