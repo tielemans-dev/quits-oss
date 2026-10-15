@@ -22,6 +22,8 @@ describe("new document tax defaults", () => {
     [{ ...dk, taxRate: 25, momsRegistered: false }, "0"],
     [{ ...dk, taxRate: 0, momsRegistered: false }, "0"],
     [{ ...dk, taxRate: 25, momsRegistered: null }, "25"],
+    [{ countryCode: "dk", taxRegime: "eu_vat", taxRate: 25, momsRegistered: false }, "0"],
+    [{ countryCode: " DK ", taxRegime: "eu_vat", taxRate: 25, momsRegistered: false }, "0"],
     [{ countryCode: "DK", taxRegime: "custom", taxRate: 25, momsRegistered: false }, "25"],
     [{ countryCode: "US", taxRegime: "us_sales_tax", taxRate: 7.5, momsRegistered: false }, "7.5"],
     [{ countryCode: "DE", taxRegime: "eu_vat", taxRate: 19, momsRegistered: false }, "19"],
