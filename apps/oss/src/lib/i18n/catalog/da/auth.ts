@@ -49,7 +49,7 @@ export const daAuthMessages = {
   "auth.onboarding.cvrLabel": "CVR-nr.",
   "auth.onboarding.b2bOnly": "quits er til virksomheder med CVR-nummer",
   "auth.onboarding.cvrInactive": "CVR-nummeret skal tilhøre en aktiv virksomhed. Prøv et andet CVR-nummer.",
-  "auth.onboarding.cvrFree": "Det er gratis at registrere et CVR-nummer på virk.dk.",
+  "auth.onboarding.cvrFree": "Du kan gratis registrere en enkeltmandsvirksomhed og få et CVR-nummer på virk.dk.",
   "auth.onboarding.lookup.title": "Slå dit eget CVR op",
   "auth.onboarding.lookup.description": "Søg i CVR. Vi opretter organisationen, når du bekræfter virksomheden.",
   "auth.onboarding.lookup.query": "Virksomhedsnavn eller CVR-nr.",
