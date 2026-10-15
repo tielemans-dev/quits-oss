@@ -36,6 +36,23 @@ describe("new customer default country", () => {
     fireEvent.click(submit())
     await waitFor(() => expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ country: "XK" })))
   })
+  it("opens the form with no default country when the lookup never answers", async () => {
+    vi.useFakeTimers()
+    try {
+      trpcMock.settings.mockReturnValue(new Promise(() => {}))
+      render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
+      expect(submit().disabled).toBe(true)
+      await act(async () => { await vi.advanceTimersByTimeAsync(2900) })
+      expect(submit().disabled).toBe(true)
+      await act(async () => { await vi.advanceTimersByTimeAsync(200) })
+      expect(submit().disabled).toBe(false)
+      expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("")
+      fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: "Synthetic buyer" } })
+      fireEvent.click(submit())
+      await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+      expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Synthetic buyer", country: undefined }))
+    } finally { vi.useRealTimers() }
+  })
   it("opens the form with no default country when the lookup fails", async () => {
     trpcMock.settings.mockRejectedValue(new Error("offline"))
     render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
