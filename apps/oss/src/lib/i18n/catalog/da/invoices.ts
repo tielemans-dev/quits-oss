@@ -112,8 +112,10 @@ export const daInvoicesMessages = {
   "invoices.detail.email.fallback.providerMissing.description":
     "Du kan stadig dele betalingslinket manuelt.",
   "invoices.detail.paymentLink.title": "Betalingslink til kunde",
-  "invoices.detail.paymentLink.description":
-    "Del dette hostede link med kunden for at modtage betaling via Stripe.",
+  "invoices.detail.paymentLink.description.card":
+    "Del dette hostede link med kunden, så de kan betale med kort via Stripe.",
+  "invoices.detail.paymentLink.description.bankTransfer":
+    "Del dette hostede link med kunden, så de kan betale med bankoverførsel.",
   "invoices.detail.paymentLink.copy": "Kopiér link",
   "invoices.detail.email.status.sending": "Sender",
   "invoices.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Fakturaen kan ikke redigeres, før leveringen er bekræftet eller opgivet.",
