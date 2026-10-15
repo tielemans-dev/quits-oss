@@ -149,6 +149,25 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
   })
 
+  it("retries runtime capabilities with v2 availability before mounting v2", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("network"))
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    // Availability recovered but capabilities did not: keep offering the retry, not v2.
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy()
+    const capabilityCalls = runtimeCapabilitiesQuery.mock.calls.length
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(runtimeCapabilitiesQuery.mock.calls.length).toBeGreaterThan(capabilityCalls))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
   it("persists the selected CVR company after loading the newly selected organization", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })

@@ -377,6 +377,7 @@ function OnboardingPageContent() {
     }
   }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
 
+  const [runtimeCapabilitiesFailed, setRuntimeCapabilitiesFailed] = useState(false)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
       setRuntimeCapabilities(null)
@@ -384,9 +385,9 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilitiesFailed(false)
 
-    trpc.runtime.capabilities
-      .query()
+    withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
@@ -397,6 +398,7 @@ function OnboardingPageContent() {
       .catch(() => {
         if (!cancelled) {
           setRuntimeCapabilities(null)
+          setRuntimeCapabilitiesFailed(true)
           setMethod('manual')
         }
       })
@@ -404,7 +406,8 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud])
+    // The v2 retry also re-reads capabilities: v2 needs them for seller-VAT confirmation.
+  }, [hasActiveOrg, isCloud, v2AvailabilityAttempt])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -818,7 +821,8 @@ function OnboardingPageContent() {
 
   // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
   // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
-  if (hasActiveOrg && v2Availability === null && v2AvailabilityFailed) {
+  const v2CapabilitiesMissing = v2Availability?.enabled === true && runtimeCapabilities === null
+  if (hasActiveOrg && ((v2Availability === null && v2AvailabilityFailed) || (v2CapabilitiesMissing && runtimeCapabilitiesFailed))) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
@@ -832,7 +836,7 @@ function OnboardingPageContent() {
       </div>
     )
   }
-  if (hasActiveOrg && v2Availability === null) {
+  if (hasActiveOrg && (v2Availability === null || v2CapabilitiesMissing)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
