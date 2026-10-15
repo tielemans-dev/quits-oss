@@ -36,7 +36,9 @@ function translate(key: string, params?: Record<string, unknown>) {
 }
 
 import { Route as NewRoute } from "../_app/invoices/new"
+import { Route as DetailRoute } from "../_app/invoices/$invoiceId"
 const NewPage = (NewRoute as unknown as { component: ComponentType }).component
+const DetailPage = (DetailRoute as unknown as { component: ComponentType }).component
 const RECIPIENT_VERSION = "cccccccccccccccccccccccccccccccc"
 const contact = { id: "synthetic-buyer", name: "Synthetic Buyer", email: "buyer@example.test", company: "Synthetic Buyer", address: null, city: null, state: null, zip: null, country: "DK" }
 const invoice = {
@@ -416,6 +418,35 @@ describe("new invoice send review", () => {
 
 // Synthetic test-only invoice and adopter settings.
 describe("invoice detail send review", () => {
+  it.each([true, false])("preserves saved draft pricesIncludeTax=%s and explicit outside VAT", async pricesIncludeTax => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", pricesIncludeTax: !pricesIncludeTax, countryCode: "DK", baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", pricesIncludeTax, items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "out_of_scope", vatRateInput: "0", vatCountry: null }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    expect(screen.getByRole("radio", { name: pricesIncludeTax ? "invoiceVat.pricesInclude" : "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
+    expect((screen.getByLabelText("vat.lineRate") as HTMLSelectElement).value).toBe("out_of_scope")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "out_of_scope", rate: "0", country: null }) })] }))
+  })
+  it.each(["20", "25"])("restores configured %s percent VAT for an all-zero draft and saves correct totals", async taxRate => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate, baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", number: null, subtotal: 100, taxAmount: 0, total: 100,
+      items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "exempt", vatRateInput: "0" }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    fireEvent.change(screen.getByLabelText("vat.lineTreatment"), { target: { value: "standard" } })
+    expect(screen.getByText(new RegExp(`DKK\\s*${100 + Number(taxRate)}[.,]00`))).toBeTruthy()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: String(Number(taxRate) / 100) }) })] }))
+  })
   it("omits the unreserved number from new-invoice confirmation", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })
@@ -485,6 +516,19 @@ describe("VAT treatment choices on the draft editor", () => {
     await waitFor(() => expect(screen.queryByLabelText("vat.lineTreatment")).toBeNull())
     const compact = screen.queryByLabelText("vat.lineRate") as HTMLSelectElement | null
     if (compact) expect([...compact.options].map(option => option.value)).not.toContain("standard")
+  })
+  it("starts a new line of a non-registered seller at 0 % when editing an all-zero draft", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered: false, baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", number: null, subtotal: 100, taxAmount: 0, total: 100,
+      items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "unclassified_zero", vatRateInput: "0" }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "0" }))
   })
   it("ignores an AI-supplied VAT rate under a policy-fixed rate and applies it, correctably, otherwise", async () => {
     aiFixture.enabled = true

@@ -7,7 +7,7 @@ import { I18nProvider } from "../../lib/i18n/react"
 // bank hook and dialog are real; no email provider or network is used.
 const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), readiness: vi.fn(), send: vi.fn() }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, send: { mutate: api.send } }, settings: { get: { query: api.settings } },
+  invoices: { get: { query: api.get }, sendReadiness: { query: async () => ({ issues: [], baseCurrency: "DKK" }) }, send: { mutate: api.send } }, settings: { get: { query: api.settings } },
   paymentDetails: { firstSendReadiness: { query: api.readiness } },
 } }))
 vi.mock("@tanstack/react-router", () => ({

@@ -1,5 +1,9 @@
 import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
+import { defaultDocumentTaxRate } from "../../../lib/invoice-defaults"
+import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
+import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggle"
+import { LineVatSelect } from "../../../components/invoices/line-vat-select"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
@@ -225,6 +229,14 @@ function InvoiceDetailPage() {
         ? t("invoices.detail.warning.emailSkipped", { reason: emailWarning })
         : null
   )
+  const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
+  const [editPricesIncludeTax, setEditPricesIncludeTax] = useState(false)
+  useEffect(() => {
+    if (!invoice || invoice.status !== "draft") return
+    let cancelled = false
+    trpc.invoices.sendReadiness.query({ contactId: invoice.contact.id, currency: invoice.currency }).then(state => { if (!cancelled) setReadiness(state) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [invoice?.contact.id, invoice?.currency, invoice?.status])
   const [acting, setActing] = useState(false)
   const [issuance, setIssuance] = useState(initialIssuanceValues)
   const [editing, setEditing] = useState(false)
@@ -241,6 +253,7 @@ function InvoiceDetailPage() {
     locale?: string | null
     timezone?: string | null
     baseCurrency?: string
+    taxRate?: string
     stripeByokConfigured?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
@@ -305,6 +318,7 @@ function InvoiceDetailPage() {
           timezone: settings.timezone,
           stripeByokConfigured: settings.stripeByokConfigured,
           baseCurrency: settings.baseCurrency,
+          taxRate: settings.taxRate?.toString(),
         })
         setEmailDelivery(settings.emailDelivery)
       })
@@ -343,7 +357,8 @@ function InvoiceDetailPage() {
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
     setEditNotes(invoice.notes ?? "")
-    setEditTaxRate(invoice.agreementTaxRate ?? storedDocumentTaxRate(invoice.items))
+    // An all-zero draft restarts at the seller's own default: 0 when not VAT-registered, else the policy or configured rate.
+    setEditTaxRate(invoice.agreementTaxRate ?? (Number(storedDocumentTaxRate(invoice.items)) > 0 ? storedDocumentTaxRate(invoice.items) : readiness ? defaultDocumentTaxRate(readiness) : String(orgSettings.taxRate ?? "0")))
     const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
@@ -364,6 +379,7 @@ function InvoiceDetailPage() {
         setCatalogItems(catalogData as CatalogItemOption[])
       }
     )
+    setEditPricesIncludeTax(invoice.pricesIncludeTax ?? false)
     setEditIssues([])
     setEditing(true)
   }
@@ -437,7 +453,7 @@ function InvoiceDetailPage() {
         contactId: editContactId,
         dueDate: editDueDate,
         notes: editNotes,
-        ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
+        ...(invoice.agreementId ? {} : { taxRate: editTaxRate, pricesIncludeTax: editPricesIncludeTax }),
         vatEvidence: editVatEvidence,
         items: editItems.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
           id: item.id, deliverableId: item.deliverableId,
@@ -604,7 +620,7 @@ function InvoiceDetailPage() {
   // Edit mode
   if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
-    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: editPricesIncludeTax, currency: invoice.currency })
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
       [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
     const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
@@ -622,12 +638,15 @@ function InvoiceDetailPage() {
       return [id(column), id("line")].filter(Boolean).join(" ") || undefined
     }
     const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
+    // An adopter policy fixes the rate and treatment, so a compact VAT column replaces the classification editor.
+    const restrictedVat = !!readiness?.standardVatRate
+    const editColumns = restrictedVat ? "md:grid-cols-[180px_minmax(0,1fr)_80px_100px_150px_100px_40px]" : "md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px]"
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
 
     return (
-      <div className="p-6 max-w-3xl" ref={editForm}>
+      <div className="p-4 sm:p-6 max-w-5xl" ref={editForm}>
       {bankNudge.dialog}
         <Card>
           <CardHeader>
@@ -676,23 +695,25 @@ function InvoiceDetailPage() {
             </div>
             {fieldMessage("edit-form-error", (issue) => issue.field === "form" || issue.field === "email" || issue.field === "cvr")}
 
+            <PriceBasisToggle value={editPricesIncludeTax} onChange={setEditPricesIncludeTax} disabled={!!invoice.agreementId} />
             {/* Line Items */}
             <div className="grid gap-3">
               <Label>{t("docForm.lineItems")}</Label>
               {fieldMessage("edit-items-error", (issue) => issue.field === "items" && issue.line === undefined)}
               <div className="rounded-md border">
-                <div className="hidden md:grid md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
+                <div className={`hidden md:grid ${editColumns} gap-2 p-3 border-b bg-muted/50 text-sm font-medium`}>
                   <span>{t("docForm.column.item")}</span>
                   <span>{t("docForm.column.description")}</span>
                   <span>{t("docForm.column.qty")}</span>
                   <span>{t("docForm.column.unitPrice")}</span>
+                  {restrictedVat && <span>{t("invoiceVat.column")}</span>}
                   <span>{t("docForm.column.total")}</span>
                   <span />
                 </div>
                 {editItems.map((item, index) => (
                   <div
                     key={item.rowKey}
-                    className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
+                    className={`grid grid-cols-1 ${editColumns} gap-2 p-3 border-b last:border-0 items-center`}
                   >
                     <Select
                       disabled={!!item.deliverableId}
@@ -756,10 +777,15 @@ function InvoiceDetailPage() {
                         }
                       />
                     </div>
+                    {restrictedVat && <div className="grid min-w-0 gap-1">
+                      <span className="text-sm font-medium md:sr-only">{t("invoiceVat.column")}</span>
+                      <LineVatSelect item={item} index={index} taxRate={editTaxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} disabled={!!invoice.agreementId || !!item.deliverableId}
+                        onChange={vat => setEditItems(lines => lines.map((line, i) => i === index ? { ...line, vat } : line))} />
+                    </div>}
                     <div className="grid min-w-0 gap-1">
                       <span id={`invoice-edit-total-${index}`} className="text-sm font-medium md:sr-only">{t("docForm.column.total")}</span>
                       <output aria-labelledby={`invoice-edit-total-${index}`} className="num text-sm text-right pr-2">
-                        {preview.result ? formatCurrency(item.deliverableId ? (invoice.pricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[invoice.pricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
+                        {preview.result ? formatCurrency(item.deliverableId ? (editPricesIncludeTax ? item.frozenGross ?? 0 : item.frozenNet ?? 0) : Number(preview.result.lines[editItems.slice(0, index + 1).filter(line => !line.deliverableId).length - 1]?.[editPricesIncludeTax ? "gross" : "net"] ?? "0"), invoice.currency, locale) : "—"}
                       </output>
                     </div>
                     <Button
@@ -792,8 +818,8 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
-            {!invoice.agreementId && <VatGroupPreview {...preview} />}
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
+            {!invoice.agreementId && !readiness?.standardVatRate && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
                 <div className="flex justify-between">
@@ -802,20 +828,10 @@ function InvoiceDetailPage() {
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      disabled={!!invoice.agreementId}
-                      step="0.01"
-                      value={editTaxRate || ""}
-                      onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
-                      className="w-16 h-7 text-xs"
-                    />
-                    <span className="text-muted-foreground text-xs">%</span>
+                  {readiness?.standardVatRate || invoice.agreementId ? <span className="num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span> : <div className="flex items-center gap-1">
+                    <TaxRateInput value={editTaxRate} onChange={value => { setEditTaxRate(value); setEditItems(lines => lines.map(line => ({ ...line, vat: undefined }))) }} />
                     <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
-                  </div>
+                  </div>}
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
@@ -838,7 +854,7 @@ function InvoiceDetailPage() {
               {fieldMessage("edit-notes-error", (issue) => issue.field === "notes")}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end gap-2">
+          <CardFooter className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -936,7 +952,7 @@ function InvoiceDetailPage() {
     } : null
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-4 sm:p-6 max-w-5xl">
       {bankNudge.dialog}
       {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>

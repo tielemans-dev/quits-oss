@@ -6,7 +6,7 @@ import { I18nProvider } from "../../lib/i18n/react"
 // MOCK: transport responses and route context only. The edit form, error mapping and catalogs are real.
 const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), update: vi.fn() }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, updateV2: { mutate: api.update } }, settings: { get: { query: api.settings } },
+  invoices: { get: { query: api.get }, updateV2: { mutate: api.update }, sendReadiness: { query: async () => ({ issues: [], warnings: [], taxRate: "25", baseCurrency: "DKK" }) } }, settings: { get: { query: api.settings } },
   contacts: { list: { query: async () => [{ id: "buyer", name: "Synthetic buyer" }] } }, catalog: { list: { query: async () => [] } },
   paymentDetails: { firstSendReadiness: { query: async () => ({ bankMissing: false }) } },
 } }))
