@@ -159,6 +159,8 @@ function OnboardingPageContent() {
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
+    // Each attempt starts unknown, so a stale success can't mount v2 after this attempt fails.
+    setV2Availability(null)
     setV2AvailabilityFailed(false)
     withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
     return () => { cancelled = true }
