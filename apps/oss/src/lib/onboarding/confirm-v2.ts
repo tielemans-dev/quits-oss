@@ -1,4 +1,4 @@
-import { requireOnboardingCvr } from "./require-cvr"
+import { admitOnboardingCvr } from "./cvr-verification"
 import { isCloudDistribution } from "../distribution"
 import { isReplacedDanishTaxId } from "./danish-tax-id"
 import { confirmSellerVatStatus, getSellerVatConfirmationService, type SellerVatConfirmationActor } from "../runtime/seller-vat-confirmation"
@@ -46,7 +46,7 @@ async function followConfirmedNameSlug(organizationId: string, previous: { slug:
  * Registry-sourced contacts are kept only when the server's own CVR lookup says the company is not
  * advertising-protected (reklamebeskyttet). No provider, a failed lookup or protection scrubs them.
  */
-async function registryContactsAllowed(organizationId: string, input: ConfirmOnboardingV2, userId?: string, admittedCompany?: Awaited<ReturnType<typeof requireOnboardingCvr>>) {
+async function registryContactsAllowed(organizationId: string, input: ConfirmOnboardingV2, userId?: string, admittedCompany?: Awaited<ReturnType<typeof admitOnboardingCvr>>) {
   if (input.source !== "cvr") return input.reklamebeskyttet !== true
   if (admittedCompany) return admittedCompany.advertisingProtected === false
   const provider = getCvrLookupProvider()
@@ -75,7 +75,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
       return { status: "already_complete" as const }
     }
-    const admittedCompany = await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId, tx })
+    const admittedCompany = await admitOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId, tx })
     const sellerVatConfirmation = getSellerVatConfirmationService()
     if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
     if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
@@ -153,7 +153,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       })) })
     }
     // Confirmation and catalog writes are done. A failed hook still rolls the transaction back.
-    await billingProvider.startTrial?.(organizationId, { cvr: input.cvr, tx })
+    if (!isCloudDistribution || admittedCompany) await billingProvider.startTrial?.(organizationId, { cvr: input.cvr, tx })
     return result
   }, { timeout: 60_000 })
   if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {

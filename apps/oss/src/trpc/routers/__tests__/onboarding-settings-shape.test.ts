@@ -48,6 +48,7 @@ vi.mock("../../../lib/db", () => {
     mocks.creates.push(create)
   }
   const db = {
+    organizationCvrVerification: { upsert: vi.fn(), findUnique: vi.fn() },
     organization: { update: async () => ({}) },
     invoice: { count: async () => 0 },
     quote: { count: async () => 0 },
