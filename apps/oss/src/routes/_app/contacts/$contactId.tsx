@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../../../components/ui/alert-dialog"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
@@ -159,9 +160,23 @@ function EditContactPage() {
                 </p>
                 <p className="text-sm text-muted-foreground">{t("contacts.reminders.scope", { email: contact.email })}</p>
                 {contact.reminderUnsubscribedAt && contact.canResumeReminders && (
-                  <Button type="button" variant="outline" disabled={resuming} onClick={resumeReminders}>
-                    {t(resuming ? "contacts.reminders.resuming" : "contacts.reminders.resume")}
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="outline" disabled={resuming}>
+                        {t(resuming ? "contacts.reminders.resuming" : "contacts.reminders.resume")}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t("contacts.reminders.resume")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("contacts.reminders.confirm", { email: contact.email })}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t("contacts.action.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={resumeReminders}>{t("contacts.reminders.resume")}</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             )}

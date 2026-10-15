@@ -13,8 +13,9 @@ function fixture() {
     const key = where.organizationId_recipient
     return where.id === row.id || (key?.organizationId === row.organizationId && key.recipient === row.recipient) ? { ...row } : null
   })
-  const updateMany = vi.fn(async ({ where, data }: { where: { unsubscribedAt: null }; data: { unsubscribedAt: Date | null } }) => {
+  const updateMany = vi.fn(async ({ where, data }: { where: { unsubscribedAt: null | { not: null } }; data: { unsubscribedAt: Date | null } }) => {
     if (where.unsubscribedAt === null && row.unsubscribedAt !== null) return { count: 0 }
+    if (where.unsubscribedAt?.not === null && row.unsubscribedAt === null) return { count: 0 }
     row.unsubscribedAt = data.unsubscribedAt
     return { count: 1 }
   })
@@ -47,7 +48,7 @@ describe("reminder unsubscribe state and POST", () => {
   })
 
   it("resumes only through an explicit recipient form POST and keeps one-click unsubscribe-only", async () => {
-    const { row, db } = fixture()
+    const { row, db, updateMany } = fixture()
     row.unsubscribedAt = new Date()
     const token = signReminderUnsubscribeToken(row, secret)
     const post = (url: string, data: Record<string, string>) => new Request(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(data) })
@@ -57,7 +58,10 @@ describe("reminder unsubscribe state and POST", () => {
     expect(row.unsubscribedAt).toBe(stoppedAt)
     expect((await postReminderUnsubscribe(post(url, { token, intent: "resume" }), db, false)).status).toBe(303)
     expect(row.unsubscribedAt).toBeNull()
-    expect(await reminderUnsubscribeState(db, token, "GET")).toMatchObject({ kind: "confirm" })
+    expect(await updateMany.mock.results.at(-1)?.value).toEqual({ count: 1 })
+    await postReminderUnsubscribe(post(url, { token, intent: "resume" }), db, false)
+    expect(await updateMany.mock.results.at(-1)?.value).toEqual({ count: 0 })
+    expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "confirm" })
     expect(await automaticReminderSuppressed(db, row.organizationId, row.recipient, false)).toBe(false)
     await postReminderUnsubscribe(post(`${url}?token=${token}`, { "List-Unsubscribe": "One-Click", intent: "resume" }), db, true)
     expect(row.unsubscribedAt).not.toBeNull()

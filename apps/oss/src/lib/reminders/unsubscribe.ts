@@ -110,7 +110,7 @@ export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: 
   }
   if (method === "RESUBSCRIBE") {
     await db.recipientReminderPreference.updateMany({
-      where: { id: preference.id, organizationId: preference.organizationId, recipient: preference.recipient },
+      where: { id: preference.id, organizationId: preference.organizationId, recipient: preference.recipient, unsubscribedAt: { not: null } },
       data: { unsubscribedAt: null },
     })
   }
