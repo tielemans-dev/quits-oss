@@ -271,8 +271,15 @@ override `SMTP_PORT`, pair `SMTP_PORT=587` with `SMTP_SECURE=false`, or
 is required. `SMTP_PASSWORD` remains a compatibility alias for `SMTP_PASS`. Docker
 Compose forwards these settings to the app.
 
-For a development mail catcher or a trusted local plaintext relay, set its port and
-`SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
+For a development mail catcher such as Mailpit (port 1025) or a trusted local plaintext
+relay, set its port and `SMTP_REQUIRE_TLS=false` (keep `SMTP_SECURE=false`), because the
+default requires STARTTLS. Do not use plaintext for a relay reached over the internet.
+When the app runs on the host, set `SMTP_HOST=127.0.0.1`, not `localhost`: `localhost`
+may resolve to IPv6 `::1` first and time out if the catcher listens only on IPv4. When the
+app runs in Compose, `127.0.0.1` is the app container itself; use the Mailpit service
+name, or `host.docker.internal` when Mailpit runs on the host (Docker Desktop only; on
+Docker Engine for Linux, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the
+app service, or run Mailpit as a Compose service).
 Settings shows missing or invalid SMTP configuration using environment variable names;
 it never returns relay credentials. Configuration readiness does not test relay connectivity.
 

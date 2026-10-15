@@ -2,6 +2,7 @@ import { format, isValid, parseISO } from "date-fns"
 import { da, enUS } from "date-fns/locale"
 import { CalendarIcon, X } from "lucide-react"
 import { formatIsoDateForInputDisplay } from "../lib/i18n/date-input"
+import { translate } from "../lib/i18n/translate"
 import { normalizeLocale } from "../lib/i18n/locale"
 import { cn } from "../lib/utils"
 import { Button } from "./ui/button"
@@ -17,6 +18,8 @@ type LocalizedDateFieldProps = {
   clearLabel?: string
   disabled?: boolean
   required?: boolean
+  invalid?: boolean
+  describedBy?: string
 }
 
 function resolveCalendarLocale(locale?: string | null) {
@@ -38,9 +41,11 @@ export function LocalizedDateField({
   onChange,
   locale,
   placeholder,
-  clearLabel = "Clear",
+  clearLabel,
   disabled,
   required,
+  invalid,
+  describedBy,
 }: LocalizedDateFieldProps) {
   const selectedDate = parseSelectedDate(value)
   const displayValue = value ? formatIsoDateForInputDisplay(value, locale) : placeholder
@@ -54,6 +59,8 @@ export function LocalizedDateField({
           variant="outline"
           disabled={disabled}
           aria-required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
           className={cn("w-full justify-between text-left font-normal", !value && "text-muted-foreground")}
         >
           <span>{displayValue}</span>
@@ -72,7 +79,7 @@ export function LocalizedDateField({
           <div className="border-t p-2">
             <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => onChange("")}>
               <X className="size-4" />
-              {clearLabel}
+              {clearLabel ?? translate("docForm.clear", locale)}
             </Button>
           </div>
         ) : null}
