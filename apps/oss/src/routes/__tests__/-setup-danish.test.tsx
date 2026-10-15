@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { asMockedRoute } from "../../test-utils/mocked-route"
 
-const api = vi.hoisted(() => ({ navigate: vi.fn(), initialize: vi.fn(), complete: vi.fn() }))
+const api = vi.hoisted(() => ({ navigate: vi.fn(), initialize: vi.fn(), complete: vi.fn(), getStatus: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => options,
   redirect: vi.fn(),
@@ -11,13 +11,17 @@ vi.mock("@tanstack/react-router", () => ({
 }))
 vi.mock("../../trpc/client", () => ({
   trpc: { setup: {
-    getStatus: { query: async () => ({ stage: "new", isSetupComplete: false }) },
+    getStatus: { query: api.getStatus },
     initialize: { mutate: api.initialize },
     complete: { mutate: api.complete },
   } },
 }))
 import { Route } from "../setup"
 const SetupPage = asMockedRoute(Route).component
+
+beforeEach(() => {
+  api.getStatus.mockResolvedValue({ stage: "new", isSetupComplete: false })
+})
 
 afterEach(() => {
   cleanup()
@@ -69,6 +73,14 @@ describe("Danish first-run setup", () => {
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole("button", { name: "Next" }))
     fireEvent.change(screen.getByLabelText(/^(Sprog|Locale)$/), { target: { value: "da-DK" } })
     expect(screen.getByText("Lokalisering og e-mailstandarder")).toBeTruthy()
+  })
+
+  it("loads setup status once while the locale is edited", async () => {
+    await openFinalStep()
+    const locale = screen.getByLabelText(/^(Sprog|Locale)$/)
+    for (const value of ["e", "en", "en-US", "da-DK"]) fireEvent.change(locale, { target: { value } })
+    await Promise.resolve()
+    expect(api.getStatus).toHaveBeenCalledTimes(1)
   })
 
   it("preserves an existing draft's locale and regional choices", async () => {

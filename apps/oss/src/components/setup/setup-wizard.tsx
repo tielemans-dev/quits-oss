@@ -10,6 +10,8 @@ import { EmailFinishStep } from "./steps/step-email-finish"
 import { InstanceProfileStep } from "./steps/step-instance-profile"
 import type { SetupStatus, SetupStage, SetupWizardState } from "./types"
 
+import { SETUP_DEFAULT_LOCALE } from "../../lib/setup-locale"
+
 const WIZARD_STORAGE_KEY = "quits.setup.wizard.v1"
 /** Where drafts were saved before the product was renamed; read once, then removed. */
 const LEGACY_WIZARD_STORAGE_KEY = "yaip.setup.wizard.v1"
@@ -22,7 +24,7 @@ const DEFAULT_SETUP_STATE: SetupWizardState = {
   adminEmail: "",
   adminPassword: "",
   authMode: "local_only",
-  locale: "da-DK",
+  locale: SETUP_DEFAULT_LOCALE,
   countryCode: "DK",
   timezone: "Europe/Copenhagen",
   currency: "DKK",
