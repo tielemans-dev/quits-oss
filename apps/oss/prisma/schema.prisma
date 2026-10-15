@@ -232,6 +232,7 @@ model OrgSettings {
   stripeAccountId                    String?              @unique
   stripeAccountStatus                StripeAccountStatus  @default(none)
   stripeAccountStatusAt              DateTime?
+  stripeAccountBusinessName          String?
   documentSendingDomain              String?
   documentSendingDomainProviderId    String?
   documentSendingDomainStatus        String?

@@ -60,12 +60,14 @@ describe("stripe account contract", () => {
       orgStripeAccountSchema.parse({
         mode: "connect",
         accountId: "acct_test",
+        businessName: "Acme ApS",
         status: "active",
         statusAt: "2026-10-12T12:00:00.000Z",
       })
     ).toEqual({
       mode: "connect",
       accountId: "acct_test",
+      businessName: "Acme ApS",
       status: "active",
       statusAt: "2026-10-12T12:00:00.000Z",
     })
@@ -73,12 +75,13 @@ describe("stripe account contract", () => {
       orgStripeAccountSchema.parse({
         mode: "byok",
         accountId: null,
+        businessName: null,
         status: "none",
         statusAt: null,
       }).mode
     ).toBe("byok")
     expect(stripeAccountStatusSchema.safeParse("disabled").success).toBe(false)
-    expect(orgStripeAccountSchema.safeParse({ mode: "direct", accountId: null, status: "none", statusAt: null }).success).toBe(false)
+    expect(orgStripeAccountSchema.safeParse({ mode: "direct", accountId: null, businessName: null, status: "none", statusAt: null }).success).toBe(false)
   })
 })
 

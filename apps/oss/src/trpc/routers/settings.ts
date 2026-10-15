@@ -207,6 +207,7 @@ const orgSettingsReadSelect = {
   stripeAccountId: true,
   stripeAccountStatus: true,
   stripeAccountStatusAt: true,
+  stripeAccountBusinessName: true,
   documentSendingDomain: true,
   documentSendingDomainProviderId: true,
   documentSendingDomainStatus: true,
@@ -330,6 +331,7 @@ export const settingsRouter = router({
       stripeAccount: readStripeAccount({
         managed: connectMode,
         accountId: settings.stripeAccountId,
+        businessName: settings.stripeAccountBusinessName,
         status: settings.stripeAccountStatus,
         statusAt: settings.stripeAccountStatusAt,
       }),
@@ -781,12 +783,14 @@ function assertStripeByokWritable(input: {
 function readStripeAccount(input: {
   managed: boolean
   accountId: string | null
+  businessName: string | null
   status: OrgStripeAccount["status"]
   statusAt: Date | null
 }): OrgStripeAccount {
   return orgStripeAccountSchema.parse({
     mode: input.managed ? "connect" : "byok",
     accountId: input.accountId,
+    businessName: input.businessName,
     status: input.status,
     statusAt: input.statusAt?.toISOString() ?? null,
   })

@@ -123,6 +123,8 @@ export const orgStripeAccountSchema = z
   .object({
     mode: stripePaymentModeSchema,
     accountId: z.string().nullable(),
+    /** The connected account's business name, as the hosted runtime last recorded it. */
+    businessName: z.string().nullable(),
     status: stripeAccountStatusSchema,
     statusAt: z.iso.datetime().nullable(),
   })

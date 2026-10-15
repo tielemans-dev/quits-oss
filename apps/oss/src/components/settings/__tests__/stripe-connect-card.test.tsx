@@ -54,6 +54,13 @@ describe("StripeConnectCard", () => {
     expect((button("settings.payments.connect.action.disconnect") as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it("shows the business name above the account id when one is known", () => {
+    render(<StripeConnectCard account={{ ...account("active", "acct_live"), businessName: "Acme ApS" }} />)
+
+    expect(screen.getByText("Acme ApS")).toBeTruthy()
+    expect(screen.getByText("acct_live")).toBeTruthy()
+  })
+
   it("shows an active account with open Stripe and disconnect, and no setup actions", () => {
     const onOpenStripe = vi.fn()
     render(<StripeConnectCard account={account("active", "acct_live")} onOpenStripe={onOpenStripe} />)
