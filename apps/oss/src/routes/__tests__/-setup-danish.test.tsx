@@ -16,6 +16,7 @@ vi.mock("../../trpc/client", () => ({
     complete: { mutate: api.complete },
   } },
 }))
+import { translate } from "../../lib/i18n/translate"
 import { Route } from "../setup"
 const SetupPage = asMockedRoute(Route).component
 
@@ -45,6 +46,24 @@ async function openFinalStep() {
 }
 
 describe("Danish first-run setup", () => {
+  it.each(["da-DK", "en-US"])("explains an invalid optional CVR in %s and clears it on correction", async locale => {
+    localStorage.setItem("quits.setup.wizard.v1", JSON.stringify({ locale, organizationName: "Test ApS", organizationSlug: "test-aps", adminName: "Admin", adminEmail: "admin@example.invalid", adminPassword: "Password123!" }))
+    render(<SetupPage />)
+    const next = await screen.findByRole("button", { name: translate("setup.action.next", locale) })
+    fireEvent.click(next)
+    const cvr = screen.getByLabelText(translate("auth.onboarding.cvrLabel", locale))
+    fireEvent.change(cvr, { target: { value: "12345678" } })
+    fireEvent.click(next)
+    expect(cvr.getAttribute("aria-invalid")).toBe("true")
+    expect(document.getElementById(cvr.getAttribute("aria-describedby")!)?.textContent).toBe(translate("cvr.invalid", locale))
+    expect(screen.queryByText(translate("setup.error.requiredFields", locale))).toBeNull()
+    fireEvent.change(cvr, { target: { value: "24256790" } })
+    expect(cvr.getAttribute("aria-invalid")).toBe("false")
+    expect(screen.queryByText(translate("cvr.invalid", locale))).toBeNull()
+    fireEvent.click(next)
+    expect(screen.getByText(translate("setup.step.auth.title", locale))).toBeTruthy()
+  })
+
   it("uses Danish copy and persists Danish org defaults even in an English browser", async () => {
     expect(navigator.language).toBe("en-US")
     await openFinalStep()

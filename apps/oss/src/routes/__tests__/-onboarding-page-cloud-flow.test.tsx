@@ -104,6 +104,18 @@ afterEach(() => {
 })
 
 describe("OnboardingPage cloud flow", () => {
+  it.each(["da-DK", "en-US"])("shows hosted B2B guidance in both fallback flows in %s", async locale => {
+    const { translate } = await import("../../lib/i18n/translate")
+    uiLocale.value = locale
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale }, missing: [] })
+    for (const enabled of [true, false]) {
+      runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled }, sellerVatConfirmation: { enabled } })
+      render(<RouteComponent />)
+      expect(await screen.findByText(`${translate("auth.onboarding.b2bOnly", locale)}. ${translate("auth.onboarding.cvrFree", locale)}`)).toBeTruthy()
+      cleanup()
+    }
+  })
   it.each(["capabilities", "availability"])("preserves the v2 company handoff when status arrives before %s", async delayed => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "owner@example.com" }, session: { activeOrganizationId: "org_1" } } })
     const capabilities = { onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } }

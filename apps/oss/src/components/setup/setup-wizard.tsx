@@ -184,6 +184,7 @@ export function SetupWizard({ initialStatus, onCompleted }: SetupWizardProps) {
 
   function handleNext() {
     setError(null)
+    if (step === 2 && setupState.organizationCvr.trim() && !isValidDanishCvr(setupState.organizationCvr.trim())) return
     if (!currentStepValid) {
       setError(t("setup.error.requiredFields"))
       return

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, LoaderCircle, Search, X } from "lucide-react"
+import { B2bNotice } from "../onboarding/b2b-notice"
 import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { useI18n } from "../../lib/i18n/react"
@@ -521,7 +522,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <section className="ob-search">
           <h1>{TT("search.heading")}</h1>
           <p>{TT("search.sub")}</p>
-          <p>{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
+          <B2bNotice />
           <label className="ob-search-input">
             <Search size={20} aria-hidden="true" />
             <Input
@@ -647,7 +648,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
-          <p>{t("auth.onboarding.b2bOnly")}. {t("auth.onboarding.cvrFree")}</p>
+          <B2bNotice />
           {restored ? (
             <p className="ob-notice" role="status">
               {TT("restored")}

@@ -31,6 +31,7 @@ import { translateCvrError } from '../../lib/i18n/cvr-error'
 import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
+import { B2bNotice } from "../../components/onboarding/b2b-notice"
 import { CompanySetup } from "../../components/onboarding/company-setup"
 import { loadPage } from '../../lib/page-navigation'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
@@ -727,7 +728,7 @@ function OnboardingPageContent() {
               {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          {isCloud && <p className="px-6 pb-4 text-sm text-muted-foreground">{t('auth.onboarding.b2bOnly')}. {t('auth.onboarding.cvrFree')}</p>}
+          {isCloud && <B2bNotice className="px-6 pb-4 text-sm text-muted-foreground" />}
           {nameOnly ? (
             <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
@@ -896,7 +897,7 @@ function OnboardingPageContent() {
   }
 
   if (!v2Availability?.enabled && runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
-    return <div className="mx-auto w-full max-w-xl p-6"><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+    return <div className="mx-auto w-full max-w-xl space-y-4 p-6"><B2bNotice className="text-sm text-muted-foreground" /><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
   }
 
   if (v2Availability?.enabled && session) {
@@ -915,6 +916,7 @@ function OnboardingPageContent() {
           <CardDescription>
             {t('auth.onboarding.finish.description')}
           </CardDescription>
+          <B2bNotice className="text-sm text-muted-foreground" />
         </CardHeader>
         <form onSubmit={handleCompleteCloudOnboarding} noValidate>
           <fieldset disabled={statusLoading || submitting} className="min-w-0 border-0 p-0">
