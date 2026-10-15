@@ -22,7 +22,7 @@ import {
   paymentVoidInputSchema,
 } from "@quits/contracts/payments"
 import { actorCan } from "../../domain/actor"
-import { recordPayment, voidPayment } from "../../domain/commands/payments"
+import { recordPaymentWithUndo, voidPayment } from "../../domain/commands/payments"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { InvalidState } from "../../domain/errors"
 import { executeCommand, type CommandOutcome } from "../../domain/execute"
@@ -270,7 +270,7 @@ export const paymentsRouter = router({
     .input(paymentRecordInputSchema.extend({ requestId: z.string().trim().min(1).max(100).optional() }))
     .mutation(async ({ ctx, input: { requestId, ...input } }) => {
       const result = unwrapOutcome(
-        await executeCommand(recordPayment, input, { actor: ctx.actor, clientRequestId: requestId && `payment:${requestId}` })
+        await executeCommand(recordPaymentWithUndo, input, { actor: ctx.actor, clientRequestId: requestId && `payment:${requestId}` })
       )
       return { payment: serializePayment(result.payment), balanceDue: result.balanceDue.toNumber() }
     }),

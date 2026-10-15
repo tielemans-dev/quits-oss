@@ -7,14 +7,13 @@ import {
 import { getCurrencyExponent } from "@quits/shared/currency"
 import { Prisma } from "../../../generated/prisma/client"
 import { formatIsoDate } from "../../lib/exports/format"
-import { UNDO_WINDOW_MS } from "../../lib/undo-window"
 import { defineCommand } from "../command"
 import { lockDocument } from "../documents/locks"
 import { computeSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound } from "../errors"
 import { eventRegistry } from "../events/registry"
 import { Command, Db } from "../services"
-import { recordPayment, voidPayment } from "./payments"
+import { recordPaymentWithUndo, voidPayment } from "./payments"
 
 /** How long a mark-paid can be undone on the server. The Fortryd toast covers the first seconds of it. */
 const MARK_PAID_UNDO_MS = 10 * 60 * 1000
@@ -34,7 +33,7 @@ const loadInvoice = (invoiceId: string) => Effect.gen(function* () {
 })
 
 function resultFor(
-  applied: Effect.Effect.Success<ReturnType<typeof recordPayment.handle>>,
+  applied: Effect.Effect.Success<ReturnType<typeof recordPaymentWithUndo.handle>>,
   undoUntil: string,
 ) {
   const { invoice, balanceDue, payment } = applied
@@ -87,13 +86,12 @@ export const markInvoicePaid = defineCommand({
     }))
     // Run the existing handler in this command's transaction, with its events and outbox.
     // The payment notice waits out the undo window, so a Fortryd withdraws it before it leaves.
-    const holdUntil = new Date(command.now.getTime() + UNDO_WINDOW_MS)
-    const applied = yield* recordPayment.handle({
+    const applied = yield* recordPaymentWithUndo.handle({
       invoiceId: invoice.id,
       amount: balanceDue.toNumber(),
       paidAt: formatIsoDate(command.now, settings?.timezone ?? "UTC"),
       method: "manual",
-    }).pipe(Effect.provideService(Command, { ...command, enqueue: job => command.enqueue({ ...job, runAfter: job.runAfter ?? holdUntil }) }))
+    })
     const undoUntil = new Date(command.now.getTime() + MARK_PAID_UNDO_MS).toISOString()
     command.emit({
       aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.marked_paid",
