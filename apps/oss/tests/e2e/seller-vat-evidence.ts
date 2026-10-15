@@ -45,9 +45,7 @@ export async function capturePdf(page: Page, kind: "invoice" | "creditNote", id:
   const searchableText = text.replace(/(\p{L})-\s*\n\s*(\p{L})/gu, "$1$2").replace(/\s+/g, " ")
   for (const expected of evidence.expectedText ?? []) expect(searchableText).toContain(expected)
   for (const footer of footers) {
-    // Current main has only the brand footer; page numbering is introduced by this stack.
-    if (revision === "baseline") expect(footer.text).not.toContain(footer.expected)
-    else expect(footer.text).toContain(footer.expected)
+    expect(footer.text).toContain(footer.expected)
     for (const expected of evidence.footerText ?? []) expect(footer.text).toContain(expected)
   }
   for (let index = 0; index < pages.length; index++) {
