@@ -291,6 +291,11 @@ function SettingsPage() {
     : normalizeCountryCode(countryCode) === "DK"
       ? t("auth.onboarding.primary.dkLabel")
       : taxRules.primaryTaxIdCopy.label
+  const primaryTaxIdHelp = nonVatDanishSeller
+    ? t("settings.vatStatus.cvrHelp")
+    : normalizeCountryCode(countryCode) === "DK"
+      ? t("auth.onboarding.primary.dkHelp")
+      : taxRules.primaryTaxIdCopy.help
 
   useEffect(() => () => {
     if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
@@ -1083,7 +1088,7 @@ function SettingsPage() {
                       onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {nonVatDanishSeller ? t("settings.vatStatus.cvrHelp") : taxRules.primaryTaxIdCopy.help}
+                      {primaryTaxIdHelp}
                     </p>
                   </>
                 ) : (
