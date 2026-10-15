@@ -47,12 +47,6 @@ function AcceptInvitationPage() {
           return
         }
 
-        // Better Auth answers a used, expired and unknown invitation alike.
-        if (result.error.code === 'INVITATION_NOT_FOUND') {
-          setError(t("acceptInvitation.error.alreadyUsed"))
-          return
-        }
-
         setError(
           result.error.message ??
             t("acceptInvitation.error.fallback")
