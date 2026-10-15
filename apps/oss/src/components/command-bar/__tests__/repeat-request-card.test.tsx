@@ -9,11 +9,15 @@ vi.mock("../../../trpc/client", () => ({
   trpc: {
     contacts: { list: { query: async () => [{ id: "lindholm", name: "Lindholm & Bak I/S" }, { id: "other", name: "Andet ApS" }] } },
     catalog: { list: { query: async () => [] } },
-    invoices: { sendReadiness: { query: api.readiness }, createV2: { mutate: api.create }, send: { mutate: api.send }, list: { query: api.list }, get: { query: api.get } },
+    invoices: {
+      sendReadiness: { query: api.readiness }, createV2: { mutate: api.create }, send: { mutate: api.send }, list: { query: api.list }, get: { query: api.get },
+      learnedDefaults: { query: async () => ({ paymentTerms: null }) },
+    },
   },
 }))
 vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" }))
-vi.mock("../../../hooks/use-invoice-due-date", () => ({ useInvoiceDueDate: () => ["2026-10-29", () => {}] }))
+vi.mock("../../../hooks/use-invoice-due-date", async importActual => ({ ...await importActual<typeof import("../../../hooks/use-invoice-due-date")>(), useInvoiceDueDate: () => ["2026-10-29", () => {}] }))
+vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ timezone: "UTC" }) }))
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { clearHandoff } from "../../../lib/request-handoff"
@@ -70,7 +74,7 @@ describe("repeat last invoice card", () => {
     expect(text()).toContain("Kopieret fra INV-0146")
     await waitFor(() => expect(text()).toContain("22.500,00 kr."))
     expect(text()).toMatch(/Subtotal18\.000,00 kr\.Moms 25 %4\.500,00 kr\./)
-    expect(text()).toContain("29. okt. 2026")
+    expect(text()).toContain("29.10.2026")
     expect(api.create).not.toHaveBeenCalled()
   })
 
