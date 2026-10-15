@@ -2,6 +2,7 @@ name: Send flow browser
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - '.github/workflows/send-flow-browser.yml'
       - 'apps/oss/**'
@@ -13,8 +14,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Unique non-PR groups also prevent replacement of pending main/tag runs.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   send-flow-browser:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Invoice send flow browser
     runs-on: ubuntu-latest
     timeout-minutes: 20

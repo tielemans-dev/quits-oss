@@ -1,6 +1,7 @@
 name: QUI-52 main dark evidence
 
 on:
+  # Historical evidence is opt-in; normal CI already verifies feature-branch PRs.
   workflow_dispatch:
 
 permissions:
