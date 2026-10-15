@@ -78,6 +78,7 @@ export type ReminderUnsubscribeState =
 
 /** GET is read-only. POST verifies the same recipient/organization/action binding again. */
 export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: string, method: "GET" | "POST", acceptLanguage?: string | null): Promise<ReminderUnsubscribeState> {
+  if (process.env.QUITS_E2E_MANAGED) console.info("reminder-preference-state", { method })
   const invalid: ReminderUnsubscribeState = { kind: "invalid", locale: localeFromAcceptLanguage(acceptLanguage) }
   const id = reminderPreferenceId(token)
   if (!id) return invalid
@@ -86,6 +87,7 @@ export async function reminderUnsubscribeState(db: ReminderPreferenceDb, token: 
   const organization = await db.organization.findUnique({ where: { id: preference.organizationId }, select: { name: true } })
   if (!organization) return invalid
   if (method === "POST") {
+    if (process.env.QUITS_E2E_MANAGED) console.info("reminder-preference-write", { method })
     // Conditional update preserves the first unsubscribe time and makes repeated POSTs harmless.
     await db.recipientReminderPreference.updateMany({
       where: { id: preference.id, organizationId: preference.organizationId, recipient: preference.recipient, unsubscribedAt: null },
