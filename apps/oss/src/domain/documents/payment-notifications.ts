@@ -11,9 +11,21 @@ import { issuedNumber } from "./numbering"
 
 const PAYMENT_NOTIFICATION = "payment.notification"
 
-/** Notifications settle only their job; the payment and the invoice are already recorded. */
+export const PAYMENT_VOIDED_MESSAGE = "The payment was voided or undone, or the invoice is no longer paid in full, before the email went out"
+
+/**
+ * Notifications settle only their job; the payment and the invoice are already recorded. A
+ * payment undone or voided before the provider is contacted is no longer news, so it withdraws.
+ */
 registerDeliveryCompletion(PAYMENT_NOTIFICATION, {
   pending: async () => true,
+  withdrawalReason: async (db, target) => {
+    const payment = await db.payment.findUnique({
+      where: { id: target.paymentId },
+      select: { voidedAt: true, invoice: { select: { paymentStatus: true } } },
+    })
+    return !payment || payment.voidedAt || payment.invoice.paymentStatus !== "paid" ? PAYMENT_VOIDED_MESSAGE : null
+  },
   delivered: async () => [],
   failed: async () => [],
 })
@@ -24,7 +36,8 @@ registerDeliveryCompletion(PAYMENT_NOTIFICATION, {
  * queued in the same transaction and a redelivered webhook, which records no second payment,
  * queues nothing. Each recipient has one key per payment, so a retry never sends a second copy.
  *
- * Only a card payment confirmed by the Stripe webhook is confirmed to the customer. A payment
+ * Only a card payment confirmed by the Stripe webhook (recorded with the webhook's source and
+ * checkout session) is confirmed to the customer. A payment
  * the seller records by hand is something the seller already knows about and may still undo or
  * correct, so only the seller's inbox is told about it. A recipient is skipped when it has no
  * valid address or when this installation cannot send email.
@@ -72,7 +85,9 @@ export const queuePaymentReceivedEmails = (input: { invoice: Invoice; payment: P
       })
 
     const customerEmail = contact.email?.trim()
-    if (payment.method === "stripe" && customerEmail && isValidRecipient(customerEmail)) {
+    // Provenance, not the method a caller claimed: only the webhook command records this source.
+    const confirmedByStripe = payment.source === "stripe" && payment.stripeCheckoutSessionId !== null
+    if (confirmedByStripe && customerEmail && isValidRecipient(customerEmail)) {
       yield* queue("client", customerEmail)
     }
     const sellerEmail = settings.companyEmail?.trim()

@@ -6,14 +6,15 @@ vi.mock("../../lib/email", async () => {
   return { ...actual, deliver: vi.fn().mockResolvedValue({ id: "email_123" }) }
 })
 
+import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { deliver } from "../../lib/email"
 import { findEmailDeliveryJobs } from "../../test-utils/email-outbox"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft, sendInvoice } from "../commands/invoices"
-import { markInvoicePaid } from "../commands/paid-moment"
-import { recordPayment, recordStripeCheckoutPayment } from "../commands/payments"
+import { markInvoicePaid, undoInvoiceMarkPaid } from "../commands/paid-moment"
+import { recordPayment, recordStripeCheckoutPayment, voidPayment } from "../commands/payments"
 import { runDueJobs } from "../jobs"
 import "../delivery/outbox"
 
@@ -73,6 +74,20 @@ describeIfDatabase("payment received emails", () => {
   /** The payment emails queued so far; the invoice's own email is delivered during setup. */
   const queuedPaymentEmails = async (organizationId: string) =>
     (await findEmailDeliveryJobs(organizationId)).filter((job) => job.dedupeKey?.startsWith("email:payment-received-"))
+
+  /** Puts a delivery back as the outbox leaves it when the worker stopped before the provider call. */
+  async function rewindToUnsent(organizationId: string) {
+    const jobs = await queuedPaymentEmails(organizationId)
+    for (const job of jobs) {
+      const { providerMessageId: _sent, ...payload } = job.payload as Record<string, unknown>
+      await prisma.job.update({
+        where: { id: job.id },
+        data: { status: "pending", attempts: 0, result: Prisma.DbNull, runAfter: new Date(), payload: { ...payload, requests: 0 } },
+      })
+    }
+    vi.mocked(deliver).mockClear()
+    return jobs
+  }
 
   /** Messages handed to the provider since the last call; the commit already ran the queued jobs. */
   async function sentMessages(organizationId: string) {
@@ -167,5 +182,37 @@ describeIfDatabase("payment received emails", () => {
     expect(outcome.status).toBe("completed")
     expect(await queuedPaymentEmails(org.organizationId)).toHaveLength(0)
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).status).toBe("paid")
+  })
+
+  it("does not confirm to the customer a payment that merely claims to be Stripe", async () => {
+    const { org, invoiceId } = await setup()
+    await executeIssuanceCommand(recordPayment, { invoiceId, amount: 250, paidAt: "2026-06-01", method: "stripe" }, { actor: org.actors.admin })
+    expect((await sentMessages(org.organizationId)).map((message) => message.to)).toEqual(["seller@acme.test"])
+  })
+
+  it("withdraws unsent emails when the mark-paid is undone", async () => {
+    const { org, invoiceId } = await setup()
+    const marked = await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    if (marked.status !== "completed") throw new Error("mark paid failed")
+    const jobs = await rewindToUnsent(org.organizationId)
+    const undone = await executeIssuanceCommand(
+      undoInvoiceMarkPaid,
+      { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() },
+      { actor: org.actors.admin }
+    )
+    expect(undone.status).toBe("completed")
+
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    const settled = await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })
+    expect(settled.result).toMatchObject({ outcome: "withdrawn" })
+  })
+
+  it("withdraws unsent emails when the payment is voided", async () => {
+    const { org, invoiceId } = await setup()
+    const recorded = await executeIssuanceCommand(recordPayment, { invoiceId, amount: 250, paidAt: "2026-06-01", method: "bank_transfer" }, { actor: org.actors.admin })
+    if (recorded.status !== "completed") throw new Error("record failed")
+    await rewindToUnsent(org.organizationId)
+    await executeIssuanceCommand(voidPayment, { paymentId: recorded.result.payment.id, reason: "Entered twice" }, { actor: org.actors.admin })
+    expect(await sentMessages(org.organizationId)).toEqual([])
   })
 })
