@@ -18,8 +18,11 @@ function nextMonthDue() {
  * entry URL, and its own Playwright instance. No application or database imports.
  * @param {import('@playwright/test').TestType<import('@playwright/test').PlaywrightTestArgs & { account: { email: string, password: string }, entryURL: string }, import('@playwright/test').PlaywrightWorkerArgs>} test
  * @param {typeof import('@playwright/test').expect} expect
+ * @param {import('./scenarios.mjs').ProductScenarioOptions} [options]
  */
-export function registerProductScenarios(test, expect) {
+export function registerProductScenarios(test, expect, options = {}) {
+  const invoiceTax = options.invoiceTax ?? { ratePercent: 10, editable: true }
+
   async function createContact(page, entryURL, name) {
     await page.goto(new URL('/contacts/new', entryURL).href)
     await page.getByLabel('Name (required)', { exact: true }).fill(name)
@@ -63,6 +66,16 @@ export function registerProductScenarios(test, expect) {
   /** Summary block under the line items, shared by the new and edit forms. */
   const summaryOf = (page) => page.getByText('Subtotal', { exact: true }).locator('xpath=../..')
 
+  async function expectTaxControl(page) {
+    const input = summaryOf(page).getByRole('spinbutton')
+    if (invoiceTax.editable) {
+      await expect(input).toBeEditable()
+      await expect(input).toHaveValue(String(invoiceTax.ratePercent))
+    } else {
+      await expect(input).toHaveCount(0)
+    }
+  }
+
   async function expectSummary(page, { subtotal, tax, total }) {
     const summary = summaryOf(page)
     await expect(summary.getByText('Subtotal', { exact: true }).locator('xpath=..')).toContainText(usd(subtotal))
@@ -95,7 +108,8 @@ export function registerProductScenarios(test, expect) {
       await row.getByLabel('Qty', { exact: true }).fill(String(line.quantity))
       await row.getByRole('spinbutton').fill((line.unitPriceCents / 100).toFixed(2))
     }
-    await summaryOf(page).getByRole('spinbutton').fill(String(taxPercent))
+    if (invoiceTax.editable) await summaryOf(page).getByRole('spinbutton').fill(String(taxPercent))
+    await expectTaxControl(page)
     const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPriceCents, 0)
     const tax = Math.round((subtotal * taxPercent) / 100)
     const totals = { subtotal, tax, total: subtotal + tax }
@@ -135,7 +149,7 @@ export function registerProductScenarios(test, expect) {
       { description: `Consulting ${stamp}`, quantity: 3, unitPriceCents: 15000 },
       { description: `Hosting ${stamp}`, quantity: 1, unitPriceCents: 4950 },
     ],
-    taxPercent: 10,
+    taxPercent: invoiceTax.ratePercent,
     notes: `Thanks ${stamp}`,
   })
 
@@ -201,9 +215,9 @@ export function registerProductScenarios(test, expect) {
     const input = draft(Date.now())
     await createContact(page, entryURL, input.customer)
     const created = await createDraftInvoice(page, entryURL, input)
-    // 3 x 150.00 + 1 x 49.50 = 499.50; 10% tax = 49.95; total 549.45.
+    // 3 x 150.00 + 1 x 49.50 = 499.50 before the consumer's tax rate.
     expect(created.subtotal).toBe(49950)
-    expect(created.total).toBe(54945)
+    expect(created.total).toBe(49950 + Math.round(49950 * input.taxPercent / 100))
     const expected = { ...input, ...created }
     await expectInvoiceDetail(page, expected)
     await expect(page.getByText(input.notes, { exact: true })).toBeVisible()
@@ -231,11 +245,13 @@ export function registerProductScenarios(test, expect) {
 
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
     await expect(page.getByText('Edit Invoice', { exact: true })).toBeVisible()
+    await expectTaxControl(page)
     const first = lineRow(page, 0)
     await expect(first.getByLabel('Description', { exact: true })).toHaveValue(input.lines[0].description)
     await first.getByLabel('Qty', { exact: true }).fill('4')
-    // 4 x 150.00 + 1 x 49.50 = 649.50; 10% tax = 64.95; total 714.45.
-    const edited = { subtotal: 64950, tax: 6495, total: 71445 }
+    // 4 x 150.00 + 1 x 49.50 = 649.50 before the consumer's tax rate.
+    const tax = Math.round(64950 * input.taxPercent / 100)
+    const edited = { subtotal: 64950, tax, total: 64950 + tax }
     await expectSummary(page, edited)
     await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
 

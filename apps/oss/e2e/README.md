@@ -41,6 +41,24 @@ and no contacts. Each test must start with that fresh state. Provisioning,
 provider fakes, and database assertions belong to the consumer's fixtures.
 Scenarios exercise the UI and must not import application or database internals.
 
+The optional third argument to `registerProductScenarios` configures invoice tax.
+Omitting it preserves the editable 10% rate used by self-hosted scenarios. A consumer
+with a fixed 25% rate registers the same journeys as follows:
+
+```ts
+registerProductScenarios(test, expect, {
+  invoiceTax: { ratePercent: 25, editable: false },
+})
+```
+
+`invoiceTax` requires both a percentage in `ratePercent` and an `editable` boolean.
+The consumer's fixtures must provision the matching tax policy; this option does
+not change organization settings. Editable scenarios fill the summary tax input and
+check its value. Fixed-rate scenarios assert that input is absent on both create
+and edit. All three invoice journeys use the chosen rate for live totals; the create
+and edit journeys also verify the stored tax label and totals after reload. The
+English-language, US-dollar and tax-exclusive price assumptions still apply.
+
 The app tarball includes `e2e/`, so scenarios are versioned with the application.
 `@quits/oss/e2e` exports the scenario registration function. It has no runtime
 Playwright import; consumers install Playwright themselves. The packed-artifact
