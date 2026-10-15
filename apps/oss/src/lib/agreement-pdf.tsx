@@ -1,3 +1,5 @@
+import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
+import { formatCurrency } from "./i18n/format"
 import { agreementVatPresentation } from "./agreements/vat-presentation"
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -45,9 +47,11 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
         <View style={styles.section}>
           <Text>{snapshot.sellerSnapshot?.companyName}</Text>
           <Text>{snapshot.sellerSnapshot?.companyAddress}</Text>
+          {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <Text key={id}>{id}</Text>)}
           <Text>
-            Customer: {snapshot.buyerSnapshot?.name} {snapshot.buyerSnapshot?.company}
+            Customer: {snapshot.buyerSnapshot?.name} {distinctCompany(snapshot.buyerSnapshot)}
           </Text>
+          {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <Text key={id}>{id}</Text>)}
           <Text>{snapshot.buyerSnapshot?.email}</Text>
           {issueDate && <Text>Issued: {issueDate.slice(0, 10)}</Text>}
           <Text>
@@ -71,6 +75,11 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           </View>
         ))}
         <View style={styles.section}>
+          {vat.totals ? <>
+            {vat.totals.lines.map((row, i) => <Text key={i}>{row.label}: {formatCurrency(Number(row.amount), snapshot.currency, snapshot.locale)}{row.reason ? ` · ${row.reason}` : ""}</Text>)}
+            <Text>{vat.totals.total.label}: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
+            {vat.totals.note && <Text>{vat.totals.note}</Text>}
+          </> : <>
           <Text>
             Subtotal: {v2?.serviceTotal.net ?? snapshot.subtotalNet} {snapshot.currency}
           </Text>
@@ -81,6 +90,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           <Text>
             {v2 ? "Service total" : "Total"}: {v2?.serviceTotal.gross ?? snapshot.totalGross} {snapshot.currency}
           </Text>
+          </>}
           <Text>Payment due in {snapshot.dueInDays} days</Text>
           <Text>
             Billing:{" "}
