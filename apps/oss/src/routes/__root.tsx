@@ -7,6 +7,7 @@ import { resolveLanguage } from '../lib/i18n/translate'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import type { InstallationStatus } from '../lib/installation-state'
 import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
+import { SETUP_DEFAULT_LOCALE } from '../lib/setup-locale'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
@@ -90,7 +91,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   // The loaded app context is available to the shell on SSR and hydration. Read only the
   // editable app locale: public documents mark their fixed language on their own wrapper.
   const locale = useRouterState({
-    select: (state) => (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
+    select: (state) =>
+      // First-run setup has no organization yet; its page speaks the setup default.
+      state.matches.some((match) => match.routeId === '/setup')
+        ? SETUP_DEFAULT_LOCALE
+        : (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
   })
   useEffect(() => {
     rememberInstallationStatus(installation)

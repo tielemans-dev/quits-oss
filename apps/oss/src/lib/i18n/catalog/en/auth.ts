@@ -32,6 +32,7 @@ export const enAuthMessages = {
   "auth.login.submit": "Log in",
   "auth.login.submitting": "Logging in…",
   "auth.login.error": "That email and password don't match. Try again or reset your password.",
+  "auth.login.sessionPending": "We signed you in but couldn't confirm the session. Please try again.",
   "auth.login.noAccount": "Don't have an account?",
   "auth.login.toSignup": "Sign up",
   "auth.signup.title": "Create account",

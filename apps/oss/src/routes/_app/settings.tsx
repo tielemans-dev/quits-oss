@@ -1,8 +1,8 @@
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
-import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -63,6 +63,7 @@ import { PaymentDetailsCard } from "../../components/settings/payment-details-ca
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
+import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -197,6 +198,8 @@ function isHttpLogoUrl(value: string) {
 }
 
 function SettingsPage() {
+  const router = useRouter()
+  const layoutContext = Route.useRouteContext()
   const { t, locale: displayLocale } = useI18n()
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
@@ -301,6 +304,11 @@ function SettingsPage() {
     if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
   }, [])
 
+  const reportSettingsLoadError = useEffectEvent(() => {
+    setError(t("settings.error.loadFailed"))
+  })
+
+  // Initialize once per mount. A language change must not reload and overwrite form edits.
   useEffect(() => {
     trpc.settings.get
       .query()
@@ -347,11 +355,9 @@ function SettingsPage() {
           void loadAiModels()
         }
       })
-      .catch(() =>
-        setError(t("settings.error.loadFailed"))
-      )
+      .catch(() => reportSettingsLoadError())
       .finally(() => setLoading(false))
-  }, [t])
+  }, [])
 
   useEffect(() => {
     setCapabilitiesFailed(false)
@@ -604,6 +610,11 @@ function SettingsPage() {
       setAiApiKeyDraft("")
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
+      // Refresh from the accepted mutation, keeping this tab's organization and usable layout.
+      // Refetching the session here could select another tab's organization or fail after saving.
+      invalidateAppLayoutSession()
+      seedAppLayoutSession({ ...layoutContext, locale: savedSettings.locale })
+      await router.invalidate({ sync: true })
       setSuccess(true)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
       successHideTimeout.current = setTimeout(() => {

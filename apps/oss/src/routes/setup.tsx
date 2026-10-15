@@ -1,9 +1,10 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { SetupWizard } from "../components/setup/setup-wizard"
 import { Card, CardContent } from "../components/ui/card"
 import { resolveRuntimeDistribution } from "../lib/runtime-distribution"
-import { useI18n } from "../lib/i18n/react"
+import { SETUP_DEFAULT_LOCALE } from "../lib/setup-locale"
+import { I18nProvider, useI18n } from "../lib/i18n/react"
 import { trpc } from "../trpc/client"
 import type { SetupStatus } from "../components/setup/types"
 
@@ -18,7 +19,14 @@ export const Route = createFileRoute("/setup")({
 })
 
 function SetupPage() {
+  return <I18nProvider initialLocale={SETUP_DEFAULT_LOCALE}><SetupPageContent /></I18nProvider>
+}
+
+function SetupPageContent() {
   const { t } = useI18n()
+  // The wizard edits the locale, which replaces `t`; status loading must not restart on that.
+  const tRef = useRef(t)
+  tRef.current = t
   const navigate = useNavigate()
   const [status, setStatus] = useState<SetupStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +41,7 @@ function SetupPage() {
         if (nextStatus.isSetupComplete) {
           navigate({
             to: "/login",
-            search: { message: t("setup.complete.loginPrompt") },
+            search: { message: tRef.current("setup.complete.loginPrompt") },
           })
           return
         }
@@ -41,14 +49,14 @@ function SetupPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError(t("setup.error.loadStatus"))
+          setError(tRef.current("setup.error.loadStatus"))
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [navigate, t])
+  }, [navigate])
 
   if (error) {
     return (
