@@ -132,6 +132,7 @@ function readDefaultCapabilities(
       managedRequiresSubscription: managed,
       customEndpoint,
       localAgent,
+      requestFallbackEnabled: readBooleanEnv(readProductEnv(env, "AI_REQUEST_FALLBACK_ENABLED"), false),
       maxPromptChars: DEFAULT_MAX_PROMPT_CHARS,
     },
     onboardingAi: {

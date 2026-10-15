@@ -79,6 +79,13 @@ describe("ai router provider handling", () => {
     mocks.aiCapabilities = { ...defaultAiCapabilities }
   })
 
+  it("does not load settings, customers or providers for request fallback while the flag is off", async () => {
+    const caller = aiRouter.createCaller(createContext())
+    expect(await caller.fillRequest({ prompt: "Lav en regning for rådgivning" })).toBeNull()
+    expect(mocks.findUnique).not.toHaveBeenCalled()
+    expect(mocks.findMany).not.toHaveBeenCalled()
+  })
+
   it("lists fallback models with the current model when the organisation has no key", async () => {
     mocks.findUnique.mockResolvedValue({
       aiProvider: "openrouter",

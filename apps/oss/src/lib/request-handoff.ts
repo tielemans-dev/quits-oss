@@ -1,3 +1,4 @@
+import type { RequestDraft } from "./request-parser"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 
@@ -7,6 +8,7 @@ import type { IssuanceValues } from "../components/invoices/issuance-fields"
 export type InvoiceHandoff = {
   /** The request that began it, so the card can open again for it. */
   input: string
+  suggested?: RequestDraft
   contactId: string
   dueDate: string
   issuance: IssuanceValues

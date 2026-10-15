@@ -70,6 +70,7 @@ export const enNavMessages = {
   "shell.request.overdue.limit": "At most 100 reminders can be sent at a time.",
   "shell.request.overdue.error.load": "Could not load the overdue invoices.",
   "shell.request.overdue.error.send": "The reminders were not started.",
+  "shell.request.suggested": "Suggested fields. Review and edit before confirming.",
   "shell.request.invoice.edit": "Edit",
   "shell.request.invoice.sent": "Invoice sent",
   "shell.request.invoice.gap": "Missing: {field}",

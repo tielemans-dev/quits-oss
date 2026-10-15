@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { createFileRoute } from "@tanstack/react-router"
 
@@ -6,6 +6,7 @@ import { DashboardView, DashboardHeader } from "../../components/dashboard/dashb
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
 import { MorningCard } from "../../components/dashboard/morning-card"
+import { suggestRequest } from "../../components/command-bar/suggest-request"
 import { CommandBar } from "../../components/command-bar/command-bar"
 import { onRequestDone } from "../../components/command-bar/request-events"
 import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
@@ -37,6 +38,8 @@ function DashboardPage() {
   const { load, refresh, retry } = useDashboardSummary()
   const { data: session } = useSession()
   const { can } = useShellPermissions()
+  const suggest = useCallback((input: string, signal: AbortSignal) => suggestRequest(input, can, signal), [can])
+  const recognize = useCallback(permittedRequest(recognizeRequest, can), [can])
   const [newInvoiceId, setNewInvoiceId] = useState<string>()
   // A card finished something over this page (an invoice was sent): show it in the figures and lists.
   useEffect(() => onRequestDone(done => { setNewInvoiceId(done.invoiceId); void refresh() }), [refresh])
@@ -70,7 +73,7 @@ function DashboardPage() {
       onRemindersSettled={refresh}
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
-      commandBar={<CommandBar recognize={permittedRequest(recognizeRequest, can)} />}
+      commandBar={<CommandBar recognize={recognize} suggest={suggest} />}
       morningCard={<MorningCard canSendReminders={can("invoice:send")} />}
     />
   )
