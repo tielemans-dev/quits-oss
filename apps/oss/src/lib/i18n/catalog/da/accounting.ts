@@ -4,6 +4,8 @@ export const daAccountingMessages = {
   "activity.event.accounting.action_recorded.disconnect": "Afbrød regnskabsforbindelsen ({provider})",
   "activity.event.accounting.action_recorded.retry": "Prøvede regnskabslevering {deliveryId} igen ({provider})",
   "activity.event.accounting.action_recorded.skip": "Sprang regnskabslevering {deliveryId} over ({provider}): {reason}",
+  "accounting.syncStart": "Synkroniserer fra {date}",
+  "accounting.deliveryError.reconnect_review_required": "Denne levering tilhører en tidligere forbindelse. Tjek den tidligere konto, før du vælger Prøv leveringen igen for at sende den på denne forbindelse, eller Spring leveringen over for at udelade den.",
   "accounting.title": "Regnskabsintegrationer",
   "accounting.description": "Send udstedte fakturaer, kreditnotaer og betalinger til dit regnskabsprogram.",
   "accounting.loading": "Indlæser regnskabsintegrationer …",

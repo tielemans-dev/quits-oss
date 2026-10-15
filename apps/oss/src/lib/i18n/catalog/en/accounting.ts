@@ -4,6 +4,8 @@ export const enAccountingMessages = {
   "activity.event.accounting.action_recorded.disconnect": "Disconnected accounting ({provider})",
   "activity.event.accounting.action_recorded.retry": "Retried accounting delivery {deliveryId} ({provider})",
   "activity.event.accounting.action_recorded.skip": "Skipped accounting delivery {deliveryId} ({provider}): {reason}",
+  "accounting.syncStart": "Syncing from {date}",
+  "accounting.deliveryError.reconnect_review_required": "This delivery belongs to an earlier connection. Check the previous account before choosing Retry delivery to send it on this connection, or Skip delivery to leave it out.",
   "accounting.title": "Accounting integrations",
   "accounting.description": "Send issued invoices, credit notes and payments to your accounting system.",
   "accounting.loading": "Loading accounting integrations…",

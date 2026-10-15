@@ -28,7 +28,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     await prisma.organization.create({ data: { id: organizationId, name: "Accounting test", slug: organizationId, createdAt: new Date() } })
     const event = await prisma.domainEvent.create({ data: { organizationId, sequence: 1, aggregateType: "invoice",
       aggregateId: "invoice", type: "invoice.issued", schemaVersion: 1, payload: invoice, actorKind: "system" } })
-    const input = { organizationId, provider, remoteAccountId: "synthetic-remote", mappingRevision: "1", credential: "synthetic-token" }
+    const input = { organizationId, provider, remoteAccountId: "synthetic-remote", mappingRevision: "1", credential: "synthetic-token", syncStartAt: event.occurredAt }
     await connectAccounting(input)
     const send = vi.fn(async () => ({ status: 201, externalRef: "synthetic-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } }))
     const transport = vi.fn(() => ({ send, reconcile: vi.fn(async () => ({ status: "unknown" as const })) }))
@@ -82,6 +82,29 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     expect(f.send).not.toHaveBeenCalled()
     expect(await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId } }))
       .toMatchObject({ error: { code: "provider_mismatch" } })
+  })
+
+  it("defaults to the connection time and honors a chosen inclusive start", async () => {
+    const f = await setup()
+    expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport: f.transport() })).toBe("delivered")
+    const other = await setup()
+    await prisma.accountingConnection.delete({ where: { organizationId: other.organizationId } })
+    const { syncStartAt: _, ...input } = other.input
+    await prisma.domainEvent.update({ where: { id: other.event.id }, data: { occurredAt: new Date("2020-01-01") } })
+    await connectAccounting(input)
+    expect(await deliverAccounting({ organizationId: other.organizationId, connections: other.connections, transport: other.transport() })).toBe("idle")
+    expect(other.send).not.toHaveBeenCalled()
+  })
+
+  it.each(["synthetic-remote", "another-remote"])("never replays delivered events after reconnecting to %s", async remoteAccountId => {
+    const f = await setup(), transport = f.transport()
+    expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport })).toBe("delivered")
+    await disconnectAccounting(f.organizationId)
+    await connectAccounting({ ...f.input, remoteAccountId })
+    expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport })).toBe("idle")
+    expect(f.send).toHaveBeenCalledTimes(1)
+    expect(await prisma.eventConsumerDelivery.count({ where: { organizationId: f.organizationId, status: "done" } })).toBe(1)
+    expect((await f.connections.find(f.organizationId))!.syncStartAt).toEqual(f.event.occurredAt)
   })
 
   it("starts a new generation when reconnecting to another remote account", async () => {
