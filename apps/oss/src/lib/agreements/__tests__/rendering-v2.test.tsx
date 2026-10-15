@@ -8,7 +8,7 @@ import { AgreementPdf } from "../../agreement-pdf"
 import { I18nProvider } from "../../i18n/react"
 import { PublicAgreementPage } from "../../../components/agreements/public-agreement-page"
 import type { PublicAgreementDto } from "../public"
-const snapshot = agreementOfferSnapshotV2Schema.parse({ ...fixture.snapshot, buyerSnapshot: { ...fixture.snapshot.buyerSnapshot, address: "Frozen buyer road 2", zip: "2200", city: "København N", country: "DK" } })
+const snapshot = agreementOfferSnapshotV2Schema.parse({ ...fixture.snapshot, buyerSnapshot: { name: "Frozen buyer", address: "Frozen buyer road 2", zip: "2200", city: "København N", country: "DK" } })
 describe("v2 offer rendering", () => {
   it("uses frozen v2 groups and leaves v1 totals unchanged", () => {
     const { offerFormatVersion: _version, calculationVersion: _calculation, serviceTotal: _total, paymentSchedule: _schedule, originalInputs: _inputs, vatGroups, scheduleVatGroups: _groups, ...v1 } = snapshot
