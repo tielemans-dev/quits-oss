@@ -13,6 +13,10 @@ const requirePaymentDetails = () => vi.mocked(getRuntimeExtensions).mockReturnVa
   { resolveInvoiceIssuancePolicy: async () => ({ requirePaymentDetails: true }) },
 ] as never)
 
+vi.mock("../../../lib/payments/public", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../lib/payments/public")>(),
+  getPublicInvoicePaymentUrl: (invoice: { publicPaymentIssuedAt: Date | null }) => invoice.publicPaymentIssuedAt ? "https://pay.example.test/synthetic" : null,
+}))
 vi.mock("../../documents/document-delivery", () => ({
   refuseWhileSending: () => Effect.void,
   queueDocumentEmail: vi.fn(() => Effect.succeed({ document: {}, deliveryKey: "synthetic-delivery" })),
@@ -25,10 +29,10 @@ vi.mock("../../documents/invoice-email", async importOriginal => ({
   composeInvoiceEmail: vi.fn(() => ({ message: {}, usingBrandedDomain: false })),
 }))
 
-function harness({ bank = false, stripe = false, frozenBank = false } = {}) {
+function harness({ bank = false, stripe = false, frozenBank = false, paymentLink = false } = {}) {
   const invoice = {
     id: "synthetic-invoice", status: "sent", number: "LEGACY-1", agreementId: null,
-    publicPaymentIssuedAt: null,
+    publicPaymentIssuedAt: paymentLink ? new Date("2026-10-01") : null,
     sellerSnapshot: { companyName: "Original seller", ...(frozenBank ? { bankAccount: { regNumber: "0040", accountNumber: "0440116243" } } : {}) },
     contact: { email: "buyer@example.test" },
   }
@@ -52,7 +56,7 @@ function harness({ bank = false, stripe = false, frozenBank = false } = {}) {
   return { invoice, update, run }
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(getRuntimeExtensions).mockReturnValue([]) })
 
 describe("resend payment readiness", () => {
   it("resends without bank details or Stripe when no adopter policy requires them", async () => {
@@ -63,7 +67,7 @@ describe("resend payment readiness", () => {
   it("refuses missing bank and Stripe before composing or queuing email when an adopter policy requires payment details", async () => {
     requirePaymentDetails()
     const h = harness()
-    expect(await h.run()).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", issues: [
+    expect(await h.run()).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", fieldIssues: [
       { code: "seller.bank.required", field: "seller.bankAccount", params: {} },
     ] } })
     expect(composeInvoiceEmail).not.toHaveBeenCalled()
@@ -76,6 +80,22 @@ describe("resend payment readiness", () => {
     expect(await h.run()).toMatchObject({ _tag: "Right" })
     expect(queueDocumentEmail).toHaveBeenCalledTimes(1)
     expect(h.update).not.toHaveBeenCalled()
+  })
+  it.each([
+    ["only today's Settings hold a bank account", { bank: true }],
+    ["Stripe is configured but no payment link was issued with the invoice", { stripe: true }],
+    ["both of those", { bank: true, stripe: true }],
+  ])("refuses an adopter-required resend when %s, since the email would carry no payment details", async (_name, options) => {
+    requirePaymentDetails()
+    const h = harness(options)
+    expect(await h.run()).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", fieldIssues: [{ code: "seller.bank.required" }] } })
+    expect(queueDocumentEmail).not.toHaveBeenCalled()
+  })
+  it("resends an adopter-required invoice that carries an issued payment link", async () => {
+    requirePaymentDetails()
+    const h = harness({ stripe: true, paymentLink: true })
+    expect(await h.run()).toMatchObject({ _tag: "Right" })
+    expect(composeInvoiceEmail).toHaveBeenCalledWith(expect.objectContaining({ publicPaymentUrl: "https://pay.example.test/synthetic" }))
   })
   it.each([{ bank: true }, { stripe: true }])("allows current payment Settings %j without rewriting issued evidence", async options => {
     const h = harness(options)

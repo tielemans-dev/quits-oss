@@ -87,5 +87,5 @@ export const requireResendPaymentDetails = (organizationId: string, document: Pi
   })
   if (policies.some(policy => policy.requirePaymentDetails))
     return yield* new InvalidState({ code: "invoice_issuance_policy", message: "Complete the invoice details before sending",
-      issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] })
+      fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] })
 })

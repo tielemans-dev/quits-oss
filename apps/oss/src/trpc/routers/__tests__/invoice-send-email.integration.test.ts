@@ -321,7 +321,7 @@ describeIfDatabase("invoice send email delivery", () => {
     setRuntimeExtensions([{ id: "synthetic-policy", resolveInvoiceIssuancePolicy: () => ({ requirePaymentDetails: true }) }])
     try {
       await expect(caller.invoices.send({ id: invoice.id })).rejects.toMatchObject({
-        cause: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] },
+        cause: { fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] },
       })
       expect(deliver).not.toHaveBeenCalled()
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).status).toBe("draft")
