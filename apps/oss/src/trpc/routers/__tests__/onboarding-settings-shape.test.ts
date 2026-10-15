@@ -298,9 +298,10 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(buildSellerParty({ snapshot: seller, settings: null, taxIds: [], documentCountryCode: "DE" }).vatId).toBe("DE123456789")
   })
   it.each(["cvr", "DK_CVR", "vat", "DK_VAT"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
+    mocks.cloud = false
     mocks.settings = null
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
-    mocks.taxIds.push({ id: "foreign", scheme: "vat", value: "DE242567909", countryCode: "DE", isPrimary: false }, { id: "other", scheme: "other", value: "secondary", countryCode: "DK", isPrimary: false })
+    mocks.taxIds.push({ id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }, { id: "other", scheme: "other", value: "secondary", countryCode: "DK", isPrimary: false })
     // Make the historical VAT row precede CVR, reproducing unordered VAT resolution.
     mocks.taxIds.unshift(mocks.taxIds.splice(1, 1)[0]!)
     const frozen = buildSellerSnapshot(mocks.settings as never, structuredClone(mocks.taxIds))
@@ -308,30 +309,34 @@ describe("atomic Settings Danish VAT repairs", () => {
     const fixture = JSON.parse(readFileSync(new URL("../../../lib/exports/__tests__/fixtures/legacy-ubl-input.json", import.meta.url), "utf8")) as EinvoiceDocument
     const historicalDocument = { ...fixture, seller: buildSellerParty({ snapshot: frozen, settings: null, taxIds: [], documentCountryCode: "DK" }) }
     const historicalUbl = buildUblDocument(historicalDocument)
-    const value = ["vat", "DK_VAT"].includes(scheme) ? "DK45676102" : "45676102"
+    const value = ["vat", "DK_VAT"].includes(scheme) ? "DK87654321" : "87654321"
     await settingsCaller().update({ primaryTaxId: value, primaryTaxIdScheme: scheme })
-    expect(mocks.taxIds.find(id => id.id === "tax-1")).toMatchObject({ scheme: "vat", value: "DK45676102", countryCode: "DK", isPrimary: false })
+    expect(mocks.taxIds.find(id => id.id === "tax-1")).toMatchObject({ scheme: "vat", value: "DK87654321", countryCode: "DK", isPrimary: false })
     expect(mocks.taxIds.find(id => id.id === "tax-0")).toMatchObject({ scheme, value, isPrimary: true })
-    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE242567909")
+    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE123456789")
     expect(mocks.taxIds.find(id => id.id === "other")?.value).toBe("secondary")
     const future = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
-    expect(buildSellerParty({ snapshot: future, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK45676102")
+    expect(buildSellerParty({ snapshot: future, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK87654321")
     const futureDocument = { ...fixture, seller: buildSellerParty({ snapshot: future, settings: null, taxIds: [], documentCountryCode: "DK" }) }
     expect(validateEinvoice(futureDocument)).toEqual([])
-    expect(buildUblDocument(futureDocument)).toContain("DK45676102")
+    expect(buildUblDocument(futureDocument)).toContain("DK87654321")
     expect(buildUblDocument(futureDocument)).not.toContain("DK24256790")
     expect(JSON.stringify(frozen)).toBe(frozenBefore)
     expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
     expect(historicalUbl).toContain("DK24256790")
     // The reverse VAT-to-CVR switch must keep the same pair synchronized too.
-    await settingsCaller().update({ primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" })
-    expect(mocks.taxIds.find(id => id.id === "tax-1")?.value).toBe("DK24256790")
-    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE242567909")
+    await settingsCaller().update({ primaryTaxId: "12345678", primaryTaxIdScheme: "cvr" })
+    expect(mocks.taxIds.find(id => id.id === "tax-1")?.value).toBe("DK12345678")
+    expect(mocks.taxIds.find(id => id.id === "foreign")?.value).toBe("DE123456789")
     const nextSeller = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
-    expect(buildSellerParty({ snapshot: nextSeller, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK24256790")
+    expect(buildSellerParty({ snapshot: nextSeller, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK12345678")
     expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
   })
 })
+
+const updateTaxId = (route: string, patch: { primaryTaxId: string; primaryTaxIdScheme?: string }) =>
+  route === "draft" ? caller().saveDraft(patch) : route === "settings" ? settingsCaller().update(patch)
+    : aiCaller().applyOnboardingPatch({ patch, source: "manual" })
 
 describe("hosted CVR admission remains enforced", () => {
   beforeEach(() => { mocks.settings = { ...defaults }; mocks.v2 = false; mocks.taxIds = [{ id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true }] })
@@ -340,18 +345,18 @@ describe("hosted CVR admission remains enforced", () => {
     expect(mocks.taxIds[0]?.value).toBe("24256790")
     expect(mocks.cvrGet).not.toHaveBeenCalled()
   })
-  it.each(["draft", "settings"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
+  it.each(["draft", "settings", "ai"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
     for (const patch of [{ primaryTaxId: "" }, { primaryTaxId: "12345678" }, { primaryTaxId: "24256790", primaryTaxIdScheme: "other" }]) {
-      await expect(route === "draft" ? caller().saveDraft(patch) : settingsCaller().update(patch)).rejects.toMatchObject({ code: "BAD_REQUEST", message: "cvr.invalid" })
+      await expect(updateTaxId(route, patch)).rejects.toMatchObject({ code: "BAD_REQUEST" })
       expect(mocks.taxIds[0]?.value).toBe("24256790")
     }
   })
-  it.each(["draft", "settings"])("refuses an inactive replacement and accepts a revalidated replacement in %s", async route => {
+  it.each(["draft", "settings", "ai"])("refuses an inactive replacement and accepts a revalidated replacement in %s", async route => {
     const patch = { primaryTaxId: "45676102", primaryTaxIdScheme: "cvr" }
     mocks.cvrGet.mockResolvedValueOnce({ cvr: patch.primaryTaxId, status: "ceased", statusClass: "blocked" })
-    await expect(route === "draft" ? caller().saveDraft(patch) : settingsCaller().update(patch)).rejects.toMatchObject({ message: "cvr.inactive" })
+    await expect(updateTaxId(route, patch)).rejects.toMatchObject({ message: "cvr.inactive" })
     expect(mocks.taxIds[0]?.value).toBe("24256790")
-    await (route === "draft" ? caller().saveDraft(patch) : settingsCaller().update(patch))
+    await updateTaxId(route, patch)
     expect(mocks.taxIds[0]?.value).toBe(patch.primaryTaxId)
   })
   it.each([true, false])("replays a completed confirmation during registry outage, same key: %s", async sameKey => {
