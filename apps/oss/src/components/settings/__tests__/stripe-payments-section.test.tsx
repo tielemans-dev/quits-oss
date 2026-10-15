@@ -1,8 +1,24 @@
 // @vitest-environment jsdom
 
 import type { OrgStripeAccount, StripeAccountStatus } from "@quits/contracts/payments"
+import { useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import * as connectSettings from "../../../lib/runtime/stripe-connect-settings"
+
+const api = vi.hoisted(() => ({
+  run: vi.fn(),
+  get: vi.fn(),
+}))
+
+vi.mock("../../../trpc/client", () => ({
+  trpc: {
+    settings: {
+      runStripeConnectAction: { mutate: api.run },
+      get: { query: api.get },
+    },
+  },
+}))
 
 vi.mock("../../../lib/i18n/react", () => ({
   useI18n: () => ({ t: (key: string) => key }),
@@ -44,8 +60,44 @@ function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false)
 
 const keyInput = (name: string) => document.querySelector(`input[name="${name}"]`)
 
+const actionFor = {
+  none: "settings.payments.connect.action.connect",
+  pending: "settings.payments.connect.action.resume",
+  restricted: "settings.payments.connect.action.fix",
+  active: "settings.payments.connect.action.disconnect",
+} as const
+
+function LiveSection({
+  initial,
+  connectActions,
+}: {
+  initial: OrgStripeAccount
+  connectActions: boolean
+}) {
+  const [account, setAccount] = useState(initial)
+  const [enabled, setEnabled] = useState(connectActions)
+  return (
+    <StripePaymentsSection
+      account={account}
+      connectActions={enabled}
+      stripeByokConfigured={false}
+      stripePublishableKey={null}
+      clearStripeSecretKey={false}
+      clearStripeWebhookSecret={false}
+      onClearStripeSecretKeyChange={noop}
+      onClearStripeWebhookSecretChange={noop}
+      onConnectSettings={(next) => {
+        setAccount(next.stripeAccount)
+        setEnabled(next.stripeConnectActions)
+      }}
+    />
+  )
+}
+
 afterEach(() => {
   cleanup()
+  api.run.mockReset()
+  api.get.mockReset()
 })
 
 describe("StripePaymentsSection", () => {
@@ -91,6 +143,65 @@ describe("StripePaymentsSection", () => {
       cleanup()
     }
   )
+
+  it("keeps Connect, Resume, Fix, and Disconnect unavailable without settings update", () => {
+    for (const status of ["none", "pending", "active", "restricted"] as const) {
+      const { unmount } = render(
+        <StripePaymentsSection
+          account={connectAccount(status)}
+          connectActions={false}
+          stripeByokConfigured={false}
+          stripePublishableKey={null}
+          clearStripeSecretKey={false}
+          clearStripeWebhookSecret={false}
+          onClearStripeSecretKeyChange={noop}
+          onClearStripeWebhookSecretChange={noop}
+        />
+      )
+      const control = screen.getByRole("button", { name: actionFor[status] }) as HTMLButtonElement
+      expect(control.disabled).toBe(true)
+      fireEvent.click(control)
+      unmount()
+    }
+    expect(api.run).not.toHaveBeenCalled()
+  })
+
+  it("replaces the account after a disconnect that returns no URL", async () => {
+    api.run.mockResolvedValue({ url: null })
+    api.get.mockResolvedValue({
+      stripeAccount: connectAccount("none"),
+      stripeConnectActions: true,
+    })
+    render(<LiveSection initial={connectAccount("active")} connectActions />)
+
+    expect(screen.getByText("settings.payments.connect.status.active")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: actionFor.active }))
+    fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.disconnect.confirm" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("settings.payments.connect.status.none")).toBeTruthy()
+    })
+    expect(screen.queryByText("settings.payments.connect.status.active")).toBeNull()
+    expect(screen.queryByText("acct_test")).toBeNull()
+    expect(api.run).toHaveBeenCalledWith({ action: "disconnect" })
+    expect(api.get).toHaveBeenCalledOnce()
+    expect((screen.getByRole("button", { name: actionFor.none }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it("leaves the account in place when the action opens a URL", async () => {
+    const follow = vi.spyOn(connectSettings, "followStripeConnectUrl").mockImplementation(() => {})
+    api.run.mockResolvedValue({ url: "https://connect.stripe.com/setup/s/test" })
+    render(<LiveSection initial={connectAccount("pending")} connectActions />)
+
+    fireEvent.click(screen.getByRole("button", { name: actionFor.pending }))
+
+    await waitFor(() => {
+      expect(follow).toHaveBeenCalledWith("https://connect.stripe.com/setup/s/test")
+    })
+    expect(api.get).not.toHaveBeenCalled()
+    expect(screen.getByText("settings.payments.connect.status.pending")).toBeTruthy()
+    follow.mockRestore()
+  })
 })
 
 describe("stripeConnectActionHandlers", () => {

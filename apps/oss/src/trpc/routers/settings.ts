@@ -28,6 +28,7 @@ import {
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
+import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import { getManagedDocumentDomainProvider, getStripeConnectSettingsHandler } from "../../lib/runtime/services"
@@ -307,7 +308,9 @@ export const settingsRouter = router({
         statusAt: settings.stripeAccountStatusAt,
       }),
       stripeConnectActions:
-        runtimeCapabilities.payments.managed && getStripeConnectSettingsHandler() != null,
+        runtimeCapabilities.payments.managed &&
+        getStripeConnectSettingsHandler() != null &&
+        actorCan(ctx.actor, "settings:update"),
       primaryTaxId: primaryTaxId?.value ?? null,
       primaryTaxIdScheme: primaryTaxId?.scheme ?? null,
       emailDelivery,
