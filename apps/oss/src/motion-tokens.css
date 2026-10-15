@@ -28,6 +28,7 @@
   --duration-row: 320ms;
   --duration-toast: 380ms;
   --duration-card: 400ms;
+  --duration-count: 700ms;
   --duration-highlight: 2400ms;
 
   /* Gap between parts of a card that rise in one after the other. */
