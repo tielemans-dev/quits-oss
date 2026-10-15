@@ -10,6 +10,13 @@ const input = (countryCode: string, locale = "en-GB") => ({
 })
 
 describe("setupInitializeSchema", () => {
+  it.each([undefined, "", "24256790"])("keeps setup CVR optional and validates it only when supplied: %s", cvr => {
+    expect(setupInitializeSchema.safeParse({ ...input("GB"), organization: { ...input("GB").organization, cvr } }).success).toBe(true)
+  })
+  it("rejects an invalid supplied CVR in any locale", () => {
+    expect(setupInitializeSchema.safeParse({ ...input("GB"), organization: { ...input("GB").organization, cvr: "12345678" } }).success).toBe(false)
+  })
+
   it("accepts any ISO country, including ones without a module", () => {
     expect(setupInitializeSchema.parse(input("gb")).locale.countryCode).toBe("GB")
   })

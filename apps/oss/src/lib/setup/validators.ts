@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localeSchema } from "../compliance/countries"
 import { isCountryCode } from "../compliance/registry"
 
@@ -11,6 +12,7 @@ export const authModeSchema = z.enum(["local_only", "local_plus_oauth"])
 export const setupInitializeSchema = z.object({
   instanceProfile: instanceProfileSchema,
   organization: z.object({
+    cvr: z.string().trim().refine(value => !value || isValidDanishCvr(value), "cvr.invalid").optional(),
     name: z.string().trim().min(2).max(120),
     slug: z.string().trim().min(2).max(80).regex(slugRegex),
   }),

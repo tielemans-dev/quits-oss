@@ -55,6 +55,7 @@ describe("Danish first-run setup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Afslut opsætning" }))
     await waitFor(() => expect(api.complete).toHaveBeenCalledOnce())
     expect(api.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      organization: { name: "Test ApS", slug: "test-aps", cvr: undefined },
       locale: { locale: "da-DK", countryCode: "DK", timezone: "Europe/Copenhagen", currency: "DKK" },
     }))
     expect(api.navigate).toHaveBeenCalledWith({ to: "/login", search: { message: "Opsætningen er fuldført. Log ind for at fortsætte." } })

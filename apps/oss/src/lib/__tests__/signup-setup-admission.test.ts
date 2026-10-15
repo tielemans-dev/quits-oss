@@ -14,7 +14,7 @@ vi.mock('better-auth/crypto', () => ({ hashPassword: async () => 'synthetic-hash
 vi.mock('@tanstack/react-start/server', () => ({ getRequest: () => new Request('http://localhost/setup', { headers: { 'x-quits-invite': 'test-code' } }) }))
 const input: SetupInitializeInput = { admin: { email: 'TEST@example.test', name: 'Test', password: 'local-password123' },
   locale: { currency: 'DKK', countryCode: 'DK', timezone: 'Europe/Copenhagen', locale: 'da' },
-  organization: { name: 'Test', slug: 'test' }, auth: { mode: 'local_only' }, instanceProfile: 'freelancer' }
+  organization: { cvr: "24256790", name: 'Test', slug: 'test' }, auth: { mode: 'local_only' }, instanceProfile: 'freelancer' }
 function policy(hooks: AuthHooks = {}, mode?: string) {
   setRuntimePlatform({ id: 'setup-policy-test', getRuntimeKind: () => 'node', getEnv: (key) => key === 'SIGNUP_MODE' ? mode : undefined,
     getAuthHooks: () => hooks, getBinding: () => undefined, getPrisma: () => null })
@@ -44,4 +44,20 @@ describe('installation administrator admission', () => {
     expect(consume).toHaveBeenCalledExactlyOnceWith(tx)
     expect(createUser).toHaveBeenCalledOnce()
   })
+  it.each([undefined, "24256790"])("preserves optional CVR and the selected non-DK setup country: %s", async cvr => {
+    policy()
+    getSetupStatus.mockResolvedValue({ id: 'default', isSetupComplete: false, distribution: 'selfhost', setupVersion: 1 })
+    findUnique.mockResolvedValue(null)
+    createUser.mockResolvedValue({ id: 'admin' })
+    const taxIdCreate = vi.fn()
+    const tx = { user: { findUnique, create: createUser }, organization: { findUnique, create: async () => ({ id: 'org' }) },
+      account: { create: vi.fn() }, member: { create: vi.fn() }, organizationTaxId: { create: taxIdCreate },
+      orgSettings: { upsert: vi.fn() }, installationState: { upsert: vi.fn() } }
+    transaction.mockImplementation(async work => work(tx))
+    await expect(applySetupInitialization({ ...input, organization: { ...input.organization, cvr },
+      locale: { countryCode: 'GB', locale: 'en-GB', currency: 'GBP', timezone: 'Europe/London' } })).resolves.toMatchObject({ organizationId: 'org' })
+    if (cvr) expect(taxIdCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ value: cvr, countryCode: 'GB' }) })
+    else expect(taxIdCreate).not.toHaveBeenCalled()
+  })
+
 })
