@@ -313,6 +313,7 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
 | `BETTER_AUTH_SECRET` | Secret for auth (min 32 chars) | Yes |
+| `QUITS_REMINDER_UNSUBSCRIBE_SECRET` | Optional stable signing key for reminder preference links, at least 32 characters. Falls back to `BETTER_AUTH_SECRET`. Rotating the signing key invalidates existing links; stored opt-outs remain unchanged. | No |
 | `BETTER_AUTH_URL` | App URL (e.g. `http://localhost:3000`) | Yes |
 | `BETTER_AUTH_GOOGLE_CLIENT_ID` | Google OAuth client ID (optional) | No |
 | `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) | No |

@@ -43,8 +43,8 @@ export type RuntimeExtension = {
     | undefined
     | Promise<StripeConnectWebhookVerifier | undefined>
   /**
-   * Overrides the default BYOK checkout target. A returned target is used as-is.
-   * Null and undefined leave BYOK in place.
+   * Registers Connect card routing and disables BYOK fallback in this runtime.
+   * Only active Connect targets may charge. Null and undefined mean unavailable.
    */
   resolveStripeCheckoutTarget?: (
     context: StripeCheckoutTargetContext
