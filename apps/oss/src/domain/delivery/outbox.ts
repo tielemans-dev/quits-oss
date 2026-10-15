@@ -371,6 +371,19 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     throw error
   }
 
+  // Resolve withdrawal before counting a request, so a transient query failure leaves an
+  // unsent delivery retryable, including SMTP deliveries which cannot be deduplicated.
+  const finalWithdrawal = await completion.withdrawalReason?.(prisma, payload.completion.target)
+  if (finalWithdrawal) {
+    return settleDecision(
+      job,
+      payload,
+      completion,
+      possiblyDelivered
+        ? { reason: "unconfirmed", message: `${UNCONFIRMED_MESSAGE} Further attempts were stopped: ${finalWithdrawal}` }
+        : { reason: "withdrawn", message: finalWithdrawal }
+    )
+  }
   // Counted before the request, so a request whose outcome is lost is never mistaken for none.
   const requested = { ...payload, requests: requests + 1, provider }
   await recordOnJob(job, requested)

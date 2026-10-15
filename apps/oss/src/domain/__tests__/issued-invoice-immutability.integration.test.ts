@@ -25,7 +25,7 @@ describe.runIf(hasTestDatabase)("issued invoice amounts are immutable", () => {
     const row = await prisma.invoice.findUniqueOrThrow({ where: { id }, include: { items: { orderBy: { sortOrder: "asc" } } } })
     return {
       subtotalNet: row.subtotalNet.toString(), totalTax: row.totalTax.toString(), totalGross: row.totalGross.toString(),
-      currency: row.currency,
+      currency: row.currency, supplyDate: row.supplyDate,
       items: row.items.map(item => [item.description, item.quantity.toString(), item.unitPriceNet.toString(), item.taxRate.toString(), item.lineGross.toString()]),
     }
   }
@@ -46,6 +46,8 @@ describe.runIf(hasTestDatabase)("issued invoice amounts are immutable", () => {
       { currency: before.currency === "EUR" ? "USD" : "EUR" },
       { taxRate: 0.5 },
       { notes: "late edit" },
+      { supplyDate: "2026-10-07" },
+      { supplyDate: null },
     ]) {
       expect(await executeCommand(updateInvoiceDraft, { id: invoice.id, ...change }, { actor }))
         .toMatchObject({ status: "failed", error: { code: "not_draft" } })
