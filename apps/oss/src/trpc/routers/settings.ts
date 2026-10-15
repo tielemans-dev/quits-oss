@@ -34,6 +34,7 @@ import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode, isNationalRegistrationScheme, nationalRegistrationForScheme } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
+import { orgStripeAccountSchema, type OrgStripeAccount } from "@quits/contracts/payments"
 import {
   normalizeCountryCode,
   validateLocalizedFields,
@@ -192,6 +193,9 @@ const orgSettingsReadSelect = {
   stripePublishableKey: true,
   stripeSecretKeyEnc: true,
   stripeWebhookSecretEnc: true,
+  stripeAccountId: true,
+  stripeAccountStatus: true,
+  stripeAccountStatusAt: true,
   documentSendingDomain: true,
   documentSendingDomainProviderId: true,
   documentSendingDomainStatus: true,
@@ -242,6 +246,7 @@ export const settingsRouter = router({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
       stripeWebhookSecretEnc: settings.stripeWebhookSecretEnc,
+      stripeAccountStatus: settings.stripeAccountStatus,
     })
     const runtimeCapabilities = getRuntimeCapabilities()
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
@@ -291,6 +296,12 @@ export const settingsRouter = router({
       aiModel: settings.aiModel,
       stripeByokConfigured: stripeState.configured,
       stripePublishableKey: settings.stripePublishableKey,
+      stripeAccount: readStripeAccount({
+        managed: runtimeCapabilities.payments.managed,
+        accountId: settings.stripeAccountId,
+        status: settings.stripeAccountStatus,
+        statusAt: settings.stripeAccountStatusAt,
+      }),
       primaryTaxId: primaryTaxId?.value ?? null,
       primaryTaxIdScheme: primaryTaxId?.scheme ?? null,
       emailDelivery,
@@ -316,7 +327,6 @@ export const settingsRouter = router({
         ...settingsInput
       } = input
 
-
       assertSettingsCurrency(settingsInput.currency)
       assertSettingsCurrency(settingsInput.defaultCurrency)
       assertSettingsCurrency(settingsInput.baseCurrency)
@@ -327,8 +337,26 @@ export const settingsRouter = router({
         catch (error) { if (error instanceof InvalidState) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error }
         const current = await tx.orgSettings.findUnique({
           where: { organizationId: ctx.organizationId },
-          select: { countryCode: true, locale: true, paymentNote: true, taxRegime: true, momsRegistered: true, aiProvider: true, aiBaseUrl: true, companyName: true, companyAddress: true },
+          select: {
+            countryCode: true,
+            locale: true,
+            paymentNote: true,
+            taxRegime: true,
+            momsRegistered: true,
+            aiProvider: true,
+            aiBaseUrl: true,
+            companyName: true,
+            companyAddress: true,
+            stripePublishableKey: true,
+          },
         })
+        assertStripeByokWritable({
+          stripePublishableKey,
+          stripeSecretKey,
+          stripeWebhookSecret,
+          clearStripeSecretKey,
+          clearStripeWebhookSecret,
+        }, current)
         const previousSeller = getRuntimeCapabilities().sellerVatConfirmation?.enabled
           ? { companyName: current?.companyName, companyAddress: current?.companyAddress, countryCode: current?.countryCode,
               taxIds: await tx.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } }) }
@@ -654,6 +682,44 @@ export const settingsRouter = router({
       })
     }),
 })
+
+/**
+ * Managed payments refuse new Stripe key material. Resubmitting the stored publishable
+ * key, omitting secrets, and clearing stored secrets stay allowed so Settings can still
+ * be saved and legacy keys can be revoked. Self-hosted installs keep every field writable.
+ */
+function assertStripeByokWritable(input: {
+  stripePublishableKey?: string
+  stripeSecretKey?: string
+  stripeWebhookSecret?: string
+  clearStripeSecretKey?: boolean
+  clearStripeWebhookSecret?: boolean
+}, current: { stripePublishableKey: string | null } | null) {
+  if (!getRuntimeCapabilities().payments.managed) return
+  const publishableChanged =
+    input.stripePublishableKey !== undefined &&
+    input.stripePublishableKey !== (current?.stripePublishableKey ?? null)
+  const writingNewSecrets = input.stripeSecretKey !== undefined || input.stripeWebhookSecret !== undefined
+  if (!publishableChanged && !writingNewSecrets) return
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "Stripe keys cannot be saved while card payments are managed",
+  })
+}
+
+function readStripeAccount(input: {
+  managed: boolean
+  accountId: string | null
+  status: OrgStripeAccount["status"]
+  statusAt: Date | null
+}): OrgStripeAccount {
+  return orgStripeAccountSchema.parse({
+    mode: input.managed ? "connect" : "byok",
+    accountId: input.accountId,
+    status: input.status,
+    statusAt: input.statusAt?.toISOString() ?? null,
+  })
+}
 
 function buildDocumentSendingState(input: {
   settings: {

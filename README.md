@@ -75,7 +75,8 @@ Source-available invoicing for freelancers and small businesses.
    cp .env.example .env
    ```
 
-   Git worktrees also fall back to the main repository's `.env` if the worktree does not have its own copy.
+   Ordinary commands in Git worktrees fall back to the main repository's `.env`.
+   Worktree Dev and Setup below require explicit process environment settings and skip that fallback.
 
    Generate a secure auth secret:
 
@@ -117,6 +118,27 @@ Source-available invoicing for freelancers and small businesses.
    - `http://localhost:3000` and `http://app.localhost:3000` will redirect to the canonical hosts above
 
 7. Open [http://localhost:3000](http://localhost:3000)
+
+### Isolated worktrees in T3 Code
+
+Run `bun install --frozen-lockfile` in each new worktree before Setup Worktree.
+Install Bun and PostgreSQL `psql`, `createdb`, and `dropdb`. Supply
+`QUITS_WORKTREE_POSTGRES_URL` explicitly in the process environment: a loopback
+Postgres URL with a user, `/postgres`, and no query or fragment. Supply the other
+required app settings there too. Setup and Dev never load a workspace `.env`.
+Setup allocates port 3100+N and a database with a random allocation suffix, then
+migrates it. Dev refuses incomplete setup and uses that port and auth origin.
+Setup does not seed data; the Danish fixture is a separate follow-up.
+
+The common Git registry serializes setup, migrations, dev checks, and teardown.
+A timeout means retry after the current operation finishes. A crashed holder's
+lock requires manual recovery only after confirming all setup/dev/teardown
+processes for this clone stopped. Back up the registry before changing it.
+A creation attempt is recorded before `createdb`; only a matching database
+ownership comment permits retry, migration, or manual Teardown Worktree.
+A crash before that comment leaves an unverified database: do not mark it owned.
+Have its owner reconcile the database and registry manually. Legacy allocations
+also require manual recovery. Teardown never adopts an unverified database.
 
 ### Self-Hosting with Docker
 
@@ -341,8 +363,15 @@ override `SMTP_PORT`, pair `SMTP_PORT=587` with `SMTP_SECURE=false`, or
 is required. `SMTP_PASSWORD` remains a compatibility alias for `SMTP_PASS`. Docker
 Compose forwards these settings to the app.
 
-For a development mail catcher or a trusted local plaintext relay, set its port and
-`SMTP_REQUIRE_TLS=false`. Do not use plaintext for a relay reached over the internet.
+For a development mail catcher such as Mailpit (port 1025) or a trusted local plaintext
+relay, set its port and `SMTP_REQUIRE_TLS=false` (keep `SMTP_SECURE=false`), because the
+default requires STARTTLS. Do not use plaintext for a relay reached over the internet.
+When the app runs on the host, set `SMTP_HOST=127.0.0.1`, not `localhost`: `localhost`
+may resolve to IPv6 `::1` first and time out if the catcher listens only on IPv4. When the
+app runs in Compose, `127.0.0.1` is the app container itself; use the Mailpit service
+name, or `host.docker.internal` when Mailpit runs on the host (Docker Desktop only; on
+Docker Engine for Linux, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the
+app service, or run Mailpit as a Compose service).
 Settings shows missing or invalid SMTP configuration using environment variable names;
 it never returns relay credentials. Configuration readiness does not test relay connectivity.
 

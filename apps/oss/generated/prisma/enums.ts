@@ -9,6 +9,16 @@
 * 🟢 You can import this file directly.
 */
 
+export const StripeAccountStatus = {
+  none: 'none',
+  pending: 'pending',
+  active: 'active',
+  restricted: 'restricted'
+} as const
+
+export type StripeAccountStatus = (typeof StripeAccountStatus)[keyof typeof StripeAccountStatus]
+
+
 export const InvoicePurpose = {
   sale: 'sale',
   prepayment: 'prepayment'

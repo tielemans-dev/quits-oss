@@ -10,9 +10,20 @@ import type {
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
+import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
+export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
 
 /** Released distributions can require the factual company lookup/review contract. */
 export const COMPANY_LOOKUP_CONTRACT_VERSION = 1
+
+/**
+ * Verifies connected-account webhook events with one platform secret, then maps
+ * `event.account` to the organization that owns that Stripe account.
+ */
+export type StripeConnectWebhookVerifier = {
+  webhookSecret: string
+  resolveOrganizationId: (stripeAccountId: string) => string | null | Promise<string | null>
+}
 
 export type RuntimeExtension = {
   id: string
@@ -22,6 +33,22 @@ export type RuntimeExtension = {
   resolveCapabilities?: (
     baseCapabilities: Readonly<RuntimeCapabilities>
   ) => RuntimeCapabilityPatch | void
+  /**
+   * Hosted Connect checkout events. The first extension that returns a verifier
+   * with a webhook secret is tried before per-organization BYOK secrets.
+   * Self-hosted runtimes leave this unset.
+   */
+  resolveStripeConnectWebhook?: () =>
+    | StripeConnectWebhookVerifier
+    | undefined
+    | Promise<StripeConnectWebhookVerifier | undefined>
+  /**
+   * Overrides the default BYOK checkout target. A returned target is used as-is.
+   * Null and undefined leave BYOK in place.
+   */
+  resolveStripeCheckoutTarget?: (
+    context: StripeCheckoutTargetContext
+  ) => StripeCheckoutTarget | null | undefined | Promise<StripeCheckoutTarget | null | undefined>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000
