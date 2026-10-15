@@ -329,7 +329,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const actor = { organizationId: id, userId: `qui56-${id}`, sessionId: "session" }
     await expect(confirmOnboardingV2(id, input, "signup@example.test", actor)).resolves.toMatchObject({ status: "complete" })
     expect(startTrial).toHaveBeenCalledTimes(1)
-    expect(startTrial).toHaveBeenCalledWith(id)
+    expect(startTrial).toHaveBeenCalledWith(id, { cvr: "24256790", tx: expect.objectContaining({ cvrTrialUsage: expect.anything() }) })
     expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
     await confirmOnboardingV2(id, input, "signup@example.test", actor)
     expect(startTrial).toHaveBeenCalledTimes(1)

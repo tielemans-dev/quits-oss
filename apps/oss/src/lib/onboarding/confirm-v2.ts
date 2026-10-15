@@ -75,7 +75,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
       return { status: "already_complete" as const }
     }
-    const admittedCompany = await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId })
+    const admittedCompany = await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId, tx })
     const sellerVatConfirmation = getSellerVatConfirmationService()
     if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
     if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
@@ -153,7 +153,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       })) })
     }
     // Confirmation and catalog writes are done. A failed hook still rolls the transaction back.
-    await billingProvider.startTrial?.(organizationId)
+    await billingProvider.startTrial?.(organizationId, { cvr: input.cvr, tx })
     return result
   }, { timeout: 60_000 })
   if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {

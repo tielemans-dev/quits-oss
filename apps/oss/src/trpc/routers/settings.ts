@@ -418,7 +418,7 @@ export const settingsRouter = router({
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })
           if (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase()) {
             await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
-              cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
+              cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId, tx })
           }
         }
         // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.

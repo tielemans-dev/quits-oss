@@ -1,5 +1,6 @@
 import type { CompanyLookupService } from "./company-lookup"
 export type { CompanyLookupService, CompanyLookupResult } from "./company-lookup"
+export { assertOrganizationCvrAvailable, claimCvrTrial, isCvrTrialEligible } from "./cvr-admission"
 import type { SellerVatConfirmationService } from "./seller-vat-confirmation"
 export type { SellerVatConfirmationService, SellerVatConfirmationActor, SellerVatConfirmationTransaction } from "./seller-vat-confirmation"
 import type { InvoiceIssuancePolicy, InvoiceIssuancePolicyContext } from "./invoice-issuance-policy"
@@ -27,6 +28,8 @@ export type StripeConnectWebhookVerifier = {
 
 export type RuntimeExtension = {
   id: string
+  /** Hosted runtimes opt in after resolving existing duplicate CVRs. Ignored by self-host. */
+  enforceCvrUniqueness?: boolean
   companyLookup?: CompanyLookupService
   sellerVatConfirmation?: SellerVatConfirmationService
   resolveInvoiceIssuancePolicy?: (context: InvoiceIssuancePolicyContext) => InvoiceIssuancePolicy | undefined | Promise<InvoiceIssuancePolicy | undefined>

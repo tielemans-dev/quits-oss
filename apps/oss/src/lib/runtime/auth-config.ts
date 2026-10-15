@@ -19,6 +19,7 @@ import { admitRecoveryRequest, recoveryClientKey } from "../auth/password-recove
 import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { buildDkSettingsDefaults } from "../onboarding/dk-presets"
+import { assertOrganizationCvrAvailable } from "./cvr-admission"
 import { requireOnboardingCvr } from "../onboarding/require-cvr"
 import { ac, accountant, admin, member } from "../permissions"
 
@@ -127,6 +128,7 @@ export function buildQuitsAuthOptions(input: {
         const facts = organization.metadata?.onboardingCompany
         try {
           await input.prisma.$transaction(async tx => {
+            if (facts?.cvr) await assertOrganizationCvrAvailable(tx, { cvr: facts.cvr, organizationId: organization.id, cloud: cloudDistribution })
             await tx.orgSettings.create({ data: {
               organizationId: organization.id, ...buildDkSettingsDefaults(),
               companyName: organization.name, companyAddress: facts?.address ?? null,
@@ -136,13 +138,14 @@ export function buildQuitsAuthOptions(input: {
               countryCode: "DK", isPrimary: true,
             } })
           })
-        } catch {
+        } catch (error) {
           // Settings/tax IDs rolled back; deleting the new org cascades its member.
           // Better Auth sets the active organization only after this hook succeeds.
           await input.prisma.organization.delete({ where: { id: organization.id } }).catch(() => {
             console.warn("Onboarding organization cleanup failed")
           })
-          throw new APIError("BAD_REQUEST", { code: "cvr.unavailable", message: "cvr.unavailable" })
+          const code = error instanceof Error && error.message === "cvr.alreadyRegistered" ? error.message : "cvr.unavailable"
+          throw new APIError("BAD_REQUEST", { code, message: code })
         }
       },
     },

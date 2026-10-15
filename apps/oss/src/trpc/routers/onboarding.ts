@@ -325,7 +325,7 @@ export const onboardingRouter = router({
         }
         if (isCloudDistribution && input.primaryTaxId !== undefined) {
           await requireOnboardingCvr({ cvr: input.primaryTaxId?.trim().replace(/^DK/, ""),
-            scheme: input.primaryTaxIdScheme, cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
+            scheme: input.primaryTaxIdScheme, cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId, tx })
         }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({
@@ -392,12 +392,12 @@ export const onboardingRouter = router({
             message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
           })
         }
-        await requireOnboardingCvr({
+        const company = await requireOnboardingCvr({
           cvr: snapshot.values.primaryTaxId?.replace(/^DK/, ""), cloud: true,
-          userId: ctx.user.id, organizationId: ctx.organizationId,
+          userId: ctx.user.id, organizationId: ctx.organizationId, tx,
         })
         // The provider owns durable eligibility and retries across transaction rollback.
-        await billingProvider.startTrial?.(ctx.organizationId)
+        await billingProvider.startTrial?.(ctx.organizationId, company ? { cvr: company.cvr, tx } : undefined)
         await tx.orgSettings.update({
           where: { organizationId: ctx.organizationId },
           data: {

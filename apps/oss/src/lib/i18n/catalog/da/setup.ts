@@ -1,4 +1,5 @@
 export const daSetupMessages = {
+  "cvr.alreadyRegistered": "Dette CVR-nummer tilhører allerede en organisation. Bed organisationens ejer om en invitation.",
   "cvr.invalid": "Indtast et gyldigt CVR-nummer.",
   "cvr.inactive": "CVR-nummeret skal tilhøre en aktiv virksomhed. Prøv et andet CVR-nummer.",
   "cvr.unavailable": "CVR-opslaget er ikke tilgængeligt. Prøv igen om lidt.",

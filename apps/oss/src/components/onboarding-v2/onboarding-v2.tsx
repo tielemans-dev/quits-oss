@@ -117,7 +117,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const request = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | null>(null)
+  const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | "cvr.alreadyRegistered" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
   const focusInvalid = useRef(false)
   // Long review page: after a rejected submit, take the user to the first field that needs fixing.
@@ -438,7 +438,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
       // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
       const message = error instanceof Error ? error.message : ""
-      if (message === "cvr.inactive" || message === "cvr.unavailable") {
+      if (message === "cvr.inactive" || message === "cvr.unavailable" || message === "cvr.alreadyRegistered") {
         setCvrError(message)
         reject(["cvr"])
         return

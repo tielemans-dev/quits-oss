@@ -1,10 +1,12 @@
+import type { Prisma } from "../../../generated/prisma/client"
+import { assertOrganizationCvrAvailable } from "../runtime/cvr-admission"
 import { TRPCError } from "@trpc/server"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { getCvrLookupProvider } from "../runtime/services"
 
 /** Registry checks belong to the hosted provider; self-host only checks the CVR format. */
 export async function requireOnboardingCvr(input: {
-  cvr: unknown; cloud: boolean; userId: string; organizationId?: string; scheme?: string
+  cvr: unknown; cloud: boolean; userId: string; organizationId?: string; scheme?: string; tx?: Prisma.TransactionClient
 }) {
   if (!input.cloud && (input.cvr == null || input.cvr === "")) return null
   if (input.cloud && input.scheme && !["cvr", "dk_cvr", "vat", "dk_vat"].includes(input.scheme.trim().toLowerCase())) {
@@ -27,5 +29,6 @@ export async function requireOnboardingCvr(input: {
   if (!company || company.cvr !== input.cvr || company.status !== "active" || company.statusClass !== "active") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "cvr.inactive" })
   }
+  if (input.tx && input.organizationId) await assertOrganizationCvrAvailable(input.tx, { cvr: company.cvr, organizationId: input.organizationId, cloud: input.cloud })
   return company
 }
