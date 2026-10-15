@@ -360,6 +360,7 @@ export const settingsRouter = router({
       assertSettingsCurrency(settingsInput.defaultCurrency)
       assertSettingsCurrency(settingsInput.baseCurrency)
 
+      // The registry's 10-second deadline must fit inside the atomic save.
       return prisma.$transaction(async (tx) => {
         let baseCurrency: string
         try { baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, settingsInput) }
@@ -573,7 +574,7 @@ export const settingsRouter = router({
 
         await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })
         return tx.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
-      })
+      }, { timeout: 15_000 })
     }),
 
   configureDocumentSendingDomain: authorizedProcedure("settings:update")

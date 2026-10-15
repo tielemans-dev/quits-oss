@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
 import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
+import { readSelectedCompany, stageSelectedCompany } from "../../lib/onboarding/selected-company"
 import { createOnboardingV2Client } from "../onboarding-v2/client"
 import { confirmationPayload, draftKey, newDraft, storeDraft } from "../onboarding-v2/draft"
 
@@ -12,7 +13,42 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   runtime: { prepareSellerVatConfirmation: { mutate: api.prepare } },
   onboarding: { confirmV2: { mutate: api.confirm } },
 } }))
-afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks() })
+afterEach(() => { vi.useRealTimers(); cleanup(); sessionStorage.clear(); vi.clearAllMocks() })
+
+describe("staged company verification", () => {
+  it("does not restore the staged company after the user replaces it and reloads", () => {
+    const client = { ...createOnboardingV2Client(false), get: vi.fn(() => new Promise<null>(() => {})) }
+    stageSelectedCompany("synthetic-user", "synthetic-org", { name: "Original ApS", cvr: "24256790" })
+    vi.useFakeTimers()
+    const ui = <I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={client} onComplete={() => {}} /></I18nProvider>
+    const view = render(ui)
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Replacement" } })
+    view.unmount()
+    render(ui)
+    expect(client.get).toHaveBeenCalledOnce()
+  })
+  it.each([true, false])("avoids parallel registry searches and handles verification success=%s", async success => {
+    const company = { cvr: "24256790", name: "Selected ApS", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: false } as const
+    let finish!: (value: typeof company | null) => void
+    const result = new Promise<typeof company | null>(resolve => { finish = resolve })
+    const client = { ...createOnboardingV2Client(false), get: vi.fn(() => result), search: vi.fn(async () => []) }
+    stageSelectedCompany("synthetic-user", "synthetic-org", { name: company.name, cvr: company.cvr })
+    vi.useFakeTimers()
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={client} onComplete={() => {}} /></I18nProvider>)
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+    expect(client.get).toHaveBeenCalledOnce()
+    expect(client.search).not.toHaveBeenCalled()
+    await act(async () => { finish(success ? company : null) })
+    expect(readSelectedCompany("synthetic-user", "synthetic-org")?.cvr ?? null).toBe(success ? null : company.cvr)
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
+    if (success) {
+      expect(screen.getByDisplayValue(company.name)).toBeTruthy()
+      expect(client.search).not.toHaveBeenCalled()
+    } else {
+      expect(client.search).toHaveBeenCalledWith(company.cvr, expect.any(AbortSignal))
+    }
+  })
+})
 
 describe("production v2 seller confirmation", () => {
   it.each([true, false])("offers only supported registration choices when nonVAT is %s", async nonVatEnabled => {
