@@ -11,6 +11,7 @@ import { sendReminderBatch, useReminderJobs } from "../jobs/reminder-jobs-store"
 import { Button } from "../ui/button"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
+import { handOffToTracker } from "./tracker-handoff"
 
 /** One job takes at most this many invoices (`queueReminderJob`). */
 const MAX_BATCH = 100
@@ -49,6 +50,7 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
   const [chosen, setChosen] = useState<ReadonlySet<string> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
   const sending = useRef(false)
   // One id per selection: a retry of the same click is the same request to the server.
   const request = useRef<{ key: string; id: string } | null>(null)
@@ -83,27 +85,30 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
     const next = new Set(tickedIds)
     if (!next.delete(id)) next.add(id)
     setChosen(next)
-    setError(null)
   }
 
-  async function send() {
+  function send() {
     if (sending.current || !ticked.length) return
     sending.current = true
-    setPending(true); setError(null)
+    setPending(true)
     const ids = ticked.map(({ invoice }) => invoice.id)
     const key = ids.join()
     if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() }
-    try {
-      await sendReminderBatch(ids, request.current.id)
-      dismissRef.current()
-    } catch {
-      setError(t("shell.request.overdue.error.send"))
-    } finally { sending.current = false; setPending(false) }
+    const id = request.current.id
+    const surface = root.current?.closest("[data-slot=request-card-slot]") ?? root.current
+    // The card becomes the spinner square and flies to the corner, where the tracker toast takes over.
+    // The square owns the send and any retry; the same id keeps a retry from queueing twice.
+    handOffToTracker(
+      surface!.getBoundingClientRect(),
+      () => sendReminderBatch(ids, id),
+      { failed: t("shell.request.overdue.error.send"), retry: t("reminders.tracker.retry"), close: t("reminders.tracker.dismiss") }
+    )
+    dismissRef.current()
   }
 
   const button = "transition-[color,background-color,box-shadow]"
   return (
-    <div className="space-y-4 p-4">
+    <div ref={root} className="space-y-4 p-4">
       <p {...stagger(0)} className="font-semibold">{t("shell.request.title.overdue")}</p>
       {!overdue ? (
         <p {...stagger(1)} role={error ? "alert" : undefined} className={error ? "text-sm text-destructive" : "text-muted-foreground text-sm"}>
@@ -143,12 +148,11 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
           {overdue.length > MAX_BATCH && <p className="text-muted-foreground text-sm">{t("shell.request.overdue.limit")}</p>}
         </>
       )}
-      {error && overdue && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <div {...stagger(3)} className="flex justify-end gap-2">
+            <div {...stagger(3)} className="flex justify-end gap-2">
         {/* The shadcn default animates every property; name the ones that change. */}
         <Button type="button" variant="outline" onClick={onDismiss} disabled={pending} className={button}>{t("shell.request.dismiss")}</Button>
         {overdue && overdue.length > 0 && (
-          <Button type="button" disabled={pending || !ticked.length} onClick={() => void send()} className={button}>
+          <Button type="button" disabled={pending || !ticked.length} onClick={send} className={button}>
             {pending ? t("reminders.tracker.step.sending") : t("reminders.batch.send", { count: ticked.length })}
           </Button>
         )}

@@ -7,6 +7,7 @@ import { pickTrackedJob, TRACKER_TITLE, trackerView, type StepState, type Tracke
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { retryReminderStep, useReminderJobs } from "./reminder-jobs-store"
+import { useTrackerHeld } from "./tracker-hold"
 
 const STEP_LABEL = {
   waiting: "reminders.tracker.step.waiting",
@@ -136,6 +137,7 @@ export function TrackerToast({
 /** Mounted once in the app layout: follows the newest reminder job the server reports. */
 export function ReminderTracker() {
   const jobs = useReminderJobs()
+  const held = useTrackerHeld()
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set())
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set())
   const job = pickTrackedJob(jobs, seen, dismissed)
@@ -153,7 +155,7 @@ export function ReminderTracker() {
     return () => clearTimeout(timer)
   }, [id, phase])
 
-  if (!job) return null
+  if (!job || held) return null
   return (
     <TrackerToast
       key={job.id}
