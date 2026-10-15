@@ -115,6 +115,7 @@ export const daOnboardingV2Messages = {
   "onboardingV2.field.status": "Status",
   "onboardingV2.field.country": "Land",
   "onboardingV2.field.vat": "Momsregistreret?",
+  "onboardingV2.vatUnknown": "CVR oplyser ikke momsstatus. Vælg…",
   "onboardingV2.field.rate": "Moms %",
   "onboardingV2.field.currency": "Valuta",
   "onboardingV2.field.locale": "Sprog",

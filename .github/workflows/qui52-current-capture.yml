@@ -48,7 +48,7 @@ jobs:
         run: bunx playwright install --with-deps chromium
       - name: Prepare disposable PostgreSQL
         env:
-          POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+          POSTGRES_IMAGE: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         run: |
           docker pull "$POSTGRES_IMAGE"
           docker tag "$POSTGRES_IMAGE" postgres:16-alpine

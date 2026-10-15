@@ -115,6 +115,7 @@ export const enOnboardingV2Messages = {
   "onboardingV2.field.status": "Status",
   "onboardingV2.field.country": "Country",
   "onboardingV2.field.vat": "VAT registered?",
+  "onboardingV2.vatUnknown": "CVR does not state VAT status. Choose…",
   "onboardingV2.field.rate": "VAT %",
   "onboardingV2.field.currency": "Currency",
   "onboardingV2.field.locale": "Language",

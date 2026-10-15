@@ -21,18 +21,39 @@ describe("seller VAT choice", () => {
     const notRegistered = screen.getByRole("radio", { name: no }) as HTMLInputElement
     expect(registered.checked).toBe(false)
     expect(notRegistered.checked).toBe(false)
-    expect(screen.getByText(hint).id).toBe(notRegistered.getAttribute("aria-describedby"))
+    expect(screen.queryByText(hint)).toBeNull()
+    expect(notRegistered.getAttribute("aria-describedby")).toBeNull()
     fireEvent.click(notRegistered)
     expect(notRegistered.checked).toBe(true)
     expect(registered.checked).toBe(false)
+    expect(screen.getByText(hint).id).toBe(notRegistered.getAttribute("aria-describedby"))
     fireEvent.click(registered)
     expect(registered.checked).toBe(true)
     expect(notRegistered.checked).toBe(false)
+    expect(screen.queryByText(hint)).toBeNull()
+    expect(notRegistered.getAttribute("aria-describedby")).toBeNull()
+    fireEvent.click(notRegistered)
+    expect(notRegistered.checked).toBe(true)
+    expect(registered.checked).toBe(false)
+    expect(screen.getByText(hint).id).toBe(notRegistered.getAttribute("aria-describedby"))
   })
   it.each([true, false])("restores the explicit saved choice %s", initial => {
     render(<Choice locale="en-US" initial={initial} />)
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios[0]!.checked).toBe(initial)
     expect(radios[1]!.checked).toBe(!initial)
+    expect(screen.queryByText("You invoice without moms. Register for VAT once you sell more than 50,000 kr. in 12 months.") !== null).toBe(initial === false)
+  })
+  it("hides the hint when an explicit nonregistered choice is withdrawn", () => {
+    const onChange = () => {}
+    const { rerender } = render(<I18nProvider locale="da-DK"><SellerVatStatus value={false} onChange={onChange} /></I18nProvider>)
+    const hint = "Du fakturerer uden moms. Bliv momsregistreret, når du sælger for mere end 50.000 kr. på 12 måneder."
+    expect(screen.getByText(hint)).toBeTruthy()
+    rerender(<I18nProvider locale="da-DK"><SellerVatStatus value={null} onChange={onChange} /></I18nProvider>)
+    expect(screen.queryByText(hint)).toBeNull()
+    for (const radio of screen.getAllByRole("radio") as HTMLInputElement[]) {
+      expect(radio.checked).toBe(false)
+      expect(radio.getAttribute("aria-describedby")).toBeNull()
+    }
   })
 })

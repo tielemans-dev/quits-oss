@@ -15,7 +15,7 @@
     },
     "apps/oss": {
       "name": "@quits/oss",
-      "version": "0.11.0",
+      "version": "0.12.2",
       "dependencies": {
         "@better-auth/core": "1.5.4",
         "@fontsource-variable/geist": "^5.3.0",
@@ -95,7 +95,7 @@
     },
     "packages/contracts": {
       "name": "@quits/contracts",
-      "version": "0.11.0",
+      "version": "0.12.2",
       "dependencies": {
         "zod": "^4.3.6",
       },
@@ -107,7 +107,7 @@
     },
     "packages/shared": {
       "name": "@quits/shared",
-      "version": "0.11.0",
+      "version": "0.12.2",
       "dependencies": {
         "@quits/contracts": "workspace:*",
         "decimal.js-light": "2.5.1",

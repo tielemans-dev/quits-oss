@@ -27,6 +27,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
+import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { CompanySetup } from "../../components/onboarding/company-setup"
@@ -36,6 +37,19 @@ import { AiAssistantPanel } from '../../components/onboarding/ai-assistant-panel
 import { createNamedOrganization } from '../../lib/organization-slug'
 import type { CvrLookupCompany } from '../../lib/onboarding/search-cvr'
 import { stageSelectedCompany, readSelectedCompany, clearSelectedCompany } from '../../lib/onboarding/selected-company'
+
+
+// A hung onboarding lookup must surface the retry card instead of a spinner that never ends.
+const ONBOARDING_LOOKUP_TIMEOUT_MS = 10_000
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('onboarding lookup timed out')), ms)
+    promise.then(
+      value => { clearTimeout(timer); resolve(value) },
+      error => { clearTimeout(timer); reject(error) },
+    )
+  })
+}
 
 export const Route = createFileRoute('/_app/onboarding')({
   validateSearch: loginReturnSearchSchema,
@@ -139,18 +153,45 @@ function OnboardingPageContent() {
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  // A failed availability lookup stays unknown (with a retry) instead of reading as "v2 disabled",
+  // which would let an organization created for v2 fall through to the legacy setup form.
+  const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
+  const [v2AvailabilityAttempt, setV2AvailabilityAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
-    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    // Each attempt starts unknown, so a stale success can't mount v2 after this attempt fails.
+    setV2Availability(null)
+    setV2AvailabilityFailed(false)
+    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg])
+  }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
+
+  // Before an organization exists, cvr.setupAvailable (same predicate as cvr.available) decides
+  // whether onboarding v2 applies. v2 then only needs a name to create the organization; the CVR lookup, review and
+  // confirmation happen in the v2 wizard instead of the v1 card creating a finished organization.
+  // A failed lookup stays unknown (with a retry) rather than falling back to v1.
+  const [noOrgV2, setNoOrgV2] = useState<boolean | null>(null)
+  const [noOrgV2Failed, setNoOrgV2Failed] = useState(false)
+  const [noOrgV2Attempt, setNoOrgV2Attempt] = useState(0)
+  useEffect(() => {
+    if (!isCloud || hasActiveOrg) return
+    let cancelled = false
+    setNoOrgV2Failed(false)
+    withTimeout(trpc.cvr.setupAvailable.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      .then(result => { if (!cancelled) setNoOrgV2(result?.enabled === true) })
+      .catch(() => { if (!cancelled) setNoOrgV2Failed(true) })
+    return () => { cancelled = true }
+  }, [isCloud, hasActiveOrg, noOrgV2Attempt])
 
   const [entryMode, setEntryMode] = useState<'lookup' | 'manual'>(isCloud ? 'lookup' : 'manual')
   const [lookupQuery, setLookupQuery] = useState('')
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
+  // App-side messages for the name-only and lookup forms (native browser tooltips are English-only).
+  const [manualNameError, setManualNameError] = useState<'validation.required' | null>(null)
+  const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
   const [statusLoading, setStatusLoading] = useState(isCloud && hasActiveOrg)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -175,8 +216,8 @@ function OnboardingPageContent() {
     pricesIncludeTax: false,
   })
 
-  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim())
+  const emailIssue = companyEmailIssue(values.companyEmail)
+  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() || emailIssue !== null
 
   const onboardingRules = getOnboardingRules({
     countryCode: values.countryCode,
@@ -288,10 +329,18 @@ function OnboardingPageContent() {
           }
           if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
-            try {
-              await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
-            } catch {
-              // The field already shows the current language. The next visit can store it.
+            // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
+            // draft. When capabilities are unknown, skip the write; the next visit can store it.
+            const v2Active = await withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+              .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
+              .catch(() => true)
+            if (cancelled) return
+            if (!v2Active) {
+              try {
+                await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
+              } catch {
+                // The field already shows the current language. The next visit can store it.
+              }
             }
           }
           setValues(parsed)
@@ -334,6 +383,7 @@ function OnboardingPageContent() {
     }
   }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
 
+  const [runtimeCapabilitiesFailed, setRuntimeCapabilitiesFailed] = useState(false)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) {
       setRuntimeCapabilities(null)
@@ -341,9 +391,9 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilitiesFailed(false)
 
-    trpc.runtime.capabilities
-      .query()
+    withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
       .then((capabilities) => {
         if (!cancelled) {
           setRuntimeCapabilities(
@@ -354,6 +404,7 @@ function OnboardingPageContent() {
       .catch(() => {
         if (!cancelled) {
           setRuntimeCapabilities(null)
+          setRuntimeCapabilitiesFailed(true)
           setMethod('manual')
         }
       })
@@ -361,7 +412,8 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud])
+    // The v2 retry also re-reads capabilities: v2 needs them for seller-VAT confirmation.
+  }, [hasActiveOrg, isCloud, v2AvailabilityAttempt])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -453,7 +505,8 @@ function OnboardingPageContent() {
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    if (session?.user?.id) {
+    // v2 collects and confirms company details itself; staging would save a legacy draft first.
+    if (session?.user?.id && !noOrgV2) {
       try {
         stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
       } catch {
@@ -462,7 +515,7 @@ function OnboardingPageContent() {
     }
     // Loads a new page acting for the new organization.
     const switched = await switchActiveOrganization(created.id, {
-      destination: isCloud && target ? loginReturnOnboarding(search) : returnDestination,
+      destination: isCloud && (target || noOrgV2) ? loginReturnOnboarding(search) : returnDestination,
     })
     if (switched?.error) {
       setError(switched.error.message ?? t('auth.onboarding.error'))
@@ -475,13 +528,19 @@ function OnboardingPageContent() {
     setError(null)
     setLookupMessage(null)
     setLookupCompanies([])
+    const query = lookupQuery.trim()
+    if (query.length < 3) {
+      setLookupQueryError(query ? 'validation.unknown' : 'validation.required')
+      return
+    }
+    setLookupQueryError(null)
     if (!isCloud) {
       setLookupMessage(t('auth.onboarding.lookup.unavailable'))
       return
     }
     setSubmitting(true)
     try {
-      const result = await trpc.onboarding.searchCvr.query({ q: lookupQuery.trim() })
+      const result = await trpc.onboarding.searchCvr.query({ q: query })
       setLookupCompanies(result.companies)
       setLookupMessage(result.available
         ? (result.companies.length ? null : t('auth.onboarding.lookup.empty'))
@@ -495,6 +554,11 @@ function OnboardingPageContent() {
 
   async function handleManualOrganization(e: React.FormEvent) {
     e.preventDefault()
+    if (!manualName.trim()) {
+      setManualNameError('validation.required')
+      return
+    }
+    setManualNameError(null)
     await createOrganizationFromCompanyName(manualName)
   }
 
@@ -563,7 +627,21 @@ function OnboardingPageContent() {
   }
 
   if (!hasActiveOrg) {
-    if (orgAccessLoading) {
+    if (!orgAccessLoading && isCloud && orgAccessState.kind === 'create' && noOrgV2 === null && noOrgV2Failed) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button type="button" className="w-full" onClick={() => setNoOrgV2Attempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )
+    }
+    if (orgAccessLoading || (isCloud && orgAccessState.kind === 'create' && noOrgV2 === null)) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <Card className="w-full max-w-sm">
@@ -622,19 +700,20 @@ function OnboardingPageContent() {
       )
     }
 
+    const nameOnly = entryMode === 'manual' || noOrgV2 === true
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <CardTitle className="text-2xl">
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualTitle' : 'auth.onboarding.lookup.title')}
             </CardTitle>
             <CardDescription>
-              {t(entryMode === 'manual' ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
+              {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
-          {entryMode === 'manual' ? (
-            <form onSubmit={(e) => void handleManualOrganization(e)}>
+          {nameOnly ? (
+            <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
                   <p className="text-sm text-destructive" role="alert">
@@ -648,16 +727,26 @@ function OnboardingPageContent() {
                     type="text"
                     placeholder={t('auth.onboarding.placeholder.orgName')}
                     value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
+                    onChange={(e) => {
+                      setManualName(e.target.value)
+                      if (e.target.value.trim()) setManualNameError(null)
+                    }}
                     required
+                    aria-invalid={manualNameError ? true : undefined}
+                    aria-describedby={manualNameError ? 'company-name-error' : undefined}
                   />
+                  {manualNameError && (
+                    <p id="company-name-error" className="text-sm text-destructive" role="alert">
+                      {t(manualNameError)}
+                    </p>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && <Button
+                {isCloud && !noOrgV2 && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -672,7 +761,7 @@ function OnboardingPageContent() {
               </CardFooter>
             </form>
           ) : (
-            <form className="flex flex-col gap-6" onSubmit={(e) => void handleLookup(e)}>
+            <form noValidate className="flex flex-col gap-6" onSubmit={(e) => void handleLookup(e)}>
               <CardContent className="flex flex-col gap-4">
                 {error && (
                   <p className="text-sm text-destructive" role="alert">
@@ -687,10 +776,20 @@ function OnboardingPageContent() {
                     placeholder={t('auth.onboarding.lookup.placeholder')}
                     value={lookupQuery}
                     maxLength={120}
-                    onChange={(e) => setLookupQuery(e.target.value)}
+                    onChange={(e) => {
+                      setLookupQuery(e.target.value)
+                      if (e.target.value.trim().length >= 3) setLookupQueryError(null)
+                    }}
                     required
                     minLength={3}
+                    aria-invalid={lookupQueryError ? true : undefined}
+                    aria-describedby={lookupQueryError ? 'cvr-query-error' : undefined}
                   />
+                  {lookupQueryError && (
+                    <p id="cvr-query-error" className="text-sm text-destructive" role="alert">
+                      {t(lookupQueryError)}
+                    </p>
+                  )}
                 </div>
                 {lookupMessage && (
                   <p className="text-sm text-muted-foreground" role="status">
@@ -752,6 +851,35 @@ function OnboardingPageContent() {
               {t('auth.onboarding.configured.continue')}
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
+  // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
+  const v2CapabilitiesMissing = v2Availability?.enabled === true && runtimeCapabilities === null
+  if (hasActiveOrg && ((v2Availability === null && v2AvailabilityFailed) || (v2CapabilitiesMissing && runtimeCapabilitiesFailed))) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button type="button" className="w-full" onClick={() => setV2AvailabilityAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+  if (hasActiveOrg && (v2Availability === null || v2CapabilitiesMissing)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="status">{t('auth.onboarding.loading')}</CardDescription>
+          </CardHeader>
         </Card>
       </div>
     )
@@ -833,13 +961,9 @@ function OnboardingPageContent() {
               />
             ) : null}
 
-            {hasSubmitted && invalidBusinessBasics ? (
+            {hasSubmitted && (invalidBusinessBasics || outstandingFields.length > 0) ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-                {t('auth.onboarding.validation.businessBasics')}
-              </p>
-            ) : hasSubmitted && outstandingFields.length > 0 ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-                {t('auth.onboarding.validation.required', { fields: outstandingFields.map((field) => t(`auth.onboarding.field.${field}`)).join(', ') })}
+                {t('validation.onboarding.banner')}
               </p>
             ) : null}
 
@@ -857,31 +981,43 @@ function OnboardingPageContent() {
                   <Input
                     id="companyName"
                     aria-invalid={hasSubmitted && (!values.companyName.trim())}
+                    aria-describedby={hasSubmitted && !values.companyName.trim() ? 'companyName-error' : undefined}
                     value={values.companyName}
                     onChange={(e) => updateValue('companyName', e.target.value)}
                     required
                   />
+                  {hasSubmitted && !values.companyName.trim() ? (
+                    <p id="companyName-error" className="text-sm text-destructive">{t('validation.required')}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="companyEmail">{t('auth.onboarding.field.companyEmail')}</Label>
                   <Input
                     id="companyEmail"
-                    aria-invalid={hasSubmitted && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim()))}
+                    aria-invalid={hasSubmitted && emailIssue !== null}
+                    aria-describedby={hasSubmitted && emailIssue ? 'companyEmail-error' : undefined}
                     type="email"
                     value={values.companyEmail}
                     onChange={(e) => updateValue('companyEmail', e.target.value)}
                     required
                   />
+                  {hasSubmitted && emailIssue ? (
+                    <p id="companyEmail-error" className="text-sm text-destructive">{t(emailIssue)}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <Label htmlFor="companyAddress">{t('auth.onboarding.field.companyAddress')}</Label>
                   <Input
                     id="companyAddress"
                     aria-invalid={hasSubmitted && (!values.companyAddress.trim())}
+                    aria-describedby={hasSubmitted && !values.companyAddress.trim() ? 'companyAddress-error' : undefined}
                     value={values.companyAddress}
                     onChange={(e) => updateValue('companyAddress', e.target.value)}
                     required
                   />
+                  {hasSubmitted && !values.companyAddress.trim() ? (
+                    <p id="companyAddress-error" className="text-sm text-destructive">{t('validation.required')}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="countryCode">{t('auth.onboarding.field.countryCode')}</Label>

@@ -1,5 +1,13 @@
 # PostgreSQL image acquisition in CI
 
+> **2026-10-15:** CI now pulls the same digest-pinned image from Google's Docker Hub pull-through
+> cache, `mirror.gcr.io/library/postgres`, instead of `public.ecr.aws/docker/library/postgres`.
+> Anonymous ECR Public pulls kept failing with `toomanyrequests: Data limit exceeded`. The tag and
+> multi-platform index digest are unchanged: `mirror.gcr.io` serves index
+> `sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea` for `16.15-alpine3.24`,
+> and the `@sha256` pin makes Docker reject any other bytes. No credentials or paid service.
+> References to ECR below are historical.
+
 The verify and OSS boundary service containers use the Docker Official Postgres image from Amazon
 ECR Public. The shared product browser job pre-pulls the same image and assigns the local
 `postgres:16-alpine` tag before running `apps/oss/e2e/harness.mjs`. That unchanged harness uses
@@ -15,7 +23,7 @@ or browser scenario is skipped. Development and production Docker configuration 
 ## Provenance and pin
 
 - [AWS documents Docker Official Images on ECR Public](https://aws.amazon.com/blogs/containers/docker-official-images-now-available-on-amazon-elastic-container-registry-public/).
-- Registry namespace: `public.ecr.aws/docker/library/postgres`.
+- Registry namespace: `mirror.gcr.io/library/postgres`.
 - Version tag: `16.15-alpine3.24`, the version behind `16-alpine` when checked on 2026-10-09.
 - Multi-platform index: `sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`.
 - Linux amd64 manifest: `sha256:1a66d744c1b459e13b05a8fca341da84cb63383e99ce262210efee5a319d4551`.
