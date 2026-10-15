@@ -6,7 +6,7 @@ export type ReadableIssue = {
   /** Zero-based line index for `items` issues that belong to one line. */
   line?: number
   /** The line column the issue belongs to, when it is not the line as a whole. */
-  column?: "description" | "quantity" | "unitPrice"
+  column?: "description" | "quantity" | "unitPrice" | "vat"
   key: TranslationKey
   params?: { max: number }
 }
@@ -48,7 +48,7 @@ function mapIssue(issue: RawIssue): ReadableIssue {
   const tooLong = issue.code === "too_big" && issue.origin === "string" && typeof issue.maximum === "number"
   const field: ReadableField = head === "contactId" ? "contact" : head === "dueDate" ? "dueDate" : head === "items" ? "items" : head === "notes" ? "notes" : "form"
   const line = typeof index === "number" ? index : undefined
-  const column = leaf === "description" || leaf === "quantity" || leaf === "unitPrice" ? leaf : undefined
+  const column = leaf === "description" || leaf === "quantity" || leaf === "unitPrice" || leaf === "vat" ? leaf : undefined
   const at = { field, ...(line === undefined ? {} : { line }), ...(column ? { column } : {}) }
   if (tooLong) return { ...at, key: "validation.tooLong", params: { max: issue.maximum as number } }
   if (issue.format === "email") return { field: "email", key: "validation.email.invalid" }
@@ -73,5 +73,13 @@ export function readableIssues(error: unknown): ReadableIssue[] | null {
   const message = error instanceof Error ? error.message : typeof error === "string" ? error : null
   if (message === null || !looksStructured(message)) return null
   const issues = rawIssues(message)
-  return issues && issues.length > 0 ? issues.map(mapIssue) : [UNKNOWN]
+  if (!issues || issues.length === 0) return [UNKNOWN]
+  // One value can fail several checks (format and range); each maps to the same message, so keep one.
+  const seen = new Set<string>()
+  return issues.map(mapIssue).filter((issue) => {
+    const id = [issue.field, issue.line ?? "", issue.column ?? "", issue.key, issue.params?.max ?? ""].join("|")
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 }

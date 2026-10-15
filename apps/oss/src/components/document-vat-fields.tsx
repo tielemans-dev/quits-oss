@@ -8,13 +8,15 @@ import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 
 /** Per-line classifications and document evidence. Evidence may stay incomplete in a draft. */
-export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false }: {
+export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false, lineErrorId }: {
   items: Line[]
   onItemsChange: (items: Line[]) => void
   taxRate: string
   evidence: DraftVatEvidence
   onEvidenceChange: (evidence: DraftVatEvidence) => void
   classificationReadOnly?: boolean
+  /** Id of the message describing a VAT error on this line, when there is one. */
+  lineErrorId?: (index: number) => string | undefined
 }) {
   const { t } = useI18n()
   const treatments = items.map((item) => documentVat(item, taxRate || "0").treatment)
@@ -26,11 +28,13 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
     {!classificationReadOnly && items.map((item, index) => {
       const vat = documentVat(item, taxRate || "0")
       const reasons: readonly VatReasonCode[] = vatReasonCodes[vat.treatment]
+      const errorId = lineErrorId?.(index)
+      const a11y = { "aria-invalid": errorId ? true : undefined, "aria-describedby": errorId }
       const patch = (changes: Partial<NonNullable<DocumentLineInput["vat"]>>) => onItemsChange(items.map((line, i) => i === index ? { ...line, vat: { ...vat, ...changes } } : line))
       return <div key={index} className="grid grid-cols-2 gap-2 rounded-md border p-3">
         <Label className="col-span-2 block min-w-0 whitespace-normal [overflow-wrap:anywhere]">{item.description || t("vat.line", { number: index + 1 })}</Label>
         <label className="grid gap-1 text-sm">{t("vat.treatment")}
-          <select className="h-9 rounded-md border bg-background px-2" aria-label={t("vat.lineTreatment", { number: index + 1 })} value={vat.treatment} onChange={(event) => {
+          <select className="h-9 rounded-md border bg-background px-2" aria-label={t("vat.lineTreatment", { number: index + 1 })} {...a11y} value={vat.treatment} onChange={(event) => {
             const treatment = vatTreatmentSchema.parse(event.target.value)
             patch({ treatment, rate: treatment === "standard" ? documentVat({ ...item, vat: undefined }, taxRate || "0").rate : "0", reasonCode: vatReasonCodes[treatment][0] ?? null })
           }}>
@@ -38,16 +42,16 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
           </select>
         </label>
         {vat.treatment === "standard" && <label className="grid gap-1 text-sm">{t("vat.fractionalRate")}
-          <Input aria-label={t("vat.lineRate", { number: index + 1 })} inputMode="decimal" value={vat.rate} onChange={(event) => patch({ rate: event.target.value })} />
+          <Input aria-label={t("vat.lineRate", { number: index + 1 })} {...a11y} inputMode="decimal" value={vat.rate} onChange={(event) => patch({ rate: event.target.value })} />
         </label>}
         {reasons.length > 0 && <label className="grid gap-1 text-sm">{t("vat.reason")}
-          <select className="h-9 rounded-md border bg-background px-2" value={vat.reasonCode ?? ""} aria-label={t("vat.lineReason", { number: index + 1 })} onChange={(event) => patch({ reasonCode: event.target.value as NonNullable<DocumentLineInput["vat"]>["reasonCode"] })}>
+          <select className="h-9 rounded-md border bg-background px-2" value={vat.reasonCode ?? ""} aria-label={t("vat.lineReason", { number: index + 1 })} {...a11y} onChange={(event) => patch({ reasonCode: event.target.value as NonNullable<DocumentLineInput["vat"]>["reasonCode"] })}>
             <option value="">{t("vat.chooseReason")}</option>
             {reasons.map((reason) => <option key={reason} value={reason}>{t(`vat.reason.${reason}`)}</option>)}
           </select>
         </label>}
         {vat.treatment !== "out_of_scope" && <label className="grid gap-1 text-sm">{t("vat.country")}
-          <Input maxLength={2} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
+          <Input maxLength={2} {...a11y} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
         </label>}
       </div>
     })}

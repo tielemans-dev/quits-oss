@@ -11,7 +11,7 @@ import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
@@ -259,6 +259,10 @@ function InvoiceDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
+  // Identity of the edit values; changes whenever any edited value changes, so a save can tell its answer is stale.
+  const editSnapshot = useRef<object>({})
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems])
+  editSnapshot.current = editValues
 
   // The page stays mounted when navigating to another invoice; drop answers for the previous one.
   const beginRequest = useDocumentResponseGuard(invoiceId)
@@ -352,6 +356,11 @@ function InvoiceDetailPage() {
     setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
   }
 
+  function changeEditVat(items: EditItem[]) {
+    clearIssues((issue) => issue.field === "items" && issue.column === "vat" && issue.line !== undefined && items[issue.line]?.vat !== editItems[issue.line]?.vat)
+    setEditItems(items)
+  }
+
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
     clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
@@ -371,6 +380,10 @@ function InvoiceDetailPage() {
   }
 
   function applyCatalogItemToEditItem(index: number, catalogItemId: string) {
+    // A catalog item replaces the description and unit price, so their issues no longer apply.
+    if (catalogItems.some((item) => item.id === catalogItemId)) {
+      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity" && issue.column !== "vat")
+    }
     setEditItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item
@@ -389,6 +402,7 @@ function InvoiceDetailPage() {
     }
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
+    const submitted = editSnapshot.current
     try {
       const updated = await trpc.invoices.updateV2.mutate({
         id: invoice.id,
@@ -410,8 +424,10 @@ function InvoiceDetailPage() {
       setEditing(false)
       setEditIssues([])
     } catch (err) {
+      if (!isCurrent()) return
       const issues = readableIssues(err)
-      if (issues) setEditIssues(issues)
+      // Fields edited while the save was in flight may already be fixed; a late answer must not flag them again.
+      if (issues) { if (editSnapshot.current === submitted) setEditIssues(issues) }
       else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
       setActing(false)
@@ -558,9 +574,9 @@ function InvoiceDetailPage() {
   if (editing) {
     const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
-      editIssues.filter(match).map((issue) => t(issue.key, issue.params))
+      [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
     const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
-      editIssues.some((issue) => issue.field === field && issue.line === line && (!issue.column || !column || issue.column === column))
+      editIssues.some((issue) => issue.field === field && issue.line === line && (column === "vat" ? issue.column === "vat" : !issue.column || !column || issue.column === column))
     const fieldMessage = (id: string, match: (issue: ReadableIssue) => boolean) => {
       const messages = issueMessages(match)
       return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
@@ -736,7 +752,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => hasIssue("items", index, "vat") ? `edit-line-${index}-error` : undefined} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">

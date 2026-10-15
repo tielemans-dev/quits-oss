@@ -38,8 +38,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe.each([
-  ["da-DK", { edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
-  ["en-GB", { edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
+  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
+  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
   async function openEditor() {
     render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
@@ -95,6 +95,41 @@ describe.each([
     await screen.findByText(copy.description)
     const trash = screen.getAllByRole("button").filter((button) => button.innerHTML.includes("lucide-trash"))
     fireEvent.click(trash[0])
+    expect(screen.queryByText(copy.description)).toBeNull()
+  })
+
+  it("routes VAT errors to the line's VAT controls, not its description, quantity or price", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "custom", path: ["items", 0, "vat", "country"], message: "bad country" }])))
+    fireEvent.click(await openEditor())
+    const message = await screen.findByText(copy.unknown)
+    expect(message.closest("#edit-line-0-error")).not.toBeNull()
+    for (const value of ["Work", "100"]) expect(screen.getByDisplayValue(value).getAttribute("aria-invalid")).toBeNull()
+    const treatment = screen.getByRole("combobox", { name: copy.vatTreatment })
+    expect(treatment.getAttribute("aria-invalid")).toBe("true")
+    expect(treatment.getAttribute("aria-describedby")).toBe("edit-line-0-error")
+    const country = treatment.closest("div")!.querySelectorAll("input")
+    fireEvent.change(country[country.length - 1], { target: { value: "SE" } })
+    expect(screen.queryByText(copy.unknown)).toBeNull()
+    expect(treatment.getAttribute("aria-invalid")).toBeNull()
+  })
+
+  it("shows one message when a value fails several checks", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([
+      { code: "invalid_format", path: ["items", 0, "quantity"] },
+      { code: "too_small", path: ["items", 0, "quantity"] },
+    ])))
+    fireEvent.click(await openEditor())
+    await screen.findByText(copy.qty)
+    expect(screen.getAllByText(copy.qty)).toHaveLength(1)
+  })
+
+  it("ignores a failed save's errors when the form changed while it was in flight", async () => {
+    let reject: (error: Error) => void = () => {}
+    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    fireEvent.click(await openEditor())
+    fireEvent.change(screen.getByDisplayValue("Work"), { target: { value: "Consulting" } })
+    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    await waitFor(() => expect(screen.getByRole("button", { name: copy.save }).hasAttribute("disabled")).toBe(false))
     expect(screen.queryByText(copy.description)).toBeNull()
   })
 

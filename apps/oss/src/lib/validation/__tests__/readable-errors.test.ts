@@ -26,6 +26,15 @@ describe("readableIssues", () => {
     expect(texts(zod(issue), "da")).toEqual([da])
   })
 
+  it("routes line VAT issues to the line's VAT column", () => {
+    expect(readableIssues(zod({ path: ["items", 2, "vat", "rate"], code: "custom" }))).toEqual([{ field: "items", line: 2, column: "vat", key: "validation.unknown" }])
+  })
+
+  it("keeps one issue when a value fails several checks", () => {
+    expect(texts(zod({ path: ["items", 0, "quantity"], code: "invalid_format" }, { path: ["items", 0, "quantity"], code: "too_small" }, { path: ["items", 1, "quantity"], code: "too_small" }), "en"))
+      .toEqual(["Enter a quantity, like 1 or 2.5", "Enter a quantity, like 1 or 2.5"])
+  })
+
   it("routes notes issues to the notes field", () => {
     expect(readableIssues(zod({ path: ["notes"], code: "too_big", maximum: 5000, origin: "string" }))?.[0]?.field).toBe("notes")
   })

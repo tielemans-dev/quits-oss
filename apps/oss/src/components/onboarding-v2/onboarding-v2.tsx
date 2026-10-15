@@ -338,7 +338,12 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   async function confirm(event: React.FormEvent) {
     event.preventDefault()
-    if (!draft || saving.current || (confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) return
+    if (!draft || saving.current) return
+    // The form opts out of native (English-only) browser validation, so an unanswered VAT question gets the app's own message.
+    if ((confirmationEnabled && sellerVatChoice === null) || (!nonVatEnabled && draft.values.momsRegistered === false) || draft.values.momsRegistered === null) {
+      setValidationErrors(["momsRegistered"])
+      return
+    }
     const v = draft.values
     if (
       (v.bankRegNumber || v.bankAccountNumber) &&
@@ -580,7 +585,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         </section>
       ) : null}
       {screen === "review" && draft ? (
-        <form onSubmit={(event) => void confirm(event)} className="ob-review">
+        <form noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
           {restored ? (
@@ -668,6 +673,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 aria-label={TT("field.vat")}
                 value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
                 required
+                aria-invalid={validationErrors.includes("momsRegistered") || undefined}
                 disabled={busy}
                 onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >

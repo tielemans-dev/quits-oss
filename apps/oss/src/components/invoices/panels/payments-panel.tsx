@@ -325,7 +325,7 @@ function RecordPaymentDialog({
   return (
     <Dialog open onOpenChange={(open) => (!open && !submitting ? onClose() : undefined)}>
       <DialogContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t("payments.record.title")}</DialogTitle>
             <DialogDescription>
@@ -459,7 +459,7 @@ function VoidPaymentDialog({
   return (
     <Dialog open onOpenChange={(open) => (!open && !submitting ? onClose() : undefined)}>
       <DialogContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{t("payments.void.title")}</DialogTitle>
             <DialogDescription>
