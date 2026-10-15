@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - revision: before
+          - revision: baseline
             distribution: selfhost
           - revision: after
             distribution: selfhost
@@ -31,7 +31,7 @@ jobs:
     services:
       postgres:
         # MOCK: disposable test database only. Same pinned Official Image as CI.
-        image: public.ecr.aws/docker/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        image: mirror.gcr.io/library/postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -64,19 +64,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.revision == 'before' && 'main' || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ matrix.revision == 'baseline' && 'main' || github.event.pull_request.head.sha || github.sha }}
       - name: Install the test-only baseline harness from the PR
-        if: matrix.revision == 'before'
+        if: matrix.revision == 'baseline'
         run: |
           git fetch origin "$EVIDENCE_SHA"
           git show "$EVIDENCE_SHA:apps/oss/playwright.seller-vat.config.ts" > apps/oss/playwright.seller-vat.config.ts
           git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-evidence.ts" > apps/oss/tests/e2e/seller-vat-evidence.ts
-          git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-before.spec.ts" > apps/oss/tests/e2e/seller-vat-before.spec.ts
+          git show "$EVIDENCE_SHA:apps/oss/tests/e2e/seller-vat-baseline.spec.ts" > apps/oss/tests/e2e/seller-vat-baseline.spec.ts
           git show "$EVIDENCE_SHA:apps/oss/tests/e2e/react-jsx-transform.cjs" > apps/oss/tests/e2e/react-jsx-transform.cjs
       - name: Record source revisions
         run: |
           git rev-parse HEAD > source-revision.txt
           echo "$EVIDENCE_SHA" > harness-revision.txt
+          if [ "$QUI62_EVIDENCE_REVISION" = baseline ]; then
+            echo "Current-main baseline, including merged seller VAT UI and issuance guards. Synthetic non-registered seller seeded explicitly. Not historical pre-feature evidence or proof of VAT choice through the UI." > evidence-scope.txt
+          else
+            echo "PR-head feature verification. Synthetic fixtures only; cloud captures use a test runtime extension." > evidence-scope.txt
+          fi
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
@@ -100,4 +105,5 @@ jobs:
             apps/oss/playwright-report/seller-vat
             source-revision.txt
             harness-revision.txt
+            evidence-scope.txt
           retention-days: 14

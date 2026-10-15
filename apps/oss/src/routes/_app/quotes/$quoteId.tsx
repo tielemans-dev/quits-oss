@@ -61,6 +61,7 @@ import {
 import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
 
@@ -242,7 +243,7 @@ function QuoteDetailPage() {
     setEditContactId(quote.contact.id)
     setEditExpiryDate(new Date(quote.expiryDate).toISOString().split("T")[0])
     setEditNotes(quote.notes ?? "")
-    setEditTaxRate(String(quote.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
+    setEditTaxRate(storedDocumentTaxRate(quote.items))
     const evidence = draftVatEvidenceSchema.safeParse(quote.vatEvidence ?? {})
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
   invoicePaymentTokenPayloadSchema,
+  orgStripeAccountSchema,
   paymentRecordInputSchema,
   paymentVoidInputSchema,
   publicInvoiceCheckoutResultSchema,
   publicInvoiceTokenInputSchema,
   settlementEvidenceSchema,
+  stripeAccountStatusSchema,
 } from "./payments"
 
 describe("payments contracts", () => {
@@ -49,6 +51,34 @@ describe("payments contracts", () => {
   it("requires a reason to void a payment", () => {
     expect(paymentVoidInputSchema.safeParse({ paymentId: "pay_1", reason: "  " }).success).toBe(false)
     expect(paymentVoidInputSchema.safeParse({ paymentId: "pay_1", reason: "Bounced" }).success).toBe(true)
+  })
+})
+
+describe("stripe account contract", () => {
+  it("accepts connect and byok account views and rejects unknown status", () => {
+    expect(
+      orgStripeAccountSchema.parse({
+        mode: "connect",
+        accountId: "acct_test",
+        status: "active",
+        statusAt: "2026-10-12T12:00:00.000Z",
+      })
+    ).toEqual({
+      mode: "connect",
+      accountId: "acct_test",
+      status: "active",
+      statusAt: "2026-10-12T12:00:00.000Z",
+    })
+    expect(
+      orgStripeAccountSchema.parse({
+        mode: "byok",
+        accountId: null,
+        status: "none",
+        statusAt: null,
+      }).mode
+    ).toBe("byok")
+    expect(stripeAccountStatusSchema.safeParse("disabled").success).toBe(false)
+    expect(orgStripeAccountSchema.safeParse({ mode: "direct", accountId: null, status: "none", statusAt: null }).success).toBe(false)
   })
 })
 

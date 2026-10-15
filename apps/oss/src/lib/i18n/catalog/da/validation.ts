@@ -1,0 +1,17 @@
+export const daValidationMessages = {
+  "validation.required": "Udfyld feltet",
+  "validation.customer.required": "Vælg en kunde",
+  "validation.email.invalid": "Indtast en gyldig e-mail, fx navn@firma.dk",
+  "validation.email.required": "Indtast en e-mail",
+  "validation.line.description.required": "Beskriv, hvad du fakturerer for",
+  "validation.line.qty.invalid": "Indtast et antal, fx 1 eller 2,5",
+  "validation.line.price.invalid": "Indtast en pris, fx 1250,00",
+  "validation.lines.empty": "Tilføj mindst én linje",
+  "validation.date.invalid": "Indtast en dato, fx 24.10.2026",
+  "validation.dueDate.beforeIssue": "Forfaldsdatoen skal ligge efter fakturadatoen",
+  "validation.cvr.invalid": "Et CVR-nummer har 8 cifre",
+  "validation.tooLong": "Højst {max} tegn",
+  "validation.unknown": "Tjek feltet og prøv igen",
+  "validation.onboarding.banner": "Udfyld de markerede felter for at gøre din profil klar til fakturering.",
+  "validation.save.failed": "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik.",
+} as const

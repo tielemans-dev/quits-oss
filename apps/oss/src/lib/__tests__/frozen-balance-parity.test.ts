@@ -16,6 +16,9 @@ vi.mock("../db", () => ({
 vi.mock("../payments/stripe", async importOriginal => ({
   ...(await importOriginal<typeof import("../payments/stripe")>()),
   getStripePaymentCredentials: () => ({ secretKey: "sk_test", publishableKey: "pk_test", webhookSecret: "wh" }),
+  // The BYOK default reads credentials inside the module, so mocking the export above does not
+  // reach it. Resolve the checkout target directly, as an org with its own Stripe keys would.
+  resolveStripeCheckoutTarget: async () => ({ kind: "byok", secretKey: "sk_test", webhookSecret: "wh" }),
   expireOpenStripeCheckoutSession: vi.fn(),
   createStripeInvoiceCheckoutSession: mocks.create,
 }))

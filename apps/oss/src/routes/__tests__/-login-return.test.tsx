@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '../../lib/i18n/react'
-import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget } from '../../lib/login-return'
+import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, onboardingShellLanguage } from '../../lib/login-return'
 
 const state = vi.hoisted(() => ({
   search: {} as Record<string, string>, cloud: false, active: false,
@@ -26,7 +26,7 @@ vi.mock('../../lib/auth-client', () => ({
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
-  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) } },
+  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) }, setupAvailable: { query: async () => ({ enabled: false }) } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
 import { Route as LoginRoute } from '../login'
@@ -134,6 +134,55 @@ describe('login return contract', () => {
   })
 })
 
+describe('first login after sign-out (QUI-76)', () => {
+  it('does not navigate into a bounce while the server cannot see the new session', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ error: { status: 401 } })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain("couldn't confirm the session"), { timeout: 4000 })
+    expect(state.load).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Log in' })).toHaveProperty('disabled', false)
+  })
+
+  it('continues once the session becomes visible on a retry', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    state.list.mockResolvedValueOnce({ error: { status: 401 } }).mockResolvedValue({ data: [orgs[0]] })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalledWith('/'), { timeout: 4000 })
+  })
+
+  it('does nothing more after the page is left while the session is still settling', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    let release!: () => void
+    state.list.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ data: [orgs[0]] }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.list).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.setActive).not.toHaveBeenCalled()
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
+  it('does not load a page after leaving during the organization switch', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] })
+    let release!: () => void
+    state.setActive.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ error: { message: 'no' } }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.setActive).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
+  it('keeps the form locked while the page load is on its way', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] }); state.setActive.mockResolvedValue({ data: {} })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Logging in…' })).toHaveProperty('disabled', true)
+  })
+})
+
 describe('return after required organization flow', () => {
   for (const cloud of [false, true]) for (const create of [false, true]) {
     it(`returns after ${create ? 'create' : 'choose'} in ${cloud ? 'cloud' : 'selfhost'}, retaining cloud setup`, async () => {
@@ -207,5 +256,16 @@ describe('return after required organization flow', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Afslut opsætning' }).closest('form')!)
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?tab=vat&lang=da'))
     expect(state.complete).toHaveBeenCalledWith({ method: 'manual' })
+  })
+})
+
+describe('onboarding shell language (QUI-56)', () => {
+  it('gives the app shell the language onboarding was opened with, and only on onboarding', () => {
+    expect(onboardingShellLanguage('/onboarding', { lang: 'da' })).toBe('da')
+    expect(onboardingShellLanguage('/onboarding/', { lang: 'en', next: '/invoices' })).toBe('en')
+    expect(onboardingShellLanguage('/onboarding', {})).toBeUndefined()
+    expect(onboardingShellLanguage('/onboarding', { lang: 'xx' })).toBeUndefined()
+    expect(onboardingShellLanguage('/invoices', { lang: 'da' })).toBeUndefined()
+    expect(onboardingShellLanguage('/onboardingx', { lang: 'da' })).toBeUndefined()
   })
 })

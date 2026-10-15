@@ -1,5 +1,6 @@
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
+import { LocalizedDateField } from "../localized-date-field"
 import { useI18n } from "../../lib/i18n/react"
 
 export type IssuanceValues = { supplyDate: string; exchangeRate: string; rateDate: string }
@@ -10,9 +11,9 @@ export function issuanceInput(value: IssuanceValues, currency: string, baseCurre
 export function IssuanceFields({ value, onChange, currency, baseCurrency }: {
   value: IssuanceValues; onChange: (value: IssuanceValues) => void; currency: string; baseCurrency?: string;
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   return <div className="grid gap-3">
-    <div className="grid gap-2"><Label htmlFor="supplyDate">{t("invoices.issuance.supplyDate")}</Label><Input id="supplyDate" type="date" required value={value.supplyDate} onChange={event => onChange({ ...value, supplyDate: event.target.value })} /></div>
+    <div className="grid gap-2"><Label htmlFor="supplyDate">{t("invoices.issuance.supplyDate")}</Label><LocalizedDateField id="supplyDate" required value={value.supplyDate} locale={locale} placeholder={t("docForm.selectDate")} clearLabel={t("docForm.clear")} onChange={supplyDate => onChange({ ...value, supplyDate })} /></div>
     <p className="text-sm text-muted-foreground">{t("invoices.issuance.confirmDates")}</p>
     {baseCurrency && currency !== baseCurrency && <>
       <div className="grid gap-2"><Label htmlFor="exchangeRate">{t("invoices.issuance.rate", { currency, baseCurrency })}</Label><Input id="exchangeRate" inputMode="decimal" required value={value.exchangeRate} onChange={event => onChange({ ...value, exchangeRate: event.target.value })} /></div>

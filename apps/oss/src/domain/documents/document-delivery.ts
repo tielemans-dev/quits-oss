@@ -10,6 +10,7 @@ import {
 } from "../delivery/outbox"
 import { pendingCandidate, publishCandidate, retireCandidate } from "./artifacts"
 import { InvalidState } from "../errors"
+import { releaseInvoiceNumber } from "./numbering"
 import { Command } from "../services"
 
 /**
@@ -148,6 +149,10 @@ for (const kind of Object.keys(config) as DocumentKind[]) {
           }),
         })
         if (count === 0) return []
+        // The send took this number and never issued the invoice; give it back so the series has no gap.
+        if (kind === "invoice" && mode === "send" && target.numberTaken) {
+          await releaseInvoiceNumber(tx, organizationId, target.documentId, target.number)
+        }
         await retireCandidate(tx, target, organizationId)
         return [
           {
@@ -192,6 +197,8 @@ export const queueDocumentEmail = <Row>(input: {
   message: StoredEmailMessage
   /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
   idempotencyKey: string
+  /** For `send`: this send allocated `document.number`, so a refused email may give it back. */
+  numberTaken?: boolean
   /** For `send`: the public link date the emailed link was signed with. */
   publicLinkIssuedAt?: Date | null
   markSending: (data: ReturnType<typeof createEmailDeliveryAttempt>) => Promise<Row>
@@ -219,6 +226,7 @@ export const queueDocumentEmail = <Row>(input: {
           documentId: input.document.id,
           attemptAt: now.toISOString(),
           number: input.document.number ?? "",
+          ...(input.numberTaken ? { numberTaken: "1" } : {}),
           recipient: input.recipient,
           ...(input.publicLinkIssuedAt ? { publicLinkIssuedAt: input.publicLinkIssuedAt.toISOString() } : {}),
         },
