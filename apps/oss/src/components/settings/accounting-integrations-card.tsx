@@ -22,7 +22,8 @@ const UNSUPPORTED = /^(unsupported_|advances_|applications_|purpose_|event_not_s
 /** Plain-language reason for a stored delivery error code. Unknown codes never leak to the screen. */
 export function describeAccountingError(code: string | null, provider: string, t: Translate) {
   const params = { provider }
-  if (code === "missing_mapping" || code === "transport_error" || code === "reconciliation_required" || code === "attempts_exhausted") return t(`accounting.deliveryError.${code}`, params)
+  if (code === "missing_mapping" || code === "transport_error" || code === "reconciliation_required" || code === "attempts_exhausted" ||
+      code === "payload_totals_mismatch" || code === "provider_totals_mismatch" || code === "source_review_required") return t(`accounting.deliveryError.${code}`, params)
   if (code && UNSUPPORTED.test(code)) return t("accounting.deliveryError.unsupported")
   const status = /^http_(\d{3})$/.exec(code ?? "")?.[1]
   if (status === "401" || status === "403") return t("accounting.deliveryError.unauthorized", params)

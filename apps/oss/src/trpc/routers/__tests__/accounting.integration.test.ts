@@ -30,7 +30,7 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     const connections = { find: async () => ({ key: "generation-1", mappingRevision: "1", provider: dineroProvider,
       settings: async () => ({ contactGuid: guid, documentGuid: guid, invoiceLinks: {}, vatMappings: { [invoice.vatGroups[0]!.key]: { accountNumber: 1000 } } }),
       request: (prepared: Extract<ReturnType<typeof dineroProvider.map>, { status: "prepared" }>) => prepared.payload }) }
-    const run = () => deliverAccounting({ organizationId: org.organizationId, connections, transport: { send: async () => ({ status: 201, externalRef: "remote-draft" }), reconcile: async () => ({ status: "absent" as const }) } })
+    const run = () => deliverAccounting({ organizationId: org.organizationId, connections, transport: { send: async () => ({ status: 201, externalRef: "remote-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } }), reconcile: async () => ({ status: "absent" as const }) } })
     return { org, scope, first, admin, run }
   }
 

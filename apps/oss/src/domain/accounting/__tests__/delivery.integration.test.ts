@@ -31,7 +31,7 @@ describeDb("accounting delivery", () => {
         depositAccountNumber: 55000, paymentDate: "2026-10-08", baseAmount: "1.25", settlement: "gross_no_fees" } }
     const connection = { key: "generation-1", mappingRevision: "1", provider: dineroProvider,
       settings: vi.fn(async () => settings), request: (payload: ReturnType<typeof dineroProvider.map> & { status: "prepared" }) => payload.payload }
-    const transport: AccountingTransport = { send: vi.fn(async () => ({ status: 201, externalRef: "remote-draft" })),
+    const transport: AccountingTransport = { send: vi.fn(async (request: Parameters<AccountingTransport["send"]>[0]) => ({ status: 201, externalRef: "remote-draft", totals: request.expectedTotals })),
       reconcile: vi.fn(async () => ({ status: "absent" as const })) }
     const connections = { find: vi.fn(async () => connection) }
     const now = new Date()
@@ -63,6 +63,19 @@ describeDb("accounting delivery", () => {
     expect(await f.row()).toMatchObject({ status: "done", attempts: 2, error: null })
     expect(vi.mocked(f.transport.send).mock.calls[0][0]).toEqual(vi.mocked(f.transport.send).mock.calls[1][0])
     expect(f.transport.reconcile).toHaveBeenCalledTimes(1)
+  })
+  it("persists source evidence and provider discrepancies, then refuses changed-source retries", async () => {
+    const f = await setup()
+    vi.mocked(f.transport.send).mockResolvedValueOnce({ status: 201, externalRef: "voucher-42", totals: { net: "1", tax: "0.24", gross: "1.24" } })
+    expect(await f.run()).toBe("failed")
+    const row = await f.row()
+    expect(row).toMatchObject({ externalRef: "voucher-42", response: { totals: { tax: "0.24" } },
+      evidence: { source: { payload: f.event.payload } }, error: { code: "provider_totals_mismatch" } })
+    await prisma.domainEvent.update({ where: { id: f.event.id }, data: { payload: { ...invoiceFixture(), number: "Changed" } } })
+    await prisma.eventConsumerDelivery.update({ where: { id: row.id }, data: { status: "pending", attempts: 0 } })
+    expect(await f.run()).toBe("failed")
+    expect(await f.row()).toMatchObject({ error: { code: "source_review_required" }, prepared: row.prepared, response: row.response })
+    expect(f.transport.send).toHaveBeenCalledTimes(1)
   })
   it("reconciles pinned requests even after an admin resets the attempt budget", async () => {
     const f = await setup()
@@ -107,7 +120,7 @@ describeDb("accounting delivery", () => {
     expect(await f.run()).toBe("pending")
     const row = await f.row()
     expect(row.error).toEqual({ code: "transport_error" })
-    vi.mocked(f.transport.reconcile).mockResolvedValueOnce({ status: "delivered", externalRef: "recovered" })
+    vi.mocked(f.transport.reconcile).mockResolvedValueOnce({ status: "delivered", externalRef: "recovered", totals: { net: "1", tax: "0.25", gross: "1.25" } })
     expect(await f.run(row.availableAt)).toBe("delivered")
     expect(f.transport.send).toHaveBeenCalledTimes(1)
     expect(await f.row()).toMatchObject({ externalRef: "recovered", attempts: 2 })
@@ -150,10 +163,10 @@ describeDb("accounting delivery", () => {
       const row = await f.row()
       expect(await f.run(new Date(f.now.getTime() + 1))).toBe("idle")
       await prisma.eventConsumerDelivery.update({ where: { id: row.id }, data: { claimToken: "other-worker", leaseUntil: f.now, attempts: 5 } })
-      return { status: 201, externalRef: "accepted" }
+      return { status: 201, externalRef: "accepted", totals: { net: "1", tax: "0.25", gross: "1.25" } }
     })
     expect(await f.run()).toBe("stale")
-    vi.mocked(f.transport.reconcile).mockResolvedValueOnce({ status: "delivered", externalRef: "accepted" })
+    vi.mocked(f.transport.reconcile).mockResolvedValueOnce({ status: "delivered", externalRef: "accepted", totals: { net: "1", tax: "0.25", gross: "1.25" } })
     expect(await f.run(new Date(f.now.getTime() + 120001))).toBe("delivered")
     expect(await f.row()).toMatchObject({ status: "done", attempts: 6, externalRef: "accepted" })
     expect(f.transport.send).toHaveBeenCalledTimes(1)

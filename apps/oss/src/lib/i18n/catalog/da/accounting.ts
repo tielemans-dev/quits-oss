@@ -41,4 +41,7 @@ export const daAccountingMessages = {
   "accounting.deliveryError.unauthorized": "{provider} afviste godkendelsen.",
   "accounting.deliveryError.http": "{provider} afviste forespørgslen (HTTP {status}).",
   "accounting.deliveryError.unknown": "Leveringen mislykkedes.",
+  "accounting.deliveryError.payload_totals_mismatch": "Beløbene i regnskabsdataene afviger fra kildedokumentet. Intet blev sendt. Gennemgå denne levering.",
+  "accounting.deliveryError.provider_totals_mismatch": "Regnskabsprogrammet oplyste andre beløb. Gennemgå dokumentet i regnskabsprogrammet, før du prøver igen.",
+  "accounting.deliveryError.source_review_required": "Kildedokumentet er ændret, eller dokumentationen fra første forsøg mangler. Gennemgå denne levering, før den sendes.",
 } as const
