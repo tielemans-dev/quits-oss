@@ -1,3 +1,12 @@
+import { FlowPreview } from "../../../components/invoices/flow-preview"
+import { useInvoiceMorph, type InvoiceFlowKind } from "../../../components/invoices/flow"
+import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
+import { Amount } from "../../../components/kvit/amount"
+import { decimalFromNumber } from "../../../components/kvit/amount-format"
+import { parseRequest } from "../../../lib/request-parser"
+import { invoiceDueDate } from "../../../hooks/use-invoice-due-date"
+import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
+import { Switch } from "../../../components/ui/switch"
 import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggle"
 import type { FieldIssue } from "@quits/contracts/agent"
 import { InvoiceLinesEditor } from "../../../components/invoices/lines-editor"
@@ -59,7 +68,7 @@ type LineItem = {
   catalogItemId?: string
 }
 
-function NewInvoicePage() {
+export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onCancel?: () => void; onComplete?: (target: CreatedDocumentTarget) => void; kind?: InvoiceFlowKind } = {}) {
   const { t, locale } = useI18n()
   const bankNudge = useFirstInvoiceBankNudge()
   // Opened from the request card with its invoice; "Tilbage til forslaget" takes the edited invoice back.
@@ -71,7 +80,12 @@ function NewInvoicePage() {
   const [pricesIncludeTax, setPricesIncludeTax] = useState(handed?.pricesIncludeTax ?? false)
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  const [reminders, setReminders] = useState(true)
+  const [paymentMethods, setPaymentMethods] = useState<("bank_transfer" | "card")[]>(["bank_transfer"])
+  const [settings, setSettings] = useState<Awaited<ReturnType<typeof trpc.settings.get.query>> | null>(null)
+  useEffect(() => { void Promise.resolve().then(() => trpc.settings.get.query()).then(value => { setSettings(value); setPaymentMethods(value.stripePaymentsEnabled ? ["bank_transfer", "card"] : ["bank_transfer"]) }).catch(() => {}) }, [])
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const previewSurface = useInvoiceMorph(confirmOpen)
   const submitPending = useRef(false)
   // Recipient version shown in the open send confirmation; create refuses it if the contact changed since.
   const [recipientReview, setRecipientReview] = useState<{ recipient: string | null; recipientVersion: string | null } | null>(null)
@@ -178,6 +192,7 @@ function NewInvoicePage() {
   function validateForm(sendImmediately = false, effectiveBaseCurrency = baseCurrency) {
     const issues: FieldIssue[] = []
     const add = (code: string, field: string) => issues.push({ code, field, params: {} })
+    if (paymentMethods.length === 0) { setError(t("invoices.flow.paidVia")); return false }
     if (!contactId) add("customer.required", "contactId")
     if (!dueDate) add("required", "dueDate")
     if (!issuance.supplyDate) add("required", "supplyDate")
@@ -228,6 +243,19 @@ function NewInvoicePage() {
   const taxAmount = Number(preview.result?.tax ?? "0")
   const total = Number(preview.result?.gross ?? "0")
 
+  function compose() {
+    const terms = /(?:betaling|netto|payment)\s+(\d{1,3})\s*(?:dage|days)?/i.exec(aiPrompt)
+    const prompt = aiPrompt.replace(terms?.[0] ?? /$^/, "").replace(/[, ]+$/, "")
+    const draft = parseRequest(/^(fakturer|faktura til)/i.test(prompt) ? prompt : `faktura til ${prompt.replace(/,/, " ")}`, { customers: contacts, catalogItems })
+    if (draft?.customer?.status === "matched") {
+      setContactId(draft.customer.candidates[0]!.id)
+      if (draft.items.length) setItems(draft.items.map(line => ({ description: line.description || draft.remainder, quantity: localizeInvoiceQuantity(line.quantity ?? "1", locale), unitPrice: line.unitPrice ?? "0", catalogItemId: line.catalogItemId })))
+      if (aiDraftAvailable && draft.items.some(line => !line.unitPrice)) void handleGenerateInvoiceDraftFromAi()
+      if (terms && Number(terms[1]) <= 120) setDueDate(invoiceDueDate(Number(terms[1]), settings?.timezone ?? "UTC"))
+      setAiInfo(t("invoices.flow.parseHelp"))
+    } else if (aiDraftAvailable) void handleGenerateInvoiceDraftFromAi()
+    else setAiInfo(t("invoices.flow.parseHelp"))
+  }
   async function handleGenerateInvoiceDraftFromAi() {
     setAiError(null)
     setAiInfo(null)
@@ -253,17 +281,9 @@ function NewInvoicePage() {
         return
       }
 
-      if (draft.dueDate) {
-        setDueDate(draft.dueDate)
-      }
-      if (draft.notes) {
-        setNotes(draft.notes)
-      }
-      // A policy-fixed rate stays; a model-supplied rate only applies where the user can see and correct it.
-      if (typeof draft.taxRate === "number" && !readiness?.standardVatRate) {
-        taxRateEdited.current = true
-        setTaxRate(String(draft.taxRate))
-      }
+      if (!onComplete && draft.dueDate) setDueDate(draft.dueDate)
+      if (!onComplete && typeof draft.taxRate === "number" && !readiness?.standardVatRate) { taxRateEdited.current = true; setTaxRate(String(draft.taxRate)) }
+      if (draft.notes) setNotes(draft.notes)
       if (draft.items.length > 0) {
         setItems(
           draft.items.map((item) => ({
@@ -326,24 +346,30 @@ function NewInvoicePage() {
     submitPending.current = true
     setSaving(true)
     try {
+      if (kind === "recurring") {
+        const schedule = await trpc.recurring.createV2.mutate({ name: contacts.find(contact => contact.id === contactId)?.name ?? "", contactId, items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate, vatEvidence, notes, startDate: issuance.supplyDate, intervalCount: 1, intervalUnit: "month", dueInDays: Math.max(0, Math.min(120, Math.round((Date.parse(dueDate) - Date.parse(issuance.supplyDate)) / 86400000))), autoSend: false, end: { type: "none" } })
+        if (onComplete) onComplete({ id: schedule.id, kind: "recurring" }); else void navigate({ to: "/recurring" })
+        return
+      }
       let settingsRequested = false
       const target = await submitInvoice(
         {
-          contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency,
+          contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency, ...(onComplete ? { paymentMethods, remindersPaused: !reminders } : {}),
           items: items.map(item => normalizeInvoiceQuantity(item, locale)),
         },
         {
           sendImmediately,
           reviewedRecipient: recipientReview?.recipientVersion ?? undefined,
           beforeSend: async () => {
-            setConfirmOpen(false)
-            return bankNudge.beforeSend(() => { settingsRequested = true })
+            if (!onComplete) setConfirmOpen(false)
+            return bankNudge.beforeSend(() => { settingsRequested = true }).then(proceed => { if (onComplete && !proceed) settingsRequested = true; return proceed })
           },
           t,
         }
       )
 
-      if (settingsRequested) return
+      if (settingsRequested) { if (onComplete) onComplete({ ...target, kind: "draft" }); return }
+      if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
       navigate({
         to: "/invoices/$invoiceId",
         params: { invoiceId: target.id },
@@ -360,10 +386,10 @@ function NewInvoicePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl">
+    <div className={`${onComplete ? "invoice-workspace" : "max-w-5xl"} p-4 sm:p-6 ${confirmOpen && onComplete ? "invoice-workspace-review" : ""}`}>
       {bankNudge.dialog}
       {handed && <Button type="button" variant="link" className="mb-2 px-0" onClick={backToRequest}><ArrowLeft className="size-4" />{t("invoices.new.backToRequest")}</Button>}
-      <Card>
+      <Card className="invoice-form">
         <CardHeader>
           <CardTitle>{t("invoices.new.title")}</CardTitle>
         </CardHeader>
@@ -377,32 +403,34 @@ function NewInvoicePage() {
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="aiPrompt">{t("invoices.new.ai.label")}</Label>
-            <Textarea
+            <Label htmlFor="aiPrompt">{t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}</Label>
+            <input
+              className="w-full rounded-md border bg-transparent px-3 py-2 text-base"
+              aria-label={t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}
+              onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (onComplete) compose(); else if (aiDraftAvailable) void handleGenerateInvoiceDraftFromAi() } }}
               id="aiPrompt"
               value={aiPrompt}
               onChange={(event) => setAiPrompt(event.target.value)}
-              rows={4}
               placeholder={t("invoices.new.ai.placeholder")}
             />
             <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleGenerateInvoiceDraftFromAi}
-                disabled={aiGenerating || loadingAiCapabilities || !aiDraftAvailable}
+                onClick={onComplete ? compose : handleGenerateInvoiceDraftFromAi}
+                disabled={aiGenerating || (onComplete ? loadingContacts : loadingAiCapabilities || !aiDraftAvailable)}
               >
                 <Sparkles className="size-4" />
                 {aiGenerating
                   ? t("invoices.new.ai.action.generating")
-                  : t("invoices.new.ai.action.generate")}
+                  : t(onComplete ? "invoices.flow.apply" : "invoices.new.ai.action.generate")}
               </Button>
-              {loadingAiCapabilities && (
+              {!onComplete && loadingAiCapabilities && (
                 <p className="text-xs text-muted-foreground">
                   {t("invoices.new.ai.availability.checking")}
                 </p>
               )}
-              {!loadingAiCapabilities &&
+              {!onComplete && !loadingAiCapabilities &&
                 !aiDraftAvailable && (
                   <p className="text-xs text-muted-foreground">
                     {t("invoices.new.ai.availability.disabled")}
@@ -458,7 +486,12 @@ function NewInvoicePage() {
             </div>
           </div>
 
-          <PriceBasisToggle value={pricesIncludeTax} onChange={value => { priceBasisEdited.current = true; setPricesIncludeTax(value) }} />
+          {kind === "recurring" && <p>{t("invoices.flow.schedule", { date: formatDate(issuance.supplyDate, locale), day: new Date(`${issuance.supplyDate}T00:00:00Z`).getUTCDate() })}</p>}
+          {onComplete && kind !== "recurring" && <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-medium">{t("invoices.flow.paidVia")}</legend>
+            {(["bank_transfer", "card"] as const).map(method => <label key={method} className="flex justify-between gap-3 text-sm">{t(method === "bank_transfer" ? "payments.method.bank_transfer" : "payments.method.card")}<Switch checked={paymentMethods.includes(method)} disabled={method === "card" && !settings?.stripePaymentsEnabled} onCheckedChange={checked => setPaymentMethods(current => checked ? [...current, method] : current.filter(value => value !== method))} /></label>)}
+            {!settings?.stripePaymentsEnabled && <><label className="flex justify-between text-sm">{t("invoices.flow.mobilePay")}<Switch disabled checked={false} /></label><p className="text-xs text-muted-foreground">{t("invoices.flow.connectStripe")}</p></>}
+          </fieldset>}
+          {kind !== "recurring" && <PriceBasisToggle value={pricesIncludeTax} onChange={value => { priceBasisEdited.current = true; setPricesIncludeTax(value) }} />}
           <InvoiceLinesEditor items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} catalogItems={catalogItems} onCatalogItem={applyCatalogItem} onAdd={addItem} onRemove={removeItem}
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
             amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
@@ -481,7 +514,7 @@ function NewInvoicePage() {
               </div>
               <div className="flex justify-between font-semibold border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span className="num">{preview.result ? formatCurrencyIntl(total, currency, locale) : "—"}</span>
+                <Amount value={preview.result ? decimalFromNumber(total, currency) : null} currency={currency} locale={locale} />
               </div>
             </div>
           </div>
@@ -502,7 +535,7 @@ function NewInvoicePage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate({ to: "/invoices" })}
+            onClick={() => onCancel ? onCancel() : navigate({ to: "/invoices" })}
           >
             {t("docForm.action.cancel")}
           </Button>
@@ -523,14 +556,19 @@ function NewInvoicePage() {
           >
             {saving
               ? t("docForm.action.saving")
-              : t("docForm.action.saveSend")}
+              : t(onComplete ? "invoices.flow.review" : "docForm.action.saveSend")}
           </Button>
         </CardFooter>
       </Card>
-      <SendConfirmation open={confirmOpen} onOpenChange={setConfirmOpen}
-        recipient={recipientReview?.recipient ?? ""}
-        amount={formatCurrencyIntl(total, currency, locale)} dueDate={dueDate ? formatDate(dueDate, locale) : ""} pending={saving}
-        onConfirm={() => { void handleSubmit(true) }} />
+      {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
+      {confirmOpen && onComplete && <div className="invoice-review-bar flex flex-wrap items-center justify-end gap-3 border-t bg-panel p-4">
+        <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
+        {kind !== "recurring" && <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>}
+        <Button variant="outline" onClick={() => setConfirmOpen(false)}>{t("invoices.detail.action.edit")}</Button>
+        <Button autoFocus disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("recurring.form.create") : t("invoiceSend.confirm")}</Button>
+      </div>}
+
+      {!onComplete && <SendConfirmation open={confirmOpen} onOpenChange={setConfirmOpen} recipient={recipientReview?.recipient ?? ""} amount={formatCurrencyIntl(total, currency, locale)} dueDate={dueDate ? formatDate(dueDate, locale) : ""} pending={saving} onConfirm={() => { void handleSubmit(true) }} />}
     </div>
   )
 }

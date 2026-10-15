@@ -5,6 +5,8 @@
  */
 export type CreatedDocumentTarget = {
   id: string
+  kind?: "invoice" | "recurring" | "link" | "draft"
+  paymentUrl?: string
   emailWarning?: string
   sendError?: string
 }

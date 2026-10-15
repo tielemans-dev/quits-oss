@@ -1,3 +1,4 @@
+import { invoiceAllowsPayment } from "../../lib/payments/invoice-methods"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { resolveCountryProfile } from "../../lib/compliance"
@@ -153,6 +154,8 @@ export const buildInvoiceDraft = (
           complianceStatus: compliance.status,
           complianceErrors: compliance.issues,
           notes: input.notes,
+          paymentMethods: toNullableJsonInput(input.paymentMethods),
+          remindersPaused: input.remindersPaused ?? false,
           purchaseOrderRef: input.purchaseOrderRef,
           ...(origin
             ? {
@@ -407,7 +410,7 @@ export const sendInvoice = defineCommand({
         : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
       const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate,
-        paymentAvailable: resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(withInvoicePaymentDetails(seller, settings)) }
+        paymentAvailable: (invoiceAllowsPayment(found.paymentMethods, "card") && resolveInvoiceEmailContext(settings).stripeConfigured) || hasInvoiceBankTransfer(withInvoicePaymentDetails(seller, settings, found.locale, found.paymentMethods)) }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)
       yield* requireVatIssuance(effective)
       // Validate the effective identity before taking a number or queuing any side effects.
@@ -436,7 +439,7 @@ export const sendInvoice = defineCommand({
       const bankTransfer = frozenInput?.kind === "invoice"
         ? hasInvoiceBankTransfer({ bankAccount: frozenInput.pdf.invoice.bankAccount })
         : false
-      const paymentLinkAvailable = emailContext.stripeConfigured || bankTransfer
+      const paymentLinkAvailable = (invoiceAllowsPayment(invoice.paymentMethods, "card") && emailContext.stripeConfigured) || bankTransfer
       const recipient = yield* requireRecipientEmail(invoice.contact)
 
       if (!emailContext.emailDelivery.available) {
@@ -555,6 +558,7 @@ export const resendInvoiceEmail = defineCommand({
         paymentState: getInvoicePaymentState(invoice),
         balanceDue: computeSettlement(invoice).balanceDue,
         currency: invoice.currency,
+        paymentMethods: invoice.paymentMethods,
       })))
       yield* requireResendPaymentDetails(command.organizationId, invoice, frozenBankTransfer || cardOffered)
       const recipient = yield* requireRecipientEmail(invoice.contact)

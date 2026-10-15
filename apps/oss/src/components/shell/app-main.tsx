@@ -36,7 +36,10 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
   // `N` must not be remembered: the menu would open by itself the moment it becomes available.
   const newMenuAvailable = ready && !readOnly && createActions.some((action) => can(action.capability))
   const openNewMenu = useCallback(() => {
-    if (newMenuAvailable) setNewMenuOpen(true)
+    if (newMenuAvailable) {
+      const invoiceCreate = document.querySelector<HTMLButtonElement>("[data-invoice-create]")
+      if (invoiceCreate) invoiceCreate.click(); else setNewMenuOpen(true)
+    }
   }, [newMenuAvailable])
   useEffect(() => {
     if (!newMenuAvailable) setNewMenuOpen(false)
