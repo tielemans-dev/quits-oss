@@ -32,6 +32,8 @@ describe("credit note email", () => {
     expect(content.subject).toContain("Kreditnota CN-0001 til faktura INV-0001")
     expect(content.html).toContain("Hej Globex")
     expect(content.html).toContain("Årsag")
+    expect(content.html).toContain('<html lang="da">')
+    expect(content.html).toContain("<title>Kreditnota CN-0001</title>")
   })
   it.each(["da-DK", "en-US"])("uses frozen legal parties and the frozen line rate in %s", locale => {
     const content = buildCreditNoteEmailContent({ ...params, org: { locale, companyName: "Current seller", companyAddress: "Current address" }, creditNote: { ...params.creditNote,

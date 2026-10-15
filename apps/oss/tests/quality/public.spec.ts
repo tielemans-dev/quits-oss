@@ -10,6 +10,7 @@ import { InvoicePdfDocument, type InvoiceForPdf } from '../../src/lib/invoice-pd
 import { CreditNotePdfDocument } from '../../src/lib/credit-note-pdf'
 import { buildInvoiceEmailContent } from '../../src/lib/email'
 import { buildCreditNoteEmailContent } from '../../src/lib/emails/credit-note-email'
+import { translate } from '../../src/lib/i18n/translate'
 import { danishLocale, usEnglishLocale, resetDatabase, seedPublicQuote, seedPublicInvoice, loginAsAdmin, waitForClientReady } from '../e2e/support'
 
 test.beforeEach(async ({ page, baseURL }) => {
@@ -19,13 +20,15 @@ test.beforeEach(async ({ page, baseURL }) => {
 })
 test.afterEach(() => resetQuitsRuntimeForTests())
 
+const a11yOnly = process.env.QUITS_QUALITY_A11Y_ONLY === '1'
+
 async function capture(page: Page, info: TestInfo, name: string) {
   await page.evaluate(() => document.fonts.ready)
   // Signed links contain random fixture IDs. Keep the input in axe, mask only its pixels.
   const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide',
     mask: [page.locator('input[readonly][value*="/pay/"]')], maskColor: '#888888' })
   await info.attach(name, { body: png, contentType: 'image/png' })
-  expect.soft(png).toMatchSnapshot(`${name}.png`, { maxDiffPixelRatio: 0.001 })
+  if (!a11yOnly) expect.soft(png).toMatchSnapshot(`${name}.png`, { maxDiffPixelRatio: 0.001 })
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
   await info.attach(`${name}-axe`, { body: JSON.stringify(results, null, 2), contentType: 'application/json' })
   expect.soft(results.violations, `${name}: axe violations`).toEqual([])
@@ -42,6 +45,11 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await waitForClientReady(page)
       await expect(page.getByText(quote.number).first()).toBeVisible()
       await capture(page, info, 'quote')
+      await prisma.quote.update({ where: { id: quote.id }, data: { status: 'accepted', publicDecisionAt: new Date('2026-10-15T12:00:00Z') } })
+      await page.reload()
+      await waitForClientReady(page)
+      await expect(page.getByText(translate('public.quote.status.accepted', locale.locale), { exact: true })).toBeVisible()
+      await capture(page, info, 'quote-accepted')
 
       const row = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })
       await prisma.orgSettings.update({ where: { organizationId: row.organizationId }, data: { momsRegistered: true } })
@@ -92,7 +100,38 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         await waitForClientReady(page)
         await expect(page.getByRole('heading', { name: new RegExp(invoice.number) })).toBeVisible()
         await capture(page, info, `app-${theme}`)
+        if (width === 390 && theme === 'light') {
+          const table = page.locator('[data-slot="table-container"]').first()
+          for (let tab = 0; tab < 80 && !await table.evaluate(node => node === document.activeElement); tab++) {
+            await page.keyboard.press('Tab')
+          }
+          await expect(table).toBeFocused()
+          expect(await table.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true)
+          await capture(page, info, 'app-mobile-keyboard')
+          await page.keyboard.press('ArrowRight')
+          await expect.poll(() => table.evaluate(node => node.scrollLeft)).toBeGreaterThan(0)
+        }
       }
+      await page.evaluate(() => localStorage.setItem('quits-theme', 'light'))
+      await page.emulateMedia({ colorScheme: 'light' })
+      await prisma.invoice.update({ where: { id: invoice.id }, data: { paymentStatus: 'paid' } })
+      await page.goto(invoice.url)
+      await waitForClientReady(page)
+      await expect(page.getByText(translate('public.invoice.paid.title', locale.locale), { exact: true })).toBeVisible()
+      await capture(page, info, 'payment-paid')
+    })
+
+    test.describe(() => {
+      test.use({ locale: locale.locale })
+      test(`invalid recipient links ${locale.locale} ${width}`, async ({ page }, info) => {
+        await page.setViewportSize({ width, height: 900 })
+        for (const route of ['q', 'a', 'pay']) {
+          await page.goto(`/${route}/invalid-quality-token`)
+          await waitForClientReady(page)
+          await expect(page.locator('html')).toHaveAttribute('lang', locale.locale.slice(0, 2))
+          await capture(page, info, `${route}-invalid`)
+        }
+      })
     })
 
     test(`document output ${locale.locale} ${width}`, async ({ page }, info) => {
@@ -111,7 +150,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         await page.setContent(content.html)
         await capture(page, info, name)
       }
-      if (width === 1440) {
+      if (width === 1440 && !a11yOnly) {
         for (const [name, document] of [
           ['invoice', InvoicePdfDocument({ invoice, org })],
           ['credit-note', CreditNotePdfDocument({ creditNote, org })],

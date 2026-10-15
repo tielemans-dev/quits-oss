@@ -123,6 +123,8 @@ describe("EmailDeliveryPanel", () => {
     expect(screen.getByText("Customer email is missing")).toBeTruthy()
     expect(screen.getByText("Fix contact")).toBeTruthy()
     expect(screen.getAllByRole("button", { name: "Copy link" }).length).toBeGreaterThan(0)
-    expect(screen.getByDisplayValue("https://example.test/q/token")).toBeTruthy()
+    expect(screen.getByRole("textbox", { name: "Public document link" })).toBe(
+      screen.getByDisplayValue("https://example.test/q/token")
+    )
   })
 })

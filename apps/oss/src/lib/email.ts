@@ -9,7 +9,7 @@ import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/pa
 import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
 import { Resend } from "resend"
 import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
-import { translate } from "./i18n/translate"
+import { resolveLanguage, translate } from "./i18n/translate"
 import type { TranslationKey } from "./i18n/messages"
 import { deviationVatLabel, lineColumnKeys, nominalLineTaxRate, type PriceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
@@ -224,10 +224,11 @@ export function emailButtonStyle() {
   return `display:inline-block;background:${C.ink};color:${C.paper};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:500;`
 }
 
-export function layout(content: string, locale?: string | null, invoicePresentation = false) {
+export function layout(content: string, locale?: string | null, invoicePresentation = false, title = "quits") {
   return `<!DOCTYPE html>
-<html>
+<html lang="${resolveLanguage(locale)}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
 ${invoicePresentation ? `<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">
 <style>
   @media (max-width:480px) {
@@ -400,7 +401,7 @@ export function buildInvoiceEmailContent({
       : ""}
     ` : ""}
     ${notes ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;border-top:1px solid ${C.hairline};padding-top:16px;">${formatMultilineHtml(notes)}</p>` : ""}
-  `, locale, true)
+  `, locale, true, `${t("pdf.invoice", locale)} ${invoice.number}`)
 
   const subject = sanitizeHeader(
     t("email.invoice.subject", locale, {
@@ -499,7 +500,7 @@ export function buildQuoteEmailContent({
           fallbackLabel: t("email.quote.reviewFallback", locale),
         })
       : ""}
-  `, locale)
+  `, locale, false, `${t("email.quote.title", locale)} ${quote.number}`)
 
   const subject = sanitizeHeader(
     t("email.quote.subject", locale, {
