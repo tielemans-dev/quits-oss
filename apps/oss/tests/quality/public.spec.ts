@@ -42,6 +42,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await capture(page, info, 'quote')
 
       const row = await prisma.quote.findUniqueOrThrow({ where: { id: quote.id } })
+      await prisma.orgSettings.update({ where: { organizationId: row.organizationId }, data: { momsRegistered: true } })
       const member = await prisma.member.findFirstOrThrow({ where: { organizationId: row.organizationId } })
       // Synthetic storage isolates issuance. PDF visuals below use the real renderers.
       const objects = new Map<string, Uint8Array>()
@@ -57,7 +58,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         session: { activeOrganizationId: row.organizationId },
       } } as never)
       const agreement = await caller.agreements.createDraft({ contactId: row.contactId!, title: 'Quality fixture',
-        termsMarkdown: 'Synthetic project terms.', validUntil: '2099-01-01',
+        termsMarkdown: 'Synthetic project terms.', validUntil: '2099-01-01', taxRate: locale.countryCode === 'DK' ? 25 : 0,
         deliverables: [{ title: 'Design', quantity: 1, unitPrice: 100 }] })
       await caller.agreements.issue({ id: agreement.id })
       const link = await caller.agreements.publicLink({ id: agreement.id })
