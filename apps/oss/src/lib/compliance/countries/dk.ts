@@ -10,7 +10,7 @@ export const denmark: CountryModule = {
   label: "Denmark",
   keywords: ["denmark", "danish", "dk"],
   regime: euVatRegime,
-  defaults: { locale: "da-DK", currency: "DKK", timezone: "Europe/Copenhagen", pricesIncludeTax: true },
+  defaults: { locale: "da-DK", currency: "DKK", timezone: "Europe/Copenhagen", pricesIncludeTax: false },
   formats: {
     phone: /^(\+45\s?)?\d{8}$/,
     postalCode: /^\d{4}$/,
