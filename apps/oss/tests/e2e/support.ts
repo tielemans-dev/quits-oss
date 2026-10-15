@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto"
 import { expect, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { signInvoicePaymentToken } from "../../src/lib/payments/public"
-import { encryptSecret } from "../../src/lib/secrets"
 import { signQuotePublicToken } from "../../src/lib/quotes/public"
 import { encryptSecret } from "../../src/lib/secrets"
 import {
