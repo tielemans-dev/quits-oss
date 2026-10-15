@@ -120,9 +120,26 @@ model Organization {
   artifactStaging         ArtifactStaging[]
   issuanceCandidates      IssuanceCandidate[]
   settings                OrgSettings?
+  vatPeriodEntries        VatPeriodEntry[]
   cvrVerification         OrganizationCvrVerification?
 
   @@map("organization")
+}
+
+// ISO reporting dates identify the period independently of its deadline or timezone.
+model VatPeriodEntry {
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  from           String       @db.VarChar(10)
+  to             String       @db.VarChar(10)
+  inputVat       Decimal?     @db.Decimal(18, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  // Retain the user ID even if their account is later removed. Clearing retains this row.
+  updatedBy      String
+
+  @@id([organizationId, from, to])
+  @@map("vat_period_entry")
 }
 
 model Member {
