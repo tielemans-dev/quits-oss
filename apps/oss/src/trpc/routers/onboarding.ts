@@ -337,7 +337,7 @@ export const onboardingRouter = router({
           },
         })
 
-        if ("primaryTaxId" in input) {
+        if (input.primaryTaxId !== undefined) {
           const trimmedTaxId = input.primaryTaxId?.trim() ?? ""
           if (!trimmedTaxId) {
             await tx.organizationTaxId.deleteMany({
