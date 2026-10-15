@@ -42,11 +42,11 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
 }
 describe("stored line rates at the render-input boundary", () => {
   it.each([
-    { currency: "DKK", rates: [0, 25, 5], nets: [100, 100, 100], taxes: [0, 25, 5], main: 25, zeroTreatment: "exempt" },
-    { currency: "DKK", rates: [5, 25], nets: [100, 100], taxes: [5, 25], main: 5, zeroTreatment: "out_of_scope" },
-    { currency: "JPY", rates: [25], nets: [105], taxes: [26], main: 25, zeroTreatment: "out_of_scope" },
-    { currency: "DKK", rates: [0], nets: [100], taxes: [0], main: 0, zeroTreatment: "out_of_scope" },
-  ])("freezes nominal rates, totals and zero treatments for $currency/$rates without a header rate", async ({ currency, rates, nets, taxes, main, zeroTreatment }) => {
+    { currency: "DKK", rates: [0, 25, 5], nets: [100, 100, 100], taxes: [0, 25, 5], main: 25, creditMain: 5, zeroTreatment: "exempt" },
+    { currency: "DKK", rates: [5, 25], nets: [100, 100], taxes: [5, 25], main: 5, creditMain: 5, zeroTreatment: "out_of_scope" },
+    { currency: "JPY", rates: [25], nets: [105], taxes: [26], main: 25, creditMain: 25, zeroTreatment: "out_of_scope" },
+    { currency: "DKK", rates: [0], nets: [100], taxes: [0], main: 0, creditMain: 0, zeroTreatment: "out_of_scope" },
+  ])("freezes nominal rates, totals and zero treatments for $currency/$rates without a header rate", async ({ currency, rates, nets, taxes, main, creditMain, zeroTreatment }) => {
     const h = harness("quote", "custom", "Old address")
     Object.assign(h.invoice, { calculationVersion: "v2", vatEvidence: zeroTreatment === "exempt" ? { statementText: "Synthetic health exemption" } : {} })
     const decimal = (amount: number) => new Prisma.Decimal(amount)
@@ -96,7 +96,7 @@ describe("stored line rates at the render-input boundary", () => {
     const credit = await h.run(prospectiveRenderInput({ kind: "creditNote", documentId: "credit", number: "CN-1", issuedAt: h.invoice.issueDate, commandInput: { invoiceId: "invoice", mode: "full", reason: "Correction" } }))
     expect(credit).toMatchObject({ _tag: "Right", right: { kind: "creditNote" } })
     if (credit._tag !== "Right" || credit.right.kind !== "creditNote") throw new Error("Expected credit render input")
-    expect(credit.right.pdf.creditNote).toMatchObject({ taxRate: main, subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, sellerSnapshot: h.seller, buyerSnapshot: h.invoice.buyerSnapshot, vatRows: rendered.vatRows })
+    expect(credit.right.pdf.creditNote).toMatchObject({ taxRate: creditMain, subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, sellerSnapshot: h.seller, buyerSnapshot: h.invoice.buyerSnapshot, vatRows: rendered.vatRows })
     expect(credit.right.pdf.creditNote.items.map(line => line.taxRate).sort((a, b) => a! - b!)).toEqual([...rates].sort((a, b) => a - b))
   })
 
