@@ -43,11 +43,7 @@ vi.mock("../db", () => ({
             !query.where.status.in.includes(state.invoice.status)) return null
         const select = query.include?.organization?.select?.settings?.select
         const settings = select
-          ? Object.fromEntries(
-              (Object.keys(state.settings) as (keyof Settings)[])
-                .filter((key) => select[key])
-                .map((key) => [key, state.settings[key]]),
-            )
+          ? Object.fromEntries(Object.entries(state.settings).filter(([key]) => select[key]))
           : state.settings
         return {
           id: invoiceId,
@@ -98,8 +94,6 @@ async function publicSession() {
   const loaded = await loadPublicInvoiceByToken(token, secret)
   return loaded ? serializePublicInvoiceSession(loaded, token) : null
 }
-
-/** Loads /pay the way the route does, then renders that state. */
 async function publicPayPage() {
   const session = await publicSession()
   if (!session) return "invalid"
