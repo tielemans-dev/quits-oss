@@ -16,4 +16,11 @@ describe("detail buyer address", () => {
   it("handles missing address fields", () => {
     expect(detailBuyerAddress({ name: "Test", country: null }, "DK", "da-DK")).toEqual([])
   })
+  it.each(["da-DK", "en-US"])("preserves explicit unknown countries and foreign locality fields in %s", locale => {
+    expect(detailBuyerAddress({ ...buyer, city: "Madrid", state: "Madrid", zip: "28001", country: "España" }, "DK", locale))
+      .toEqual(["Testvej 2", "Madrid, Madrid, 28001", "España"])
+  })
+  it.each([null, undefined, "", "   "])("uses the seller's Danish order only for missing country %s", country => {
+    expect(detailBuyerAddress({ ...buyer, country }, "DK", "en-US")).toEqual(["Testvej 2", "9000 Aalborg"])
+  })
 })

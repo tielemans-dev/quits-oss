@@ -142,6 +142,7 @@ function ContactsListPage() {
                           size="icon-sm"
                           onClick={(e) => e.stopPropagation()}
                           disabled={deleting === contact.id}
+                          aria-label={t("contacts.action.delete")}
                         >
                           <Trash2 className="size-4 text-muted-foreground" />
                         </Button>

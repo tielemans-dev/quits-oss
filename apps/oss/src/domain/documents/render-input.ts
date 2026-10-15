@@ -21,6 +21,7 @@ import { Effect } from "effect"
 import type { InvoicePdfDocument, OrgSettingsForPdf } from "../../lib/invoice-pdf"
 import type { CreditNoteForPdf } from "../../lib/credit-note-pdf"
 import type { AgreementPdfInput } from "../../lib/agreement-pdf"
+import type { quotePdfInput } from "../../lib/quote-pdf"
 import { buildOfferSnapshot, canonicalizeOffer, hashOfferSnapshot } from "../agreements/snapshot"
 import { creditNoteIssueInputSchema } from "@quits/contracts/credit-notes"
 import { buildBuyerSnapshot, buildSellerSnapshot, withSellerVatStatus, withInvoicePaymentDetails, creditSellerSnapshot } from "./snapshots"
@@ -38,7 +39,7 @@ export const creditNoteMainRate = (_invoice: Parameters<typeof impliedTaxRate>[0
 
 export type ArtifactDocumentKind = "invoice" | "creditNote" | "agreement"
 type RenderIdentity = {
-  kind: ArtifactDocumentKind
+  kind: ArtifactDocumentKind | "quote"
   organizationId: string
   documentId: string
   number: string
@@ -53,6 +54,7 @@ export type RenderInput = RenderIdentity & (
   | { kind: "invoice"; pdf: { invoice: InvoiceForPdf; org: OrgSettingsForPdf } }
   | { kind: "creditNote"; pdf: { creditNote: CreditNoteForPdf; org: OrgSettingsForPdf } }
   | { kind: "agreement"; pdf: AgreementPdfInput }
+  | { kind: "quote"; pdf: ReturnType<typeof quotePdfInput> }
 )
 export function hashRenderInput(input: RenderInput) {
   return createHash("sha256").update(canonicalizeOffer(JSON.parse(JSON.stringify(input)))).digest("hex")

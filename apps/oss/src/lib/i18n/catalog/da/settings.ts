@@ -246,5 +246,7 @@ export const daSettingsMessages = {
     "{name} mister adgang til organisationen med det samme.",
   "settings.team.action.cancel": "Annuller",
   "settings.team.action.remove": "Fjern",
+  "settings.team.action.removeMember": "Fjern {name}",
+  "settings.team.action.cancelInvite": "Annuller invitation til {email}",
   "settings.team.invitation.pending": "Invitation afventer",
 } as const

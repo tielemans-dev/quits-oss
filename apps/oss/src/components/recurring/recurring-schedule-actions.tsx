@@ -111,6 +111,7 @@ export function RecurringScheduleActions({
               variant="ghost"
               size="icon-sm"
               disabled={busy || ended}
+              aria-label={t("recurring.action.more")}
               onClick={(event) => event.stopPropagation()}
             >
               <MoreHorizontal className="size-4" />

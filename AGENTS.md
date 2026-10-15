@@ -16,9 +16,10 @@ as open source.
   identifiers in this public repo.
 - Preserve public exports unless the task explicitly changes the release contract.
   During file moves, preserve behavior first and improve structure second.
-- Keep every user-facing flow inside the app, including onboarding and Settings.
-  Hosted-only requirements use cloud flags and extension points. Self-hosters get
-  no hosted gates.
+- Keep authenticated configuration flows, including onboarding and Settings,
+  inside the app. Login and public document/payment routes remain standalone.
+  Hosted-only UI requirements use cloud flags and extension points. Self-hosters
+  get no hosted gates.
 - Prefer correctness and the smallest maintainable change. Make structural
   improvements explicit; share duplicated logic rather than add local variants.
 

@@ -1,8 +1,12 @@
 import { isValidElement, type ReactNode } from "react"
 import { Text } from "@react-pdf/renderer"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { Prisma } from "../../../generated/prisma/client"
 import { QuotePdfDocument, renderQuotePdf } from "../quote-pdf"
+import { InvoicePdfDocument } from "../invoice-pdf"
+import { resetRuntimeServices, setRuntimeServices } from "../runtime/services"
+
+afterEach(resetRuntimeServices)
 
 function textOf(node: ReactNode): string[] {
   if (Array.isArray(node)) return node.flatMap(textOf)
@@ -15,6 +19,7 @@ function textOf(node: ReactNode): string[] {
 const decimal = (value: number) => new Prisma.Decimal(value)
 function fixture() {
   return {
+    id: "quote-21", organizationId: "org-21",
     number: "T-0021", status: "sent", issueDate: new Date("2026-10-15T10:00:00Z"),
     expiryDate: new Date("2026-10-31T00:00:00Z"), locale: "da-DK", timezone: "Pacific/Honolulu",
     subtotalNet: decimal(100), totalTax: decimal(25), totalGross: decimal(125),
@@ -49,8 +54,21 @@ describe("quote PDFs", () => {
     expect(text).toEqual(expect.arrayContaining(["Draft quote ", "Quote date", "Valid until", "October 31, 2026"]))
     expect(text.join(" ")).not.toMatch(/Invoice|Due Date|null|T-0021/)
   })
-  it("renders a PDF", async () => {
-    const buffer = await renderQuotePdf(fixture())
-    expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
+  it("delegates serializable quote presentation to the configured host renderer", async () => {
+    const bytes = new TextEncoder().encode("%PDF-host")
+    const renderPdf = vi.fn().mockResolvedValue(bytes)
+    setRuntimeServices({ documentRenderer: { version: "worker-test", renderPdf } })
+    expect(await renderQuotePdf(fixture())).toBe(bytes)
+    const input = renderPdf.mock.calls[0][0]
+    expect(input).toMatchObject({ kind: "quote", organizationId: "org-21", documentId: "quote-21",
+      number: "T-0021", issuedAt: "2026-10-15T10:00:00.000Z",
+      pdf: { invoice: { total: 125, contact: { name: "Saved buyer" } },
+        quote: { expiryDate: "2026-10-31T00:00:00.000Z" }, org: { companyName: "Saved seller" } } })
+    expect(JSON.parse(JSON.stringify(input))).toEqual(input)
+    expect(textOf(QuotePdfDocument({ quote: fixture() }))).toEqual(textOf(InvoicePdfDocument(input.pdf)))
+  })
+  it("requires a configured host renderer", async () => {
+    resetRuntimeServices()
+    await expect(renderQuotePdf(fixture())).rejects.toThrow("Document renderer unavailable")
   })
 })

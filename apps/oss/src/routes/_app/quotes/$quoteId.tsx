@@ -743,7 +743,7 @@ function QuoteDetailPage() {
     } : null
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="min-w-0">
       {/* Back button and actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/quotes" })}>
@@ -844,10 +844,10 @@ function QuoteDetailPage() {
 
       {/* Quote content */}
       <Card>
-        <CardContent className="p-6 grid gap-6">
+        <CardContent className="p-4 sm:p-6 grid grid-cols-1 gap-6">
           {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 break-words">
               <h1 className="text-2xl font-bold">
                 {quote.number ? `${t("quotes.detail.title")} ${quote.number}` : t("quotes.number.draftHeading")}
               </h1>
@@ -862,7 +862,7 @@ function QuoteDetailPage() {
                 <StatusBadge domain="quote" status={quote.status} />
               </div>
             </div>
-            <div className="text-right text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground sm:text-right">
               <p>
                 <span className="font-medium text-foreground">
                   {t("quotes.table.issueDate")}:
