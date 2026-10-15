@@ -17,7 +17,7 @@ describe("v2 offer rendering", () => {
     const zero = { ...snapshot, vatGroups: vatGroups.map(group => ({ ...group, rate: "0", treatment: "out_of_scope" as const, tax: "0" })) }
     expect(agreementVatPresentation(zero, "en-US").totals?.lines[1]).toMatchObject({ label: "Tax 0%", reason: "Outside the scope of VAT" })
     expect(agreementVatPresentation(zero, "en-US").totals?.note).toBe("No VAT is charged. The supply is outside the scope of VAT.")
-    expect(agreementVatPresentation(zero, "en-US").lineLabel("0")).toBe("0% VAT")
+    expect(agreementVatPresentation(zero, "en-US").lineLabel("0")).toBe("0% tax")
   })
   it("shows the service total and VAT basis of the schedule on the page and PDF", () => {
     const document = { snapshot, number: "AGR-1", status: "sent", expectedDates: [], acceptance: null } as unknown as PublicAgreementDto
