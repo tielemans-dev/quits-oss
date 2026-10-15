@@ -199,6 +199,36 @@ invoices.
 - Ownership and constraints are documented in `docs/architecture/oss-cloud-boundary.md`.
 - Release and cutover checklist is documented in `docs/releases/oss-v1-cutover.md`.
 
+## Local commit hook
+
+`bun install` leaves Git hooks untouched. The root `trustedDependencies` allowlist
+permits Prisma's runtime checks and engine download and esbuild's binary setup;
+it excludes Lefthook's automatic hook installation.
+
+To opt in after installing dependencies, first check for an existing hook manager
+or custom `core.hooksPath`. Use one hook manager. Then run `bun run hooks:install`
+from the repository root to install or refresh Lefthook's pre-commit hook.
+
+The hook runs `bun run lint:staged`, which checks added, copied, modified, and
+renamed JavaScript and TypeScript files with the repository's Oxlint settings.
+Deleted files and commits without source changes skip lint. Filenames with spaces,
+quotes, or newlines are passed as individual arguments. The runner uses the
+repository root even when called from another directory. It invokes only the
+installed Oxlint binary and never runs the full lint script or downloads tools.
+
+Stage all changes to each source file before committing, or unstage that file.
+The hook rejects partial staging, missing working files, and source symlinks;
+it does not stash, fix, or stage changes. A lint failure blocks the commit.
+Correct the file, stage it again, and retry. CI still owns the full quality gates.
+The installed hook uses `scripts/lefthook.sh` to disable Lefthook's automatic
+hiding of unstaged changes. For a manual hook run, use
+`sh scripts/lefthook.sh run pre-commit` from the root.
+
+To remove this checkout's Lefthook hooks, run `bunx --no-install lefthook uninstall`
+from the root. Git worktrees may share their hooks directory, so coordinate
+installation and removal with other checkouts. Inspect the hooks directory with
+`git rev-parse --git-path hooks` and any override with `git config --get core.hooksPath`.
+
 ## Testing
 
 Run the standard test suite:
@@ -219,6 +249,32 @@ Run the full application TypeScript backlog check:
 ```bash
 bun run typecheck:app
 ```
+
+### Unused code report
+
+After installing dependencies, run Knip from the repository root:
+
+```bash
+bun run knip:report
+```
+
+This opt-in command reports unused files, exports, and dependencies. Findings
+return exit code zero through Knip's `--no-exit-code` option. Invalid configuration,
+missing tooling, and execution failures still return a nonzero exit code. The
+report is separate from lint, builds, CI gates, and app startup. It does not fix
+or delete code.
+
+`knip.json` covers the app, contracts, shared helpers, and repository scripts.
+Package manifest exports remain public entrypoints. App routes, tests, config
+files, and standalone automation scripts are additional entrypoints. Generated
+Prisma code and the generated route tree are excluded from findings.
+
+The app's Vite, Prisma, Playwright, and Vitest plugins are disabled because loading
+their executable configs can load environment files or initialize development
+services. Knip analyzes their source imports instead. Config-only string references,
+dynamic imports, external package consumers, and runtime extensions can cause
+false positives. Review each finding before removing anything; entrypoint exports
+and generated code are outside this report's unused-export coverage.
 
 Run the DB-backed invoice/quote smoke flow (create/edit/send/convert) against your local PostgreSQL configured in `.env`:
 

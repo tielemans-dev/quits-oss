@@ -22,14 +22,16 @@ export function organizationSlugFromName(name: string): string {
   return isOrganizationSlug(folded) ? folded : "organization"
 }
 
+/** The nth slug organization creation tries for a name: the name itself, then `-2`, `-3`, ... */
+export function organizationSlugCandidate(name: string, index: bigint): string {
+  const base = organizationSlugFromName(name)
+  const suffix = index <= 1n ? "" : `-${index}`
+  return `${base.slice(0, MAX_SLUG_LENGTH - suffix.length).replace(/-+$/g, "") || "organization"}${suffix}`
+}
+
 /** First slug is the name; later ones add a numeric suffix so a taken slug can be retried. */
 function* iterateOrganizationSlugs(name: string): Generator<string> {
-  const base = organizationSlugFromName(name)
-  for (let index = 1n; ; index += 1n) {
-    const suffix = index === 1n ? "" : `-${index}`
-    const head = base.slice(0, MAX_SLUG_LENGTH - suffix.length).replace(/-+$/g, "") || "organization"
-    yield `${head}${suffix}`
-  }
+  for (let index = 1n; ; index += 1n) yield organizationSlugCandidate(name, index)
 }
 
 export function organizationSlugCandidates(name: string, limit = 12): string[] {

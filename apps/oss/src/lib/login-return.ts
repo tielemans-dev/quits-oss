@@ -11,6 +11,12 @@ export const loginReturnSearchSchema = z.object({
 
 type LoginReturnSearch = z.infer<typeof loginReturnSearchSchema>
 
+/** Onboarding speaks the `lang` it was opened with, so the app shell around it must speak it too. */
+export function onboardingShellLanguage(pathname: string, search: unknown): 'da' | 'en' | undefined {
+  if (pathname !== '/onboarding' && !pathname.startsWith('/onboarding/')) return undefined
+  return loginReturnSearchSchema.safeParse(search).data?.lang
+}
+
 /** `next` wins when both aliases are supplied, even if it is invalid. */
 export function loginReturnTarget(search: LoginReturnSearch): string | null {
   return toInternalRedirectPath(search.next ?? search.redirect)

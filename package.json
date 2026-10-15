@@ -12,10 +12,13 @@
     "scripts"
   ],
   "scripts": {
+    "hooks:install": "lefthook install",
+    "lint:staged": "bun scripts/lint-staged.mjs",
     "dev": "bun --filter @quits/oss dev",
     "build": "turbo run build --filter=@quits/oss",
     "preview": "bun --filter @quits/oss preview",
     "lint": "turbo run lint --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
+    "knip:report": "knip --config knip.json --no-exit-code",
     "typecheck": "turbo run typecheck --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
     "typecheck:app": "bun --filter @quits/oss typecheck:app",
     "test": "turbo run test --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
@@ -33,9 +36,16 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "knip": "6.41.0",
+    "lefthook": "2.2.2",
     "nitro": "npm:nitro-nightly@latest",
     "oxlint": "^1.50.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"
-  }
+  },
+  "trustedDependencies": [
+    "@prisma/engines",
+    "esbuild",
+    "prisma"
+  ]
 }
