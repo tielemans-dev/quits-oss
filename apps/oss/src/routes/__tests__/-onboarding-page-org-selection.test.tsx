@@ -74,7 +74,7 @@ vi.mock("../../lib/auth-client", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
-    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) } },
+    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) }, setupAvailable: { query: vi.fn(async () => ({ enabled: false })) } },
     onboarding: {
       getStatus: {
         query: vi.fn(),
@@ -88,13 +88,14 @@ vi.mock("../../trpc/client", () => ({
     },
     runtime: {
       capabilities: {
-        query: vi.fn(),
+        query: vi.fn(async () => ({})),
       },
     },
   },
 }))
 
 import { authClient } from "../../lib/auth-client"
+import { trpc } from "../../trpc/client"
 
 import { Route } from "../_app/onboarding"
 import { asMockedRoute } from "../../test-utils/mocked-route"
@@ -199,6 +200,69 @@ describe("OnboardingPage org selection", () => {
     expect(screen.getByText("Contoso")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Create organization" })).toBeTruthy()
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+  })
+
+  it("sends a hosted user with no organization into onboarding v2 instead of the v1 lookup card", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.cvr.setupAvailable.query).mockResolvedValueOnce({ enabled: true } as never)
+    vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
+    vi.mocked(authClient.organization.create).mockResolvedValue({ data: { id: "org_created" }, error: null } as never)
+    setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
+    render(<RoutePage />)
+    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByRole("button", { name: "auth.onboarding.lookup.manualBack" })).toBeNull()
+    fireEvent.change(name, { target: { value: "Nordlys ApS" } })
+    fireEvent.submit(name.closest("form")!)
+    await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
+    // The new organization continues in the v2 wizard (lookup, review, confirm), not the app.
+    expect(loadPage).toHaveBeenCalledWith("/onboarding")
+    // v2 collects company details itself: no legacy staged company (and draft save) on reload.
+    expect(Object.keys(sessionStorage).some(key => /selected/i.test(key))).toBe(false)
+  })
+
+  it("keeps v2 unknown with a retry instead of falling back to v1 when capabilities fail", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.cvr.setupAvailable.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: true } as never)
+    render(<RoutePage />)
+    const retry = await screen.findByRole("button", { name: "onboardingV2.retry" })
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(screen.queryByLabelText("auth.onboarding.field.companyName")).toBeNull()
+    fireEvent.click(retry)
+    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
+    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+  })
+
+  it("keeps the v1 lookup card when v2 is enabled but CVR onboarding is unavailable", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.runtime.capabilities.query).mockResolvedValue({ onboardingV2: { enabled: true } } as never)
+    vi.mocked(trpc.cvr.setupAvailable.query).mockResolvedValueOnce({ enabled: false } as never)
+    render(<RoutePage />)
+    expect(await screen.findByText("auth.onboarding.lookup.title")).toBeTruthy()
+  })
+
+  it("offers the retry when the capability lookup hangs instead of spinning forever", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      isCloudDistributionMock.mockReturnValue(true)
+      useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+      listOrganizations.mockResolvedValue({ data: [] })
+      vi.mocked(trpc.cvr.setupAvailable.query).mockReturnValueOnce(new Promise(() => {}) as never)
+      render(<RoutePage />)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await screen.findByRole("button", { name: "onboardingV2.retry" })).toBeTruthy()
+      expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {
