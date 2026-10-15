@@ -2,6 +2,7 @@ import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggl
 import type { FieldIssue } from "@quits/contracts/agent"
 import { InvoiceLinesEditor } from "../../../components/invoices/lines-editor"
 import { OrganizationGaps } from "../../../components/invoices/organization-gaps"
+import { SendConfirmation } from "../../../components/invoices/send-confirmation"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { defaultDocumentTaxRate, reconcilePolicyVat } from "../../../lib/invoice-defaults"
@@ -10,7 +11,7 @@ import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank
 import { useInvoiceDueDate } from "../../../hooks/use-invoice-due-date"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
 import { previewDraft } from "@quits/shared/pricing"
-import { documentLineV2InputSchema, type DocumentLineInput } from "@quits/contracts/invoices"
+import { invoiceSendInputSchema, documentLineV2InputSchema, type DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../../../components/document-vat-fields"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -20,7 +21,7 @@ import { trpc } from "../../../trpc/client"
 import { retainDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
-import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
+import { formatDate, formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
 import { useOrgCurrency } from "../../../hooks/use-org-currency"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { Button } from "../../../components/ui/button"
@@ -67,7 +68,10 @@ function NewInvoicePage() {
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const submitPending = useRef(false)
+  // Recipient version shown in the open send confirmation; create refuses it if the contact changed since.
+  const [recipientReview, setRecipientReview] = useState<{ recipient: string | null; recipientVersion: string | null } | null>(null)
   const priceBasisEdited = useRef(false)
   const taxRateEdited = useRef(false)
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
@@ -166,12 +170,16 @@ function NewInvoicePage() {
     const issue = fieldIssues.find(issue => issue.field === field)
     return issue ? <p role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p> : null
   }
-  function validateForm() {
+  function validateForm(sendImmediately = false, effectiveBaseCurrency = baseCurrency) {
     const issues: FieldIssue[] = []
     const add = (code: string, field: string) => issues.push({ code, field, params: {} })
     if (!contactId) add("customer.required", "contactId")
     if (!dueDate) add("required", "dueDate")
     if (!issuance.supplyDate) add("required", "supplyDate")
+    if (sendImmediately && effectiveBaseCurrency && currency !== effectiveBaseCurrency) {
+      if (!invoiceSendInputSchema.shape.exchangeRate.unwrap().safeParse(issuance.exchangeRate).success) add("required", "exchangeRate")
+      if (!invoiceSendInputSchema.shape.rateDate.unwrap().safeParse(issuance.rateDate).success) add("required", "rateDate")
+    }
     items.forEach((item, index) => {
       if (!item.description.trim()) add("required", `items.${index}.description`)
       else if (!documentLineV2InputSchema.shape.description.safeParse(item.description).success) add("descriptionTooLong", `items.${index}.description`)
@@ -183,6 +191,26 @@ function NewInvoicePage() {
     setFieldIssues(issues)
     return issues.length === 0
   }
+  async function requestSend() {
+    if (submitPending.current || !validateForm(true)) return
+    submitPending.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      const state = await trpc.invoices.sendReadiness.query({ contactId, currency })
+      setReadiness(state)
+      setBaseCurrency(state.baseCurrency)
+      if (!validateForm(true, state.baseCurrency)) return
+      setFieldIssues(state.issues)
+      if (state.policyUnavailable) { setError(t("invoiceValidation.policyUnavailable")); return }
+      if (!state.issues.length) {
+        setRecipientReview({ recipient: state.recipient, recipientVersion: state.recipientVersion })
+        setConfirmOpen(true)
+      }
+    } catch { setError(t("invoiceValidation.unknown")) }
+    finally { submitPending.current = false; setSaving(false) }
+  }
+
   // An adopter policy fixes the rate and treatment; without one the full classification editor applies.
   const restrictedVat = !!readiness?.standardVatRate
   const preview = previewDraft({ items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate: taxRate || "0", pricesIncludeTax, currency })
@@ -283,11 +311,13 @@ function NewInvoicePage() {
 
     // The VAT rate and price basis are placeholders until the organisation's configuration has loaded.
     if (!readiness) return
-    if (submitPending.current || !validateForm()) return
+    if (sendImmediately && !recipientReview?.recipientVersion) { setConfirmOpen(false); return }
+    if (submitPending.current || !validateForm(sendImmediately)) return
     submitPending.current = true
     setSaving(true)
     try {
       let settingsRequested = false
+      let reviewedVersion: string | undefined
       // The draft exists once created: whatever happens to the send, show it rather than keep
       // the form, where submitting again would create a second invoice.
       const target = await createThenSend({
@@ -299,6 +329,7 @@ function NewInvoicePage() {
             taxRate,
             pricesIncludeTax,
             vatEvidence,
+            reviewedRecipient: sendImmediately ? recipientReview?.recipientVersion ?? undefined : undefined,
             notes: notes || undefined,
             items: items.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
               description: item.description,
@@ -308,18 +339,26 @@ function NewInvoicePage() {
             })),
           })
           retainDraftValuation(draft.id, currency, baseCurrency, issuance)
+          reviewedVersion = draft.reviewedVersion
           return draft
         },
         beforeSend: async () => {
+          setConfirmOpen(false)
           return bankNudge.beforeSend(() => { settingsRequested = true })
         },
         send: async (id) => {
-          const result = await trpc.invoices.send.mutate({ id, ...issuanceInput(issuance, currency, baseCurrency) })
+          const result = await trpc.invoices.send.mutate({ id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) })
           clearDraftValuation(id, currency, baseCurrency)
           return result
         },
         sendImmediately,
         sendFailedMessage: t("invoices.detail.error.sendFailed"),
+        sendErrorMessage: error => {
+          const issues = invoiceFieldIssues(error)
+          if (issues.length) return issues.map(issue => t(invoiceIssueKey(issue.code), issue.params)).join(" · ")
+          // The refusal's own message (missing exemption statement, provider failure, ...) beats a generic one.
+          return error instanceof Error && error.message ? error.message : t("invoiceValidation.unknown")
+        },
       })
 
       if (settingsRequested) return
@@ -329,8 +368,12 @@ function NewInvoicePage() {
         search: { emailWarning: target.emailWarning, sendError: target.sendError },
       })
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : t("invoiceValidation.unknown"))
-      setFieldIssues(invoiceFieldIssues(err))
+      setConfirmOpen(false)
+      const issues = invoiceFieldIssues(err)
+      // Say what changed (for example the recipient) instead of a generic failure.
+      const changed = issues.find(issue => issue.code === "changed_since_review")
+      setError(changed ? t(invoiceIssueKey(changed.code), changed.params) : t("invoiceValidation.unknown"))
+      setFieldIssues(issues)
     } finally { submitPending.current = false; setSaving(false) }
   }
 
@@ -492,7 +535,7 @@ function NewInvoicePage() {
           <Button
             type="button"
             disabled={saving || !readiness}
-            onClick={() => handleSubmit(true)}
+            onClick={() => { void requestSend() }}
           >
             {saving
               ? t("docForm.action.saving")
@@ -500,6 +543,10 @@ function NewInvoicePage() {
           </Button>
         </CardFooter>
       </Card>
+      <SendConfirmation open={confirmOpen} onOpenChange={setConfirmOpen}
+        recipient={recipientReview?.recipient ?? ""}
+        amount={formatCurrencyIntl(total, currency, locale)} dueDate={dueDate ? formatDate(dueDate, locale) : ""} pending={saving}
+        onConfirm={() => { void handleSubmit(true) }} />
     </div>
   )
 }

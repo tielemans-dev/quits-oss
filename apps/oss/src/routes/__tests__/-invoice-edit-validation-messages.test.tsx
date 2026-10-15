@@ -7,7 +7,7 @@ import { translate } from "../../lib/i18n/translate"
 // MOCK: transport responses and route context only. The edit form, error mapping and catalogs are real.
 const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), update: vi.fn() }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, updateV2: { mutate: api.update } }, settings: { get: { query: api.settings } },
+  invoices: { get: { query: api.get }, updateV2: { mutate: api.update }, sendReadiness: { query: async () => ({ issues: [], warnings: [], taxRate: "25", baseCurrency: "DKK" }) } }, settings: { get: { query: api.settings } },
   contacts: { list: { query: async () => [{ id: "buyer", name: "Synthetic buyer" }] } }, catalog: { list: { query: async () => [] } },
   paymentDetails: { firstSendReadiness: { query: async () => ({ bankMissing: false }) } },
 } }))
@@ -115,7 +115,7 @@ describe.each([
     expect(message.closest("#edit-taxRate-error")).not.toBeNull()
     const rate = document.querySelector<HTMLInputElement>("[aria-describedby='edit-taxRate-error']")!
     expect(rate.getAttribute("aria-invalid")).toBe("true")
-    fireEvent.change(rate, { target: { value: "25" } })
+    fireEvent.change(rate, { target: { value: "12" } })
     expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
@@ -147,7 +147,7 @@ describe.each([
     api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "custom", path: ["items", 0, "vat", "rate"] }])))
     fireEvent.click(await openEditor())
     await screen.findByText(copy.unknown)
-    fireEvent.change(document.querySelector<HTMLInputElement>("input[max='100']")!, { target: { value: "25" } })
+    fireEvent.change(document.querySelector<HTMLInputElement>("input[max='100']")!, { target: { value: "12" } })
     expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
