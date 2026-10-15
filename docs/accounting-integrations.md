@@ -97,7 +97,8 @@ Reuse `events/consumers.ts` and `EventConsumerDelivery`, scoped by organization 
 a connection-specific consumer key. Use delivery ID plus a stable operation suffix
 for each remote effect, such as `:draft` and `:book`. Persist the exact prepared
 payload, mapping revision and remote draft/booked references before advancing.
-These operation records are follow-up schema work, not fields the outbox has today.
+Multi-operation records remain follow-up work. The outbox now pins first-attempt
+source evidence and stores the accepted operation's remote reference and totals.
 
 e-conomic's `Idempotency-Key` cache lasts one hour. After an uncertain response,
 reconcile the stable remote reference before retrying, especially beyond that
@@ -130,6 +131,28 @@ mapping revision, expected totals and stable `:request` idempotency key. `pendin
 attempt. Errors contain safe codes, never raw transport responses. The migration
 adds pinned request JSON and retry availability to this existing table.
 
+Before the first mapping attempt, `evidence` freezes the source money event,
+including line and document totals. A canonical hash also covers the current
+issued document's financial content, lines and issuance snapshot, excluding
+payment/email status. Every retry checks this hash without remapping a pinned
+request. Changed source content or legacy attempts without evidence fail with
+`source_review_required`. Mapping failures retain evidence too.
+
+Immediately before transport, an independent check reads the final HTTP body and
+compares each line's net, VAT and gross and their document sums with the frozen
+source and mapper totals. It uses integer DKK minor units, including half-up 25%
+VAT and credit signs. A mismatch fails permanently as `payload_totals_mismatch`;
+nothing is sent. This checks the mapped amounts against frozen VAT rates. Remote
+account/product VAT relationships still need validation before live transport.
+
+Transport acceptance and recovery must supply provider-read decimal totals,
+normalized to signed DKK amounts for credits, and the returned operation ID in
+`externalRef`. The worker fences and saves these in `response` before checking
+them. Missing totals require reconciliation; a discrepancy fails as
+`provider_totals_mismatch`, retains the remote ID and blocks acknowledgement.
+An accepted operation is never blindly resent after an admin retry. Acceptance
+still means draft/payment acceptance; booking requires its own future operation.
+
 One call processes at most one event. Failed, leased and delayed predecessors
 block later requests. Transient transport, 429 and server failures retry with
 exponential backoff, jitter and Retry-After, for at most five HTTP sends. Lease
@@ -139,7 +162,7 @@ absence, including in-flight requests; an unknown result fails visibly without
 resending. Lease tokens fence persistence and completion.
 
 Delivered means the single prepared draft/payment request was accepted, not that
-sales were booked. Draft total validation, booking, remote relationship validation
+sales were booked. Remote draft validation before booking, booking, remote relationship validation
 and provider-specific reconciliation are required before enabling a live worker.
 Legacy payments without immutable evidence remain refused. Admins can retry failed
 deliveries with a fresh send budget and cleared backoff, retaining pinned requests
@@ -201,6 +224,6 @@ stays inside the app.
 - OAuth/agreement-grant authorization and remote revocation.
 - Live transport/reconciliation, remote total checks, booking operation records,
   invoice dependency resolution and sync start positions.
-- Persisted settings resolution and live delivery safeguards before enabling transport.
+- Persisted settings resolution and provider-specific remote validation before enabling transport.
 - Settings UI for account/VAT mapping, a connect button that starts authorization,
   and delivery history beyond the earliest failed delivery.

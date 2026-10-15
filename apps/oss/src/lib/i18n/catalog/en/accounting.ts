@@ -41,4 +41,7 @@ export const enAccountingMessages = {
   "accounting.deliveryError.unauthorized": "{provider} rejected the authorization.",
   "accounting.deliveryError.http": "{provider} rejected the request (HTTP {status}).",
   "accounting.deliveryError.unknown": "Delivery failed.",
+  "accounting.deliveryError.payload_totals_mismatch": "The accounting payload totals differ from the source document. Nothing was sent. Review this delivery.",
+  "accounting.deliveryError.provider_totals_mismatch": "The accounting provider reported different totals. Review the remote document before retrying.",
+  "accounting.deliveryError.source_review_required": "The source document changed or its first-attempt evidence is missing. Review this delivery before sending.",
 } as const

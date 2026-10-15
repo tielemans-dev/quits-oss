@@ -135,6 +135,7 @@ describe("describeAccountingError", () => {
   it.each([
     ["missing_mapping", "missing_mapping"], ["not_postable", "unsupported"], ["equation_violation", "unsupported"],
     ["http_403", "unauthorized"], ["http_422", "http422"], ["something_new", "unknown"], [null, "unknown"],
+    ["payload_totals_mismatch", "payload_totals_mismatch"], ["provider_totals_mismatch", "provider_totals_mismatch"], ["source_review_required", "source_review_required"],
   ])("maps %s", (code, key) => {
     expect(describeAccountingError(code, "Dinero", t as never)).toBe(`accounting.deliveryError.${key}`)
   })

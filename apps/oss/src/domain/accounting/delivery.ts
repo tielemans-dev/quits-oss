@@ -3,6 +3,13 @@ import type { PrismaClient, Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { advance, claim, complete, fail, scan } from "../events/consumers"
 import type { AccountingEvent, AccountingProvider } from "./provider"
+import { equalTotals, fingerprint, payloadTotalsMatch, totalsSchema, type Totals } from "./safeguards"
+
+const safeguardMessages: Record<string, string> = {
+  payload_totals_mismatch: "The accounting payload totals differ from the source document. Nothing was sent. Review this delivery.",
+  provider_totals_mismatch: "The accounting provider reported different totals. Review the remote document before retrying.",
+  source_review_required: "The source document changed or its first-attempt evidence is missing. Review this delivery before sending.",
+}
 
 const requestSchema = z.object({
   eventId: z.string(), providerId: z.string(), mappingRevision: z.string(),
@@ -12,12 +19,13 @@ const requestSchema = z.object({
 type Request = z.infer<typeof requestSchema>
 type Prepared<S, P> = Extract<ReturnType<AccountingProvider<S, P>["map"]>, { status: "prepared" }>
 
-/** Implementations must bound requests using the signal. Never put credentials in stored requests. */
+/** Bound requests using the signal. Never put credentials in stored requests.
+ * Totals are decimal DKK strings, signed for credits, read from the provider, never echoed from the request. */
 export interface AccountingTransport {
-  send(request: Request, signal: AbortSignal): Promise<{ status: number; externalRef?: string; retryAfterMs?: number }>
+  send(request: Request, signal: AbortSignal): Promise<{ status: number; externalRef?: string; totals?: Totals; retryAfterMs?: number }>
   /** absent must prove the prior attempt had no effect, including any still in flight. */
   reconcile(request: Request, signal: AbortSignal): Promise<
-    { status: "delivered"; externalRef: string } | { status: "absent" } | { status: "unknown" }>
+    { status: "delivered"; externalRef: string; totals?: Totals } | { status: "absent" } | { status: "unknown" }>
 }
 export interface AccountingConnections<S, P> {
   find(organizationId: string): Promise<{
@@ -76,7 +84,8 @@ export async function deliverAccounting<S, P>(input: {
   const fence = { id: row.id, status: "claimed" as const, claimToken: row.claimToken }
   const failure = async (code: string, retry = false, retryAfterMs = 0) => {
     if (!retry || row.attempts >= 5) {
-      const result = await fail({ deliveryId: row.id, claimToken: row.claimToken, error: { code } }, db)
+      const result = await fail({ deliveryId: row.id, claimToken: row.claimToken,
+        error: { code, ...(safeguardMessages[code] ? { message: safeguardMessages[code] } : {}) } }, db)
       return result.fenced ? "stale" : "failed"
     }
     const backoff = Math.min(60_000, 1000 * 2 ** (row.attempts - 1)) * (1 + Math.random())
@@ -90,7 +99,13 @@ export async function deliverAccounting<S, P>(input: {
     })
     return result.count ? "pending" : "stale"
   }
-  const delivered = async (externalRef: string) => {
+  const delivered = async (externalRef: string, totals?: Totals) => {
+    const reported = totalsSchema.safeParse(totals)
+    const saved = await db.eventConsumerDelivery.updateMany({ where: fence,
+      data: { externalRef, response: { externalRef, totals: reported.success ? reported.data : null } } })
+    if (!saved.count) return "stale"
+    if (!reported.success) return failure("reconciliation_required")
+    if (!equalTotals(request.expectedTotals, reported.data)) return failure("provider_totals_mismatch")
     const result = await complete({ deliveryId: row.id, claimToken: row.claimToken, externalRef }, db)
     if (result.fenced) return "stale"
     await advance(scope, db)
@@ -98,11 +113,27 @@ export async function deliverAccounting<S, P>(input: {
   }
   let request: Request
   try {
+    const event = await db.domainEvent.findUniqueOrThrow({
+      where: { organizationId_sequence: { organizationId: scope.organizationId, sequence: row.sequence } },
+    })
+    const source = { type: event.type, schemaVersion: event.schemaVersion, payload: event.payload }
+    // Ignore payment/email status updates, but detect changed issued content and financial lines.
+    const select = { number: true, currency: true, issueDate: true, issuanceSnapshot: true,
+      subtotalNet: true, totalTax: true, totalGross: true, buyerSnapshot: true, sellerSnapshot: true,
+      items: { orderBy: { id: "asc" as const } } } as const
+    const identity = z.object({ documentId: z.string() }).safeParse(event.payload)
+    const where = { organizationId: scope.organizationId, id: identity.success ? identity.data.documentId : event.aggregateId }
+    const document = event.type === "invoice.issued" ? await db.invoice.findFirst({ where, select: { ...select, editRevision: true, dueDate: true } })
+      : event.type === "credit_note.issued" ? await db.creditNote.findFirst({ where, select: { ...select, reason: true } }) : null
+    const hash = fingerprint({ source, document })
+    if (row.evidence ? z.object({ hash: z.string() }).parse(row.evidence).hash !== hash : row.prepared || row.attempts > 1)
+      return failure("source_review_required")
+    if (!row.evidence) {
+      const pinned = await db.eventConsumerDelivery.updateMany({ where: fence, data: { evidence: { hash, source } } })
+      if (!pinned.count) return "stale"
+    }
     if (row.prepared) request = requestSchema.parse(row.prepared)
     else {
-      const event = await db.domainEvent.findUniqueOrThrow({
-        where: { organizationId_sequence: { organizationId: scope.organizationId, sequence: row.sequence } },
-      })
       const accountingEvent = { ...event, deliveryId: row.id }
       const mapped = connection.provider.map(accountingEvent, await connection.settings(accountingEvent))
       if (mapped.status === "refused") return failure(mapped.code)
@@ -116,6 +147,7 @@ export async function deliverAccounting<S, P>(input: {
       })
       if (!pinned.count) return "stale"
     }
+    if (!payloadTotalsMatch({ ...source, deliveryId: row.id }, request)) return failure("payload_totals_mismatch")
   } catch {
     return failure("preparation_failed")
   }
@@ -123,12 +155,13 @@ export async function deliverAccounting<S, P>(input: {
     // Manual retry resets the send budget, but a pinned request still needs reconciliation.
     if (row.attempts > 1 || row.prepared) {
       const previous = await bounded(signal => input.transport.reconcile(request, signal))
-      if (previous.status === "delivered") return delivered(previous.externalRef)
+      if (previous.status === "delivered") return delivered(previous.externalRef, previous.totals)
       if (previous.status !== "absent") return failure("reconciliation_required")
+      if (row.externalRef) return failure("reconciliation_required")
     }
     if (row.attempts > 5) return failure("attempts_exhausted")
     const response = await bounded(signal => input.transport.send(request, signal))
-    if (response.status >= 200 && response.status < 300 && response.externalRef) return delivered(response.externalRef)
+    if (response.status >= 200 && response.status < 300 && response.externalRef) return delivered(response.externalRef, response.totals)
     const transient = response.status === 408 || response.status === 429 || response.status >= 500 || response.status < 300
     return failure(`http_${response.status}`, transient, response.retryAfterMs)
   } catch {

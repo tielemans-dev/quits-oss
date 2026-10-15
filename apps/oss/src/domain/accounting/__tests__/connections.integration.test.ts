@@ -30,7 +30,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
       aggregateId: "invoice", type: "invoice.issued", schemaVersion: 1, payload: invoice, actorKind: "system" } })
     const input = { organizationId, provider, remoteAccountId: "synthetic-remote", mappingRevision: "1", credential: "synthetic-token" }
     await connectAccounting(input)
-    const send = vi.fn(async () => ({ status: 201, externalRef: "synthetic-draft" }))
+    const send = vi.fn(async () => ({ status: 201, externalRef: "synthetic-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } }))
     const transport = vi.fn(() => ({ send, reconcile: vi.fn(async () => ({ status: "unknown" as const })) }))
     const guid = "11111111-1111-4111-8111-111111111111"
     const runtime: AccountingDeliveryRuntime = { transport, settings: vi.fn(async () => provider === "economic"
