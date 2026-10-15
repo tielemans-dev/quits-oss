@@ -441,9 +441,26 @@ html[data-document] {
     animation-delay: 0ms;
   }
   .tracker-morph {
-    animation: tracker-fade 200ms linear both;
+    animation: tracker-fade var(--duration-fade) var(--ease-enter) both;
   }
   .tracker-spinner {
     display: none;
+  }
+}
+
+/* Third-party entry/exit utilities and controls share the app timing defaults. */
+@utility animate-in {
+  --tw-duration: var(--duration-square-shrink);
+  --tw-ease: var(--ease-enter);
+}
+@utility animate-out {
+  --tw-duration: var(--duration-square-shrink);
+  --tw-ease: var(--ease-exit);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

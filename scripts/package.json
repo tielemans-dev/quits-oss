@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "oxlint --deny-warnings --report-unused-disable-directives .",
+    "lint": "oxlint --deny-warnings --report-unused-disable-directives . && node check-motion.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run __tests__/*.test.ts && node --test --test-concurrency=1 __tests__/*.test.mjs"
   },

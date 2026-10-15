@@ -10,6 +10,7 @@ export const globalStateTests = "**/*.global.*"
 export default defineConfig({
   test: {
     environment: "node",
+    css: { include: [/motion-tokens\.css/] },
     setupFiles: ["./src/test-utils/artifact-runtime.ts"],
     watch: false,
     // Bound PostgreSQL connections and memory when several worktrees verify concurrently.

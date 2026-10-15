@@ -1,21 +1,30 @@
-/**
- * Easings and durations for script (Web Animations, timers). The CSS side reads the same values
- * from `motion-tokens.css`; `__tests__/motion.test.ts` keeps the two equal.
- */
-export const EASE_ENTER = "cubic-bezier(0.32, 0.72, 0, 1)"
-export const EASE_EXIT = "ease-out"
+import css from "../motion-tokens.css?raw"
+
+// CSS is the source for Tailwind, plain CSS and script consumers.
+const token = (name: string) => {
+  const value = css.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim()
+  if (!value) throw new Error(`Missing motion token: ${name}`)
+  return value
+}
+const milliseconds = (name: string) => Number.parseFloat(token(name))
+export const EASE_ENTER = token("ease-enter")
+export const EASE_EXIT = token("ease-exit")
 
 /** Milliseconds, keyed by the camelCase of the `--duration-*` token. */
 export const DURATION = {
-  fade: 150,
-  squareShrink: 200,
-  leave: 250,
-  squareFly: 260,
-  base: 300,
-  row: 320,
-  toast: 380,
-  card: 400,
-  highlight: 2400,
+  palette: milliseconds("duration-palette"),
+  listFade: milliseconds("duration-list-fade"),
+  spin: milliseconds("duration-spin"),
+  pulse: milliseconds("duration-pulse"),
+  fade: milliseconds("duration-fade"),
+  squareShrink: milliseconds("duration-square-shrink"),
+  leave: milliseconds("duration-leave"),
+  squareFly: milliseconds("duration-square-fly"),
+  base: milliseconds("duration-base"),
+  row: milliseconds("duration-row"),
+  toast: milliseconds("duration-toast"),
+  card: milliseconds("duration-card"),
+  highlight: milliseconds("duration-highlight"),
 } as const
 
-export const STAGGER_STEP = 45
+export const STAGGER_STEP = milliseconds("stagger-step")
