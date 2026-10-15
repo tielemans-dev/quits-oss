@@ -1,5 +1,4 @@
 import { beforeEach, expect, it, vi } from "vitest"
-import { publicProcedure, router } from "../../../../trpc/init"
 import { Route } from "../$"
 
 const downstream = vi.hoisted(() => vi.fn<(signal?: AbortSignal) => Promise<string>>())
@@ -23,7 +22,7 @@ function createRequest(method: string, signal?: AbortSignal) {
   })
 }
 
-beforeEach(() => downstream.mockReset())
+beforeEach(() => { downstream.mockReset() })
 
 it.each(["GET", "POST"])("aborts downstream work when a %s request is cancelled", async method => {
   const controller = new AbortController()
@@ -45,6 +44,12 @@ it.each(["GET", "POST"])("aborts downstream work when a %s request is cancelled"
   try {
     expect(downstream).toHaveBeenCalledWith(request.signal)
     expect(aborted).toHaveBeenCalledWith(controller.signal.reason)
+    const result = await response
+    expect(result.status).toBe(500)
+    expect(await result.json()).toMatchObject({ error: { json: {
+      message: controller.signal.reason.message,
+      data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
+    } } })
   } finally {
     finish()
     await response
@@ -62,7 +67,23 @@ it.each(["GET", "POST"])("preserves successful %s responses when the request is 
   expect(request.signal.aborted).toBe(false)
 })
 
-it("keeps contexts without HTTP request metadata usable", async () => {
-  const caller = router({ query: publicProcedure.query(({ ctx }) => ctx.request?.signal?.aborted ?? false) }).createCaller({ session: null })
-  expect(await caller.query()).toBe(false)
+it.each(["GET", "POST"])("forwards an already-aborted %s signal before downstream work starts", async method => {
+  const controller = new AbortController()
+  controller.abort()
+  const request = createRequest(method, controller.signal)
+  const work = vi.fn(() => "finished")
+  downstream.mockImplementation(async signal => {
+    signal?.throwIfAborted()
+    return work()
+  })
+
+  const response = await handlers[method]!({ request })
+
+  expect(downstream).toHaveBeenCalledWith(request.signal)
+  expect(work).not.toHaveBeenCalled()
+  expect(response.status).toBe(500)
+  expect(await response.json()).toMatchObject({ error: { json: {
+    message: controller.signal.reason.message,
+    data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
+  } } })
 })
