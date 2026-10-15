@@ -1,4 +1,5 @@
 export const daOnboardingV2Messages = {
+  "onboardingV2.review.contacts": "Kontaktoplysningerne gemmes kun, hvis CVR bekræfter, at virksomheden ikke er reklamebeskyttet. Ellers bruger vi {email} som fakturaemail og lader telefonnummeret stå tomt. Du kan ændre begge dele i Indstillinger efter opsætningen.",
   "onboardingV2.statusBody.ceased": "ophørt",
   "onboardingV2.statusBody.dissolved": "opløst",
   "onboardingV2.statusBody.bankrupt": "gået konkurs",

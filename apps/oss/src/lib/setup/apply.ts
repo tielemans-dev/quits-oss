@@ -196,7 +196,7 @@ export async function applySetupInitialization(
     })
 
     if (input.organization.cvr) await tx.organizationTaxId.create({ data: {
-      organizationId: organization.id, scheme: "cvr", value: input.organization.cvr, countryCode: input.locale.countryCode, isPrimary: true,
+      organizationId: organization.id, scheme: "cvr", value: input.organization.cvr, countryCode: "DK", isPrimary: true,
     } })
     await tx.member.create({
       data: {

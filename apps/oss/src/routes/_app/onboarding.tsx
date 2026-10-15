@@ -500,7 +500,7 @@ function OnboardingPageContent() {
           throw new Error(checked.error.message ?? 'slug check failed')
         },
         create: async (body) => {
-          const result = await authClient.organization.create({ ...body, metadata: { cvr } })
+          const result = await authClient.organization.create({ ...body, metadata: { cvr, onboardingAutoSlug: body.slug } })
           if (result.data?.id) {
             confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
             return { ok: true, id: result.data.id }
@@ -823,13 +823,14 @@ function OnboardingPageContent() {
                     type="button"
                     variant="outline"
                     className="h-auto w-full flex-col items-start gap-1 py-3"
-                    disabled={submitting}
+                    disabled={submitting || company.active === false}
                     onClick={() => void createOrganizationFromCompanyName(company.name, company)}
                   >
                     <span>{t('auth.onboarding.lookup.confirm', { company: company.name })}</span>
                     <span className="text-xs font-normal text-muted-foreground">
                       {company.cvr} · {company.address}
                     </span>
+                    {company.active === false ? <span>{t('cvr.inactive')}</span> : null}
                   </Button>
                 ))}
               </CardContent>

@@ -18,6 +18,10 @@ function cvrOnboardingEnabled() {
   return isCloudDistribution && getRuntimeCapabilities().onboardingV2?.enabled === true && Boolean(getCvrLookupProvider())
 }
 
+function lookupSignal(parent?: AbortSignal) {
+  return AbortSignal.any([...(parent ? [parent] : []), AbortSignal.timeout(10_000)])
+}
+
 export const cvrRouter = router({
   available: authorizedProcedure("settings:read").query(() => ({
     enabled: cvrOnboardingEnabled(),
@@ -33,7 +37,7 @@ export const cvrRouter = router({
       provider().search(input.q, {
         userId: ctx.user.id,
         organizationId: ctx.organizationId,
-        signal: AbortSignal.timeout(10_000),
+        signal: lookupSignal(ctx.request?.signal),
       }),
     ),
   get: authorizedProcedure("settings:update")
@@ -43,7 +47,7 @@ export const cvrRouter = router({
       provider().get(input.cvr, {
         userId: ctx.user.id,
         organizationId: ctx.organizationId,
-        signal: AbortSignal.timeout(10_000),
+        signal: lookupSignal(ctx.request?.signal),
       }),
     ),
   suggestions: authorizedProcedure("settings:update")
@@ -55,7 +59,7 @@ export const cvrRouter = router({
       return lookup.suggestions(input.cvr, {
         userId: ctx.user.id,
         organizationId: ctx.organizationId,
-        signal: AbortSignal.timeout(10_000),
+        signal: lookupSignal(ctx.request?.signal),
       })
     }),
 })

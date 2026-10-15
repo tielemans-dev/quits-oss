@@ -13,17 +13,18 @@ import { hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { organizationSlugCandidate } from "../organization-slug"
 
 /**
- * Onboarding creates the organization from a typed name before the CVR review. A slug still
- * derived from that name (`base` or `base-N`, as organization creation picks them) follows the
- * confirmed company name; a chosen slug stays. Best effort: nothing links to the slug before
- * onboarding completes, and failing to rename keeps the old slug.
+ * Only slugs explicitly marked by automatic onboarding creation follow the confirmed name.
+ * Legacy or chosen slugs stay, even when they happen to equal a name-derived candidate.
  */
-async function followConfirmedNameSlug(organizationId: string, previous: { name: string; slug: string }, companyName: string) {
+async function followConfirmedNameSlug(organizationId: string, previous: { slug: string; metadata: string | null }, companyName: string) {
+  let autoSlug: unknown
+  try { autoSlug = JSON.parse(previous.metadata ?? "null")?.onboardingAutoSlug } catch { return }
+  if (autoSlug !== previous.slug) return
   const derivedFrom = (name: string, slug: string) => {
     const suffix = /-([1-9]\d*)$/.exec(slug)
     return slug === organizationSlugCandidate(name, 1n) || (suffix !== null && BigInt(suffix[1]!) >= 2n && organizationSlugCandidate(name, BigInt(suffix[1]!)) === slug)
   }
-  if (!derivedFrom(previous.name, previous.slug) || derivedFrom(companyName, previous.slug)) return
+  if (derivedFrom(companyName, previous.slug)) return
   // Same order as organization creation, checked in bounded batches of exact candidates.
   const batch = 50n
   for (let first = 1n; ; first += batch) {
@@ -35,7 +36,7 @@ async function followConfirmedNameSlug(organizationId: string, previous: { name:
         return
       } catch (error) {
         // Taken meanwhile: try the next candidate. Any other failure keeps the old slug.
-        if ((error as { code?: string } | null)?.code !== "P2002") return
+        if ((error as { code?: string } | null)?.code !== "P2002") throw error
       }
     }
   }
@@ -45,8 +46,9 @@ async function followConfirmedNameSlug(organizationId: string, previous: { name:
  * Registry-sourced contacts are kept only when the server's own CVR lookup says the company is not
  * advertising-protected (reklamebeskyttet). No provider, a failed lookup or protection scrubs them.
  */
-async function registryContactsAllowed(organizationId: string, input: ConfirmOnboardingV2, userId?: string) {
+async function registryContactsAllowed(organizationId: string, input: ConfirmOnboardingV2, userId?: string, admittedCompany?: Awaited<ReturnType<typeof requireOnboardingCvr>>) {
   if (input.source !== "cvr") return input.reklamebeskyttet !== true
+  if (admittedCompany) return admittedCompany.advertisingProtected === false
   const provider = getCvrLookupProvider()
   if (!provider || !userId || (!input.companyEmail && !input.companyPhone)) return false
   try {
@@ -61,9 +63,9 @@ async function registryContactsAllowed(organizationId: string, input: ConfirmOnb
 export async function confirmOnboardingV2(organizationId: string, input: ConfirmOnboardingV2, signupEmail: string, actor?: SellerVatConfirmationActor) {
   // Lifecycle hooks can make several bounded provider requests. Allow their total latency
   // without changing the provider's individual request deadlines.
-  let renamed = null as { name: string; slug: string } | null
+  let renamed = null as { slug: string; metadata: string | null } | null
   const result = await prisma.$transaction(async tx => {
-    const [before] = await tx.$queryRaw<{ name: string; slug: string }[]>`SELECT name, slug FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
+    const [before] = await tx.$queryRaw<{ slug: string; metadata: string | null }[]>`SELECT slug, metadata FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     // Match the settings lock used by document issuance before checking/resetting its counters.
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     let existing = await tx.orgSettings.findUnique({ where: { organizationId } })
@@ -73,11 +75,11 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (existing?.onboardingCompletedAt || ["complete", "completed"].includes(existing?.onboardingStatus ?? "")) {
       return { status: "already_complete" as const }
     }
-    await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId })
+    const admittedCompany = await requireOnboardingCvr({ cvr: input.cvr, cloud: isCloudDistribution, userId: actor?.userId ?? organizationId, organizationId })
     const sellerVatConfirmation = getSellerVatConfirmationService()
     if (sellerVatConfirmation && !actor) throw new TRPCError({ code: "FORBIDDEN", message: "Seller VAT confirmation requires an authenticated actor" })
     if (actor && sellerVatConfirmation && !input.sellerVatConfirmationToken) throw new TRPCError({ code: "BAD_REQUEST", message: "save.failed" })
-    input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId)) }
+    input = { ...input, reklamebeskyttet: !(await registryContactsAllowed(organizationId, input, actor?.userId, admittedCompany)) }
     // Use one set of defaults for the whole confirmation, even across midnight.
     const presets = {
       ...buildDkPresets(input, signupEmail),
@@ -154,6 +156,8 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     await billingProvider.startTrial?.(organizationId)
     return result
   }, { timeout: 60_000 })
-  if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {})
+  if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {
+    console.warn("Onboarding slug rename failed")
+  })
   return result
 }
