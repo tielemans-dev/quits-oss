@@ -74,6 +74,7 @@ import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 import { readableIssues, type ReadableIssue } from "../../../lib/validation/readable-errors"
+import { followLineIssue } from "../../../lib/validation/line-issues"
 
 export const Route = createFileRoute("/_app/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { emailWarning?: string; sendError?: string } => ({
@@ -166,6 +167,8 @@ type Invoice = {
 }
 
 type EditItem = {
+  /** Identity of the row in the editor, stable across deletes and inserts (unlike its index). */
+  rowKey: string
   id?: string
   deliverableId?: string
   frozenNet?: number
@@ -178,8 +181,8 @@ type EditItem = {
   vat?: DocumentLineInput["vat"]
 }
 
-/** The editable columns of a line, for issues that are about the line as a whole. */
-const lineColumnsOf = ["description", "quantity", "unitPrice"] as const
+let nextRowKey = 0
+const newRowKey = () => `row-${++nextRowKey}`
 
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
@@ -257,6 +260,8 @@ function InvoiceDetailPage() {
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
   const [editIssues, setEditIssues] = useState<ReadableIssue[]>([])
+  const [focusInvalid, setFocusInvalid] = useState(false)
+  const editForm = useRef<HTMLDivElement>(null)
   const [editDueDate, setEditDueDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
@@ -266,6 +271,14 @@ function InvoiceDetailPage() {
   const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editItems: EditItem[] } | null>(null)
   const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editItems }), [editContactId, editDueDate, editNotes, editItems])
   editSnapshot.current = editValues
+  // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
+  useEffect(() => {
+    if (!focusInvalid) return
+    setFocusInvalid(false)
+    const first = editForm.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    first?.focus({ preventScroll: true })
+    first?.scrollIntoView?.({ block: "center" })
+  }, [focusInvalid])
 
   // The page stays mounted when navigating to another invoice; drop answers for the previous one.
   const beginRequest = useDocumentResponseGuard(invoiceId)
@@ -335,6 +348,7 @@ function InvoiceDetailPage() {
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
       invoice.items.map((item) => ({
+        rowKey: newRowKey(),
         id: item.id, deliverableId: item.deliverableId ?? undefined,
         ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
         description: item.description,
@@ -369,7 +383,7 @@ function InvoiceDetailPage() {
   function addEditItem() {
     // Collection-level issues (too few or too many lines) are about the row count, which just changed.
     clearIssues((issue) => issue.field === "items" && issue.line === undefined)
-    setEditItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "0" }])
+    setEditItems((prev) => [...prev, { rowKey: newRowKey(), description: "", quantity: "1", unitPrice: "0" }])
   }
 
   function removeEditItem(index: number) {
@@ -403,29 +417,19 @@ function InvoiceDetailPage() {
     // A local quantity error stops the retry before the server can re-report other issues, so keep them until the request runs.
     if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
+      setFocusInvalid(true)
       return
     }
     setEditIssues([])
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
     const submitted = editSnapshot.current!
-    // Whether the value an issue was reported for is still the one the user sees.
-    const unchanged = (issue: ReadableIssue) => {
+    // Follow each issue to its row's current position; an issue for a value the user has since edited is dropped.
+    const follow = (issue: ReadableIssue): ReadableIssue | null => {
       const now = editSnapshot.current!
-      switch (issue.field) {
-        case "contact": return now.editContactId === submitted.editContactId
-        case "dueDate": return now.editDueDate === submitted.editDueDate
-        case "notes": return now.editNotes === submitted.editNotes
-        case "items": {
-          if (issue.line === undefined) return now.editItems.length === submitted.editItems.length
-          // Compare the reported column's value at the reported row. An error is about a value, so edits to other
-          // columns, added rows, or a row that shifted in with the same value do not make it stale.
-          const before = submitted.editItems[issue.line]
-          const after = now.editItems[issue.line]
-          return !!before && !!after && (issue.column ? [issue.column] : lineColumnsOf).every((column) => after[column] === before[column])
-        }
-        default: return true
-      }
+      if (issue.field === "items") return followLineIssue(issue, submitted.editItems, now.editItems)
+      const value = ({ contact: "editContactId", dueDate: "editDueDate", notes: "editNotes" } as const)[issue.field as "contact" | "dueDate" | "notes"]
+      return !value || now[value] === submitted[value] ? issue : null
     }
     try {
       const updated = await trpc.invoices.updateV2.mutate({
@@ -453,8 +457,8 @@ function InvoiceDetailPage() {
       if (!isCurrent()) return
       const issues = readableIssues(err)
       // Fields edited while the save was in flight may already be fixed; a late answer must not flag them again.
-      const current = issues?.filter(unchanged)
-      if (current?.length) setEditIssues(current)
+      const current = issues?.flatMap((issue) => follow(issue) ?? [])
+      if (current?.length) { setEditIssues(current); setFocusInvalid(true) }
       else if (issues) setError(t("validation.save.failed"))
       else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
@@ -614,11 +618,8 @@ function InvoiceDetailPage() {
     const lineColumns = ["line", "description", "quantity", "unitPrice"] as const
     const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
     const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
-      const ids = [
-        ...(editIssues.some((issue) => issue.field === "items" && issue.line === index && issue.column === column) ? [lineIssueId(index, column)] : []),
-        ...(editIssues.some((issue) => issue.field === "items" && issue.line === index && !issue.column) ? [lineIssueId(index, "line")] : []),
-      ]
-      return ids.length ? ids.join(" ") : undefined
+      const id = (at: (typeof lineColumns)[number]) => editIssues.some((issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === at) ? lineIssueId(index, at) : null
+      return [id(column), id("line")].filter(Boolean).join(" ") || undefined
     }
     const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
@@ -626,7 +627,7 @@ function InvoiceDetailPage() {
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
 
     return (
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-3xl" ref={editForm}>
       {bankNudge.dialog}
         <Card>
           <CardHeader>
@@ -690,7 +691,7 @@ function InvoiceDetailPage() {
                 </div>
                 {editItems.map((item, index) => (
                   <div
-                    key={index}
+                    key={item.rowKey}
                     className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px] gap-2 p-3 border-b last:border-0 items-center"
                   >
                     <Select

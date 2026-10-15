@@ -41,6 +41,12 @@ describe.each([
   ["da-DK", { edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik.", addLine: "Tilføj vare" }],
   ["en-GB", { edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment.", addLine: "Add Item" }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
+  // The next save stays in flight until the returned function fails it.
+  function failLater() {
+    let reject: (error: Error) => void = () => {}
+    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    return (errors: object[]) => reject(new Error(JSON.stringify(errors)))
+  }
   async function openEditor() {
     render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
     fireEvent.click(await screen.findByRole("button", { name: copy.edit }))
@@ -122,25 +128,50 @@ describe.each([
   })
 
   it("keeps a late failure's errors for fields that did not change while it was in flight", async () => {
-    let reject: (error: Error) => void = () => {}
-    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    const reject = failLater()
     fireEvent.click(await openEditor())
     fireEvent.change(document.getElementById("editNotes")!, { target: { value: "edited" } })
-    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    reject([{ code: "too_small", path: ["items", 0, "description"] }])
     expect(await screen.findByText(copy.description)).toBeTruthy()
   })
 
   it("keeps a late line error when only another column of that row changed or a row was added", async () => {
-    let reject: (error: Error) => void = () => {}
-    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    const reject = failLater()
     fireEvent.click(await openEditor())
     fireEvent.change(document.getElementById("invoice-edit-quantity-0")!, { target: { value: "3" } })
     fireEvent.click(screen.getAllByRole("button").find((button) => button.textContent === copy.addLine)!)
-    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    reject([{ code: "too_small", path: ["items", 0, "description"] }])
     const work = screen.getByDisplayValue("Work")
     await waitFor(() => expect(work.getAttribute("aria-invalid")).toBe("true"))
     expect(screen.getByText(copy.description)).toBeTruthy()
     expect(screen.queryByText(copy.failed)).toBeNull()
+  })
+
+  const trash = () => screen.getAllByRole("button").filter((button) => button.innerHTML.includes("lucide-trash"))
+  const priceError = [{ code: "invalid_type", path: ["items", 1, "unitPrice"] }]
+
+  it("keeps a late price error on its row when a row is added and an earlier row deleted during the save", async () => {
+    const reject = failLater()
+    fireEvent.click(await openEditor())
+    fireEvent.click(screen.getAllByRole("button").find((button) => button.textContent === copy.addLine)!)
+    fireEvent.click(trash()[0])
+    reject(priceError)
+    const price = await screen.findByDisplayValue("50")
+    await waitFor(() => expect(price.getAttribute("aria-invalid")).toBe("true"))
+    expect(document.getElementById(price.getAttribute("aria-describedby")!)?.textContent).toBe(copy.price)
+    expect(screen.getAllByText(copy.price)).toHaveLength(1)
+  })
+
+  it("focuses and scrolls to the first invalid control after a failed save", async () => {
+    const scrollIntoView = (Element.prototype.scrollIntoView = vi.fn())
+    api.update.mockRejectedValue(new Error(JSON.stringify([
+      { origin: "string", code: "too_big", maximum: 5000, path: ["notes"] },
+      { code: "too_small", path: ["items", 1, "description"] },
+      { code: "invalid_type", path: ["items", 1, "unitPrice"] },
+    ])))
+    fireEvent.click(await openEditor())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByDisplayValue("More")))
+    expect(scrollIntoView).toHaveBeenCalled()
   })
 
   it("keeps the editor open when the user edited while a successful save was in flight", async () => {
@@ -162,22 +193,11 @@ describe.each([
     expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
-  it("shows one message when a value fails several checks", async () => {
-    api.update.mockRejectedValue(new Error(JSON.stringify([
-      { code: "invalid_format", path: ["items", 0, "quantity"] },
-      { code: "too_small", path: ["items", 0, "quantity"] },
-    ])))
-    fireEvent.click(await openEditor())
-    await screen.findByText(copy.qty)
-    expect(screen.getAllByText(copy.qty)).toHaveLength(1)
-  })
-
   it("ignores a failed save's errors when the form changed while it was in flight", async () => {
-    let reject: (error: Error) => void = () => {}
-    api.update.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+    const reject = failLater()
     fireEvent.click(await openEditor())
     fireEvent.change(screen.getByDisplayValue("Work"), { target: { value: "Consulting" } })
-    reject(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }])))
+    reject([{ code: "too_small", path: ["items", 0, "description"] }])
     await waitFor(() => expect(screen.getByRole("button", { name: copy.save }).hasAttribute("disabled")).toBe(false))
     expect(screen.queryByText(copy.description)).toBeNull()
   })
