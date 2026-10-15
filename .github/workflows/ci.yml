@@ -231,6 +231,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qui64-browser-evidence
+          include-hidden-files: true
           path: |
             .artifacts/qui64/
             apps/oss/test-results/
