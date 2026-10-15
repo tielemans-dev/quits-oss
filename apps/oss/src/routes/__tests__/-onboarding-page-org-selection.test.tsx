@@ -239,6 +239,22 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
   })
 
+  it("offers the retry when the capability lookup hangs instead of spinning forever", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      isCloudDistributionMock.mockReturnValue(true)
+      useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+      listOrganizations.mockResolvedValue({ data: [] })
+      vi.mocked(trpc.runtime.capabilities.query).mockReturnValueOnce(new Promise(() => {}) as never)
+      render(<RoutePage />)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await screen.findByRole("button", { name: "onboardingV2.retry" })).toBeTruthy()
+      expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({

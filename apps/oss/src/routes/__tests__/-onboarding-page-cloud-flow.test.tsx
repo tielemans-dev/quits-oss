@@ -132,6 +132,23 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect(screen.queryByRole("status")?.textContent).not.toBe("Loading onboarding state…"))
   })
 
+  it("offers a retry instead of the legacy form when v2 availability fails", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: false, suggestions: false } as never)
+    render(<RouteComponent />)
+    const retry = await screen.findByRole("button", { name: "Try again" })
+    const callsBeforeRetry = vi.mocked(trpc.cvr.available.query).mock.calls.length
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    fireEvent.click(retry)
+    await waitFor(() => expect(trpc.cvr.available.query).toHaveBeenCalledTimes(callsBeforeRetry + 1))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
   it("persists the selected CVR company after loading the newly selected organization", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })

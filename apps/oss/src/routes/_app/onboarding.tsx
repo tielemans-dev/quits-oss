@@ -37,6 +37,19 @@ import { createNamedOrganization } from '../../lib/organization-slug'
 import type { CvrLookupCompany } from '../../lib/onboarding/search-cvr'
 import { stageSelectedCompany, readSelectedCompany, clearSelectedCompany } from '../../lib/onboarding/selected-company'
 
+
+// A hung onboarding lookup must surface the retry card instead of a spinner that never ends.
+const ONBOARDING_LOOKUP_TIMEOUT_MS = 10_000
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('onboarding lookup timed out')), ms)
+    promise.then(
+      value => { clearTimeout(timer); resolve(value) },
+      error => { clearTimeout(timer); reject(error) },
+    )
+  })
+}
+
 export const Route = createFileRoute('/_app/onboarding')({
   validateSearch: loginReturnSearchSchema,
   component: OnboardingPage,
@@ -139,12 +152,17 @@ function OnboardingPageContent() {
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
+  // A failed availability lookup stays unknown (with a retry) instead of reading as "v2 disabled",
+  // which would let an organization created for v2 fall through to the legacy setup form.
+  const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
+  const [v2AvailabilityAttempt, setV2AvailabilityAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
-    trpc.cvr.available.query().then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2Availability({ enabled: false, suggestions: false }) })
+    setV2AvailabilityFailed(false)
+    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg])
+  }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
 
   // Before an organization exists, the public runtime capabilities decide whether onboarding v2
   // applies. v2 then only needs a name to create the organization; the CVR lookup, review and
@@ -157,7 +175,7 @@ function OnboardingPageContent() {
     if (!isCloud || hasActiveOrg) return
     let cancelled = false
     setNoOrgV2Failed(false)
-    trpc.runtime.capabilities.query()
+    withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
       .then(capabilities => { if (!cancelled) setNoOrgV2((capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true) })
       .catch(() => { if (!cancelled) setNoOrgV2Failed(true) })
     return () => { cancelled = true }
@@ -800,6 +818,20 @@ function OnboardingPageContent() {
 
   // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
   // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
+  if (hasActiveOrg && v2Availability === null && v2AvailabilityFailed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button type="button" className="w-full" onClick={() => setV2AvailabilityAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
   if (hasActiveOrg && v2Availability === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
