@@ -20,7 +20,7 @@ const text = (node: ReactNode): string[] => {
 }
 const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
 
-describe("QUI-9 round 2 legal presentation", () => {
+describe("Document rates and frozen identities", () => {
   it("keeps zero-rate reason codes on printable rows, distinct per reason", () => {
     const rows = vatRowsByRate(["health", "education"].map(reasonCode => ({ rate: "0", net: "10", tax: "0", gross: "10", treatment: "exempt", reasonCode })), "DKK")
     expect(rows.map(row => row.reasonCodes)).toEqual([["health"], ["education"]])
