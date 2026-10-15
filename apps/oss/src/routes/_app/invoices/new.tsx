@@ -1,3 +1,4 @@
+import { FormErrorSummary } from "../../../components/form-error-summary"
 import { FlowPreview } from "../../../components/invoices/flow-preview"
 import { useInvoiceMorph, type InvoiceFlowKind } from "../../../components/invoices/flow"
 import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
@@ -79,6 +80,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   const [baseCurrency, setBaseCurrency] = useState<string>()
   const [pricesIncludeTax, setPricesIncludeTax] = useState(handed?.pricesIncludeTax ?? false)
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
+  const summaryScope = useRef<HTMLDivElement>(null)
+  const [summaryAttempt, setSummaryAttempt] = useState(0)
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [reminders, setReminders] = useState(true)
   const [paymentMethods, setPaymentMethods] = useState<("bank_transfer" | "card")[]>(["bank_transfer"])
@@ -147,6 +150,19 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
       .finally(() => setLoadingAiCapabilities(false))
   }, [])
 
+  function changeItems(value: LineItem[]) {
+    setItems(value)
+    setFieldIssues(issues => issues.filter(issue => {
+      const match = /^items\.(\d+)\.(description|quantity|unitPrice)/.exec(issue.field)
+      if (!match) return true
+      const item = value[Number(match[1])]
+      if (!item) return false
+      if (match[2] === "description") return !item.description.trim() || !documentLineV2InputSchema.shape.description.safeParse(item.description).success
+      if (match[2] === "quantity") return !invoiceQuantityInput(locale).safeParse(item.quantity).success
+      return !documentLineV2InputSchema.shape.unitPrice.safeParse(item.unitPrice).success
+    }))
+  }
+
   function addItem() {
     setItems((prev) => [
       ...prev,
@@ -190,6 +206,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
     return issue ? <p role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p> : null
   }
   function validateForm(sendImmediately = false, effectiveBaseCurrency = baseCurrency) {
+    setSummaryAttempt(attempt => attempt + 1)
     const issues: FieldIssue[] = []
     const add = (code: string, field: string) => issues.push({ code, field, params: {} })
     if (paymentMethods.length === 0) { setError(t("invoices.flow.paidVia")); return false }
@@ -386,7 +403,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   }
 
   return (
-    <div className={`${onComplete ? "invoice-workspace" : "max-w-5xl"} p-4 sm:p-6 ${confirmOpen && onComplete ? "invoice-workspace-review" : ""}`}>
+    <div ref={summaryScope} className={`${onComplete ? "invoice-workspace" : "max-w-5xl"} p-4 sm:p-6 ${confirmOpen && onComplete ? "invoice-workspace-review" : ""}`}>
       {bankNudge.dialog}
       {handed && <Button type="button" variant="link" className="mb-2 px-0" onClick={backToRequest}><ArrowLeft className="size-4" />{t("invoices.new.backToRequest")}</Button>}
       <Card className="invoice-form">
@@ -394,6 +411,12 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
           <CardTitle>{t("invoices.new.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-6">
+          <FormErrorSummary attempt={summaryAttempt} scope={summaryScope} errors={fieldIssues.flatMap(issue => {
+            const line = /^items\.(\d+)\.(description|quantity|unitPrice)/.exec(issue.field)
+            if (line) return [{ target: `[data-validation-field="${issue.field}"]`, label: `${t(line[2] === "quantity" ? "docForm.column.qty" : line[2] === "unitPrice" ? "docForm.column.unitPrice" : "docForm.column.description")} ${Number(line[1]) + 1}`, message: t(invoiceIssueKey(issue.code), issue.params) }]
+            const field = ({ contactId: ["invoice-contact", t("docForm.contact")], dueDate: ["dueDate", t("invoices.new.field.dueDate")], supplyDate: ["supplyDate", t("invoices.issuance.supplyDate")], exchangeRate: ["exchangeRate", t("invoices.issuance.rate", { currency, baseCurrency: baseCurrency ?? currency })], rateDate: ["rateDate", t("invoices.issuance.rateDate")] } as Record<string, string[]>)[issue.field]
+            return field ? [{ target: `#${field[0]}`, label: field[1], message: t(invoiceIssueKey(issue.code), issue.params) }] : []
+          })} />
           <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
           {readiness?.issues.filter(issue => issue.field === "currency").map(issue => <p key={issue.code} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
           {error && (
@@ -492,11 +515,11 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             {!settings?.stripePaymentsEnabled && <><label className="flex justify-between text-sm">{t("invoices.flow.mobilePay")}<Switch disabled checked={false} /></label><p className="text-xs text-muted-foreground">{t("invoices.flow.connectStripe")}</p></>}
           </fieldset>}
           {kind !== "recurring" && <PriceBasisToggle value={pricesIncludeTax} onChange={value => { priceBasisEdited.current = true; setPricesIncludeTax(value) }} />}
-          <InvoiceLinesEditor items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} catalogItems={catalogItems} onCatalogItem={applyCatalogItem} onAdd={addItem} onRemove={removeItem}
+          <InvoiceLinesEditor items={items} onItemsChange={changeItems} catalogItems={catalogItems} onCatalogItem={applyCatalogItem} onAdd={addItem} onRemove={removeItem}
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
             amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
 
-          <DocumentVatFields items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
+          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
           {!restrictedVat && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">

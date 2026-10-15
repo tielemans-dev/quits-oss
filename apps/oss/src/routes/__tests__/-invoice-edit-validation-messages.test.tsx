@@ -39,8 +39,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe.each([
-  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik.", addLine: "Tilføj vare" }],
-  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment.", addLine: "Add Item" }],
+  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1.250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik.", addLine: "Tilføj vare" }],
+  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1,250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment.", addLine: "Add Item" }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
   // The next save stays in flight until the returned function fails it.
   function failLater() {
@@ -219,7 +219,7 @@ describe.each([
     expect(screen.getAllByText(copy.price)).toHaveLength(1)
   })
 
-  it("focuses and scrolls to the first invalid control after a failed save", async () => {
+  it("focuses the summary and links to an invalid control after a failed save", async () => {
     const scrollIntoView = (Element.prototype.scrollIntoView = vi.fn())
     api.update.mockRejectedValue(new Error(JSON.stringify([
       { origin: "string", code: "too_big", maximum: 5000, path: ["notes"] },
@@ -227,7 +227,11 @@ describe.each([
       { code: "invalid_type", path: ["items", 1, "unitPrice"] },
     ])))
     fireEvent.click(await openEditor())
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByDisplayValue("More")))
+    const summary = await screen.findByRole("alert", { name: translate("summary.title.other", locale, { n: 3 }) })
+    expect(document.activeElement).toBe(summary)
+    const link = screen.getByRole("link", { name: `${translate("docForm.column.description", locale)} 2: ${copy.description}` })
+    fireEvent.click(link)
+    expect(document.activeElement).toBe(screen.getByDisplayValue("More"))
     expect(scrollIntoView).toHaveBeenCalled()
   })
 

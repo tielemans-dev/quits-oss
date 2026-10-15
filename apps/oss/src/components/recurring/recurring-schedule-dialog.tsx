@@ -1,9 +1,10 @@
+import { FormErrorSummary, type SummaryError } from "../form-error-summary"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
 import { DocumentVatFields, VatGroupPreview } from "../document-vat-fields"
 import { useOrgPricingSettings } from "../../hooks/use-org-pricing-settings"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import type { RecurringEnd } from "@quits/contracts/recurring"
 import { trpc } from "../../trpc/client"
@@ -100,6 +101,9 @@ export function RecurringScheduleDialog({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const summaryScope = useRef<HTMLDivElement>(null)
+  const [serverErrors, setServerErrors] = useState<SummaryError[]>([])
+  const [summaryAttempt, setSummaryAttempt] = useState(0)
   const [fieldError, setFieldError] = useState<FieldError<ValidationField> | null>(null)
   const invalidFields = new Set<ValidationField>()
   if (!name.trim()) invalidFields.add("name")
@@ -108,12 +112,22 @@ export function RecurringScheduleDialog({
   if (!startDate) invalidFields.add("startDate")
   if (endType === "on_date" && !endsAt) invalidFields.add("endsAt")
   const validationError = visibleFieldError(fieldError, invalidFields)
-  const nameError = fieldError?.field === "name" ? validationError : null
+  const nameError = (summaryAttempt || fieldError?.field === "name") && invalidFields.has("name") ? t("validation.required") : null
+  const summaryErrors = [
+    { field: "name", target: "#recurring-name", label: t("recurring.form.name"), message: t("validation.required") },
+    { field: "contact", target: "#recurring-contact", label: t("docForm.contact"), message: t("validation.customer.required") },
+    ...items.flatMap((item, index) => item.description.trim() ? [] : [{ field: "items", target: `#recurring-description-${index}`, label: `${t("docForm.column.description")} ${index + 1}`, message: t("validation.line.description.required") }]),
+    { field: "startDate", target: "#recurring-start", label: t("recurring.form.startDate"), message: t("validation.date.invalid") },
+    { field: "endsAt", target: "#recurring-ends-at", label: t("recurring.form.endsAt"), message: t("validation.date.invalid") },
+  ].filter(issue => invalidFields.has(issue.field as ValidationField))
+  const allSummaryErrors = [...summaryErrors, ...serverErrors]
 
   useEffect(() => {
     if (!open) return
     setError(null)
     setFieldError(null)
+    setSummaryAttempt(0)
+    setServerErrors([])
     setName(schedule?.name ?? "")
     setContactId(schedule?.contactId ?? "")
     setItems(schedule?.items.length ? schedule.items.map((item) => ({ ...item, quantity: String(item.quantity), unitPrice: String(item.unitPrice) })) : [emptyItem()])
@@ -156,13 +170,9 @@ export function RecurringScheduleDialog({
   async function handleSubmit() {
     setError(null)
     setFieldError(null)
-    if (!name.trim()) return setFieldError({ field: "name", message: t("validation.required") })
-    if (!contactId) return setFieldError({ field: "contact", message: t("validation.customer.required") })
-    if (items.some((item) => !item.description.trim())) {
-      return setFieldError({ field: "items", message: t("validation.line.description.required") })
-    }
-    if (!startDate) return setFieldError({ field: "startDate", message: t("recurring.form.validation.startDate") })
-    if (endType === "on_date" && !endsAt) return setFieldError({ field: "endsAt", message: t("recurring.form.validation.endsAt") })
+    setServerErrors([])
+    setSummaryAttempt(attempt => attempt + 1)
+    if (invalidFields.size) return
 
     const fields = {
       name: name.trim(),
@@ -189,7 +199,15 @@ export function RecurringScheduleDialog({
       onOpenChange(false)
       onSaved()
     } catch (err) {
-      setError(readableIssues(err)?.map(issue => t(issue.key, issue.params)).join(" ") ?? t("validation.save.failed"))
+      const issues = readableIssues(err)
+      setServerErrors((issues ?? []).flatMap(issue => {
+        const field = ({ name: ["name", t("recurring.form.name")], contact: ["contact", t("docForm.contact")], notes: ["notes", t("docForm.notes")] } as Record<string, string[]>)[issue.field]
+        if (field) return [{ target: `#recurring-${field[0]}`, label: field[1], message: t(issue.key, issue.params) }]
+        if (issue.field === "items" && issue.line !== undefined && issue.column && issue.column !== "vat") return [{ target: `#recurring-${issue.column}-${issue.line}`, label: `${t(issue.column === "quantity" ? "docForm.column.qty" : issue.column === "unitPrice" ? "docForm.column.unitPrice" : "docForm.column.description")} ${issue.line + 1}`, message: t(issue.key, issue.params) }]
+        return []
+      }))
+      setSummaryAttempt(attempt => attempt + 1)
+      setError(issues?.map(issue => t(issue.key, issue.params)).join(" ") ?? t("validation.save.failed"))
     } finally {
       setSaving(false)
     }
@@ -205,8 +223,12 @@ export function RecurringScheduleDialog({
           <DialogDescription>{t("recurring.form.description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-5" onChangeCapture={() => setError(null)}>
-          {(error || (fieldError?.field !== "name" && validationError)) && (
+        <div ref={summaryScope} className="grid gap-5" onChangeCapture={event => {
+          setError(null)
+          setServerErrors(errors => errors.filter(error => !(event.target instanceof Element && event.target.matches(error.target))))
+        }}>
+          <FormErrorSummary attempt={summaryAttempt} scope={summaryScope} errors={allSummaryErrors} />
+          {(error || (!summaryAttempt && fieldError?.field !== "name" && validationError)) && (
             <p className="text-sm text-destructive" role="alert">
               {error || validationError}
             </p>
@@ -227,14 +249,14 @@ export function RecurringScheduleDialog({
               {nameError && <p id="recurring-name-error" className="text-sm text-destructive" role="alert">{nameError}</p>}
             </div>
             <div className="grid gap-2">
-              <Label>{t("docForm.contact")} *</Label>
+              <Label htmlFor="recurring-contact">{t("docForm.contact")} *</Label>
               {loadingContacts ? (
                 <p className="text-sm text-muted-foreground py-2">{t("docForm.loadingContacts")}</p>
               ) : contacts.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">{t("docForm.noContacts")}</p>
               ) : (
                 <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="recurring-contact" className="w-full">
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,11 +287,14 @@ export function RecurringScheduleDialog({
                   className="grid grid-cols-[1fr_80px_110px_110px_40px] gap-2 p-3 border-b last:border-0 items-center"
                 >
                   <Input
+                    id={`recurring-description-${index}`}
+                    aria-label={`${t("docForm.column.description")} ${index + 1}`}
                     placeholder={t("docForm.column.description")}
                     value={item.description}
                     onChange={(event) => updateItem(index, { description: event.target.value })}
                   />
                   <Input
+                    id={`recurring-quantity-${index}`}
                     type="number"
                     min="0.000001"
                     step="0.000001"
@@ -277,6 +302,7 @@ export function RecurringScheduleDialog({
                     onChange={(event) => updateItem(index, { quantity: event.target.value })}
                   />
                   <Input
+                    id={`recurring-unitPrice-${index}`}
                     type="number"
                     min="0"
                     step="0.0001"

@@ -86,9 +86,9 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getAllByRole("radio")[registered ? 0 : 1]!)
     expect((screen.getByLabelText("CVR number") as HTMLInputElement).required).toBe(true)
     fireEvent.submit(screen.getByRole("button", { name: "Create company" }).closest("form")!)
-    await screen.findByText("Check the highlighted fields before creating your company.")
+    await screen.findByText("1 thing to fix before you can continue")
     expect(screen.getByLabelText("CVR number").getAttribute("aria-invalid")).toBe("true")
-    expect(document.activeElement).toBe(screen.getByLabelText("CVR number"))
+    expect(document.activeElement).toBe(document.querySelector("[role=alert][tabindex]"))
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.confirm).not.toHaveBeenCalled()
     expect(done).not.toHaveBeenCalled()
@@ -115,8 +115,8 @@ describe("production v2 seller confirmation", () => {
     // A real click: native validation must not swallow the submit before the notice (QUI-56).
     expect(radios.some(radio => radio.required)).toBe(false)
     fireEvent.click(save)
-    await screen.findByText("Check the highlighted fields before creating your company.")
-    expect(document.activeElement).toBe(radios[0])
+    await screen.findByText("1 thing to fix before you can continue")
+    expect(document.activeElement).toBe(document.querySelector("[role=alert][tabindex]"))
     expect(api.prepare).not.toHaveBeenCalled()
     fireEvent.click(radios[0]!)
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Edited Seller" } })
@@ -209,11 +209,11 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
     render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled={confirmationEnabled} nonVatEnabled={nonVatEnabled} client={createOnboardingV2Client(false, confirmationEnabled)} onComplete={done} /></I18nProvider>)
     const copy = locale === "da-DK" ? {
       save: "Bekræft og opret", vat: "Momsregistreret?",
-      banner: "Tjek de markerede felter, før du opretter din virksomhed.",
+      banner: "1 ting mangler, før du kan fortsætte",
       required: "Bekræft, om du er momsregistreret.",
     } : {
       save: "Confirm and create", vat: "VAT registered?",
-      banner: "Check the highlighted fields before creating your company.",
+      banner: "1 thing to fix before you can continue",
       required: "Confirm whether you're VAT-registered.",
     }
     const save = await screen.findByRole("button", { name: copy.save })
@@ -231,7 +231,7 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
       for (const control of confirmationEnabled ? screen.getAllByRole("radio") : [vat]) {
         expect(control.getAttribute("aria-describedby")).toBe(error.id)
       }
-      expect(document.activeElement).toBe(vat)
+      expect(document.activeElement).toBe(document.querySelector("[role=alert][tabindex]"))
       expect(api.prepare).not.toHaveBeenCalled()
       expect(api.confirm).not.toHaveBeenCalled()
       expect(done).not.toHaveBeenCalled()
@@ -265,7 +265,7 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
     for (const name of ["Navn", "CVR-nummer", "Fakturaemail", "Fakturanummerpræfiks", "Reg.nr.", "Kontonr."]) {
       expect(screen.getByLabelText(name).getAttribute("aria-invalid")).toBe("true")
     }
-    expect(document.activeElement).toBe(screen.getByLabelText("Navn"))
+    expect(document.activeElement).toBe(document.querySelector("[role=alert][tabindex]"))
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.confirm).not.toHaveBeenCalled()
   })
@@ -288,6 +288,8 @@ describe("review page CVR errors (QUI-39)", () => {
     const error = await screen.findByText(message)
     expect(cvr.getAttribute("aria-invalid")).toBe("true")
     expect(cvr.getAttribute("aria-describedby")).toBe(error.id)
+    expect(document.activeElement).toBe(document.querySelector("[role=alert][tabindex]"))
+    fireEvent.click(screen.getByRole("link", { name: `${cvr.getAttribute("aria-label")}: ${message}` }))
     expect(document.activeElement).toBe(cvr)
     expect(api.confirm).not.toHaveBeenCalled()
     fireEvent.change(cvr, { target: { value: "24256790" } })

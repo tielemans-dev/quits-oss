@@ -1,3 +1,4 @@
+import { FormErrorSummary } from "../form-error-summary"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, LoaderCircle, Search, X } from "lucide-react"
 import { B2bNotice } from "../onboarding/b2b-notice"
@@ -119,18 +120,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | "cvr.alreadyRegistered" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
-  const focusInvalid = useRef(false)
-  // Long review page: after a rejected submit, take the user to the first field that needs fixing.
-  useEffect(() => {
-    if (!focusInvalid.current || !validationErrors.length) return
-    focusInvalid.current = false
-    // Center the first invalid field so the sticky app header and confirm bar cannot cover it.
-    const target = reviewForm.current?.querySelector<HTMLElement>("[aria-invalid='true']")
-    target?.focus({ preventScroll: true })
-    target?.scrollIntoView?.({ block: "center" })
-  }, [validationErrors])
+  const [summaryAttempt, setSummaryAttempt] = useState(0)
   function reject(fields: string[]) {
-    focusInvalid.current = true
+    setSummaryAttempt(attempt => attempt + 1)
     setValidationErrors(fields)
   }
   const mounted = useRef(true)
@@ -367,7 +359,12 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
     if (field === "cvr") suggestionRequest.current?.abort()
     if (field === "cvr") setCvrError(null)
-    setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
+    const values = { ...draft!.values, [field]: value }
+    const checked = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload({ ...draft!, values: { ...values, momsRegistered: values.momsRegistered ?? true } }))
+    const invalid = (field === "momsRegistered" && value === null) ||
+      (["companyName", "companyAddress", "companyForm", "companyEmail"].includes(field) && !String(value).trim()) ||
+      (!checked.success && checked.error.issues.some(issue => (String(issue.path.at(-1)) === field || (field === "bankRegNumber" && issue.path.at(-1) === "regNumber") || (field === "bankAccountNumber" && issue.path.at(-1) === "accountNumber"))))
+    setValidationErrors(current => invalid ? current : current.filter(name => name !== field))
     setDraft((current) =>
       current
         ? {
@@ -488,14 +485,16 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         : 1
   const factsTag = TT(draft?.source === "manual" ? "defaultTag" : "cvrTag")
   /** The localized message under an invalid review field, so an error is visible next to the field and not only in the banner. */
-  function fieldError(name: keyof ReviewValues) {
-    if (!validationErrors.includes(name)) return null
+  function fieldMessage(name: keyof ReviewValues) {
     const value = String(draft!.values[name] ?? "").trim()
     const message: TranslationKey =
       name === "cvr" ? (cvrError ?? (value ? "validation.cvr.invalid" : "validation.required"))
       : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
       : value ? "validation.unknown" : "validation.required"
-    return <span id={`ob-${name}-error`} className="ob-error" role="alert">{t(message)}</span>
+    return t(message)
+  }
+  function fieldError(name: keyof ReviewValues) {
+    return validationErrors.includes(name) ? <span id={`ob-${name}-error`} className="ob-error" role="alert">{fieldMessage(name)}</span> : null
   }
   function field(
     name: keyof ReviewValues,
@@ -707,7 +706,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               {TT("restored")}
             </p>
           ) : null}
-          {validationErrors.length ? <StateNotice danger>{TT("validation")}</StateNotice> : null}
+          <FormErrorSummary attempt={summaryAttempt} scope={reviewForm} errors={validationErrors.map(name => {
+            const suffix = ({ companyName: "name", companyAddress: "address", companyForm: "form", companyEmail: "email", companyPhone: "phone", momsRegistered: "vat", taxRate: "rate", invoicePrefix: "prefix", invoiceNextNum: "next", paymentTermsDays: "terms" } as Record<string, string>)[name] ?? name
+            const bank = name === "bankRegNumber" ? "reg" : name === "bankAccountNumber" ? "account" : null
+            return { target: bank ? `[aria-label="${TT(`bank.${bank}`)}"]` : `[aria-describedby="ob-${name}-error"]`, label: TT(bank ? `bank.${bank}` : `field.${suffix}`), message: bank ? TT(`bank.${bank}Error`) : name === "momsRegistered" ? TT("vatRequired") : fieldMessage(name as keyof ReviewValues) }
+          })} />
           {saveFailed ? (
             <StateNotice danger title={TT("saveFailed.title")}>
               <p>{TT("saveFailed.body")}</p>

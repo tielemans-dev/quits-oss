@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // MOCK: organization/session and settings transport fixtures are test-only; the form and hooks are real.
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const fixture = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn() }))
@@ -45,6 +45,33 @@ describe("new invoice stale field errors", () => {
     fixture.settings.mockResolvedValue({ baseCurrency: "DKK" })
   })
   afterEach(cleanup)
+
+  it("focuses the summary and lets each link focus its field", async () => {
+    render(<Component />)
+    await waitFor(() => expect(screen.queryByText("docForm.loadingContacts")).toBeNull())
+    await submit()
+    const summary = screen.getByRole("alert", { name: "summary.title.other" })
+    expect(document.activeElement).toBe(summary)
+    const links = within(summary).getAllByRole("link")
+    fireEvent.click(links[0])
+    expect(document.activeElement).toBe(document.getElementById("invoice-contact"))
+    fireEvent.click(links[1])
+    expect(document.activeElement).toBe(screen.getByLabelText("docForm.column.description"))
+    await pickCustomer()
+    fireEvent.change(screen.getByLabelText("docForm.column.description"), { target: { value: "Consulting" } })
+    expect(screen.queryByRole("alert", { name: /summary.title/ })).toBeNull()
+  })
+
+  it("keeps the other invalid line fields in the summary while one is corrected", async () => {
+    render(<Component />)
+    await waitFor(() => expect(screen.queryByText("docForm.loadingContacts")).toBeNull())
+    const quantity = screen.getByLabelText("docForm.column.qty")
+    fireEvent.change(quantity, { target: { value: "bad" } })
+    await submit()
+    fireEvent.change(quantity, { target: { value: "2" } })
+    expect(screen.getByRole("link", { name: "docForm.column.description 1: invoiceValidation.required" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: /docForm.column.qty 1:/ })).toBeNull()
+  })
 
   it("clears the customer error as soon as a customer is picked", async () => {
     render(<Component />)

@@ -1,3 +1,4 @@
+import { FormErrorSummary } from "../../../components/form-error-summary"
 import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { defaultDocumentTaxRate } from "../../../lib/invoice-defaults"
@@ -295,7 +296,7 @@ function InvoiceDetailPage() {
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
   const [editIssues, setEditIssues] = useState<ReadableIssue[]>([])
-  const [focusInvalid, setFocusInvalid] = useState(false)
+  const [summaryAttempt, setSummaryAttempt] = useState(0)
   const editForm = useRef<HTMLDivElement>(null)
   const [editDueDate, setEditDueDate] = useState("")
   const [editSupplyDate, setEditSupplyDate] = useState("")
@@ -308,15 +309,6 @@ function InvoiceDetailPage() {
   const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editSupplyDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
   const editValues = useMemo(() => ({ editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems])
   editSnapshot.current = editValues
-  // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
-  useEffect(() => {
-    if (!focusInvalid) return
-    setFocusInvalid(false)
-    const first = editForm.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
-    first?.focus({ preventScroll: true })
-    first?.scrollIntoView?.({ block: "center" })
-  }, [focusInvalid])
-
   // The page stays mounted when navigating to another invoice; drop answers for the previous one.
   const beginRequest = useDocumentResponseGuard(invoiceId)
 
@@ -464,7 +456,7 @@ function InvoiceDetailPage() {
     // A local quantity error stops the retry before the server can re-report other issues, so keep them until the request runs.
     if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
-      setFocusInvalid(true)
+      setSummaryAttempt(attempt => attempt + 1)
       return
     }
     setEditIssues([])
@@ -512,7 +504,7 @@ function InvoiceDetailPage() {
       const issues = readableIssues(err)
       // Fields edited while the save was in flight may already be fixed; a late answer must not flag them again.
       const current = issues?.flatMap((issue) => follow(issue) ?? [])
-      if (current?.length) { setEditIssues(current); setFocusInvalid(true) }
+      if (current?.length) { setEditIssues(current); setSummaryAttempt(attempt => attempt + 1) }
       else if (issues) setError(t("validation.save.failed"))
       else setError(err instanceof Error ? err.message : t("validation.save.failed"))
     } finally {
@@ -745,6 +737,16 @@ function InvoiceDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
+            <FormErrorSummary attempt={summaryAttempt} scope={editForm} errors={[
+              ...editIssues.flatMap(issue => {
+                if (!["contact", "dueDate", "notes", "taxRate", "vatEvidence", "items"].includes(issue.field)) return []
+                const column = issue.column ?? "description"
+                const label = issue.field === "items" ? issue.line === undefined ? t("docForm.lineItems") : `${t(column === "quantity" ? "docForm.column.qty" : column === "vat" ? "invoiceVat.column" : column === "unitPrice" ? "docForm.column.unitPrice" : "docForm.column.description")} ${(issue.line ?? 0) + 1}` : t(({ contact: "docForm.contact", dueDate: "invoices.new.field.dueDate", notes: "docForm.notes", taxRate: "docForm.summary.tax", vatEvidence: issue.evidence === "buyerVatId" ? "vat.buyerId" : issue.evidence === "viesCheck" ? "vat.viesResult" : issue.evidence === "exportEvidence" ? "vat.exportRef" : "vat.statement" } as Record<string, Parameters<typeof t>[0]>)[issue.field])
+                const id = issue.field === "items" ? issue.line === undefined ? "edit-items-error" : lineIssueId(issue.line, issue.column ?? "line") : issue.field === "vatEvidence" && issue.evidence ? `edit-vatEvidence-${issue.evidence}-error` : `edit-${issue.field}-error`
+                return [{ target: issue.field === "items" && issue.line === undefined ? "#invoice-edit-add-item" : `[aria-describedby~="${id}"]`, label, message: t(issue.key, issue.params) }]
+              }),
+              ...editItems.flatMap((item, index) => summaryAttempt && !invoiceQuantityInput(locale).safeParse(item.quantity).success ? [{ target: `#invoice-edit-quantity-${index}`, label: `${t("docForm.column.qty")} ${index + 1}`, message: t("validation.line.qty.invalid") }] : []),
+            ]} />
             <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
             {error && (
               <p className="text-sm text-destructive" role="alert">
@@ -913,6 +915,7 @@ function InvoiceDetailPage() {
                 type="button"
                 variant="outline"
                 size="sm"
+                id="invoice-edit-add-item"
                 onClick={addEditItem}
                 className="w-fit"
               >

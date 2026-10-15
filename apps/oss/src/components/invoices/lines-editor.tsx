@@ -49,17 +49,17 @@ export function InvoiceLinesEditor<Line extends EditableLine>({ items, onItemsCh
         </div>
         <div className="grid gap-1">
           <Label className="@min-[760px]:sr-only" htmlFor={`${prefix}-${index}-description`}>{t("docForm.column.description")}</Label>
-          <Textarea id={`${prefix}-${index}-description`} className="min-w-0 [overflow-wrap:anywhere]" disabled={!!item.deliverableId} value={item.description} aria-invalid={!!issueFor(index, "description")} onChange={event => patch(index, "description", event.target.value)} />
+          <Textarea data-validation-field={`items.${index}.description`} id={`${prefix}-${index}-description`} className="min-w-0 [overflow-wrap:anywhere]" disabled={!!item.deliverableId} value={item.description} aria-invalid={!!issueFor(index, "description")} onChange={event => patch(index, "description", event.target.value)} />
           {errorText(index, "description")}
         </div>
         <div className="grid gap-1">
           <Label className="@min-[760px]:sr-only" htmlFor={`${prefix}-${index}-quantity`}>{t("docForm.column.qty")}</Label>
-          <Input id={`${prefix}-${index}-quantity`} type="text" inputMode="decimal" disabled={!!item.deliverableId} value={item.quantity || ""} aria-invalid={!!issueFor(index, "quantity") || !invoiceQuantityInput(locale).safeParse(item.quantity).success} onChange={event => patch(index, "quantity", event.target.value)} />
+          <Input data-validation-field={`items.${index}.quantity`} id={`${prefix}-${index}-quantity`} type="text" inputMode="decimal" disabled={!!item.deliverableId} value={item.quantity || ""} aria-invalid={!!issueFor(index, "quantity") || !invoiceQuantityInput(locale).safeParse(item.quantity).success} onChange={event => patch(index, "quantity", event.target.value)} />
           {errorText(index, "quantity")}
         </div>
         <div className="grid gap-1">
           <Label className="@min-[760px]:sr-only" htmlFor={`${prefix}-${index}-price`}>{t("docForm.column.unitPrice")}</Label>
-          <Input id={`${prefix}-${index}-price`} type="number" min="0" step="0.0001" disabled={!!item.deliverableId} value={item.unitPrice || ""} aria-invalid={!!issueFor(index, "unitPrice")} onChange={event => patch(index, "unitPrice", event.target.value)} />
+          <Input data-validation-field={`items.${index}.unitPrice`} id={`${prefix}-${index}-price`} type="number" min="0" step="0.0001" disabled={!!item.deliverableId} value={item.unitPrice || ""} aria-invalid={!!issueFor(index, "unitPrice")} onChange={event => patch(index, "unitPrice", event.target.value)} />
           {errorText(index, "unitPrice")}
         </div>
         {showVat && <div className="grid gap-1">
