@@ -1,6 +1,8 @@
+import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { publicPresentationSettingsSelect } from "../documents/public-presentation"
-import { getStripePaymentConfigurationState } from "./stripe"
+import { assessCardCheckout, resolveStripeCheckoutTarget, type StripeCheckoutTarget } from "./stripe"
+import { appLogger } from "../observability"
 import {
   getInvoicePaymentState,
   verifyInvoicePaymentToken,
@@ -57,16 +59,25 @@ export async function loadPublicInvoiceByToken(token: string, secret: string) {
     return null
   }
 
-  const stripeState = getStripePaymentConfigurationState({
-    stripePublishableKey: invoice.organization.settings?.stripePublishableKey ?? null,
-    stripeSecretKeyEnc: invoice.organization.settings?.stripeSecretKeyEnc ?? null,
-    stripeWebhookSecretEnc: invoice.organization.settings?.stripeWebhookSecretEnc ?? null,
-    stripeAccountStatus: invoice.organization.settings?.stripeAccountStatus,
-  })
+  const settings = invoice.organization.settings
+  const balanceDue = computeSettlement(invoice).balanceDue
 
-  return {
-    invoice,
-    paymentState: getInvoicePaymentState(invoice),
-    stripeEnabled: stripeState.configured,
+  const paymentState = getInvoicePaymentState(invoice)
+  const cardEligible = paymentState === "unpaid" && balanceDue.greaterThan(0) && assessCardCheckout({
+    configuration: settings,
+    amount: balanceDue.toNumber(),
+    currency: invoice.currency,
+  }).ready
+  let checkoutTarget: StripeCheckoutTarget | null = null
+  if (cardEligible) {
+    try {
+      checkoutTarget = await resolveStripeCheckoutTarget(
+        { organizationId: invoice.organizationId },
+        { connectReady: settings?.stripeAccountStatus === "active" },
+      )
+    } catch {
+      appLogger.child("payments").error("public_invoice.checkout_target_unavailable", { invoiceId: invoice.id })
+    }
   }
+  return { invoice, paymentState, stripeEnabled: Boolean(checkoutTarget), checkoutTarget }
 }

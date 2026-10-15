@@ -90,7 +90,7 @@ describeIfDatabase("quote public access", () => {
       taxRate: "25", lineTax: "25", lineGross: "125", unitPriceGross: "125",
     } })
     const token = signQuotePublicToken({ quoteId: quote.id, keyVersion: 1, scope: "quote_public" }, secret)
-    const rows = [{ ratePercent: "25", net: "100.00", tax: "25.00", gross: "125.00" }]
+    const rows = [{ ratePercent: "25", net: "100.00", tax: "25.00", gross: "125.00", treatment: "standard", treatments: ["standard"] }]
     expect((await loadPublicQuoteByToken(token, secret))?.quote.vatRows).toEqual(rows)
     const decided = await decidePublicQuoteByToken(token, secret, { decision: "accepted" })
     expect(decided.quote.vatRows).toEqual(rows)

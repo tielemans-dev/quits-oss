@@ -263,13 +263,14 @@ function InvoiceDetailPage() {
   const [focusInvalid, setFocusInvalid] = useState(false)
   const editForm = useRef<HTMLDivElement>(null)
   const [editDueDate, setEditDueDate] = useState("")
+  const [editSupplyDate, setEditSupplyDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
   // The edit values as of this render, so a save can tell which fields changed while it was in flight.
-  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
-  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems])
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editSupplyDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems])
   editSnapshot.current = editValues
   // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
   useEffect(() => {
@@ -342,6 +343,7 @@ function InvoiceDetailPage() {
     if (readOnly) { setEditing(true); return }
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
+    setEditSupplyDate(invoice.supplyDate ? new Date(invoice.supplyDate).toISOString().slice(0, 10) : "")
     setEditNotes(invoice.notes ?? "")
     setEditTaxRate(invoice.agreementTaxRate ?? storedDocumentTaxRate(invoice.items))
     const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
@@ -446,6 +448,7 @@ function InvoiceDetailPage() {
         id: invoice.id,
         contactId: editContactId,
         dueDate: editDueDate,
+        supplyDate: editSupplyDate || null,
         notes: editNotes,
         ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
         vatEvidence: editVatEvidence,
@@ -459,6 +462,7 @@ function InvoiceDetailPage() {
       })
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
+      setIssuance(current => ({ ...current, supplyDate: editSupplyDate || initialIssuanceValues().supplyDate }))
       // Edits made while the save was in flight are not in this response; keep the editor open so they are not lost.
       if (editSnapshot.current !== submitted) return
       setEditing(false)
@@ -688,6 +692,18 @@ function InvoiceDetailPage() {
               </div>
             </div>
             {fieldMessage("edit-form-error", (issue) => issue.field === "form" || issue.field === "email" || issue.field === "cvr")}
+
+            <div className="grid gap-2">
+              <Label htmlFor="editSupplyDate">{t("invoices.issuance.supplyDate")}</Label>
+              <LocalizedDateField
+                id="editSupplyDate"
+                value={editSupplyDate}
+                onChange={setEditSupplyDate}
+                locale={locale}
+                placeholder={t("docForm.selectDate")}
+                clearLabel={t("docForm.clear")}
+              />
+            </div>
 
             {/* Line Items */}
             <div className="grid gap-3">

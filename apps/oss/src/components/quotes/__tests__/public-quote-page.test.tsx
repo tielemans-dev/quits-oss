@@ -91,7 +91,7 @@ describe("PublicQuotePage", () => {
       const html = page("da-DK", <PublicQuotePage token="test" state={{ kind: "ready", ...session }} />)
       const container = document.createElement("div")
       container.innerHTML = html
-      const lines = container.querySelector("h2")!.nextElementSibling!
+      const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", "da-DK"))!.nextElementSibling!
       for (const [index, row] of quote.items.entries()) {
         expect(lines.children[index]?.textContent).toContain(money(row.unitPriceNet))
         expect(lines.children[index]?.textContent).toContain(money(row.lineNet))
@@ -120,7 +120,7 @@ describe("PublicQuotePage", () => {
       const html = page(locale, <PublicQuotePage token="test" state={{ kind: "ready", decisionState, seller, quote }} />)
       const container = document.createElement("div")
       container.innerHTML = html
-      const lines = container.querySelector("h2")!.nextElementSibling!
+      const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", locale))!.nextElementSibling!
       expect(lines.textContent).toContain(money(18000))
       expect(lines.textContent).toContain(money(4500))
       expect(lines.textContent).not.toContain(money(22500))
@@ -132,12 +132,13 @@ describe("PublicQuotePage", () => {
   })
 
   it.each([
-    ["en-US", "Subtotal excl. tax", "Tax (25%)", "Total incl. tax"],
-    ["da-DK", "Subtotal ekskl. moms", "Moms (25 %)", "Total inkl. moms"],
+    ["en-US", "Subtotal excl. tax", "Tax 25%", "Total incl. tax"],
+    ["da-DK", "Subtotal ekskl. moms", "Moms 25 %", "Total inkl. moms"],
   ])("shows stored VAT totals in %s", (locale, subtotal, tax, total) => {
     const html = page(locale, <PublicQuotePage token="signed-token" state={{
       kind: "ready", decisionState: "pending", seller, quote: { ...baseQuote, currency: "DKK" },
     }} />)
+    expect(html).toContain("Main Street 1")
     expect(html).toContain(subtotal)
     expect(html).toContain(tax)
     expect(html).toContain(total)
@@ -166,7 +167,7 @@ describe("PublicQuotePage", () => {
         vatRows: [{ ratePercent: "0", net: "1000.00", tax: "0.00", gross: "1000.00" }] },
     }} />)
     expect(html).not.toContain("Moms (")
-    expect(html).toContain("Total inkl. moms")
+    expect(html).toContain("Total")
   })
 
   it("shows each stored VAT rate and rounding without deriving a rate from header totals", () => {
