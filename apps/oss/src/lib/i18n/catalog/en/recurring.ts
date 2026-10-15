@@ -10,6 +10,7 @@ export const enRecurringMessages = {
   "recurring.action.end": "End schedule",
   "recurring.action.runNow": "Generate now",
   "recurring.action.back": "Back to schedules",
+  "recurring.action.more": "More actions",
   "recurring.empty.title": "No recurring schedules yet",
   "recurring.empty.description": "Bill retainers and subscriptions automatically on a fixed cadence.",
   "recurring.table.name": "Schedule",
