@@ -13,6 +13,7 @@ import {
 import { currencyFractionDigits } from "./stripe-amounts"
 import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { asIssued } from "../../domain/documents/numbering"
+import { expireOrganizationCheckoutSession } from "./checkout-sessions"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -93,7 +94,9 @@ async function openCheckoutSession(token: string) {
   const previousSessionId = session.invoice.stripeCheckoutSessionId
   if (previousSessionId && !(await paymentCameFrom(previousSessionId))) {
     try {
-      await expireTrackedCheckoutSession(target, previousSessionId)
+      await expireOrganizationCheckoutSession({
+        organizationId: session.invoice.organizationId, sessionId: previousSessionId, target,
+      })
     } catch (error) {
       paymentsLogger.error("invoice.checkout.unavailable", {
         ...logContext,

@@ -23,6 +23,9 @@ jobs:
           persist-credentials: false
       - name: Validate required-check failure propagation
         run: node --test .github/scripts/ci-gate.test.mjs
+      # Cheap and dependency-free, so it also covers PRs that only change COPY.md or the copy rules.
+      - name: Copy gates
+        run: node scripts/i18n-copy-check.mjs
       - name: Classify documentation-only PRs
         id: classify
         env:
