@@ -59,7 +59,7 @@ vi.mock("../../lib/auth-client", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
-    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) } },
+    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) }, setupAvailable: { query: vi.fn(async () => ({ enabled: false })) } },
     onboarding: {
       getStatus: {
         query: onboardingStatusQuery,
@@ -108,7 +108,7 @@ describe("OnboardingPage cloud flow", () => {
     let resolveStatus!: (value: unknown) => void
     onboardingStatusQuery.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
     render(<RouteComponent />)
-    const companyName = screen.getByLabelText("Company name") as HTMLInputElement
+    const companyName = await screen.findByLabelText("Company name") as HTMLInputElement
     expect(companyName.matches(":disabled")).toBe(true)
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).matches(":disabled")).toBe(true)
     resolveStatus({ isComplete: false, missing: [], values: { companyName: "Saved company", locale: "en-US" } })
@@ -116,6 +116,71 @@ describe("OnboardingPage cloud flow", () => {
     expect(companyName.value).toBe("Saved company")
     fireEvent.change(companyName, { target: { value: "Reviewed company" } })
     expect(companyName.value).toBe("Reviewed company")
+  })
+
+  it("shows neither the legacy setup form nor v2 until v2 availability resolves", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    let resolveAvailability!: (value: unknown) => void
+    vi.mocked(trpc.cvr.available.query).mockImplementationOnce(() => new Promise((resolve) => { resolveAvailability = resolve }) as never)
+    render(<RouteComponent />)
+    expect(await screen.findByRole("status")).toBeTruthy()
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    resolveAvailability({ enabled: false, suggestions: false })
+    await waitFor(() => expect(screen.queryByRole("status")?.textContent).not.toBe("Loading onboarding state…"))
+  })
+
+  it("offers a retry instead of the legacy form when v2 availability fails", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: false, suggestions: false } as never)
+    render(<RouteComponent />)
+    const retry = await screen.findByRole("button", { name: "Try again" })
+    const callsBeforeRetry = vi.mocked(trpc.cvr.available.query).mock.calls.length
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    fireEvent.click(retry)
+    await waitFor(() => expect(trpc.cvr.available.query).toHaveBeenCalledTimes(callsBeforeRetry + 1))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
+  it("retries runtime capabilities with v2 availability before mounting v2", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("network"))
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    // Availability recovered but capabilities did not: keep offering the retry, not v2.
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy()
+    const capabilityCalls = runtimeCapabilitiesQuery.mock.calls.length
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(runtimeCapabilitiesQuery.mock.calls.length).toBeGreaterThan(capabilityCalls))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
+  it("does not mount v2 from a stale availability result when the retry's availability read fails", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockRejectedValueOnce(new Error("network"))
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    vi.mocked(trpc.cvr.available.query)
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+      .mockRejectedValueOnce(new Error("network"))
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(vi.mocked(trpc.cvr.available.query).mock.calls.length).toBeGreaterThanOrEqual(2))
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy()
+    expect(screen.queryByText("Business basics")).toBeNull()
   })
 
   it("persists the selected CVR company after loading the newly selected organization", async () => {
@@ -155,6 +220,26 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US"))
     expect(screen.getByText("Finish organization setup")).toBeTruthy()
     await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ locale: "en-US", primaryTaxId: null }))
+  })
+
+  it("does not store a legacy locale draft when onboarding v2 is active", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
+  })
+
+  it("does not store a legacy locale draft when capabilities are unavailable", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("unavailable"))
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
   })
 
   it("prefills localized defaults and hides irrelevant tax fields", async () => {

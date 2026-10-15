@@ -26,7 +26,7 @@ vi.mock('../../lib/auth-client', () => ({
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
-  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) } },
+  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) }, setupAvailable: { query: async () => ({ enabled: false }) } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
 import { Route as LoginRoute } from '../login'
