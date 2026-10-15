@@ -35,7 +35,6 @@ jobs:
       QUITS_PUBLIC_PAYMENT_SECRET: quality-payment-fixture-only
       QUITS_PUBLIC_QUOTE_SECRET: quality-quote-fixture-only
       FROM_EMAIL: billing@example.test
-      QUITS_ARTIFACT_DIR: ${{ runner.temp }}/quality-artifacts
       PW_TEST_SOURCE_TRANSFORM: ${{ github.workspace }}/apps/oss/tests/e2e/react-jsx-transform.cjs
       PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
     steps:
@@ -59,6 +58,8 @@ jobs:
         id: browser
         continue-on-error: true
         working-directory: apps/oss
+        env:
+          QUITS_ARTIFACT_DIR: ${{ runner.temp }}/quality-artifacts
         run: bunx playwright test -c playwright.quality.config.ts --workers=2
       - name: Record report status
         if: always()
