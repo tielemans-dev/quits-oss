@@ -1,3 +1,4 @@
+import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
@@ -136,7 +137,7 @@ function EditContactPage() {
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="name">{t("contacts.field.name")} *</Label>
+              <Label htmlFor="name">{t("contacts.field.name")} {t("contacts.field.required")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -220,12 +221,7 @@ function EditContactPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <Input
-                  id="country"
-                  name="country"
-                  maxLength={80}
-                  defaultValue={contact.country ?? ""}
-                />
+                <CountrySelect id="country" name="country" value={contact.country} />
               </div>
             </div>
 

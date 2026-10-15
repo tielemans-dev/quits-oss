@@ -368,7 +368,7 @@ export function buildInvoiceEmailContent({
       </div>
     </div>
 
-    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
+    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[invoice.buyer.company, ...buyerAddress(invoice.buyer, locale)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true, momsRegistered)}
     ${totalsBlock(invoice, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
