@@ -1,9 +1,10 @@
 import type { ComponentType } from "react"
 
+import { parsePaymentRequest } from "../../lib/payments/payment-match"
 import { parseRequest, type RequestContext } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue"; input: string }
+export type RequestIntent = { kind: "invoice" | "overdue" | "payment"; input: string }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
 export type RequestRecognizer = (input: string) => RequestIntent | null
@@ -13,11 +14,12 @@ const noContext: RequestContext = { customers: [], catalogItems: [] }
 
 export const recognizeRequest: RequestRecognizer = (input) => {
   const draft = parseRequest(input, noContext)
-  return draft ? { kind: draft.intent, input: input.trim() } : null
+  if (draft) return { kind: draft.intent, input: input.trim() }
+  return parsePaymentRequest(input) ? { kind: "payment", input: input.trim() } : null
 }
 
-/** The permission a card's confirming click needs: creating an invoice, or sending the rykkere. */
-const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send" } as const
+/** The permission a card's confirming click needs: creating an invoice, sending the rykkere, or recording a payment. */
+const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send", payment: "payment:create" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(

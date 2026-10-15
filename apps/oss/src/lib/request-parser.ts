@@ -35,11 +35,11 @@ const pricePattern = new RegExp(String.raw`^(${number})\s*kr\.?${boundary}`, "iu
 const separatedPrice = new RegExp(String.raw`^\s*[àax]\s*(${number})\s*kr\.?${boundary}`, "iu")
 const canonical = (value: string) => value.replace(/[.\s]/g, "").replace(",", ".")
 const tidy = (value: string) => value.trim().replace(/\s+/g, " ")
-const normalize = (value: string) => tidy(value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " "))
+export const normalize = (value: string) => tidy(value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " "))
 const cvrDigits = (value: string) => value.replace(/^dk\s*/i, "").replace(/\s/g, "")
 
 // One insertion, deletion or substitution; short names require an exact match.
-function near(a: string, b: string): boolean {
+export function near(a: string, b: string): boolean {
   if (a === b) return true
   if (Math.min(a.length, b.length) < 4 || Math.abs(a.length - b.length) > 1) return false
   let i = 0, j = 0, edits = 0
