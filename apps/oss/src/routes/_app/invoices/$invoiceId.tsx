@@ -151,6 +151,8 @@ type Invoice = {
   currency: string
   notes: string | null
   publicPaymentUrl: string | null
+  /** Whether the hosted pay page offers card. Otherwise it offers bank transfer only. */
+  publicPaymentCardEnabled?: boolean
   lastEmailAttemptAt: string | Date | null
   lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
@@ -244,6 +246,9 @@ function InvoiceDetailPage() {
     stripeByokConfigured?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
+  const paymentLinkDescriptionKey = invoice?.publicPaymentCardEnabled
+    ? "invoices.detail.paymentLink.description.card"
+    : "invoices.detail.paymentLink.description.bankTransfer"
 
   useEffect(() => {
     let cancelled = false
@@ -1145,7 +1150,7 @@ function InvoiceDetailPage() {
             paymentLinkUrl && invoice.paymentStatus !== "paid"
               ? {
                   title: t("invoices.detail.paymentLink.title"),
-                  description: t("invoices.detail.paymentLink.description"),
+                  description: t(paymentLinkDescriptionKey),
                   url: paymentLinkUrl,
                   copyLabel: t("invoices.detail.paymentLink.copy"),
                   onCopy: () => {
