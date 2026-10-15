@@ -11,22 +11,11 @@ for (const width of [390, 1440]) {
     await prisma.organization.create({ data: { id, name: 'Eksempel ApS', slug: id, createdAt: new Date() } })
     try {
       const preference = await prisma.recipientReminderPreference.create({ data: { organizationId: id, recipient: 'buyer@example.invalid', locale: 'da-DK' } })
-      const readPreference = async () => ({
-        raw: await prisma.$queryRaw`SELECT "unsubscribedAt", "createdAt" FROM recipient_reminder_preference WHERE id = ${preference.id}`,
-        unique: await prisma.recipientReminderPreference.findUnique({ where: { id: preference.id } }),
-        required: await prisma.recipientReminderPreference.findUniqueOrThrow({ where: { id: preference.id } }),
-      })
-      const before = await readPreference()
-      await info.attach('preference-before-navigation', { body: JSON.stringify({ created: preference, ...before }), contentType: 'application/json' })
-      expect(preference.unsubscribedAt, 'new preference').toBeNull()
-      expect(before.required.unsubscribedAt, 'required read before GET').toBeNull()
       const token = signReminderUnsubscribeToken(preference, process.env.BETTER_AUTH_SECRET!)
       await page.setViewportSize({ width, height: 900 })
       await page.goto(`/reminders/unsubscribe?token=${token}`)
       await expect(page.getByRole('heading', { name: 'Stop automatiske påmindelser?' })).toBeVisible()
-      const after = await readPreference()
-      await info.attach('preference-after-navigation', { body: JSON.stringify(after), contentType: 'application/json' })
-      expect(after.required.unsubscribedAt, 'required read after GET').toBeNull()
+      expect((await prisma.recipientReminderPreference.findUniqueOrThrow({ where: { id: preference.id } })).unsubscribedAt).toBeNull()
       await info.attach(`unsubscribe-confirm-da-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
       await page.getByRole('button', { name: 'Stop automatiske påmindelser', exact: true }).click()
       await expect(page.getByRole('heading', { name: 'Automatiske påmindelser stoppet' })).toBeVisible()

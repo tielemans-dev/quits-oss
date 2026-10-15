@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { buildInvoiceEmailContent, buildQuoteEmailContent, composeMessage } from "../../email"
-import { addReminderUnsubscribe, automaticReminderSuppressed, postReminderUnsubscribe, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
+import { addReminderUnsubscribe, automaticReminderSuppressed, postReminderUnsubscribe, readReminderUnsubscribeState, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
 import { signReminderUnsubscribeToken } from "../unsubscribe-token"
 
 const secret = "test-reminder-secret-with-at-least-32-characters"
@@ -35,12 +35,14 @@ describe("reminder unsubscribe state and POST", () => {
     const { row, db, updateMany } = fixture()
     const token = signReminderUnsubscribeToken(row, secret)
     for (let i = 0; i < 2; i++) expect(await reminderUnsubscribeState(db, token, "GET", "en")).toMatchObject({ kind: "confirm", locale: "da-DK" })
+    expect(await readReminderUnsubscribeState(db, token, "en")).toMatchObject({ kind: "confirm", locale: "da-DK" })
     expect(updateMany).not.toHaveBeenCalled()
     expect(row.unsubscribedAt).toBeNull()
     expect(await reminderUnsubscribeState(db, token, "POST")).toMatchObject({ kind: "done" })
     const first = row.unsubscribedAt
     expect(await reminderUnsubscribeState(db, token, "POST")).toMatchObject({ kind: "done" })
     expect(row.unsubscribedAt).toBe(first)
+    expect(await readReminderUnsubscribeState(db, token)).toMatchObject({ kind: "done" })
     expect(await reminderUnsubscribeState(db, token, "GET")).toMatchObject({ kind: "done" })
   })
 
