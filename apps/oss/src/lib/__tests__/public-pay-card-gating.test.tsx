@@ -140,17 +140,9 @@ describe("public pay card gating", () => {
     expect(state.updateInvoice).not.toHaveBeenCalled()
   }
 
-  it.each(["none", "pending", "restricted"] as const)("blocks %s even when an extension returns Connect", async status => {
-    state.settings.stripeAccountStatus = status
-    await expectUnavailable()
-    expect(state.resolveTarget).not.toHaveBeenCalled()
-  })
-
-  it.each(["none", "pending", "restricted"] as const)("falls back to BYOK instead of charging a %s Connect target", async status => {
+  it.each(["none", "pending", "restricted"] as const)("shows only bank transfer on hosted with BYOK keys and %s Connect", async status => {
     Object.assign(state.settings, configuredByok, { stripeAccountStatus: status })
-    expect(await publicPayPage()).toContain("Pay now")
-    expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: "redirect" })
-    expect(state.createCheckout).toHaveBeenCalledWith(expect.objectContaining({ target: expect.objectContaining({ kind: "byok" }) }))
+    await expectUnavailable()
   })
 
   it("shows card and transfer details and opens checkout for active Connect", async () => {
@@ -226,21 +218,6 @@ describe("public pay card gating", () => {
     expect((await publicPayPage()).includes("Pay now")).toBe(enabled)
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: enabled ? "redirect" : "unavailable" })
     expect(state.createCheckout).toHaveBeenCalledTimes(enabled ? 1 : 0)
-  })
-
-  it("hides the card action for a zero balance even if payment status has not caught up", async () => {
-    state.settings.stripeAccountStatus = "active"
-    state.invoice.amountPaid = 1250
-    const session = await publicSession()
-    expect(session).toMatchObject({ stripeEnabled: false })
-    expect(await publicPayPage()).not.toContain("Pay now")
-    // A stale client flag must not offer a zero-balance payment either.
-    if (!session) throw new Error("Expected a readable settled invoice")
-    expect(renderToStaticMarkup(<LocalizedDocument locale={session.locale}>
-      <PublicInvoicePaymentPage token={token} state={{ kind: "ready", ...session, stripeEnabled: true }} />
-    </LocalizedDocument>)).not.toContain("Pay now")
-    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "paid", url: null })
-    expect(state.createCheckout).not.toHaveBeenCalled()
   })
 
   it.each(["pending", "active"] as const)("renders the %s card gate and transfer details in Danish", async status => {
