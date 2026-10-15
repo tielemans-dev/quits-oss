@@ -7,6 +7,10 @@ import {
   resolveStripeCheckoutTarget,
 } from "../payments/stripe"
 
+vi.mock("../db", () => ({
+  prisma: { orgSettings: { findUnique: async () => null } },
+}))
+
 const stripeAccount = "acct_connected"
 
 function connectClient() {
@@ -142,5 +146,20 @@ describe("Stripe Connect checkout target", () => {
     ])
 
     await expect(resolveStripeCheckoutTarget({ organizationId: "org_1" })).resolves.toBe(connect)
+  })
+
+  it("does not honour a connect target unless the account can take card payments", async () => {
+    const { client, sessions } = connectClient()
+    const connect = { kind: "connect" as const, client, stripeAccount }
+    setRuntimeExtensions([{ id: "stripe-connect", resolveStripeCheckoutTarget: async () => connect }])
+
+    await expect(
+      resolveStripeCheckoutTarget({ organizationId: "org_1" }, { connectReady: false })
+    ).resolves.toBeNull()
+    expect(sessions.create).not.toHaveBeenCalled()
+
+    await expect(
+      resolveStripeCheckoutTarget({ organizationId: "org_1" }, { connectReady: true })
+    ).resolves.toBe(connect)
   })
 })

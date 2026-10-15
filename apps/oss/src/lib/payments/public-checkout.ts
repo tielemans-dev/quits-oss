@@ -2,15 +2,15 @@ import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
-import { loadPublicInvoiceByToken } from "./public-access"
+import { loadPublicInvoiceByToken, resolvePublicInvoiceCheckoutTarget } from "./public-access"
 import { getPublicInvoicePaymentSecret } from "./public"
 import {
+  assessCardCheckout,
   createStripeInvoiceCheckoutSession,
   expireOpenStripeCheckoutSession,
-  resolveStripeCheckoutTarget,
   type StripeCheckoutTarget,
 } from "./stripe"
-import { currencyFractionDigits, isExactInCurrency } from "./stripe-amounts"
+import { currencyFractionDigits } from "./stripe-amounts"
 import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { asIssued } from "../../domain/documents/numbering"
 
@@ -61,23 +61,35 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "paid" } as const
   }
 
-  // Stripe charges whole minor units. Rounding a balance such as 100.49 JPY would leave an
-  // uncollectible remainder or overcharge the customer, so refuse instead.
-  if (!isExactInCurrency(balanceDue.toNumber(), session.invoice.currency)) {
+  // The page's card button uses the same predicate. Refuse before asking any Stripe
+  // account to open a session, including a connect target for an account that is not active.
+  if (!session.stripeEnabled) {
+    const readiness = assessCardCheckout({
+      configuration: {
+        stripePublishableKey: session.invoice.organization?.settings?.stripePublishableKey ?? null,
+        stripeSecretKeyEnc: session.invoice.organization?.settings?.stripeSecretKeyEnc ?? null,
+        stripeWebhookSecretEnc: session.invoice.organization?.settings?.stripeWebhookSecretEnc ?? null,
+        stripeAccountStatus: session.invoice.organization?.settings?.stripeAccountStatus,
+      },
+      amount: balanceDue.toNumber(),
+      currency: session.invoice.currency,
+    })
     paymentsLogger.warn("invoice.checkout.unavailable", {
       invoiceId: session.invoice.id,
       organizationId: session.invoice.organizationId,
-      reason: "balance_not_representable_in_currency",
-      currency: session.invoice.currency,
-      currencyFractionDigits: currencyFractionDigits(session.invoice.currency),
-      balanceDue: balanceDue.toFixed(),
+      reason: readiness.ready ? "card_checkout_not_ready" : readiness.reason,
+      ...(readiness.ready || readiness.reason === "card_checkout_not_ready"
+        ? {}
+        : {
+            currency: session.invoice.currency,
+            currencyFractionDigits: currencyFractionDigits(session.invoice.currency),
+            balanceDue: balanceDue.toFixed(),
+          }),
     })
     return { url: null, status: "unavailable" } as const
   }
 
-  const target = await resolveStripeCheckoutTarget({
-    organizationId: session.invoice.organizationId,
-  })
+  const target = await resolvePublicInvoiceCheckoutTarget(session)
 
   if (!target) {
     paymentsLogger.warn("invoice.checkout.unavailable", {
