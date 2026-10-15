@@ -87,6 +87,8 @@ suites. Do not run a full suite or build to prove a small change.
 
 - For docs-only changes, run `git diff --check` and inspect the complete diff,
   pointers, required sections, and changed-line budget. No runtime checks needed.
+- On a fresh checkout, run `bun run prisma:generate` from the repository root
+  before invoking Vitest or TypeScript directly; direct tools bypass package hooks.
 - For behavior changes, run the smallest relevant failing test first, then only
   touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
   bunx vitest run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
