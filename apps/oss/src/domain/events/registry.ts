@@ -3,7 +3,7 @@ import {
   agreementStatusSchema,
   deliverableStatusSchema,
 } from "@quits/contracts/agreements"
-import { commandErrorSchema } from "@quits/contracts/agent"
+import { commandErrorSchema, fieldIssueSchema } from "@quits/contracts/agent"
 import { paymentMethodSchema } from "@quits/contracts/payments"
 import { PAYMENT_DETAILS_FIELDS } from "@quits/contracts/payment-details"
 import { z } from "zod"
@@ -14,7 +14,7 @@ const n = z.number()
 const i = n.int()
 const date = z.iso.datetime()
 const commandError = commandErrorSchema.extend({
-  issues: z.array(z.object({ path: s, message: s }).strict()).optional(),
+  issues: z.array(z.union([fieldIssueSchema.strict(), z.object({ path: s, message: s }).strict()])).optional(),
 }).strict()
 const fields = z.object({ fields: z.array(s) }).strict()
 const number = z.object({ number: s }).strict()

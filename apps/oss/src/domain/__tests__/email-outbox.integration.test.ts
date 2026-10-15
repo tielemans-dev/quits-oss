@@ -368,7 +368,7 @@ describeIfDatabase("email outbox", () => {
     const [first, second] = vi.mocked(deliver).mock.calls
     expect(second).toEqual(first)
     expect(first?.[0]).toMatchObject({ to: "billing@acme.test" })
-    expect(first?.[1]?.idempotencyKey).toMatch(new RegExp(`^invoice-send:${invoiceId}:\\d+$`))
+    expect(first?.[1]?.idempotencyKey).toMatch(/^invoice-send:cmd_/)
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
     expect(invoice.issueDate.getTime()).toBe(frozen.lastEmailAttemptAt?.getTime())

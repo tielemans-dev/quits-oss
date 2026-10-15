@@ -6,9 +6,10 @@ import { formatIsoDate } from "../lib/exports/format"
 import { lockDocument } from "./documents/locks"
 import { priceCreditNote } from "./documents/credit-pricing"
 import { computeSettlement } from "./documents/settlement"
-import { NotFound, type DomainError } from "./errors"
+import { InvalidState, NotFound, type DomainError } from "./errors"
 import { documentRef } from "./documents/numbering"
 import { Command, Db } from "./services"
+import { buildBuyerSnapshot } from "./documents/snapshots"
 
 /**
  * What a person approving an agent's command sees, and the version the command must still match
@@ -95,6 +96,51 @@ export function documentFingerprint(
     recipient,
     dates.map((date) => date?.toISOString() ?? null),
   ])
+}
+
+/** Tax ID order is not part of buyer identity; database row order is not a reviewed fact. */
+function buyerReviewSnapshot(contact: Parameters<typeof buildBuyerSnapshot>[0]) {
+  const snapshot = buildBuyerSnapshot(contact)
+  return {
+    ...snapshot,
+    taxIds: [...(snapshot.taxIds ?? [])].sort((left, right) => {
+      const a = JSON.stringify([left.scheme, left.value, left.countryCode])
+      const b = JSON.stringify([right.scheme, right.value, right.countryCode])
+      return a < b ? -1 : a > b ? 1 : 0
+    }),
+  }
+}
+
+/** Bind a human send confirmation to the draft and its current recipient identity. */
+export function invoiceSendReviewVersion(invoice: Parameters<typeof documentFingerprint>[0] & {
+  dueDate: Date
+  supplyDate: Date | null
+  disputedRevision?: number
+  contact: Parameters<typeof buildBuyerSnapshot>[0]
+}) {
+  return fingerprint([
+    documentFingerprint(invoice, invoice.contact.email?.trim() || null, [invoice.dueDate, invoice.supplyDate]),
+    buyerReviewSnapshot(invoice.contact), invoice.disputedRevision ?? 0,
+  ])
+}
+
+/** The recipient a person sees when confirming a send: address plus buyer identity. */
+export function recipientReviewVersion(contact: Parameters<typeof buildBuyerSnapshot>[0]) {
+  return fingerprint([contact.email?.trim() || null, buyerReviewSnapshot(contact)])
+}
+
+const changedSinceReview = () => new InvalidState({ code: "changed_since_review", message: "The invoice changed after you reviewed it. Review the current details and confirm sending again.",
+  issues: [{ code: "changed_since_review", field: "invoice", params: {} }],
+})
+
+export function requireReviewedRecipient(contact: Parameters<typeof buildBuyerSnapshot>[0], reviewedRecipient?: string) {
+  return reviewedRecipient && recipientReviewVersion(contact) !== reviewedRecipient ? Effect.fail(changedSinceReview()) : Effect.void
+}
+
+export function requireInvoiceSendReview(invoice: Parameters<typeof invoiceSendReviewVersion>[0], reviewedVersion?: string) {
+  return reviewedVersion && invoiceSendReviewVersion(invoice) !== reviewedVersion
+    ? Effect.fail(changedSinceReview())
+    : Effect.void
 }
 
 const money = (amount: { toFixed(digits: number): string } | number, currency: string) =>

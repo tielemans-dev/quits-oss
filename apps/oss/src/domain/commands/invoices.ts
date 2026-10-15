@@ -1,7 +1,7 @@
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { resolveCountryProfile } from "../../lib/compliance"
-import { requireInvoiceIssuancePolicy } from "../documents/issuance-policy"
+import { requireInvoiceIssuancePolicy, requireResendPaymentDetails } from "../documents/issuance-policy"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import type { RenderInput } from "../documents/render-input"
 import { formatIsoDate } from "../../lib/exports/format"
@@ -15,7 +15,7 @@ import {
   invoiceSendInputSchema,
   invoiceUpdateDraftInputSchema,
 } from "@quits/contracts/invoices"
-import type { z } from "zod"
+import { z } from "zod"
 import { billingProvider } from "../../lib/billing"
 import { toNullableJsonInput } from "../../lib/prisma-json"
 import { prisma } from "../../lib/db"
@@ -32,11 +32,11 @@ import {
 } from "../documents/invoice-email"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
-import { documentFingerprint, lockedContact } from "../approval-contexts"
+import { documentFingerprint, invoiceSendReviewVersion, requireInvoiceSendReview, requireReviewedRecipient, lockedContact } from "../approval-contexts"
 import { asIssued, numberForIssuance, numberVoidedByDraftDeletion, documentRef } from "../documents/numbering"
 import { requireDraftCurrency } from "../documents/currency"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
-import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withSellerVatStatus, buyerContactSelect } from "../documents/snapshots"
+import { buildBuyerSnapshot, buildSellerSnapshot, buildInvoiceSellerSnapshot, withSellerVatStatus, buyerContactSelect, withInvoicePaymentDetails } from "../documents/snapshots"
 import { requireVatIssuance } from "../documents/vat-issuance"
 import { draftVatEvidenceSchema } from "@quits/contracts/vat"
 import { InvalidState, NotFound } from "../errors"
@@ -109,6 +109,8 @@ export const buildInvoiceDraft = (
 
     yield* precondition(() => assertCloudOnboardingComplete(organizationId))
     const contact = yield* findContact(input.contactId)
+    // A person confirmed this recipient: refuse before anything is persisted if it changed since.
+    yield* requireReviewedRecipient(contact, input.reviewedRecipient)
     yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
     const { settings, sellerTaxIds, profile } = yield* loadDocumentContext
@@ -119,7 +121,7 @@ export const buildInvoiceDraft = (
       vatDefaults: { ...settings, buyerCountry: contact.country },
       vatEvidence: input.vatEvidence,
       taxRate: input.taxRate,
-      pricesIncludeTax: settings.pricesIncludeTax,
+      pricesIncludeTax: input.pricesIncludeTax ?? settings.pricesIncludeTax,
       currency,
     })
     const compliance = assessCompliance(profile, sellerTaxIds, Number(input.taxRate))
@@ -143,7 +145,7 @@ export const buildInvoiceDraft = (
           locale: settings.locale,
           timezone: settings.timezone,
           taxRegime: settings.taxRegime,
-          pricesIncludeTax: settings.pricesIncludeTax,
+          pricesIncludeTax: input.pricesIncludeTax ?? settings.pricesIncludeTax,
           sellerSnapshot: buildSellerSnapshot(settings, sellerTaxIds),
           buyerSnapshot: buildBuyerSnapshot(contact),
           complianceStatus: compliance.status,
@@ -170,7 +172,7 @@ export const buildInvoiceDraft = (
       type: "invoice.draft_created",
       payload: { number: invoice.number, contactId: contact.id, totalGross: priced.totalGross },
     })
-    return invoice
+    return { ...invoice, reviewedVersion: invoiceSendReviewVersion({ ...invoice, contact }) }
   })
 
 export const createInvoiceDraft = defineCommand({
@@ -224,6 +226,7 @@ export const updateInvoiceDraft = defineCommand({
       if (input.dueDate) data.dueDate = new Date(input.dueDate)
       if (input.supplyDate) data.supplyDate = new Date(input.supplyDate)
       if (input.currency) data.currency = input.currency
+      if (input.pricesIncludeTax !== undefined) data.pricesIncludeTax = input.pricesIncludeTax
       if (input.notes !== undefined) data.notes = input.notes
       if (input.purchaseOrderRef !== undefined) data.purchaseOrderRef = input.purchaseOrderRef
 
@@ -241,7 +244,7 @@ export const updateInvoiceDraft = defineCommand({
         items: input.items ?? pricedItems,
         vatDefaults: { ...currentSettings, taxRegime: existing.taxRegime, countryCode: existing.countryCode, buyerCountry: pricingContact.country },
         taxRate: input.taxRate ?? impliedTaxRate(existing),
-        pricesIncludeTax: existing.pricesIncludeTax,
+        pricesIncludeTax: input.pricesIncludeTax ?? existing.pricesIncludeTax,
         currency,
         vatEvidence: evidence,
       })
@@ -269,7 +272,7 @@ export const updateInvoiceDraft = defineCommand({
         type: "invoice.draft_updated",
         payload: { fields: Object.keys(input).filter((key) => key !== "id") },
       })
-      return invoice
+      return { ...invoice, reviewedVersion: invoiceSendReviewVersion(invoice) }
     }),
 })
 
@@ -376,20 +379,32 @@ export const sendInvoice = defineCommand({
       const command = yield* Command
       const { organizationId, now } = command
       yield* lockDocument("invoice", input.id)
-      const found = yield* findInvoice(input.id)
+      let found = yield* findInvoice(input.id)
 
-      if (found.status !== "draft") {
+      // Only a send whose delivery is still in flight is replayed; an issued invoice is refused again like any other non-draft.
+      if (found.lastEmailAttemptOutcome !== "sending" && found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
+      if (found.lastEmailAttemptOutcome === "sending") {
+        const delivery = yield* Effect.promise(() => db.job.findFirst({ where: {
+          organizationId, type: "email.deliver", payload: { path: ["completion", "target", "documentId"], equals: found.id },
+        }, orderBy: { createdAt: "desc" }, select: { dedupeKey: true } }))
+        return { ...found, emailSent: false, emailPending: true, ...(delivery?.dedupeKey ? { deliveryKey: delivery.dedupeKey } : {}) } satisfies InvoiceSendResult
+      }
+      if (input.reviewedVersion) {
+        yield* lockDocument("contact", found.contactId, { strength: "no_key_update" })
+        found = yield* findInvoice(input.id)
+        yield* requireInvoiceSendReview(found, input.reviewedVersion)
+      }
       yield* requireDepositInvoiceEnabled(found)
-      yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
       const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
       const seller = (found.agreementId || found.quoteId)
         ? yield* withSellerVatStatus(parseSellerSnapshot(found.sellerSnapshot) ?? {}, currentSeller, found.taxRegime)
         : currentSeller
       const buyer = (found.agreementId || found.quoteId) ? parseBuyerSnapshot(found.buyerSnapshot) : buildBuyerSnapshot(found.contact)
-      const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate }
+      const effective = { ...found, sellerSnapshot: seller, buyerSnapshot: buyer, supplyDate: input.supplyDate ?? found.supplyDate,
+        paymentAvailable: resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(withInvoicePaymentDetails(seller, settings)) }
       yield* requireInvoiceIssuancePolicy(organizationId, effective)
       yield* requireVatIssuance(effective)
       // Validate the effective identity before taking a number or queuing any side effects.
@@ -481,7 +496,7 @@ export const sendInvoice = defineCommand({
         document: invoice,
         recipient,
         message: email.message,
-        idempotencyKey: `invoice-send:${invoice.id}:${now.getTime()}`,
+        idempotencyKey: `invoice-send:${command.commandId}`,
         numberTaken: found.number === null,
         publicLinkIssuedAt: publicPaymentIssuedAt,
         markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data: { ...data, number: invoice.number } }),
@@ -501,7 +516,7 @@ export const resendInvoiceEmail = defineCommand({
   type: "invoice.resend_email",
   permission: "invoice:send",
   outwardFacing: true,
-  input: invoiceIdInputSchema,
+  input: invoiceIdInputSchema.extend({ reviewedRecipient: z.string().optional() }),
   summarize: (input) => `Email invoice ${input.id} to the customer again`,
   approvalContext: (input) => invoiceEmailApprovalContext(input.id, "resend"),
   handle: (input) =>
@@ -510,6 +525,7 @@ export const resendInvoiceEmail = defineCommand({
       const command = yield* Command
       yield* lockDocument("invoice", input.id)
       const invoice = yield* findInvoice(input.id)
+      yield* requireReviewedRecipient(invoice.contact, input.reviewedRecipient)
 
       if (!["sent", "overdue"].includes(invoice.status)) {
         return yield* new InvalidState({
@@ -521,6 +537,8 @@ export const resendInvoiceEmail = defineCommand({
 
       const { settings } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
+      // Only an adopter policy holds a resend back for missing payment details; frozen issued evidence is never repaired.
+      yield* requireResendPaymentDetails(command.organizationId, invoice, emailContext.stripeConfigured || hasInvoiceBankTransfer(withInvoicePaymentDetails({}, settings)))
       const publicPaymentUrl =
         (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
           ? getPublicInvoicePaymentUrl(invoice)

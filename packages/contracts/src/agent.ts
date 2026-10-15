@@ -21,13 +21,20 @@ export const clientRequestIdSchema = nonEmptyStringSchema
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, "Use letters, digits, '.', '_', ':' or '-'")
 
+export const fieldIssueSchema = z.object({
+  code: z.string(),
+  field: z.string(),
+  params: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
+})
+export type FieldIssue = z.infer<typeof fieldIssueSchema>
+
 export const commandErrorSchema = z.object({
   tag: z.string(),
   message: z.string(),
   code: z.string().optional(),
   // Structured facts that make a refusal actionable, such as the draft holding a reservation.
   details: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
-  issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+  issues: z.array(z.union([fieldIssueSchema, z.object({ path: z.string(), message: z.string() })])).optional(),
 })
 
 export const commandRecordSchema = z.object({

@@ -6,6 +6,7 @@ import { prisma } from "../lib/db"
 import { acquireBoundedAdvisoryLock } from "../lib/transaction-timeouts"
 import { appLogger } from "../lib/observability"
 import { authorizeRuntimeOperation, OperationDenied } from "../lib/runtime/operation-policy"
+import { getRuntimePlatform } from "../lib/runtime/platform"
 import { actorCan, actorId, actorKey, type Actor } from "./actor"
 import type { ApprovalContext, CommandDefinition } from "./command"
 import {
@@ -42,8 +43,10 @@ export type ExecuteOptions = {
   expectedApprovalVersion?: string
   now?: Date
   /** Application orchestration runs this after authorization, receipt lookup and approval gating. */
-  prepareIssuance?: (input: unknown, now: Date) => Promise<string>
+  prepareIssuance?: (input: unknown, now: Date) => Promise<string | undefined>
   issuanceStagingId?: string
+  /** UI requests may return queued delivery. Workers leave it unclaimed for the scheduler. */
+  jobWaitTimeoutMs?: number
 }
 
 export type CommandOutcome<Result> =
@@ -310,14 +313,19 @@ export async function executeCommand<Input, Result>(
         }
       }
 
-      if (["invoice.send", "credit_note.issue", "agreement.send", "agreement.issue"].includes(definition.type) && !issuanceStagingId) {
-        throw new HandlerFailed(new InvalidState({ code: "issuance_required", message: "Issue documents through issueDocument with a renderer and artifact store" }))
-      }
       // Issuance, completion and sweep acquire the organization lock before document locks. This
       // happens for every command, before its handler runs: a handler that takes a number (invoice,
       // quote, credit note or agreement issuance) then holds the lock that serializes the counters
       // before it locks the document, the same order as `queueForApproval` and `readInScope`.
       await lockArtifactOrganization(tx, organizationId)
+      // A retry reuses the pending/issued aggregate under the same locks as issuance and delivery.
+      const priorInvoice = definition.type === "invoice.send" ? await tx.invoice.findFirst({
+        where: { id: (input as { id: string }).id, organizationId }, select: { lastEmailAttemptOutcome: true },
+      }) : null
+      const invoiceSendReplay = priorInvoice?.lastEmailAttemptOutcome === "sending"
+      if (["invoice.send", "credit_note.issue", "agreement.send", "agreement.issue"].includes(definition.type) && !issuanceStagingId && !invoiceSendReplay) {
+        throw new HandlerFailed(new InvalidState({ code: "issuance_required", message: "Issue documents through issueDocument with a renderer and artifact store" }))
+      }
       try {
         await authorizeOperation("execute")
       } catch (error) {
@@ -339,7 +347,7 @@ export async function executeCommand<Input, Result>(
         }
       }
       let issuance: import("./services").CommandScope["issuance"]
-      if (issuanceStagingId) {
+      if (issuanceStagingId && !invoiceSendReplay) {
         const staged = await tx.artifactStaging.findUnique({ where: { id: issuanceStagingId } })
         if (!staged) throw new HandlerFailed(new InvalidState({ code: "reservation_missing", message: "Document reservation missing" }))
         const kind = staged.documentKind as ArtifactDocumentKind
@@ -473,8 +481,19 @@ export async function executeCommand<Input, Result>(
       return { result: exit.value, jobIds: createdJobs.map((job) => job.id) }
     }, TRANSACTION_OPTIONS)
 
-    if (jobIds.length > 0) {
-      await runJobsNow(jobIds)
+    // A bounded Worker request can end before the provider settles. There is no general job
+    // lifetime/client-retention hook, so keep these jobs pending for the scheduler's own request.
+    // Node uses a process-wide database pool; unbounded calls await every job before returning.
+    const runInlineJobs = options.jobWaitTimeoutMs === undefined || getRuntimePlatform().getRuntimeKind() === "node"
+    if (jobIds.length > 0 && runInlineJobs) {
+      const jobs = runJobsNow(jobIds)
+      if (options.jobWaitTimeoutMs === undefined) await jobs
+      else {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          await Promise.race([jobs, new Promise<void>(resolve => { timer = setTimeout(resolve, options.jobWaitTimeoutMs) })])
+        } finally { clearTimeout(timer) }
+      }
     }
 
     return { status: "completed", commandId: provisionalId, result }

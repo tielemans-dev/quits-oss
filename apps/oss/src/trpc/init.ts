@@ -41,7 +41,8 @@ const t = initTRPC.context<Context>().create({
       : error.cause instanceof CurrencyPrecisionUnsupported ? error.cause.code
       : error.cause instanceof DomainRefusal ? (error.cause.code ?? null) : null
     const details = error.cause instanceof DomainRefusal ? (error.cause.details ?? null) : null
-    return { ...shape, data: { ...shape.data, reason, details } }
+    const issues = error.cause instanceof DomainRefusal ? (error.cause.issues ?? null) : null
+    return { ...shape, data: { ...shape.data, reason, details, issues } }
   },
 })
 

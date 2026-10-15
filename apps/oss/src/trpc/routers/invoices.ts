@@ -1,6 +1,11 @@
+import type { FieldIssue } from "@quits/contracts/agent"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { invoiceSendReviewVersion, recipientReviewVersion } from "../../domain/approval-contexts"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
+import { invoicePolicyIssues, resolveInvoicePolicies } from "../../domain/documents/issuance-policy"
+import { buyerContactSelect, buildBuyerSnapshot, buildSellerSnapshot, withInvoicePaymentDetails } from "../../domain/documents/snapshots"
+import { recipientEmailIssue, resolveInvoiceEmailContext } from "../../domain/documents/invoice-email"
 import { loadDocumentView } from "../../domain/documents/view"
 import { sanitizeDocumentEmailAttempt } from "../../domain/delivery/provider-failure"
 import { recordBaseValuation } from "../../domain/commands/base-valuation"
@@ -105,6 +110,32 @@ function settlementForUi(invoice: {
 }
 
 export const invoicesRouter = router({
+  sendReadiness: authorizedProcedure("invoice:read").input(z.object({ contactId: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.organizationId } })
+    const ids = await prisma.organizationTaxId.findMany({ where: { organizationId: ctx.organizationId } })
+    const contact = input?.contactId ? await prisma.contact.findFirst({ where: { id: input.contactId, organizationId: ctx.organizationId }, select: buyerContactSelect }) : null
+    const seller = withInvoicePaymentDetails(buildSellerSnapshot(settings, ids), settings)
+    const paymentAvailable = resolveInvoiceEmailContext(settings).stripeConfigured || hasInvoiceBankTransfer(seller)
+    const document = { countryCode: settings.countryCode, currency: settings.defaultCurrency ?? settings.currency,
+      purpose: "sale", supplyDate: new Date(), sellerSnapshot: seller, buyerSnapshot: contact ? buildBuyerSnapshot(contact) : null, paymentAvailable,
+      items: [{ vatTreatment: "standard", vatCountry: settings.countryCode, taxRate: "25", vatRateInput: "0.25" }] }
+    // An unavailable policy must not take invoice drafting down with it; sending is refused on its own.
+    let policies: Awaited<ReturnType<typeof resolveInvoicePolicies>> = []
+    let policyUnavailable = false
+    try { policies = await resolveInvoicePolicies(ctx.organizationId, document) } catch { policyUnavailable = true }
+    const issues = policies.flatMap(policy => invoicePolicyIssues(document, policy))
+      .filter(issue => issue.field.startsWith("seller.") || (contact && issue.field.startsWith("customer.")))
+    // Missing payment details only block when an adopter policy says so; otherwise they are a nudge.
+    const warnings: FieldIssue[] = paymentAvailable || issues.some(issue => issue.code === "seller.bank.required") ? [] : [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }]
+    const recipientIssue = contact ? recipientEmailIssue(contact) : undefined
+    if (recipientIssue) issues.push(recipientIssue)
+    return { issues, warnings, policyUnavailable, businessBuyersOnly: policies.some(policy => policy.requireBusinessBuyer),
+      recipient: contact?.email?.trim() || null, recipientVersion: contact ? recipientReviewVersion(contact) : null, nextNumber: await previewNextDocumentNumber(ctx.organizationId, "invoice"),
+      standardVatRate: policies.find(policy => policy.standardVatRate)?.standardVatRate ?? null,
+      momsRegistered: settings.taxRegime === "eu_vat" ? settings.momsRegistered : undefined,
+      taxRate: settings.taxRate?.toString() ?? (settings.countryCode === "DK" ? "25" : "0"),
+      pricesIncludeTax: settings.pricesIncludeTax, baseCurrency: settings.baseCurrency, countryCode: settings.countryCode }
+  }),
   view: authorizedProcedure("invoice:read").input(z.object({ id: z.string().min(1) })).query(async ({ ctx, input }) => {
     const result = await loadDocumentView(ctx.actor, "invoice", input.id)
     if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" })
@@ -154,7 +185,7 @@ export const invoicesRouter = router({
       const invoice = await prisma.invoice.findFirstOrThrow({
         where: { id: input.id, organizationId: ctx.organizationId },
         include: {
-          contact: true,
+          contact: { include: { taxIds: true } },
           agreement: { select: { taxRateInput: true, taxRate: true } },
           items: { orderBy: { sortOrder: "asc" } },
         },
@@ -164,6 +195,8 @@ export const invoicesRouter = router({
         ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
         : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
       return {
+        reviewedVersion: invoiceSendReviewVersion(invoice),
+        recipientVersion: recipientReviewVersion(invoice.contact),
         momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.
@@ -226,13 +259,13 @@ export const invoicesRouter = router({
   send: authorizedProcedure("invoice:send")
     .input(invoiceSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeIssuanceCommand(sendInvoice, input, { actor: ctx.actor })), "invoice", () =>
+      settleEmailResult(unwrapOutcome(await executeIssuanceCommand(sendInvoice, input, { actor: ctx.actor, jobWaitTimeoutMs: 1500 })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),
 
   resendEmail: authorizedProcedure("invoice:send")
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string(), reviewedRecipient: z.string().optional() }))
     .mutation(async ({ ctx, input }) =>
       settleEmailResult(unwrapOutcome(await executeCommand(resendInvoiceEmail, input, { actor: ctx.actor })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
