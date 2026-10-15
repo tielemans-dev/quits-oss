@@ -21,6 +21,11 @@ test("opens an issued credit note, emails it locally, records sending and downlo
   await page.goto(`/invoices/${invoice.id}`)
   await waitForClientReady(page)
   await page.getByRole("button", { name: "Send", exact: true }).click()
+  const confirmation = page.getByRole("dialog")
+  await expect(confirmation).toBeVisible()
+  // Issuance is explicit. Opening confirmation must not issue the draft.
+  expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).status).toBe("draft")
+  await confirmation.getByRole("button", { name: "Send invoice", exact: true }).click()
   await expect(page.getByRole("button", { name: "Create credit note", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Create credit note", exact: true }).click()
   await page.getByLabel("Reason", { exact: true }).fill("Local test correction")

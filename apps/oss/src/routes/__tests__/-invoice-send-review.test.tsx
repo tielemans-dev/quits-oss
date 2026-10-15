@@ -36,7 +36,9 @@ function translate(key: string, params?: Record<string, unknown>) {
 }
 
 import { Route as NewRoute } from "../_app/invoices/new"
+import { Route as DetailRoute } from "../_app/invoices/$invoiceId"
 const NewPage = (NewRoute as unknown as { component: ComponentType }).component
+const DetailPage = (DetailRoute as unknown as { component: ComponentType }).component
 const RECIPIENT_VERSION = "cccccccccccccccccccccccccccccccc"
 const contact = { id: "synthetic-buyer", name: "Synthetic Buyer", email: "buyer@example.test", company: "Synthetic Buyer", address: null, city: null, state: null, zip: null, country: "DK" }
 const invoice = {
@@ -398,10 +400,129 @@ describe("new invoice send review", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
     expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, taxRate: "20" }))
   })
+  it.each(["draft", "sent"])("clears resolved field issues after a successful %s retry", async status => {
+    api.get.mockResolvedValue({ ...invoice, status })
+    const mutation = status === "draft" ? api.send : api.resend
+    mutation.mockRejectedValueOnce(Object.assign(new Error("Synthetic validation failure"), { data: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })).mockResolvedValue({ emailSent: true })
+    render(<DetailPage />)
+    const actionName = status === "draft" ? "invoices.detail.action.send" : "invoices.detail.action.resendEmail"
+    const action = await screen.findByRole("button", { name: actionName })
+    async function attempt() {
+      fireEvent.click(action)
+      const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
+      await act(async () => { fireEvent.click(confirm) })
+    }
+    await attempt()
+    expect(screen.getByTestId("organization-gaps")).toBeTruthy()
+    await attempt()
+    expect(mutation).toHaveBeenCalledTimes(2)
+    expect(screen.queryByTestId("organization-gaps")).toBeNull()
+  })
 })
 
 // Synthetic test-only invoice and adopter settings.
 describe("invoice detail send review", () => {
+  it("requires confirmation again with the refreshed version after a stale review refusal", async () => {
+    const draft = { ...invoice, status: "draft", number: null }
+    api.get.mockResolvedValue(draft)
+    api.settings.mockResolvedValue({ locale: "en-US", timezone: "UTC", baseCurrency: "DKK", emailDelivery: { available: false }, companyName: "Synthetic Studio" })
+    api.send.mockRejectedValueOnce({ data: { issues: [{ code: "changed_since_review", field: "invoice", params: {} }] } })
+    api.send.mockResolvedValue({ emailSent: false })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.email.degraded.trigger" }))
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
+    api.get.mockResolvedValue({ ...draft, total: 250, reviewedVersion: "22222222222222222222222222222222" })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ reviewedVersion: draft.reviewedVersion }))
+    expect(await screen.findByText("invoiceValidation.changedSinceReview")).toBeTruthy()
+    expect(api.send).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.trigger" }))
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
+    expect(api.send).toHaveBeenCalledTimes(1)
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ reviewedVersion: "22222222222222222222222222222222" }))
+  })
+  it("never confirms a send without a review version after an edit response lacked one", async () => {
+    const draft = { ...invoice, status: "draft", number: null, reviewedVersion: undefined }
+    api.get.mockResolvedValueOnce(draft).mockResolvedValue({ ...draft, reviewedVersion: "33333333333333333333333333333333" })
+    api.settings.mockResolvedValue({ locale: "en-US", timezone: "UTC", baseCurrency: "DKK", emailDelivery: { available: false }, companyName: "Synthetic Studio" })
+    api.send.mockResolvedValue({ emailSent: false })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.email.degraded.trigger" }))
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
+    expect(screen.queryByRole("button", { name: "invoiceSend.confirm" })).toBeNull()
+    expect(await screen.findByText("invoiceValidation.changedSinceReview")).toBeTruthy()
+    expect(api.send).not.toHaveBeenCalled()
+    expect(api.get).toHaveBeenCalledTimes(2)
+  })
+  it("issues manually only after approving the final invoice confirmation", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft", number: null })
+    api.settings.mockResolvedValue({ locale: "en-US", timezone: "UTC", baseCurrency: "DKK", emailDelivery: { available: false }, companyName: "Synthetic Studio" })
+    api.send.mockResolvedValue({ emailSent: false })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.email.degraded.trigger" }))
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
+    expect(screen.getByRole("heading", { name: "Send invoice?" })).toBeTruthy()
+    expect(api.send).not.toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenCalledTimes(1)
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, allowSendWithoutEmail: true, reviewedVersion: invoice.reviewedVersion }))
+  })
+  it.each([true, false])("preserves saved draft pricesIncludeTax=%s and explicit outside VAT", async pricesIncludeTax => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", pricesIncludeTax: !pricesIncludeTax, countryCode: "DK", baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", pricesIncludeTax, items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "out_of_scope", vatRateInput: "0", vatCountry: null }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    expect(screen.getByRole("radio", { name: pricesIncludeTax ? "invoiceVat.pricesInclude" : "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
+    expect((screen.getByLabelText("vat.lineRate") as HTMLSelectElement).value).toBe("out_of_scope")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "out_of_scope", rate: "0", country: null }) })] }))
+  })
+  it.each(["20", "25"])("restores configured %s percent VAT for an all-zero draft and saves correct totals", async taxRate => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate, baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", number: null, subtotal: 100, taxAmount: 0, total: 100,
+      items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "exempt", vatRateInput: "0" }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    fireEvent.change(screen.getByLabelText("vat.lineTreatment"), { target: { value: "standard" } })
+    expect(screen.getByText(new RegExp(`DKK\\s*${100 + Number(taxRate)}[.,]00`))).toBeTruthy()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: String(Number(taxRate) / 100) }) })] }))
+  })
+  it.each(["", "0", "-1", "NaN", "1e2", "1.1234567890123"])("blocks foreign-currency detail confirmation for rate %j", async exchangeRate => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR", number: null })
+    render(<DetailPage />)
+    fireEvent.change(await screen.findByLabelText("invoices.issuance.rate"), { target: { value: exchangeRate } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(screen.getAllByRole("alert").length).toBeGreaterThan(0)
+    expect(api.send).not.toHaveBeenCalled()
+  })
+  it("blocks a missing rate date, clears corrected issues and sends the approved foreign-currency values", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR", number: null })
+    api.send.mockResolvedValue({ emailSent: true })
+    render(<DetailPage />)
+    fireEvent.change(await screen.findByLabelText("invoices.issuance.rate"), { target: { value: "7.45" } })
+    fireEvent.change(screen.getByLabelText("invoices.issuance.rateDate"), { target: { value: "" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(api.send).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("invoices.issuance.rateDate"), { target: { value: "2026-10-12" } })
+    expect(screen.queryByRole("alert")).toBeNull()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    expect(screen.getByRole("dialog")).toBeTruthy()
+    expect(api.send).not.toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.45", rateDate: "2026-10-12" }))
+  })
   it("omits the unreserved number from new-invoice confirmation", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })
@@ -410,6 +531,13 @@ describe("invoice detail send review", () => {
     expect(screen.getByRole("dialog").textContent).not.toContain("INV-0001")
     expect(screen.getByRole("heading", { name: "Send invoice?" })).toBeTruthy()
     expect(api.create).not.toHaveBeenCalled()
+  })
+  it.each(["draft", "sent"])("uses only an issued number in %s detail confirmation", async status => {
+    api.get.mockResolvedValue({ ...invoice, status, number: status === "sent" ? "INV-0099" : null, nextNumber: "INV-0001" })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: status === "draft" ? "invoices.detail.action.send" : "invoices.detail.action.resendEmail" }))
+    expect(screen.getByRole("dialog").textContent).not.toContain("INV-0001")
+    expect(screen.getByRole("heading", { name: status === "sent" ? "Send invoice INV-0099?" : "Send invoice?" })).toBeTruthy()
   })
 })
 
@@ -434,9 +562,82 @@ describe("new invoice valuation across the bank nudge", () => {
     expect(api.create).toHaveBeenCalledOnce()
     expect(sessionStorage.length).toBe(0)
   })
+  it.each(["cancel", "settings", "failed send"])("preserves the entered valuation after %s and sends the same draft on retry", async outcome => {
+    api.currency = "EUR"
+    api.readiness.mockResolvedValue({ issues: [], recipientVersion: RECIPIENT_VERSION, taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
+    api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR" })
+    api.bankReadiness.mockResolvedValue({ bankMissing: true })
+    api.send.mockResolvedValue({})
+    const view = render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    fireEvent.change(await screen.findByLabelText("invoices.issuance.rate"), { target: { value: "7.456789" } })
+    fireEvent.change(screen.getByLabelText("invoices.issuance.rateDate"), { target: { value: "2026-10-02" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    await screen.findByRole("dialog")
+    if (outcome === "settings") {
+      await act(async () => { fireEvent.click(screen.getByText("onboardingV2.bankNudge.settings")) })
+      expect(api.navigate).toHaveBeenLastCalledWith({ to: "/settings" })
+    } else if (outcome === "cancel") {
+      await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
+    } else {
+      api.send.mockRejectedValueOnce(new Error("Synthetic send failure"))
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: "onboardingV2.bankNudge.continue" })) })
+      expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: "7.456789", rateDate: "2026-10-02" }))
+    }
+    await waitFor(() => expect(api.navigate).toHaveBeenCalled())
+    expect(api.create).toHaveBeenCalledOnce()
+    if (outcome !== "failed send") expect(api.send).not.toHaveBeenCalled()
+    view.unmount()
+    api.bankReadiness.mockResolvedValue({ bankMissing: false })
+    render(<DetailPage />)
+    const rate = await screen.findByLabelText("invoices.issuance.rate") as HTMLInputElement
+    expect(rate.value).toBe("7.456789")
+    expect((screen.getByLabelText("invoices.issuance.rateDate") as HTMLInputElement).value).toBe("2026-10-02")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.456789", rateDate: "2026-10-02" }))
+    expect(api.send).toHaveBeenCalledTimes(outcome === "failed send" ? 2 : 1)
+    expect(api.create).toHaveBeenCalledOnce()
+  })
 })
 
 
+describe("invoice detail valuation across the bank nudge", () => {
+  it.each(["cancel", "settings", "failed send"])("retains edited valuation after %s and returning to the draft", async outcome => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR" })
+    api.bankReadiness.mockResolvedValue({ bankMissing: true })
+    api.send.mockResolvedValue({})
+    const view = render(<DetailPage />)
+    fireEvent.change(await screen.findByLabelText("invoices.issuance.rate"), { target: { value: "7.123456" } })
+    fireEvent.change(screen.getByLabelText("invoices.issuance.rateDate"), { target: { value: "2026-09-30" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    await screen.findByRole("dialog")
+    if (outcome === "settings") {
+      await act(async () => { fireEvent.click(screen.getByText("onboardingV2.bankNudge.settings")) })
+    } else if (outcome === "cancel") {
+      await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
+    } else {
+      api.send.mockRejectedValueOnce(new Error("Synthetic send failure"))
+      await act(async () => { fireEvent.click(screen.getByRole("button", { name: "onboardingV2.bankNudge.continue" })) })
+      await screen.findByText("Synthetic send failure")
+    }
+    if (outcome !== "failed send") expect(api.send).not.toHaveBeenCalled()
+    view.unmount()
+    api.bankReadiness.mockResolvedValue({ bankMissing: false })
+    render(<DetailPage />)
+    expect((await screen.findByLabelText("invoices.issuance.rate") as HTMLInputElement).value).toBe("7.123456")
+    expect((screen.getByLabelText("invoices.issuance.rateDate") as HTMLInputElement).value).toBe("2026-09-30")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.123456", rateDate: "2026-09-30" }))
+    expect(api.send).toHaveBeenCalledTimes(outcome === "failed send" ? 2 : 1)
+    expect(api.create).not.toHaveBeenCalled()
+    expect(sessionStorage.length).toBe(0)
+  })
+})
 
 describe("VAT treatment choices on the draft editor", () => {
   it("keeps the full classification editor, rate input and group preview without a policy-fixed rate", async () => {
@@ -464,6 +665,19 @@ describe("VAT treatment choices on the draft editor", () => {
     expect(screen.queryByLabelText("vat.lineTreatment")).toBeNull()
     const compact = screen.queryByLabelText("vat.lineRate") as HTMLSelectElement | null
     if (compact) expect([...compact.options].map(option => option.value)).not.toContain("standard")
+  })
+  it("starts a new line of a non-registered seller at 0 % when editing an all-zero draft", async () => {
+    api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered: false, baseCurrency: "DKK" })
+    const draft = { ...invoice, status: "draft", number: null, subtotal: 100, taxAmount: 0, total: 100,
+      items: [{ id: "synthetic-line", description: "Synthetic work", quantity: 1, unitPrice: 100, taxRate: 0, vatTreatment: "unclassified_zero", vatRateInput: "0" }] }
+    api.get.mockResolvedValue(draft)
+    api.update.mockResolvedValue(draft)
+    render(<DetailPage />)
+    const edit = await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(edit) })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "0" }))
   })
   it("ignores an AI-supplied VAT rate under a policy-fixed rate and applies it, correctably, otherwise", async () => {
     aiFixture.enabled = true
@@ -522,5 +736,16 @@ describe("send errors and line validation on the new invoice form", () => {
     expect((await screen.findByTestId("organization-gaps")).getAttribute("role")).toBe("status")
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     expect(await screen.findByRole("button", { name: "invoiceSend.confirm" })).toBeTruthy()
+  })
+})
+describe("detail confirmation with known readiness issues", () => {
+  it("shows blocking readiness issues instead of opening a confirmation that would be refused", async () => {
+    api.readiness.mockResolvedValue({ issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }], warnings: [], taxRate: "25", baseCurrency: "DKK" })
+    api.get.mockResolvedValue({ ...invoice, status: "draft", number: null })
+    render(<DetailPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.send" })) })
+    expect(screen.queryByRole("button", { name: "invoiceSend.confirm" })).toBeNull()
+    expect(api.send).not.toHaveBeenCalled()
   })
 })

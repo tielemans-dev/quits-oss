@@ -128,6 +128,11 @@ for (const locale of ["da-DK", "en-US"]) {
     await expect(page.getByText(translate("line.noVat", locale), { exact: true })).toBeVisible()
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", locale), exact: true }).click()
     await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", locale), exact: true }).click()
+    // Continue without email opens the final invoice review; approve it before issuance.
+    const confirmation = page.getByRole("dialog", { name: translate("invoiceSend.titleWithoutNumber", locale), exact: true })
+    await expect(confirmation).toBeVisible()
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("draft")
+    await confirmation.getByRole("button", { name: translate("invoiceSend.confirm", locale), exact: true }).click()
     await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
     await expect(page.getByText(translate("pdf.nonVatRegistered", locale), { exact: true })).toHaveCount(1)
     await capture(page, "invoice", locale)
@@ -231,6 +236,11 @@ for (const { source, locale } of choiceScenarios) {
       await waitForClientReady(page)
       await page.getByRole("button", { name: translate("invoices.detail.email.degraded.trigger", locale), exact: true }).click()
       await page.getByRole("button", { name: translate("invoices.detail.email.degraded.confirm", locale), exact: true }).click()
+      // Continue without email opens the final invoice review; approve it before issuance.
+      const confirmation = page.getByRole("dialog", { name: translate("invoiceSend.titleWithoutNumber", locale), exact: true })
+      await expect(confirmation).toBeVisible()
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("draft")
+      await confirmation.getByRole("button", { name: translate("invoiceSend.confirm", locale), exact: true }).click()
       await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })).status).toBe("sent")
       const issued = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
       expect(issued.sellerSnapshot).toMatchObject({ momsRegistered: registered })

@@ -5,21 +5,22 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { I18nProvider } from "../../lib/i18n/react"
 // MOCK: transport responses and route context only. The detail page, send handler,
 // bank hook and dialog are real; no email provider or network is used.
-const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), readiness: vi.fn(), send: vi.fn() }))
+const api = vi.hoisted(() => ({ get: vi.fn(), settings: vi.fn(), readiness: vi.fn(), send: vi.fn(), sendReadiness: vi.fn(), navigate: vi.fn() }))
 vi.mock("../../trpc/client", () => ({ trpc: {
-  invoices: { get: { query: api.get }, send: { mutate: api.send } }, settings: { get: { query: api.settings } },
+  invoices: { get: { query: api.get }, sendReadiness: { query: api.sendReadiness }, send: { mutate: api.send } }, settings: { get: { query: api.settings } },
   paymentDetails: { firstSendReadiness: { query: api.readiness } },
 } }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: object) => ({ ...options, useParams: () => ({ invoiceId: "draft" }), useSearch: () => ({}) }),
-  useNavigate: () => vi.fn(),
-  Link: ({ children, to, ...props }: { children: ReactNode; to: string }) => <a href={to} {...props}>{children}</a>,
+  useNavigate: () => api.navigate,
+  Link: ({ children, to, onClick, ...props }: { children: ReactNode; to: string; onClick?: () => void }) => <a href={to} {...props} onClick={event => { event.preventDefault(); onClick?.(); api.navigate({ to }) }}>{children}</a>,
 }))
 vi.mock("../../components/billing/trial-access", () => ({ useTrialAccess: () => null, isReadOnly: () => false, PaywallBlock: () => null }))
 vi.mock("../../components/invoices/panels", () => ({ InvoiceLifecyclePanels: () => null }))
 import { Route } from "../_app/invoices/$invoiceId"
 const Detail = (Route as unknown as { component: () => ReactNode }).component
 const draft = {
+  reviewedVersion: "11111111111111111111111111111111",
   id: "draft", number: null, status: "draft", paymentStatus: "unpaid", purpose: "sale", currency: "DKK", taxRegime: "eu_vat",
   dueDate: "2026-11-09", issueDate: "2026-10-13", supplyDate: "2026-10-13", items: [], total: 0, subtotal: 0, taxAmount: 0,
   contact: { id: "buyer", name: "Synthetic buyer", email: "buyer@example.test" }, sellerSnapshot: { countryCode: "DK", momsRegistered: false },
@@ -29,38 +30,50 @@ beforeEach(() => {
   api.get.mockResolvedValue(draft)
   api.settings.mockResolvedValue({ locale: "en-GB", baseCurrency: "DKK", emailDelivery: { available: true } })
   api.send.mockResolvedValue({})
+  api.sendReadiness.mockResolvedValue({ issues: [], baseCurrency: "DKK" })
 })
 afterEach(cleanup)
 async function open() {
   render(<I18nProvider locale="en-GB"><Detail /></I18nProvider>)
   return await screen.findByRole("button", { name: "Send" }) as HTMLButtonElement
 }
+async function confirmSend(send: HTMLButtonElement) {
+  fireEvent.click(send)
+  fireEvent.click(await screen.findByRole("button", { name: "Send invoice" }))
+}
 describe("invoice view-mode bank nudge", () => {
-  it("proceeds after explicit skip and clears acting after sending", async () => {
+  it("surfaces the server bank block after continuing without bank or Stripe", async () => {
     api.readiness.mockResolvedValue({ bankMissing: true })
+    api.send.mockRejectedValueOnce(Object.assign(new Error("Missing payment method"), { data: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } }))
     const send = await open()
-    fireEvent.click(send)
+    await confirmSend(send)
     await screen.findByRole("dialog")
     expect(send.disabled).toBe(true)
     expect(api.send).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole("button", { name: "Send without a bank account" }))
     await waitFor(() => expect(api.send).toHaveBeenCalledOnce())
     await waitFor(() => expect(send.disabled).toBe(false))
+    expect(screen.getByTestId("organization-gaps")).toBeTruthy()
+    // MOCK: the user has added bank details through Settings before retrying.
+    api.readiness.mockResolvedValue({ bankMissing: false })
+    await confirmSend(send)
+    await waitFor(() => expect(api.send).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByTestId("organization-gaps")).toBeNull())
   })
   it("cancels without sending and permits another attempt", async () => {
     api.readiness.mockResolvedValue({ bankMissing: true })
     const send = await open()
-    fireEvent.click(send)
+    await confirmSend(send)
     fireEvent.keyDown(await screen.findByRole("dialog"), { key: "Escape" })
     await waitFor(() => expect(send.disabled).toBe(false))
     expect(api.send).not.toHaveBeenCalled()
-    fireEvent.click(send)
+    await confirmSend(send)
     await screen.findByRole("dialog")
   })
-  it("does not gate the self-hosted readiness result", async () => {
+  it("sends after bank details are configured without a nudge", async () => {
     api.readiness.mockResolvedValue({ bankMissing: false })
     const send = await open()
-    fireEvent.click(send)
+    await confirmSend(send)
     await waitFor(() => expect(api.send).toHaveBeenCalledOnce())
     await waitFor(() => expect(send.disabled).toBe(false))
     expect(screen.queryByRole("dialog")).toBeNull()
