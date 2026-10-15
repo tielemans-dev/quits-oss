@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { invoiceCreateDraftV2InputSchema, invoiceUpdateDraftV2InputSchema, quantityDecimalSchema } from "@quits/contracts/invoices"
 import { previewDraft } from "@quits/shared/pricing"
-import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../invoice-quantity"
+import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../invoice-quantity"
 
 const LOCALES = ["da-DK", "en-US"] as const
 
@@ -23,6 +23,7 @@ describe("invoice editor quantities", () => {
 
   it.each([
     ["da-DK", "1,000", "1.000"], ["en-US", "1.000", "1.000"], ["da-DK", "2.5", "2.5"], ["en-US", "2,5", "2.5"],
+    ["da-DK", "0.125", "0.125"], ["en-US", "0,125", "0.125"], ["da-DK", "1000.500", "1000.500"],
   ])("reads the decimal separator for %s %s", (locale, raw, canonical) => {
     expect(invoiceQuantityInput(locale).parse(raw)).toBe(canonical)
   })
@@ -39,6 +40,12 @@ describe("invoice editor quantities", () => {
       expect(normalizeInvoiceQuantity(item, locale)).toBe(item)
     }
     expect(quantityDecimalSchema.safeParse(raw).success).toBe(false)
+  })
+
+  it.each(["1.000", "0.125", "1.5", "1000000", "2.500000"])("round-trips persisted %s through the Danish and English editors", canonical => {
+    for (const locale of LOCALES) {
+      expect(invoiceQuantityInput(locale).parse(localizeInvoiceQuantity(canonical, locale))).toBe(canonical)
+    }
   })
 
   it("submits canonical quantities through both create and edit schemas", () => {

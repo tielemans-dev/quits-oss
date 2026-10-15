@@ -1,4 +1,4 @@
-import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
+import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
@@ -328,7 +328,7 @@ function InvoiceDetailPage() {
         id: item.id, deliverableId: item.deliverableId ?? undefined,
         ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
         description: item.description,
-        quantity: item.quantityInput ?? String(item.quantity),
+        quantity: localizeInvoiceQuantity(item.quantityInput ?? String(item.quantity), locale),
         unitPrice: item.unitPriceInput ?? String(invoice.pricesIncludeTax ? item.unitPriceGross ?? item.unitPrice : item.unitPriceNet ?? item.unitPrice),
         vat: { treatment: item.vatTreatment ?? (Number(item.taxRate) > 0 ? "standard" : "unclassified_zero"), rate: item.vatRateInput ?? percentageToFraction(item.taxRate ?? 0), country: item.vatCountry, reasonCode: item.vatReasonCode },
         catalogItemId: undefined,
