@@ -127,7 +127,7 @@ describe("request parser", () => {
     expect(draft?.items).toEqual([])
     expect(draft?.remainder).toBe(`${quantity} timer à 850 kr.`)
   })
-  it.each(["-", "\u2013", "\u2014", "\u2212"])("preserves dash signs and separators: %s", dash => {
+  it.each(["-", "\u2011", "\u2013", "\u2014", "\u2212"])("preserves dash signs and separators: %s", dash => {
     for (const gap of ["", " "]) {
       for (const prefix of ["", "12 timer à ", "12 timer "]) {
         const draft = parse(`fakturer Nordlys ${prefix}${dash}${gap}850 kr.`)

@@ -85,7 +85,7 @@ export function parseRequest(input: string, context: RequestContext): RequestDra
   const cvr = /^(?:cvr\s*:?\s*)?(?:dk\s*)?\d{8}(?![\p{L}\p{N}])/iu.exec(body)
   // Only a numeric expression with a unit, currency or price separator starts a
   // line. Digits in names such as Studio 54 ApS and 3Shape A/S remain names.
-  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)(?:[+\u2013\u2014\u2212-]\s*)?\d[\d.,\s]*(?:e[+-]?\d+)?\s*(?:timer|time|t|stk\.?|kr\.?|[àax])(?=$|[\s.,]|\d)/iu)
+  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)(?:[+\p{Pd}\u2212]\s*)?\d[\d.,\s]*(?:e[+-]?\d+)?\s*(?:timer|time|t|stk\.?|kr\.?|[àax])(?=$|[\s.,]|\d)/iu)
   const customer = matchCustomer((lineStart < 0 ? body : body.slice(0, lineStart)).trim(), context.customers)
   let rest = lineStart < 0 ? "" : body.slice(lineStart).trim()
   const line: RequestLine = { description: "" }
