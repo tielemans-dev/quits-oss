@@ -117,6 +117,8 @@ describeIfDatabase("onboarding ai contract", () => {
       const caller = await createCaller("cloud", orgId)
       const runtimeServices = await import("../../../lib/runtime/services")
       runtimeServices.setRuntimeServices({
+        // Hosted onboarding checks the CVR against the registry; this synthetic provider reports an active company.
+        cvrLookupProvider: { get: async (cvr: string) => ({ cvr, status: "active", statusClass: "active" }) } as never,
         onboardingAiService: {
           suggestPatch: async () => ({
             patch: {
@@ -127,7 +129,7 @@ describeIfDatabase("onboarding ai contract", () => {
               timezone: "Europe/Copenhagen",
               defaultCurrency: "DKK",
               taxRegime: "eu_vat",
-              primaryTaxId: "DK12345678",
+              primaryTaxId: "DK24256790",
               primaryTaxIdScheme: "DK_VAT",
               invoicePrefix: "INV",
               quotePrefix: "QTE",
