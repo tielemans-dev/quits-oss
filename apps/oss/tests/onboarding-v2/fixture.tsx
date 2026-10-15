@@ -25,6 +25,8 @@ const company: CvrCompany = {
 const client: OnboardingV2Client = {
   search: async (query, signal) => {
     await wait(50, signal)
+    // CVR registry outage: every lookup fails, manual setup must still finish.
+    if (scenario === "lookup-down") throw new Error("Lookup unavailable")
     return query === "00000000" || query === "Unknown"
       ? []
       : scenario === "several"
@@ -90,6 +92,7 @@ function Fixture() {
           organizationId="fixture-org"
           signupEmail="billing@example.com"
           nonVatEnabled={nonVatEnabled}
+          confirmationEnabled={params.get("confirmation") === "1"}
           client={client}
           onComplete={() => setDone(true)}
         />
