@@ -24,7 +24,7 @@ vi.mock("../../../lib/i18n/react", () => ({
   useI18n: () => ({ t: (key: string) => key }),
 }))
 
-import { StripePaymentsSection, stripeByokUpdate, stripeConnectActionHandlers } from "../stripe-payments-section"
+import { StripePaymentsSection, stripeByokUpdate } from "../stripe-payments-section"
 
 const noop = () => {}
 
@@ -50,7 +50,6 @@ function renderSection(account?: OrgStripeAccount, stripeByokConfigured = false,
       account={account}
       stripeByokConfigured={stripeByokConfigured}
       stripePaymentsEnabled={stripePaymentsEnabled}
-      stripeCheckoutKind={stripePaymentsEnabled ? (stripeByokConfigured ? "byok" : "connect") : null}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
       onClearStripeSecretKeyChange={noop}
@@ -76,14 +75,12 @@ function LiveSection({
   const [account, setAccount] = useState(initial)
   const [enabled, setEnabled] = useState(connectActions)
   const [paymentsEnabled, setPaymentsEnabled] = useState(true)
-  const [checkoutKind, setCheckoutKind] = useState<"connect" | "byok" | null>("connect")
   return (
     <StripePaymentsSection
       account={account}
       connectActions={enabled}
       stripeByokConfigured={false}
       stripePaymentsEnabled={paymentsEnabled}
-      stripeCheckoutKind={checkoutKind}
       clearStripeSecretKey={false}
       clearStripeWebhookSecret={false}
       onClearStripeSecretKeyChange={noop}
@@ -92,7 +89,6 @@ function LiveSection({
         setAccount(next.stripeAccount)
         setEnabled(next.stripeConnectActions)
         setPaymentsEnabled(next.stripePaymentsEnabled)
-        setCheckoutKind(next.stripeCheckoutKind)
       }}
     />
   )
@@ -117,13 +113,13 @@ describe("StripePaymentsSection", () => {
   })
 
   it.each(["none", "pending", "active", "restricted"] as const)(
-    "explains legacy keys and the charged account in Connect mode (%s)",
+    "never offers BYOK checkout in Connect mode (%s)",
     (status) => {
       renderSection(connectAccount(status), true, true)
       expect(screen.queryByTestId("byok-content")).toBeNull()
       expect(screen.getByText("settings.payments.connect.legacy.active")).toBeTruthy()
-      expect(screen.getByText("settings.payments.connect.payments.byok")).toBeTruthy()
-      expect(screen.queryByText("settings.payments.connect.payments.connect")).toBeNull()
+      expect(screen.queryByText("settings.payments.connect.payments.byok")).toBeNull()
+      expect(screen.queryByText("settings.payments.connect.payments.enabled") !== null).toBe(status === "active")
       expect(screen.getByRole("button", { name: "settings.payments.connect.legacy.remove" })).toBeTruthy()
     }
   )
@@ -157,7 +153,7 @@ describe("StripePaymentsSection", () => {
           account={connectAccount(status)}
           connectActions={false}
           stripeByokConfigured={false}
-              clearStripeSecretKey={false}
+          clearStripeSecretKey={false}
           clearStripeWebhookSecret={false}
           onClearStripeSecretKeyChange={noop}
           onClearStripeWebhookSecretChange={noop}
@@ -211,21 +207,6 @@ describe("StripePaymentsSection", () => {
     expect(api.get).not.toHaveBeenCalled()
     expect(screen.getByText("settings.payments.connect.status.pending")).toBeTruthy()
     follow.mockRestore()
-  })
-})
-
-describe("stripeConnectActionHandlers", () => {
-  it("passes nothing until a runtime handler is registered, then forwards each action", () => {
-    const run = vi.fn()
-    expect(stripeConnectActionHandlers(false, run)).toEqual({})
-    expect(stripeConnectActionHandlers(undefined, run)).toEqual({})
-
-    const handlers = stripeConnectActionHandlers(true, run)
-    handlers.onConnect?.()
-    handlers.onResume?.()
-    handlers.onFixInStripe?.()
-    handlers.onDisconnect?.()
-    expect(run.mock.calls).toEqual([["connect"], ["resume"], ["fix"], ["disconnect"]])
   })
 })
 

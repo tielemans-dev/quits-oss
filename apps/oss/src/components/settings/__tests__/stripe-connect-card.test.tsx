@@ -27,8 +27,9 @@ describe("StripeConnectCard", () => {
   describe.each(["none", "pending", "restricted", "active"] as const)("%s account", (status) => {
     it.each([false, true])("shows payment readiness from Settings (%s)", (paymentsEnabled) => {
       render(<StripeConnectCard account={account(status)} paymentsEnabled={paymentsEnabled} />)
-      const shown = paymentsEnabled ? "enabled" : "unavailable"
-      const hidden = paymentsEnabled ? "unavailable" : "enabled"
+      const ready = paymentsEnabled && status === "active"
+      const shown = ready ? "enabled" : "unavailable"
+      const hidden = ready ? "unavailable" : "enabled"
       expect(screen.getByText(`settings.payments.connect.payments.${shown}`)).toBeTruthy()
       expect(screen.queryByText(`settings.payments.connect.payments.${hidden}`)).toBeNull()
     })

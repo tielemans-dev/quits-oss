@@ -1306,7 +1306,6 @@ function SettingsPage() {
           account={settings.stripeAccount}
           stripeByokConfigured={settings.stripeByokConfigured}
           stripePaymentsEnabled={settings.stripePaymentsEnabled}
-          stripeCheckoutKind={settings.stripeCheckoutKind}
           clearStripeSecretKey={clearStripeSecretKey}
           clearStripeWebhookSecret={clearStripeWebhookSecret}
           onClearStripeSecretKeyChange={setClearStripeSecretKey}

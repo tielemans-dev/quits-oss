@@ -36,7 +36,6 @@ const HELP_KEYS = {
 export function StripeConnectCard({
   account,
   paymentsEnabled = false,
-  checkoutKind,
   onConnect,
   onResume,
   onFixInStripe,
@@ -44,7 +43,6 @@ export function StripeConnectCard({
 }: {
   account: Pick<OrgStripeAccount, "accountId" | "status">
   paymentsEnabled?: boolean
-  checkoutKind?: "byok" | "connect" | null
   onConnect?: () => void
   onResume?: () => void
   onFixInStripe?: () => void
@@ -67,13 +65,10 @@ export function StripeConnectCard({
       <CardContent className="grid gap-4">
         <p className="text-sm text-muted-foreground">{t(HELP_KEYS[status])}</p>
         <p className="text-sm text-muted-foreground">
-          {t(paymentsEnabled
+          {t(paymentsEnabled && status === "active"
             ? "settings.payments.connect.payments.enabled"
             : "settings.payments.connect.payments.unavailable")}
         </p>
-        {paymentsEnabled && checkoutKind ? (
-          <p className="text-sm">{t(checkoutKind === "byok" ? "settings.payments.connect.payments.byok" : "settings.payments.connect.payments.connect")}</p>
-        ) : null}
         {status !== "none" && accountId ? (
           <div className="grid gap-1">
             <div className="text-sm font-medium">{t("settings.payments.connect.account.label")}</div>

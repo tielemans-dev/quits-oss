@@ -54,7 +54,6 @@ export function stripeByokUpdate(input: {
 export function StripePaymentsSection({
   account,
   children,
-  stripeCheckoutKind,
   stripeByokConfigured,
   stripePaymentsEnabled = false,
   clearStripeSecretKey,
@@ -66,7 +65,6 @@ export function StripePaymentsSection({
   onConnectError,
 }: {
   children?: ReactNode
-  stripeCheckoutKind?: "byok" | "connect" | null
   account?: OrgStripeAccount
   stripeByokConfigured: boolean
   stripePaymentsEnabled?: boolean
@@ -104,7 +102,6 @@ export function StripePaymentsSection({
       <StripeConnectCard
         account={account}
         paymentsEnabled={stripePaymentsEnabled}
-        checkoutKind={stripeCheckoutKind}
         {...stripeConnectActionHandlers(connectActions, (action) => { void runConnectAction(action) })}
       />
       {stripeByokConfigured ? (
