@@ -61,6 +61,10 @@ async function createCloudCaller() {
   process.env.QUITS_DISTRIBUTION = "cloud"
 
   const { appRouter } = await import("../../router")
+  const { setRuntimeServices } = await import("../../../lib/runtime/services")
+  setRuntimeServices({ cvrLookupProvider: {
+    search: async () => [], get: async cvr => ({ cvr, name: "Synthetic business", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: true }),
+  } })
 
   const orgId = randomUUID()
   const slug = `onboarding-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
@@ -194,7 +198,7 @@ describeIfDatabase("onboarding router integration", () => {
         pricesIncludeTax: true,
         invoicePrefix: "INV",
         quotePrefix: "QTE",
-        primaryTaxId: "12345678",
+        primaryTaxId: "24256790",
         primaryTaxIdScheme: "DK_CVR",
       })
       expect(draft.status).toBe("in_progress")
@@ -210,7 +214,7 @@ describeIfDatabase("onboarding router integration", () => {
     }
   })
 
-  it("does not require a primary tax id for danish individuals", async () => {
+  it("requires a CVR for Danish sole traders", async () => {
     const { orgId, caller } = await createCloudCaller()
 
     try {
@@ -220,6 +224,7 @@ describeIfDatabase("onboarding router integration", () => {
         companyEmail: "billing@acme.example",
         countryCode: "DK",
         invoicingIdentity: "individual",
+        primaryTaxId: "24256790", primaryTaxIdScheme: "cvr",
         locale: "da-DK",
         timezone: "Europe/Copenhagen",
         defaultCurrency: "DKK",

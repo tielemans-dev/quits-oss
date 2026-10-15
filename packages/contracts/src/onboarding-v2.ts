@@ -6,6 +6,7 @@ export function isValidDanishCvr(value: string): boolean {
     [...value].reduce((sum, digit, index) => sum + Number(digit) * [2, 7, 6, 5, 4, 3, 2, 1][index]!, 0) % 11 === 0
 }
 
+// Schema and migration defaults are checked in apps/oss/src/lib/onboarding/__tests__/danish-defaults.test.ts.
 export const DANISH_ONBOARDING_V2_DEFAULTS = {
   countryCode: "DK",
   country: "Danmark",

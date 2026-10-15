@@ -192,7 +192,7 @@ export function refuseWhileSending(kind: DocumentKind, document: { lastEmailAtte
 export const queueDocumentEmail = <Row>(input: {
   kind: DocumentKind
   mode: Mode
-  document: { id: string; number: string | null }
+  document: { id: string; number: string | null; locale?: string }
   recipient: string
   message: StoredEmailMessage
   /** Names exactly this delivery; the provider drops a repeat sent under the same key. */
@@ -217,6 +217,7 @@ export const queueDocumentEmail = <Row>(input: {
     )
     const { deliveryKey } = yield* enqueueEmailDelivery({
       message: input.message,
+      ...((input.kind === "invoice" || input.kind === "quote") ? { reminderUnsubscribeLocale: input.document.locale || "en-US" } : {}),
       idempotencyKey: input.idempotencyKey,
       completion: {
         kind: completionKind(input.kind, input.mode),

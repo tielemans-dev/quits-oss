@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Textarea } from "../ui/textarea"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
+import { translateCvrError } from "../../lib/i18n/cvr-error"
 import { trpc } from "../../trpc/client"
 
 type AiAssistantPanelProps = {
@@ -52,7 +53,7 @@ export function AiAssistantPanel({
       })
       setSuggestion(nextSuggestion)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("auth.onboarding.ai.suggestError"))
+      setError(cause instanceof Error ? translateCvrError(cause.message, t) : t("auth.onboarding.ai.suggestError"))
     } finally {
       setBusy(false)
     }
@@ -74,7 +75,7 @@ export function AiAssistantPanel({
       })
       setSuggestion(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("auth.onboarding.ai.applyError"))
+      setError(cause instanceof Error ? translateCvrError(cause.message, t) : t("auth.onboarding.ai.applyError"))
     } finally {
       setBusy(false)
     }

@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
+import { sendReminderBatch } from "../../components/jobs/reminder-jobs-store"
 import { trpc } from "../../trpc/client"
 
 export const Route = createFileRoute("/_app/")({
@@ -49,5 +50,5 @@ function DashboardPage() {
     )
   }
 
-  return <DashboardView readyCompany={readyCompany} summary={load.summary} sendReminder={sendReminder} onRemindersSettled={refresh} />
+  return <DashboardView readyCompany={readyCompany} summary={load.summary} sendReminder={sendReminder} sendReminderBatch={sendReminderBatch} onRemindersSettled={refresh} />
 }

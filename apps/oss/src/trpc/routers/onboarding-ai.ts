@@ -1,3 +1,4 @@
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
 import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
 import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
@@ -444,6 +445,10 @@ export const onboardingAiRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCloudOnboardingAiEnabled()
       try {
+        if (input.patch.primaryTaxId !== undefined) await requireOnboardingCvr({
+          cvr: input.patch.primaryTaxId.replace(/^DK/, ""), scheme: input.patch.primaryTaxIdScheme,
+          cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId,
+        })
         await applyPatchToOrgSettings(ctx.organizationId, input.patch, input.source)
       } catch (error) {
         onboardingLogger.error("onboarding_ai.apply.failed", {
