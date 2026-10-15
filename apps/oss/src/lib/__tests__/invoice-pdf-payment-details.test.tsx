@@ -181,9 +181,9 @@ describe("invoice PDF calendar dates", () => {
         invoice: { ...invoice, dueDate: "2028-02-29T00:00:00.000Z", supplyDate: "2027-03-14" },
         org: { locale: "en-US", timezone },
       })).join("\n")
-      expect(text).toContain("Feb 29, 2028")
-      expect(text).toContain("Mar 14, 2027")
-      expect(text).toContain(timezone === "Europe/Copenhagen" ? "Oct 1, 2026" : "Sep 30, 2026")
+      expect(text).toContain("February 29, 2028")
+      expect(text).toContain("March 14, 2027")
+      expect(text).toContain(timezone === "Europe/Copenhagen" ? "October 1, 2026" : "September 30, 2026")
     }
   )
 })

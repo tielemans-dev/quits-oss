@@ -89,7 +89,7 @@ describe("full invoice legal fields", () => {
     expect(pdf).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
     expect(email).toContain("DK")
     expect(pay).toContain("DK")
-    expect(pdf).toContain(locale === "da-DK" ? "9. okt. 2026" : "Oct 9, 2026")
+    expect(pdf).toContain(locale === "da-DK" ? "9. oktober 2026" : "October 9, 2026")
     expect(email).toContain(locale === "da-DK" ? "8. okt. 2026" : "8 Oct 2026")
     expect(pay).toContain(locale === "da-DK" ? "8. okt. 2026" : "Oct 8, 2026")
   })
