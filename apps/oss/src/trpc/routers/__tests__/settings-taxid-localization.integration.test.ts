@@ -297,4 +297,13 @@ describeIfDatabase("Danish VAT Settings invariants", () => {
       await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
+  it("answers the structured CVR refusal in the organization's language", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", locale: "da" })
+      const refusal = { message: "Indtast et gyldigt CVR-nummer.", cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } }
+      await expect(caller.settings.update({ primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject(refusal)
+      await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject(refusal)
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
 })
