@@ -27,6 +27,21 @@ export const daDocFormMessages = {
   "docForm.validation.contactRequired": "Vælg venligst en kunde",
   "docForm.validation.itemDescriptionRequired":
     "Alle linjer skal have en beskrivelse",
+  "invoiceValidation.required": "Udfyld feltet",
+  "invoiceValidation.changedSinceReview": "Fakturaen er ændret, siden du gennemgik den. Gennemgå de aktuelle oplysninger, og bekræft afsendelsen igen.",
+  "invoiceValidation.customer.required": "Vælg en kunde",
+  "invoiceValidation.cvr.invalid": "Et CVR-nummer har 8 cifre",
+  "invoiceValidation.unknown": "Tjek feltet og prøv igen",
+  "invoiceValidation.customer.businessName.required": "Indtast kundens firmanavn",
+  "invoiceValidation.customer.country.unsupported": "Lige nu kan du kun fakturere kunder i Danmark",
+  "invoiceValidation.seller.country.unsupported": "Vælg et understøttet land for dit firma",
+  "invoiceValidation.seller.vatRegistration.required": "Bekræft, om du er momsregistreret",
+  "invoiceValidation.seller.bank.required": "Tilføj bankoplysninger",
+  "invoiceValidation.currency.unsupported": "Vælg en understøttet valuta: {currencies}",
+  "invoiceValidation.vat.unsupported": "Brug {rate} % moms på hver linje",
+  "invoiceValidation.description.tooLong": "Brug højst 500 tegn",
+  "invoiceValidation.unitPrice.invalid": "Skriv en pris som et almindeligt tal, f.eks. 1200 eller 99,95",
+  "invoiceValidation.policyUnavailable": "Fakturareglerne kunne ikke kontrolleres lige nu. Du kan gemme en kladde og sende den senere.",
   "docForm.validation.quantityInvalid":
     "Angiv et antal større end 0 og højst 1.000.000 med komma eller punktum og op til 6 decimaler. Eksponentnotation er ikke tilladt.",
 } as const

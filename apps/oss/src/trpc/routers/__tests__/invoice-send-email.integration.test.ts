@@ -254,7 +254,7 @@ describeIfDatabase("invoice send email delivery", () => {
           from: '"Acme via quits" <billing@example.com>',
           replyTo: "billing@acme.com",
         }),
-        { provider: "resend", idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice.id}:`)) }
+        { provider: "resend", idempotencyKey: expect.stringMatching(/^invoice-send:cmd_/) }
       )
     } finally {
       restoreEnv(previous)
@@ -424,11 +424,12 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(job?.status).toBe("pending")
       expect(job?.attempts).toBe(1)
 
-      // While delivery may have happened, the invoice cannot change or be sent again.
+      // While delivery may have happened, edits are blocked and send retries reuse the queued delivery.
       await expect(
         caller.invoices.update({ id: invoice.id, notes: "changed after delivery" })
       ).rejects.toThrow(/being emailed/)
-      await expect(caller.invoices.send({ id: invoice.id })).rejects.toThrow(/being emailed/)
+      await expect(caller.invoices.send({ id: invoice.id })).resolves.toMatchObject({ emailPending: true })
+      expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
 
       await retryEmailDeliveries(orgId)
       const sent = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
@@ -441,7 +442,7 @@ describeIfDatabase("invoice send email delivery", () => {
       expect(calls).toHaveLength(2)
       expect(calls[1]![0]).toEqual(calls[0]![0])
       expect(calls[1]![1]).toEqual(calls[0]![1])
-      expect(calls[0]![1]?.idempotencyKey).toMatch(new RegExp(`^invoice-send:${invoice.id}:`))
+      expect(calls[0]![1]?.idempotencyKey).toMatch(/^invoice-send:cmd_/)
     } finally {
       restoreEnv(previous)
       await cleanupTestOrganizations({ where: { id: orgId } })

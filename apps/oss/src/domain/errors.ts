@@ -1,5 +1,5 @@
 import { Data } from "effect"
-import type { CommandError } from "@quits/contracts/agent"
+import type { CommandError, FieldIssue } from "@quits/contracts/agent"
 
 export class Forbidden extends Data.TaggedError("Forbidden")<{
   readonly message: string
@@ -16,6 +16,7 @@ export class NotFound extends Data.TaggedError("NotFound")<{
 export class InvalidState extends Data.TaggedError("InvalidState")<{
   readonly message: string
   readonly code: string
+  readonly issues?: ReadonlyArray<FieldIssue>
   /** Facts a person or agent can act on, e.g. which draft holds a reservation. */
   readonly details?: Readonly<Record<string, string | number | boolean | null>>
 }> {}

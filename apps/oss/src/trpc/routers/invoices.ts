@@ -226,7 +226,7 @@ export const invoicesRouter = router({
   send: authorizedProcedure("invoice:send")
     .input(invoiceSendInputSchema)
     .mutation(async ({ ctx, input }) =>
-      settleEmailResult(unwrapOutcome(await executeIssuanceCommand(sendInvoice, input, { actor: ctx.actor })), "invoice", () =>
+      settleEmailResult(unwrapOutcome(await executeIssuanceCommand(sendInvoice, input, { actor: ctx.actor, jobWaitTimeoutMs: 1500 })), "invoice", () =>
         prisma.invoice.findUniqueOrThrow({ where: { id: input.id } })
       )
     ),

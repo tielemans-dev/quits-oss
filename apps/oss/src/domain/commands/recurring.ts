@@ -651,6 +651,12 @@ export const recordRecurringRunFailure = defineCommand({
     }),
 })
 
+/** Names the fields behind a refusal so the draft says what to fix, not only that something is wrong. */
+const failedFields = (issues: z.infer<typeof commandErrorSchema>["issues"]) => {
+  const fields = [...new Set((issues ?? []).map(issue => "field" in issue ? issue.field : issue.path))]
+  return fields.length ? ` (${fields.join(", ")})` : ""
+}
+
 /** Job-only: keeps an auto-send failure visible on the draft and in the activity log. */
 export const recordRecurringAutoSendFailure = defineCommand({
   type: "recurring.record_auto_send_failure",
@@ -681,7 +687,7 @@ export const recordRecurringAutoSendFailure = defineCommand({
             at: now,
             outcome: "failed",
             code: input.error.code ?? "auto_send_failed",
-            message: `Automatic sending failed: ${input.error.message}`,
+            message: `Automatic sending failed: ${input.error.message}${failedFields(input.error.issues)}`,
           }),
         })
       )

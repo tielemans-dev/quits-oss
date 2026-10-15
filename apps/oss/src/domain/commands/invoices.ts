@@ -378,11 +378,17 @@ export const sendInvoice = defineCommand({
       yield* lockDocument("invoice", input.id)
       const found = yield* findInvoice(input.id)
 
-      if (found.status !== "draft") {
+      // Only a send whose delivery is still in flight is replayed; an issued invoice is refused again like any other non-draft.
+      if (found.lastEmailAttemptOutcome !== "sending" && found.status !== "draft") {
         return yield* new InvalidState({ message: "Only draft invoices can be sent", code: "not_draft" })
       }
+      if (found.lastEmailAttemptOutcome === "sending") {
+        const delivery = yield* Effect.promise(() => db.job.findFirst({ where: {
+          organizationId, type: "email.deliver", payload: { path: ["completion", "target", "documentId"], equals: found.id },
+        }, orderBy: { createdAt: "desc" }, select: { dedupeKey: true } }))
+        return { ...found, emailSent: false, emailPending: true, ...(delivery?.dedupeKey ? { deliveryKey: delivery.dedupeKey } : {}) } satisfies InvoiceSendResult
+      }
       yield* requireDepositInvoiceEnabled(found)
-      yield* refuseWhileSending("invoice", found)
       const { settings, sellerTaxIds } = yield* loadDocumentContext
       const currentSeller = buildSellerSnapshot(settings, sellerTaxIds)
       const seller = (found.agreementId || found.quoteId)
@@ -481,7 +487,7 @@ export const sendInvoice = defineCommand({
         document: invoice,
         recipient,
         message: email.message,
-        idempotencyKey: `invoice-send:${invoice.id}:${now.getTime()}`,
+        idempotencyKey: `invoice-send:${command.commandId}`,
         numberTaken: found.number === null,
         publicLinkIssuedAt: publicPaymentIssuedAt,
         markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data: { ...data, number: invoice.number } }),
