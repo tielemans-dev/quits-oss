@@ -179,7 +179,7 @@ type EditItem = {
 }
 
 /** The editable columns of a line, for issues that are about the line as a whole. */
-const lineColumnsOf = ["description", "quantity", "unitPrice", "vat"] as const
+const lineColumnsOf = ["description", "quantity", "unitPrice"] as const
 
 function formatCurrency(amount: number, currency: string, locale?: string | null) {
   return formatCurrencyIntl(amount, currency, locale)
@@ -263,8 +263,8 @@ function InvoiceDetailPage() {
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
   // The edit values as of this render, so a save can tell which fields changed while it was in flight.
-  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
-  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editNotes, editTaxRate, editVatEvidence, editItems])
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editItems: EditItem[] } | null>(null)
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editItems }), [editContactId, editDueDate, editNotes, editItems])
   editSnapshot.current = editValues
 
   // The page stays mounted when navigating to another invoice; drop answers for the previous one.
@@ -359,11 +359,6 @@ function InvoiceDetailPage() {
     setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
   }
 
-  function changeEditVat(items: EditItem[]) {
-    clearIssues((issue) => issue.field === "items" && issue.column === "vat" && issue.line !== undefined && items[issue.line]?.vat !== editItems[issue.line]?.vat)
-    setEditItems(items)
-  }
-
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
     clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
@@ -392,7 +387,7 @@ function InvoiceDetailPage() {
   function applyCatalogItemToEditItem(index: number, catalogItemId: string) {
     // A catalog item replaces the description and unit price, so their issues no longer apply.
     if (catalogItems.some((item) => item.id === catalogItemId)) {
-      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity" && issue.column !== "vat")
+      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity")
     }
     setEditItems((prev) =>
       prev.map((item, i) => {
@@ -421,8 +416,6 @@ function InvoiceDetailPage() {
         case "contact": return now.editContactId === submitted.editContactId
         case "dueDate": return now.editDueDate === submitted.editDueDate
         case "notes": return now.editNotes === submitted.editNotes
-        case "taxRate": return now.editTaxRate === submitted.editTaxRate
-        case "vatEvidence": return issue.evidence ? now.editVatEvidence[issue.evidence as keyof DraftVatEvidence] === submitted.editVatEvidence[issue.evidence as keyof DraftVatEvidence] : now.editVatEvidence === submitted.editVatEvidence
         case "items": {
           if (issue.line === undefined) return now.editItems.length === submitted.editItems.length
           // Compare the reported column's value at the reported row. An error is about a value, so edits to other
@@ -611,19 +604,19 @@ function InvoiceDetailPage() {
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
       [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
     const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
-      editIssues.some((issue) => issue.field === field && issue.line === line && (column === "vat" ? issue.column === "vat" : !issue.column || !column || issue.column === column))
+      editIssues.some((issue) => issue.field === field && issue.line === line && (!issue.column || !column || issue.column === column))
     const fieldMessage = (id: string, match: (issue: ReadableIssue) => boolean) => {
       const messages = issueMessages(match)
       return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
     }
     const a11y = (id: string, invalid: boolean) => ({ "aria-invalid": invalid || undefined, "aria-describedby": invalid ? id : undefined })
     // Each line column has its own message element; a control is described only by its column's message and any whole-line message.
-    const lineColumns = ["line", "description", "quantity", "unitPrice", "vat"] as const
+    const lineColumns = ["line", "description", "quantity", "unitPrice"] as const
     const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
     const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
       const ids = [
         ...(editIssues.some((issue) => issue.field === "items" && issue.line === index && issue.column === column) ? [lineIssueId(index, column)] : []),
-        ...(column !== "vat" && editIssues.some((issue) => issue.field === "items" && issue.line === index && !issue.column) ? [lineIssueId(index, "line")] : []),
+        ...(editIssues.some((issue) => issue.field === "items" && issue.line === index && !issue.column) ? [lineIssueId(index, "line")] : []),
       ]
       return ids.length ? ids.join(" ") : undefined
     }
@@ -798,8 +791,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
-            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} />
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -817,15 +809,13 @@ function InvoiceDetailPage() {
                       disabled={!!invoice.agreementId}
                       step="0.01"
                       value={editTaxRate || ""}
-                      {...a11y("edit-taxRate-error", hasIssue("taxRate"))}
-                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate" || (issue.field === "items" && issue.column === "vat")); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      onChange={(e) => { setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>
                     <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
                   </div>
                 </div>
-                {fieldMessage("edit-taxRate-error", (issue) => issue.field === "taxRate")}
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
                   <span className="num">{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>
