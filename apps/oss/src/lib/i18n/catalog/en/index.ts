@@ -5,6 +5,7 @@ import { enPaymentDetailsMessages } from "./payment-details"
 import { enPaymentsMessages } from "./payments"
 import { enCreditNotesMessages } from "./credit-notes"
 import { enRemindersMessages } from "./reminders"
+import { enUndoMessages } from "./undo"
 import { enRecurringMessages } from "./recurring"
 import { enExportsMessages } from "./exports"
 import { enAgentsMessages } from "./agents"
@@ -38,6 +39,7 @@ export const enCatalog = {
   ...enPaymentsMessages,
   ...enCreditNotesMessages,
   ...enRemindersMessages,
+  ...enUndoMessages,
   ...enRecurringMessages,
   ...enExportsMessages,
   ...enAgentsMessages,

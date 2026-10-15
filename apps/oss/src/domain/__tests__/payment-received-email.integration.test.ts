@@ -197,11 +197,28 @@ describeIfDatabase("payment received emails", () => {
     expect(messages.map((message) => message.to)).toEqual(["seller@acme.test"])
   })
 
-  it("tells only the seller about an invoice marked paid", async () => {
+  /** The undo window of a mark-paid closes: its held notice becomes due. */
+  const closeUndoWindow = (organizationId: string) =>
+    prisma.job.updateMany({ where: { organizationId, type: "email.deliver", status: "pending" }, data: { runAfter: new Date(0) } })
+
+  it("tells only the seller about an invoice marked paid, once the undo window has closed", async () => {
     const { org, invoiceId } = await setup()
     await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    await closeUndoWindow(org.organizationId)
     const messages = await sentMessages(org.organizationId)
     expect(messages.map((message) => message.to)).toEqual(["seller@acme.test"])
+  })
+
+  it("sends no notice at all when Fortryd undoes the mark-paid inside the window", async () => {
+    const { org, invoiceId } = await setup()
+    const marked = await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    if (marked.status !== "completed") throw new Error("mark paid failed")
+    const undone = await executeIssuanceCommand(undoInvoiceMarkPaid, { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    expect(undone.status).toBe("completed")
+    await closeUndoWindow(org.organizationId)
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).paymentStatus).not.toBe("paid")
   })
 
   it("skips a customer without a valid address and still tells the seller", async () => {

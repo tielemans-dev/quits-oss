@@ -5,6 +5,7 @@ import { daPaymentDetailsMessages } from "./payment-details"
 import { daPaymentsMessages } from "./payments"
 import { daCreditNotesMessages } from "./credit-notes"
 import { daRemindersMessages } from "./reminders"
+import { daUndoMessages } from "./undo"
 import { daRecurringMessages } from "./recurring"
 import { daExportsMessages } from "./exports"
 import { daAgentsMessages } from "./agents"
@@ -38,6 +39,7 @@ export const daCatalog = {
   ...daPaymentsMessages,
   ...daCreditNotesMessages,
   ...daRemindersMessages,
+  ...daUndoMessages,
   ...daRecurringMessages,
   ...daExportsMessages,
   ...daAgentsMessages,

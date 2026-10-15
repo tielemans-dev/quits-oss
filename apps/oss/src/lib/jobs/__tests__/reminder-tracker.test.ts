@@ -78,6 +78,12 @@ describe("pickTrackedJob", () => {
     expect(pickTrackedJob([finished], none, none, now)).toBeUndefined()
   })
 
+  it("leaves a job alone while it is held for the undo window; its toast is the Fortryd one", () => {
+    const held = job(["pending"], { status: "pending", heldForMs: 5000 }, "held")
+    expect(pickTrackedJob([held], none, none, now)).toBeUndefined()
+    expect(pickTrackedJob([{ ...held, heldForMs: 0 }], none, none, now)?.id).toBe("held")
+  })
+
   it("offers a retry for a recent failure after a reload, but not an old one", () => {
     expect(pickTrackedJob([failed], none, none, now)?.id).toBe("failed")
     const old = job(["failed"], { status: "failed", createdAt: new Date(now - 2 * 86_400_000) }, "old")
