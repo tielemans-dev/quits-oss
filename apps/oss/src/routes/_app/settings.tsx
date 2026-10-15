@@ -4,7 +4,7 @@ import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -62,6 +62,8 @@ import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
 import { AiDraftsCard } from "../../components/settings/ai-drafts-card"
+import { VatPeriodCard } from "../../components/settings/vat-period-card"
+import type { VatPeriod } from "../../lib/vat-deadline"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
@@ -69,6 +71,7 @@ import { ReminderPolicyCard } from "../../components/settings/reminder-policy-ca
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
+import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
@@ -136,6 +139,7 @@ type SettingsData = {
   pricesIncludeTax: boolean
   currency: string
   momsRegistered?: boolean | null
+  vatPeriod?: VatPeriod | null
   paymentTermsDays?: number
   taxRate: number | null
   companyName: string | null
@@ -216,7 +220,11 @@ function SettingsPage() {
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
   const settingsFormId = useId()
-  const { data: session } = useSession()
+  const { data: session, isPending: sessionPending } = useSession()
+  const liveUserId = useRef<string | undefined>(undefined)
+  useLayoutEffect(() => {
+    liveUserId.current = sessionPending ? undefined : session?.user.id
+  }, [sessionPending, session?.user.id])
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -225,6 +233,7 @@ function SettingsPage() {
   // Confirms changes that save on their own (Connect, AI drafts) outside the form's Save button.
   const [notice, setNotice] = useState<string | null>(null)
   const [savingAiDrafts, setSavingAiDrafts] = useState(false)
+  const [savingVatPeriod, setSavingVatPeriod] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   // An explicit radio change. Without one, Save confirms the displayed stored choice (see handleSubmit).
@@ -506,6 +515,21 @@ function SettingsPage() {
     }
   }
 
+  async function saveVatPeriod(vatPeriod: VatPeriod | null) {
+    setError(null)
+    setNotice(null)
+    setSavingVatPeriod(true)
+    try {
+      await trpc.settings.update.mutate({ vatPeriod })
+      setSettings((current) => current ? { ...current, vatPeriod } : current)
+      setNotice(t("settings.vatPeriod.saved"))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    } finally {
+      setSavingVatPeriod(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
@@ -669,7 +693,20 @@ function SettingsPage() {
       // Refresh from the accepted mutation, keeping this tab's organization and usable layout.
       // Refetching the session here could select another tab's organization or fail after saving.
       invalidateAppLayoutSession()
-      seedAppLayoutSession({ ...layoutContext, locale: savedSettings.locale })
+      // A save can outlive a sign-out/account change. Leave the cache empty in that case.
+      if (liveUserId.current === layoutContext.user.id) {
+        seedAppLayoutSession({
+          ...layoutContext,
+          locale: savedSettings.locale,
+          cloudOnboardingComplete: layoutContext.runtime.distribution === "cloud"
+            ? getCloudOnboardingState({
+                ...savedSettings,
+                // Empty input preserves the stored identifier, just as settings.update does.
+                primaryTaxId: primaryTaxId.trim() || settings?.primaryTaxId || null,
+              }).isComplete
+            : null,
+        })
+      }
       await router.invalidate({ sync: true })
       setSuccess(true)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
@@ -1449,6 +1486,11 @@ function SettingsPage() {
           </CardContent>
         </Card>
         </StripePaymentsSection>
+
+        {/* The moms period behind the Overblik deadline; only for a moms-registered Danish seller. */}
+        {settings.momsRegistered === true && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat" ? (
+          <VatPeriodCard value={settings.vatPeriod ?? null} busy={savingVatPeriod} onChange={(period) => { void saveVatPeriod(period) }} />
+        ) : null}
 
         {/* AI invoice drafting */}
         {settings.aiDrafts?.managed ? (

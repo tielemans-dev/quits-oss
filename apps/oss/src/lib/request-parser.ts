@@ -32,7 +32,7 @@ const number = String.raw`(?:[1-9]\d{0,2}(?:[. \u00a0\u202f]\d{3})+|0|[1-9]\d*)(
 const boundary = String.raw`(?![\p{L}\p{N},]|\.\d|\s+\d)`
 const quantityPattern = new RegExp(String.raw`^(${number})\s*(?:(timer|time|t|stk\.?)(?![\p{L}\p{N}])|(?=[àax]\s*\d))`, "iu")
 const pricePattern = new RegExp(String.raw`^(${number})\s*kr\.?${boundary}`, "iu")
-const separatedPrice = new RegExp(String.raw`^\s*[àax]\s*(${number})(?:\s*kr\.?)?${boundary}`, "iu")
+const separatedPrice = new RegExp(String.raw`^\s*[àax]\s*(${number})\s*kr\.?${boundary}`, "iu")
 const canonical = (value: string) => value.replace(/[.\s]/g, "").replace(",", ".")
 const tidy = (value: string) => value.trim().replace(/\s+/g, " ")
 const normalize = (value: string) => tidy(value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " "))

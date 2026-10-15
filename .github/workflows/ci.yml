@@ -29,6 +29,8 @@ jobs:
           persist-credentials: false
       - name: Validate required-check failure propagation
         run: node --test .github/scripts/ci-gate.test.mjs
+      - name: Validate workflow triggers and path classification
+        run: ruby scripts/__tests__/ci-paths.test.rb
       # Cheap and dependency-free, so it also covers PRs that only change COPY.md or the copy rules.
       - name: Copy gates
         run: node scripts/i18n-copy-check.mjs
@@ -54,12 +56,17 @@ jobs:
               done < "$RUNNER_TEMP/changed-paths"
             fi
           fi
-          # Browser suites may also skip prose and workflow-only PRs. Other checks still run.
+          # Skip documentation and GitHub metadata, but exercise browser control changes.
           if [ "$EVENT_NAME" = pull_request ] && [ -s "$RUNNER_TEMP/changed-paths" ]; then
             run_browser=false
             while IFS= read -r -d '' path; do
               case "$path" in
-                docs/*|*.md|.github/*) ;;
+                .github/workflows/*|.github/scripts/*) run_browser=true; break ;;
+                docs/*|.github/*) ;;
+                *.md)
+                  # Bash globs cross directory boundaries; only root markdown is prose.
+                  if [[ "$path" == */* ]]; then run_browser=true; break; fi
+                  ;;
                 *) run_browser=true; break ;;
               esac
             done < "$RUNNER_TEMP/changed-paths"

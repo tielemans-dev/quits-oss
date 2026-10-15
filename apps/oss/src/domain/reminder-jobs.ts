@@ -13,14 +13,26 @@ import { Command, Db } from "./services"
 import { resolveUserActor } from "./user-actor"
 
 export const REMINDER_BATCH_JOB = "reminders.batch"
+/** Stop observing a stuck delivery after a day; its key still prevents an uncertain resend. */
+const DELIVERY_POLL_LIMIT_MS = 24 * 60 * 60_000
 export const jobTarget = z.object({ jobId: z.string().min(1) })
 export const stepTarget = jobTarget.extend({ stepId: z.string().min(1) })
+const batchInput = z.object({ invoiceIds: z.array(z.string().min(1)).min(1).max(100), clientRequestId: z.string().min(1).max(200) })
 
 export const queueReminderJob = defineCommand({
   type: "reminder.queue_batch",
   permission: "invoice:send",
   outwardFacing: true,
-  input: z.object({ invoiceIds: z.array(z.string().min(1)).min(1).max(100), clientRequestId: z.string().min(1).max(200) }),
+  input: batchInput,
+  namespaceRequestId: true,
+  validateReplay: async (rawInput, result: { jobId: string }) => {
+    const parsed = batchInput.safeParse(rawInput)
+    const mismatch = new InvalidState({ code: "idempotency_mismatch", message: "This request ID was already used with different invoices" })
+    if (!parsed.success) return mismatch
+    const steps = await prisma.jobStep.findMany({ where: { jobId: result.jobId }, select: { invoiceId: true } })
+    const requested = new Set(parsed.data.invoiceIds)
+    return requested.size === steps.length && steps.every(step => step.invoiceId !== null && requested.has(step.invoiceId)) ? undefined : mismatch
+  },
   summarize: input => `Send reminders to ${input.invoiceIds.length} overdue invoices`,
   handle: input => Effect.gen(function* () {
     const db = yield* Db
@@ -68,8 +80,10 @@ export const retryReminderStep = defineCommand({
       ] },
     }))
     if (!step) return yield* new InvalidState({ code: "not_failed", message: "Only failed steps can be retried" })
+    let delivered = false
     if (step.status === "failed" && step.deliveryKey) {
       const delivery = yield* Effect.promise(() => readDeliveryResult(step.deliveryKey!))
+      delivered = delivery.outcome === "delivered"
       if (delivery.outcome === "unconfirmed" || delivery.outcome === "pending") return yield* new InvalidState({
         code: "delivery_uncertain", message: "Delivery is uncertain and cannot be sent again",
       })
@@ -77,7 +91,8 @@ export const retryReminderStep = defineCommand({
     yield* Effect.promise(() => db.jobStep.update({
       where: { id: step.id },
       // Interrupted steps retain their attempt and delivery key so committed receipts replay.
-      data: step.status === "failed" ? { status: "pending", error: null, deliveryKey: null } : { error: null },
+      data: delivered ? { status: "succeeded", error: null }
+        : step.status === "failed" ? { status: "pending", error: null, deliveryKey: null } : { error: null },
     }))
     yield* Effect.promise(() => db.job.update({ where: { id: input.jobId },
       data: { status: "pending", attempts: 0, runAfter: new Date(), lastError: null },
@@ -130,6 +145,10 @@ export async function handleReminderBatch(job: Pick<Job, "id" | "organizationId"
       await write(step.id, { deliveryKey: key })
     }
     const delivery = await readDeliveryResult(key)
+    if (delivery.outcome === "pending" && step.deliveryKey && Date.now() - step.updatedAt.getTime() >= DELIVERY_POLL_LIMIT_MS) {
+      await write(step.id, { status: "failed", error: "Delivery is uncertain after the polling deadline" })
+      continue
+    }
     if (delivery.outcome !== "pending") await write(step.id, {
       status: delivery.outcome === "delivered" ? "succeeded" : "failed", error: delivery.message,
     })

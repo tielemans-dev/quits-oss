@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { requireOnboardingCvr } from "../require-cvr"
 import { resetRuntimeServices, setRuntimeServices } from "../../runtime/services"
 import { buildQuitsAuthOptions } from "../../runtime/auth-config"
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
 
 const company = { cvr: "24256790", name: "Registered business", address: "Testvej 1",
   companyForm: "Enkeltmandsvirksomhed", status: "active" as const, statusClass: "active" as const, momsRegistered: false }
@@ -14,6 +15,22 @@ function creation(cloud: boolean) {
 }
 afterEach(() => { resetRuntimeServices(); get.mockReset() })
 describe("B2B organization admission", () => {
+  it.each(["10150817", "24256790", "45676102"])("checks every single-digit corruption of valid CVR %s", cvr => {
+    expect(isValidDanishCvr(cvr)).toBe(true)
+    for (let i = 0; i < 8; i++) for (let digit = 0; digit < 10; digit++) {
+      if (String(digit) !== cvr[i]) expect(isValidDanishCvr(cvr.slice(0, i) + digit + cvr.slice(i + 1))).toBe(false)
+    }
+  })
+  it("reports cleanup failure without exposing persistence errors", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prisma = { $transaction: vi.fn().mockRejectedValue(new Error("private write failure")),
+      organization: { delete: vi.fn().mockRejectedValue(new Error("private cleanup failure")) } }
+    const hook = buildQuitsAuthOptions({ prisma: prisma as never, env: { getEnv: () => undefined } }).plugins[0].options.organizationHooks!.afterCreateOrganization!
+    try {
+      await expect(hook({ organization: { id: "org", name: company.name } } as never)).rejects.toMatchObject({ body: { code: "cvr.unavailable" } })
+      expect(warn).toHaveBeenCalledExactlyOnceWith("Onboarding organization cleanup failed")
+    } finally { warn.mockRestore() }
+  })
   it.each([undefined, "", "00000000", "12345678", "2425679", "242567901", "DK24256790"])("refuses malformed CVR %s before lookup", async cvr => {
     setRuntimeServices({ cvrLookupProvider: { get, search: vi.fn() } })
     await expect(requireOnboardingCvr({ ...input, cvr })).rejects.toMatchObject({ message: "cvr.invalid" })
@@ -33,7 +50,7 @@ describe("B2B organization admission", () => {
     const tx = { orgSettings: { create: vi.fn(async () => { if (failure === "settings") throw error }) },
       organizationTaxId: { create: vi.fn(async () => { if (failure === "tax ID") throw error }) } }
     const prisma = { $transaction: async (save: (tx: unknown) => unknown) => save(tx),
-      organization: { delete: vi.fn() } }
+      organization: { delete: vi.fn().mockResolvedValue(undefined) } }
     const hook = buildQuitsAuthOptions({ prisma: prisma as never, env: { getEnv: () => undefined } }).plugins[0].options.organizationHooks!.afterCreateOrganization!
     await expect(hook({ organization: { id: "org", name: company.name, metadata: { cvr: company.cvr } } } as never)).rejects.toMatchObject({ body: { code: "cvr.unavailable" } })
     expect(prisma.organization.delete).toHaveBeenCalledExactlyOnceWith({ where: { id: "org" } })

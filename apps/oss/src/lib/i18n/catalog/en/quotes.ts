@@ -40,6 +40,9 @@ export const enQuotesMessages = {
   "quotes.detail.warning.emailSkipped":
     "Quote marked as sent — email not delivered: {reason}",
   "quotes.detail.error.notFound": "Quote not found",
+  "quotes.detail.error.downloadFailed": "Could not download the PDF. Try again.",
+  "quotes.detail.action.downloadPdf": "Download PDF",
+  "quotes.detail.action.downloading": "Downloading PDF...",
   "quotes.detail.error.updateFailed": "Failed to update quote",
   "quotes.detail.error.sendFailed": "Failed to send quote",
   "quotes.detail.error.rejectFailed": "Failed to reject quote",

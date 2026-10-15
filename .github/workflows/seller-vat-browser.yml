@@ -1,6 +1,7 @@
 name: Seller VAT browser evidence
 
 on:
+  # Optional, path-filtered evidence. Required CI browser checks cover merge groups.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:

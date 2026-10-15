@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Dialog as DialogPrimitive, VisuallyHidden } from 'radix-ui'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { DURATION } from '../../../lib/motion'
 import { cn } from '../../../lib/utils'
 import { useMorph } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
@@ -10,8 +11,8 @@ import { useRegisteredPaletteProviders, useSearchPlaceholderKey } from './regist
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
 /** Growing into a card: the palette takes this long to change height, and the list this long to fade. */
-const CARD_MORPH_MS = 420
-const LIST_FADE_MS = 90
+const CARD_MORPH_MS = DURATION.palette
+const LIST_FADE_MS = DURATION.listFade
 
 type Props = {
   open: boolean
@@ -206,7 +207,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 duration-200 ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           ref={morph.ref}
           data-slot="command-palette"
@@ -222,11 +223,11 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           className={cn(
             'fixed top-[12vh] left-1/2 z-50 w-[min(600px,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden',
             'border border-hairline bg-panel text-foreground shadow-2xl shadow-black/30 outline-none',
-            // Opens and closes with a 200ms fade and scale; reduced motion keeps the fade only.
-            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-200 ease-out motion-reduce:zoom-in-100 motion-reduce:zoom-out-100',
+            // Opens and closes with a token-timed fade and scale; reduced motion applies the change immediately.
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit motion-reduce:zoom-in-100 motion-reduce:zoom-out-100',
             // The corners grow from 12 to 18px as the palette becomes a card.
             card ? 'rounded-[18px]' : 'rounded-xl',
-            '[transition:border-radius_420ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:[transition:none]'
+            '[transition:border-radius_var(--duration-palette)_var(--ease-enter)] motion-reduce:[transition:none]'
           )}
         >
           <VisuallyHidden.Root>
@@ -262,7 +263,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               'max-h-[min(380px,55vh)] overflow-y-auto p-2',
               // Once a card is open the list fades out where it was, then goes. It stays in the DOM
               // meanwhile: the card needs no blank frame to arrive on.
-              card !== null && (listLeaving ? 'pointer-events-none absolute inset-x-0 animate-out fade-out-0 fill-mode-forwards duration-[90ms]' : 'hidden')
+              card !== null && (listLeaving ? 'pointer-events-none absolute inset-x-0 animate-out fade-out-0 fill-mode-forwards duration-(--duration-list-fade)' : 'hidden')
             )}
           >
             {sections.length === 0 &&

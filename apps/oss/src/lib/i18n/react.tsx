@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { resolveLanguage, translate } from "./translate"
 import type { TranslationKey } from "./messages"
 
@@ -46,9 +46,12 @@ export function I18nProvider({
   const [detectedLocale, setLocale] = useState<string>(initialLocale ?? SERVER_LOCALE)
   const locale = fixedLocale ?? detectedLocale
   const isFixed = fixedLocale !== undefined
+  const previousInitialLocale = useRef(initialLocale)
 
   useEffect(() => {
     if (isFixed) return
+    const cleared = previousInitialLocale.current !== undefined && initialLocale === undefined
+    previousInitialLocale.current = initialLocale
     if (initialLocale) {
       // Client navigation can retain this provider while loading newly saved organization settings.
       // Only a changed route locale runs this effect, so manual edits survive ordinary rerenders.
@@ -56,7 +59,7 @@ export function I18nProvider({
       return
     }
     // Keep a language that was set meanwhile (the organization's), which wins over the browser's.
-    setLocale((current) => (current === SERVER_LOCALE ? detectBrowserLocale() : current))
+    setLocale((current) => (cleared || current === SERVER_LOCALE ? detectBrowserLocale() : current))
   }, [isFixed, initialLocale])
 
   // Editable subtrees publish their language to the root. Only the root writes <html lang>,

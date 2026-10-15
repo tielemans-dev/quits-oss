@@ -32,13 +32,19 @@ describe("request parser", () => {
   })
   it.each([
     ["12 timer à 1.250,50 kr.", "12", "1250.50"], ["10t a 850 kr.", "10", "850"],
-    ["2 x 1.250,50", "2", "1250.50"], ["1,5 timer à 850", "1.5", "850"],
+    ["2 x 1.250,50 kr", "2", "1250.50"], ["1,5 timer à 850 kr", "1.5", "850"],
     ["3 stk. x 0 kr.", "3", "0"], ["1.000 timer a 1.000.000,00 kr.", "1000", "1000000.00"],
   ])("parses Danish numbers: %s", (text, quantity, unitPrice) => {
     expect(parse(`fakturer Nordlys ${text}`)?.items[0]).toMatchObject({ quantity, unitPrice })
   })
   it("parses an amount without inventing a quantity", () => {
     expect(parse("fakturer Nordlys 850 kr.")?.items).toEqual([{ description: "", unitPrice: "850" }])
+  })
+  it.each(["à", "a", "x"])("requires kr after a price separated by %s", separator => {
+    const draft = parse(`fakturer Nordlys 2 timer ${separator} 1.250,50`)
+    expect(draft?.items).toEqual([{ description: "", quantity: "2", unit: "hour" }])
+    expect(draft?.remainder).toBe(`${separator} 1.250,50`)
+    expect(draft?.confidence).toBeLessThan(1)
   })
   it.each(["12345678", "CVR: DK12345678", "cvr 12345678"])("matches CVR: %s", cvr => {
     expect(parse(`fakturer ${cvr} 10t konsulent`)?.customer?.status).toBe("matched")

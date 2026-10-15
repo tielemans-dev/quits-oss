@@ -20,6 +20,10 @@ export type CommandDefinition<Input = unknown, Result = unknown> = {
    */
   readonly requiresApproval?: (input: Input) => Effect.Effect<boolean, DomainError, Db | Command>
   readonly input: z.ZodType<Input>
+  /** Scope caller request IDs to this command type. Opt in to preserve existing receipt keys. */
+  readonly namespaceRequestId?: boolean
+  /** Refuse a completed receipt whose result belongs to a different requested input. */
+  readonly validateReplay?: (rawInput: unknown, result: Result) => Promise<DomainError | undefined>
   /** One line a human approver can act on, e.g. "Send invoice INV-0042 to Acme". */
   readonly summarize: (input: Input) => string
   readonly handle: (input: Input) => Effect.Effect<Result, DomainError, Db | Command>

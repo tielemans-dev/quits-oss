@@ -13,6 +13,7 @@ import { defaultDocumentTaxRate } from "../../lib/invoice-defaults"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import { loadLastInvoice, type LastInvoice } from "../../lib/last-invoice"
 import { localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../lib/invoice-quantity"
+import { DURATION, EASE_ENTER } from "../../lib/motion"
 import { parseRequest, type RequestCustomer } from "../../lib/request-parser"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../lib/request-handoff"
 import { submitInvoice } from "../../lib/submit-invoice"
@@ -26,11 +27,11 @@ import { holdSend } from "./held-send"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { announceRequestDone } from "./request-events"
-import { MORPH_EASING, useMorph } from "./use-morph"
+import { useMorph } from "./use-morph"
 
-const SHRINK_MS = 400
+const SHRINK_MS = DURATION.card
 const HOLD_MS = 1500
-const LEAVE_MS = 250
+const LEAVE_MS = DURATION.leave
 /** The check's content arrives this long into the shrink, once the surface has made room. */
 const CHECK_DELAY_MS = 90
 
@@ -41,7 +42,7 @@ type Readiness = Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>>
  * fills in what was said; moms, totals and the dates come from the same code the form uses. Nothing
  * is created until Send faktura is pressed, and that goes through the form's own create-and-send.
  */
-export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
+export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: RequestCardProps & { initialContactId?: string }) {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const currency = useOrgCurrency()
@@ -52,7 +53,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const dueDate = back?.dueDate || ownDueDate
   const [issuance] = useState(() => back?.issuance ?? initialIssuanceValues())
   const [known, setKnown] = useState<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] } | null>(null)
-  const [picked, setPicked] = useState("")
+  const [picked, setPicked] = useState(initialContactId ?? "")
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -206,7 +207,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
         ref={morph.ref}
         role="status"
         className={cn("request-stagger flex items-center gap-3 overflow-hidden p-6", leaving && "scale-90 opacity-0 transition-[opacity,transform] motion-reduce:scale-100")}
-        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: MORPH_EASING }) } as CSSProperties}
+        style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: EASE_ENTER }) } as CSSProperties}
       >
         <span {...stagger(0)} className="bg-tone-success/15 text-tone-success flex size-9 shrink-0 items-center justify-center rounded-full">
           <Check className="size-5" aria-hidden="true" />

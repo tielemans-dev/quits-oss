@@ -9,7 +9,9 @@ const state = vi.hoisted(() => ({
   quoteId: "q_1",
   get: vi.fn(),
   settings: vi.fn(),
+  download: vi.fn(),
 }))
+vi.mock("../../lib/documents-download", () => ({ downloadDocumentPdf: state.download }))
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -103,6 +105,20 @@ afterEach(() => {
 })
 
 describe("quote detail page responses", () => {
+  it("downloads the quote PDF and lets the user retry a failed download", async () => {
+    state.get.mockResolvedValue(quote("q_1", "Q-0001"))
+    const download = deferred<void>()
+    state.download.mockReturnValueOnce(download.promise).mockRejectedValueOnce(new Error("Unavailable"))
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Download PDF" }))
+    const pending = await screen.findByRole("button", { name: "Downloading PDF..." })
+    expect((pending as HTMLButtonElement).disabled).toBe(true)
+    await act(async () => { download.resolve(); await download.promise })
+    expect(state.download).toHaveBeenCalledWith("quote", "q_1", "Q-0001")
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }))
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Could not download the PDF. Try again.")
+    expect((screen.getByRole("button", { name: "Download PDF" }) as HTMLButtonElement).disabled).toBe(false)
+  })
   it("ignores a slow load for the previous quote after navigating to another", async () => {
     const first = deferred<ReturnType<typeof quote>>()
     state.get.mockImplementation(({ id }: { id: string }) =>

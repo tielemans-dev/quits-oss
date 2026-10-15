@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
   savedLocale: "da",
+  userId: "u_1" as string | null,
+  sessionListeners: new Set<() => void>(),
   distribution: "selfhost",
   getLayout: vi.fn(),
   getSettings: vi.fn(),
@@ -14,10 +16,19 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock("../../lib/auth-session", () => ({ getAppLayoutSession: state.getLayout }))
-vi.mock("../../lib/auth-client", () => ({
-  useSession: () => ({ data: { user: { id: "u_1" }, session: { activeOrganizationId: "org_1" } }, isPending: false }),
-  authClient: { organization: { getFullOrganization: vi.fn(async () => ({ data: { members: [], invitations: [] } })) } },
-}))
+vi.mock("../../lib/auth-client", async () => {
+  const { useSyncExternalStore } = await import("react")
+  return {
+    useSession: () => {
+      const userId = useSyncExternalStore(listener => {
+        state.sessionListeners.add(listener)
+        return () => { state.sessionListeners.delete(listener) }
+      }, () => state.userId)
+      return { data: userId ? { user: { id: userId }, session: { activeOrganizationId: "org_1" } } : null, isPending: false }
+    },
+    authClient: { organization: { getFullOrganization: vi.fn(async () => ({ data: { members: [], invitations: [] } })) } },
+  }
+})
 vi.mock("../../components/ui/sidebar", () => ({ SidebarProvider: ({ children }: { children: ReactNode }) => children }))
 vi.mock("../../components/app-sidebar", async () => {
   const { useI18n } = await import("../../lib/i18n/react")
@@ -73,6 +84,7 @@ function settingsData() {
     aiBaseUrl: null, aiModel: "openai/gpt-4o-mini", aiByokConfigured: false,
     stripeByokConfigured: false, stripePublishableKey: null,
     primaryTaxId: null, primaryTaxIdScheme: "vat",
+    onboardingProfile: "freelancer", onboardingVersion: 1, onboardingCompletedAt: new Date("2026-01-01"),
     emailDelivery: { managed: false, configured: false, available: false, sender: "", missing: [], status: "missing_configuration" },
     documentSending: { status: "disabled", requestedDomain: null, records: [], failureReason: null, verifiedAt: null, lastSyncedAt: null, lastSyncSource: null, supportsCustomDomain: false, managed: false, senderEmail: "" },
   }
@@ -84,6 +96,7 @@ function LocaleProbe() {
 
 beforeEach(() => {
   vi.stubEnv("SSR", false)
+  state.userId = "u_1"
   state.savedLocale = "da"
   state.distribution = "selfhost"
   state.getLayout.mockImplementation(async () => ({
@@ -111,8 +124,10 @@ async function renderSettings() {
   const app = AppRoute.update({ id: "_app", getParentRoute: () => root } as never)
   const settings = SettingsRoute.update({ path: "/settings", getParentRoute: () => app } as never)
   const elsewhere = createRoute({ getParentRoute: () => app, path: "elsewhere", component: LocaleProbe })
+  const onboarding = createRoute({ getParentRoute: () => app, path: "onboarding", component: () => <p>Onboarding required</p> })
+  const login = createRoute({ getParentRoute: () => root, path: "login", component: () => <p>Sign in required</p> })
   const router = createRouter({
-    routeTree: root.addChildren([app.addChildren([settings, elsewhere])]),
+    routeTree: root.addChildren([app.addChildren([settings, elsewhere, onboarding]), login]),
     history: createMemoryHistory({ initialEntries: ["/settings"] }),
   })
   await router.load()
@@ -136,6 +151,54 @@ function expectLanguage(locale: string) {
 }
 
 describe("saving the Settings language", () => {
+  it.each([null, "u_2"])("revalidates identity when the live session becomes %s during a save", async userId => {
+    const { container, router } = await renderSettings()
+    let finishSave!: (value: ReturnType<typeof settingsData>) => void
+    state.updateSettings.mockImplementationOnce(() => new Promise(resolve => { finishSave = resolve }))
+    fireEvent.submit(container.querySelector("form")!)
+    await waitFor(() => expect(state.updateSettings).toHaveBeenCalled())
+    await act(async () => {
+      state.userId = userId
+      state.sessionListeners.forEach(listener => listener())
+    })
+    state.getLayout.mockResolvedValue({
+      user: userId ? { id: userId } : null, activeOrganizationId: "org_1",
+      runtime: { distribution: "selfhost", billingEnabled: false }, locale: "en-US", cloudOnboardingComplete: null,
+    })
+    await act(async () => { finishSave(settingsData()) })
+    await waitFor(() => expect(state.getLayout).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(userId
+      ? router.state.matches.find(match => match.routeId === "/_app")?.context.user?.id
+      : router.state.location.pathname).toBe(userId ?? "/login"))
+  })
+
+  it("redirects a legacy hosted organization when saved settings make onboarding incomplete", async () => {
+    state.distribution = "cloud"
+    const { container, router } = await renderSettings()
+    state.updateSettings.mockImplementationOnce(async () => ({
+      ...settingsData(), countryCode: "DE", taxRegime: "eu_vat", onboardingInvoicingIdentity: "registered_business",
+    }))
+    fireEvent.submit(container.querySelector("form")!)
+    expect(await screen.findByText("Onboarding required")).toBeTruthy()
+    expect(router.state.location.pathname).toBe("/onboarding")
+    expect(state.getLayout).toHaveBeenCalledTimes(1)
+    expect(getRequestOrganizationId()).toBe("org_1")
+  })
+
+  it.each(["", "DE987654321"])("keeps hosted readiness consistent with the persisted tax ID when submitting %j", async taxId => {
+    state.distribution = "cloud"
+    const saved = { ...settingsData(), countryCode: "DE", taxRegime: "eu_vat", onboardingInvoicingIdentity: "registered_business" }
+    state.getSettings.mockResolvedValue({ ...saved, primaryTaxId: "DE123456789" })
+    state.updateSettings.mockResolvedValue(saved)
+    const { container, router } = await renderSettings()
+    fireEvent.change(container.querySelector("#primaryTaxId")!, { target: { value: taxId } })
+    fireEvent.submit(container.querySelector("form")!)
+    await screen.findByText(translate("settings.success.saved", "da"))
+    expect(router.state.location.pathname).toBe("/settings")
+    expect(router.state.matches.find(match => match.routeId === "/_app")?.context.cloudOnboardingComplete).toBe(true)
+    expect(state.getLayout).toHaveBeenCalledTimes(1)
+  })
+
   it.each(["da", "en-US"])("switches chrome, form and current route locale in both directions from %s without remounting", async initialLocale => {
     state.savedLocale = initialLocale
     const { container, router } = await renderSettings()
