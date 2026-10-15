@@ -21,7 +21,7 @@ function HeldSendRow({ entry }: { entry: HeldSend }) {
     <div
       role={entry.phase === "failed" ? "alert" : "status"}
       data-phase={entry.phase}
-      className="bg-popover text-popover-foreground border-hairline animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-3 rounded-2xl border p-3 pl-4 text-sm shadow-lg duration-300 motion-reduce:slide-in-from-bottom-0"
+      className="bg-popover text-popover-foreground border-hairline animate-in fade-in-0 slide-in-from-bottom-2 flex items-center gap-3 rounded-2xl border p-3 pl-4 text-sm shadow-lg duration-(--duration-toast) ease-enter motion-reduce:slide-in-from-bottom-0 motion-reduce:duration-(--duration-fade)"
     >
       <div className="min-w-0 flex-1">
         <p className="truncate tabular-nums">{text}</p>
