@@ -176,6 +176,7 @@ type SettingsData = {
   }
   documentSending: DocumentSendingState
   primaryTaxId: string | null
+  seNumber: string | null
   primaryTaxIdScheme: string | null
 }
 
@@ -628,6 +629,7 @@ function SettingsPage() {
         taxRegime,
         pricesIncludeTax,
         primaryTaxId: primaryTaxId || undefined,
+        seNumber: ((form.get("seNumber") as string) || "").trim(),
         primaryTaxIdScheme: countryCode === "DK" && !sellerVatConfirmationEnabled ? "cvr" : primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
@@ -1213,6 +1215,12 @@ function SettingsPage() {
                     </p>
                   </>
                 )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="seNumber">{t("settings.seNumber.label")}</Label>
+                <Input id="seNumber" name="seNumber" inputMode="numeric" pattern="[0-9]{8}" maxLength={8}
+                  title={t("settings.seNumber.help")} defaultValue={settings.seNumber ?? ""} />
+                <p className="text-xs text-muted-foreground">{t("settings.seNumber.help")}</p>
               </div>
               {taxRules.showPrimaryTaxId && (countryCode !== "DK" || sellerVatConfirmationEnabled) ? (
                 <div className="grid gap-2">

@@ -81,6 +81,8 @@ export const enSettingsMessages = {
   "settings.taxRegime.custom": "Custom",
   "settings.pricesIncludeTax": "Prices include tax by default",
   "settings.primaryTaxId.label": "Primary Seller Tax ID",
+  "settings.seNumber.label": "SE no.",
+  "settings.seNumber.help": "Optional. Eight digits. Shown on invoices and credit notes.",
   "settings.primaryTaxId.placeholder": "e.g. DK12345678 / US EIN",
   "settings.primaryTaxIdScheme.label": "Tax ID Scheme",
   "settings.primaryTaxIdScheme.other": "Other",

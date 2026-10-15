@@ -82,6 +82,8 @@ export const daSettingsMessages = {
   "settings.taxRegime.custom": "Brugerdefineret",
   "settings.pricesIncludeTax": "Priser inkluderer moms som standard",
   "settings.primaryTaxId.label": "Primært sælger moms-/skattenummer",
+  "settings.seNumber.label": "SE-nr.",
+  "settings.seNumber.help": "Valgfrit. Otte cifre. Vises på fakturaer og kreditnotaer.",
   "settings.primaryTaxId.placeholder": "f.eks. DK12345678",
   "settings.primaryTaxIdScheme.label": "Type af skattenummer",
   "settings.primaryTaxIdScheme.other": "Andet",
