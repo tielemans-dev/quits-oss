@@ -30,15 +30,13 @@ describe("B2B organization admission", () => {
   })
   it.each(["settings", "tax ID"])("deletes the new organization when its %s write fails, releasing the slug for retry", async failure => {
     const error = new Error("synthetic persistence failure")
-    const orgs = new Set(["org"])
     const tx = { orgSettings: { create: vi.fn(async () => { if (failure === "settings") throw error }) },
       organizationTaxId: { create: vi.fn(async () => { if (failure === "tax ID") throw error }) } }
     const prisma = { $transaction: async (save: (tx: unknown) => unknown) => save(tx),
-      organization: { delete: vi.fn(async ({ where }: { where: { id: string } }) => orgs.delete(where.id)) } }
+      organization: { delete: vi.fn() } }
     const hook = buildQuitsAuthOptions({ prisma: prisma as never, env: { getEnv: () => undefined } }).plugins[0].options.organizationHooks!.afterCreateOrganization!
     await expect(hook({ organization: { id: "org", name: company.name, metadata: { cvr: company.cvr } } } as never)).rejects.toMatchObject({ body: { code: "cvr.unavailable" } })
     expect(prisma.organization.delete).toHaveBeenCalledExactlyOnceWith({ where: { id: "org" } })
-    expect(orgs.size).toBe(0)
   })
   it("fails closed when hosted lookup is absent or unavailable", async () => {
     await expect(requireOnboardingCvr(input)).rejects.toMatchObject({ message: "cvr.unavailable" })
