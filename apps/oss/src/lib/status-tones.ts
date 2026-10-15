@@ -32,6 +32,7 @@ export const statusTones = {
   /**
    * `partially_paid` is not a lifecycle status: it is derived from `paymentStatus` by
    * `invoiceDisplayStatus`, so a sent invoice with some money received reads as partially paid.
+   * `reminder_sent` is derived too: an overdue invoice whose reminder job step succeeded.
    */
   invoice: {
     draft: { tone: "neutral", labelKey: "status.draft" },
@@ -40,6 +41,7 @@ export const statusTones = {
     partially_paid: { tone: "warning", labelKey: "status.partially_paid" },
     paid: { tone: "success", labelKey: "status.paid" },
     overdue: { tone: "danger", labelKey: "status.overdue" },
+    reminder_sent: { tone: "progress", labelKey: "status.reminder_sent" },
     credited: { tone: "muted", labelKey: "status.credited" },
   },
   /** `expired` shows only when the server returns it; nothing here derives it from the expiry date. */

@@ -4,6 +4,7 @@ export const daStatusMessages = {
   "status.viewed": "Set",
   "status.paid": "Betalt",
   "status.overdue": "Forfalden",
+  "status.reminder_sent": "Rykker sendt",
   "status.partially_paid": "Delvist betalt",
   "status.credited": "Krediteret",
   "status.issued": "Udstedt",
