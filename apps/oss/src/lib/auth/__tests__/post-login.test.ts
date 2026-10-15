@@ -40,4 +40,12 @@ describe("listOrganizationsAfterSignIn", () => {
   it("treats a successful answer without data as an empty list", async () => {
     await expect(listOrganizationsAfterSignIn(async () => ({ data: null }), sleep())).resolves.toEqual({ kind: "listed", organizations: [] })
   })
+
+  it("stops retrying once the caller is cancelled", async () => {
+    let cancelled = false
+    const list = vi.fn(async () => unauthorized)
+    const wait = vi.fn(async () => { cancelled = true })
+    await expect(listOrganizationsAfterSignIn(list, wait, () => cancelled)).resolves.toEqual({ kind: "unavailable" })
+    expect(list).toHaveBeenCalledTimes(1)
+  })
 })

@@ -25,14 +25,19 @@ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(r
  */
 export async function listOrganizationsAfterSignIn<T>(
   list: () => Promise<ListResult<T>>,
-  sleep: (ms: number) => Promise<void> = defaultSleep
+  sleep: (ms: number) => Promise<void> = defaultSleep,
+  isCancelled: () => boolean = () => false
 ): Promise<PostLoginOrganizations<T>> {
   let last: ListResult<T> = {}
   for (let attempt = 1; attempt <= SESSION_VISIBLE_ATTEMPTS; attempt++) {
     last = await list()
     if (!last.error) return { kind: "listed", organizations: (last.data ?? []) as T }
     if (last.error.status !== 401) return { kind: "unavailable" }
-    if (attempt < SESSION_VISIBLE_ATTEMPTS) await sleep(SESSION_VISIBLE_RETRY_MS * attempt)
+    if (attempt < SESSION_VISIBLE_ATTEMPTS) {
+      await sleep(SESSION_VISIBLE_RETRY_MS * attempt)
+      // The caller left the page: stop asking the server on its behalf.
+      if (isCancelled()) return { kind: "unavailable" }
+    }
   }
   return { kind: "no-session" }
 }

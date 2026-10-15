@@ -150,6 +150,31 @@ describe('first login after sign-out (QUI-76)', () => {
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/'), { timeout: 4000 })
   })
 
+  it('does nothing more after the page is left while the session is still settling', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    let release!: () => void
+    state.list.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ data: [orgs[0]] }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.list).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.setActive).not.toHaveBeenCalled()
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
+  it('does not load a page after leaving during the organization switch', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] })
+    let release!: () => void
+    state.setActive.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ error: { message: 'no' } }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.setActive).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
   it('keeps the form locked while the page load is on its way', async () => {
     state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] }); state.setActive.mockResolvedValue({ data: {} })
     renderPage(Login); submitLogin()
