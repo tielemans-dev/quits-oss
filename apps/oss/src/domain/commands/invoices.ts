@@ -537,14 +537,15 @@ export const resendInvoiceEmail = defineCommand({
 
       const { settings } = yield* loadDocumentContext
       const emailContext = resolveInvoiceEmailContext(settings)
-      // Only an adopter policy holds a resend back for missing payment details. The bank account frozen on the
-      // issued invoice counts as much as today's Settings: the resend reproduces it and never repairs the evidence.
-      const paymentAvailable = emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot) || hasInvoiceBankTransfer(withInvoicePaymentDetails({}, settings))
-      yield* requireResendPaymentDetails(command.organizationId, invoice, paymentAvailable)
+      const frozenBankTransfer = hasInvoiceBankTransfer(invoice.sellerSnapshot)
       const publicPaymentUrl =
-        (emailContext.stripeConfigured || hasInvoiceBankTransfer(invoice.sellerSnapshot)) && invoice.publicPaymentIssuedAt
+        (emailContext.stripeConfigured || frozenBankTransfer) && invoice.publicPaymentIssuedAt
           ? getPublicInvoicePaymentUrl(invoice)
           : null
+      // Only an adopter policy holds a resend back for missing payment details. The resend reproduces what was issued and
+      // never repairs it: today's Settings cannot supply a bank account the invoice did not freeze, so only the frozen
+      // bank account or a payment link the email will actually carry counts.
+      yield* requireResendPaymentDetails(command.organizationId, invoice, frozenBankTransfer || Boolean(publicPaymentUrl))
       const recipient = yield* requireRecipientEmail(invoice.contact)
       if (!emailContext.emailDelivery.available) {
         return yield* new InvalidState({

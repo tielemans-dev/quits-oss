@@ -34,7 +34,9 @@ export const commandErrorSchema = z.object({
   code: z.string().optional(),
   // Structured facts that make a refusal actionable, such as the draft holding a reservation.
   details: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
-  issues: z.array(z.union([fieldIssueSchema, z.object({ path: z.string(), message: z.string() })])).optional(),
+  issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+  // Structured, localizable form of the same refusal; `issues` keeps the original shape for existing consumers.
+  fieldIssues: z.array(fieldIssueSchema).optional(),
 })
 
 export const commandRecordSchema = z.object({

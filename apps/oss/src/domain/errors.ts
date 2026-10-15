@@ -16,7 +16,7 @@ export class NotFound extends Data.TaggedError("NotFound")<{
 export class InvalidState extends Data.TaggedError("InvalidState")<{
   readonly message: string
   readonly code: string
-  readonly issues?: ReadonlyArray<FieldIssue>
+  readonly fieldIssues?: ReadonlyArray<FieldIssue>
   /** Facts a person or agent can act on, e.g. which draft holds a reservation. */
   readonly details?: Readonly<Record<string, string | number | boolean | null>>
 }> {}
@@ -43,5 +43,9 @@ export function serializeDomainError(error: DomainError): CommandError {
     ...("code" in error ? { code: error.code } : {}),
     ...("details" in error && error.details ? { details: { ...error.details } } : {}),
     ...("issues" in error && error.issues ? { issues: [...error.issues] } : {}),
+    // Structured issues also appear as `{ path, message }` so consumers of `issues` keep working.
+    ...("fieldIssues" in error && error.fieldIssues
+      ? { fieldIssues: [...error.fieldIssues], issues: error.fieldIssues.map(issue => ({ path: issue.field, message: issue.code })) }
+      : {}),
   }
 }
