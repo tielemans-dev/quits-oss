@@ -63,6 +63,7 @@ export async function privateDocumentPdf(request: Request, kind: string, id: str
       } } } },
     } })
     if (!quote) return new Response("Document not found", { status: 404 })
+    if (!getDocumentRenderer()) return new Response("Document renderer unavailable", { status: 503 })
     const { renderQuotePdf } = await import("../quote-pdf")
     // Quotes have no archived issuance artifact. Render their persisted data and identities.
     return new Response(new Uint8Array(await renderQuotePdf(quote)), {
