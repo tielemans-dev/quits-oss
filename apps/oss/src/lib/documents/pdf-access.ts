@@ -7,6 +7,7 @@ import { runArtifactRead } from "../../application/issuance"
 import { prospectiveRenderInput, hashBytes, type RenderInput, type ArtifactDocumentKind } from "../../domain/documents/render-input"
 import type { Permission } from "../../domain/permissions"
 import { schedulerActor } from "../../domain/commands/reminders"
+import { renderPdf } from "./render-pdf"
 
 const headers = (artifact: string, number: string) => ({
   "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
@@ -21,7 +22,7 @@ export async function storedPdfResponse(document: { artifactPdfRef: string | nul
 export async function renderPdfResponse(input: RenderInput, issued: boolean) {
   const renderer = getDocumentRenderer()
   if (!renderer) return new Response("Document renderer unavailable", { status: 503 })
-  return new Response(new Uint8Array(await renderer.renderPdf(input)), {
+  return new Response(new Uint8Array(await renderPdf(renderer, input)), {
     headers: headers(issued ? "reconstructed" : "live", input.number || "draft"),
   })
 }

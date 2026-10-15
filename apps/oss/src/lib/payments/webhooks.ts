@@ -35,6 +35,7 @@ type StripeWebhookEventResult = StripeWebhookResult & {
 }
 
 const notHandled: StripeWebhookResult = { handled: false, alreadyApplied: false }
+type WebhookLogContext = { organizationId?: string; eventType?: string }
 
 /**
  * Reads the Connect verifier supplied by the runtime, if any. The first extension that returns
@@ -62,7 +63,8 @@ async function readStripeConnectWebhookVerifier(): Promise<StripeConnectWebhookV
  */
 async function processConnectStripeWebhook(
   payload: string,
-  signature: string
+  signature: string,
+  context: WebhookLogContext
 ): Promise<StripeWebhookResult | null> {
   const verifier = await readStripeConnectWebhookVerifier()
   if (!verifier) {
@@ -80,6 +82,7 @@ async function processConnectStripeWebhook(
     return null
   }
 
+  context.eventType = event.type
   const stripeAccountId = event.account
   if (!stripeAccountId) {
     paymentsLogger.warn("stripe.webhook.connect_missing_account", {
@@ -97,6 +100,7 @@ async function processConnectStripeWebhook(
     return notHandled
   }
 
+  context.organizationId = organizationId
   const result = await processStripeWebhookEvent(event, { organizationId })
   if (result.foreignInvoice) {
     paymentsLogger.info("stripe.webhook.connect_foreign_invoice", {
@@ -127,7 +131,28 @@ export async function processStripeWebhookRequest(
   payload: string,
   signature: string
 ): Promise<StripeWebhookResult> {
-  const connectResult = await processConnectStripeWebhook(payload, signature)
+  const context: WebhookLogContext = {}
+  try {
+    return await processStripeWebhookRequestUnchecked(payload, signature, context)
+  } catch (error) {
+    if (!(error instanceof InvalidStripeWebhookSignature)) {
+      paymentsLogger.error("stripe.webhook.processing_failed", {
+        ...context,
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      })
+    }
+    throw error
+  }
+}
+
+class InvalidStripeWebhookSignature extends Error {}
+
+async function processStripeWebhookRequestUnchecked(
+  payload: string,
+  signature: string,
+  context: WebhookLogContext
+): Promise<StripeWebhookResult> {
+  const connectResult = await processConnectStripeWebhook(payload, signature, context)
   if (connectResult) {
     return connectResult
   }
@@ -159,6 +184,8 @@ export async function processStripeWebhookRequest(
     }
 
     verifiedCount += 1
+    context.organizationId = settings.organizationId
+    context.eventType = event.type
     const result = await processStripeWebhookEvent(event, {
       organizationId: settings.organizationId,
     })
@@ -178,7 +205,7 @@ export async function processStripeWebhookRequest(
   paymentsLogger.warn("stripe.webhook.invalid_signature", {
     candidateCount: candidateSettings.length,
   })
-  throw new Error("Invalid Stripe webhook signature")
+  throw new InvalidStripeWebhookSignature("Invalid Stripe webhook signature")
 }
 
 function paymentIntentIdOf(session: StripeCheckoutSession) {

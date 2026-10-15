@@ -72,6 +72,10 @@ export async function runReminderTask(
           if (outcome.result.more) remaining += 1
         } else {
           failed += 1
+          remindersLogger.error("reminders.organization_failed", {
+            organizationId, status: outcome.status,
+            ...(outcome.status === "failed" ? { errorTag: outcome.error.tag, code: outcome.error.code ?? null } : {}),
+          })
         }
       } catch (error) {
         failed += 1
