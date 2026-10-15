@@ -18,7 +18,7 @@ export function agreementVatPresentation(snapshot: AgreementOfferSnapshot, local
     status,
     taxLabel: translate(status === false ? "line.noVat" : "agreements.tax", locale),
     statement: statement && !`${snapshot.summary ?? ""} ${snapshot.termsHtml}`.includes(statement) ? statement : null,
-    lineLabel: (rate: string) => deviationVatLabel(Number(rate), rows, Number(snapshot.taxRate)) ? translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(rate), locale) }) : sellerVatLineText(status, Number(rate), locale),
+    lineLabel: (rate: string) => deviationVatLabel(Number(rate), rows, Number(snapshot.taxRate), status) ? translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(rate), locale) }) : sellerVatLineText(status, Number(rate), locale),
     scheduleBasis: (basis: "net" | "gross") => translate(status === false ? "line.noVat" : basis === "gross" ? "agreements.vatBasis.gross" : "agreements.vatBasis.net", locale),
   }
 }

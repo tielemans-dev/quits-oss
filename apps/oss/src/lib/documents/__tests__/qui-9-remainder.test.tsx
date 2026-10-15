@@ -35,7 +35,7 @@ describe("QUI-9 frozen legal presentation", () => {
   })
   it("retains a lone classified zero row with plain totals and approved wording", () => {
     const result = totals([zero], "en-US")
-    expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "VAT 0%"])
+    expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "Tax 0%"])
     expect(result.total.label).toBe("Total")
     expect(result.note).toBe("No VAT is charged. The supply is outside the scope of VAT.")
     expect(totals([{ ...zero, treatment: "exempt" }]).lines[1]?.reason).toBe("Momsfritaget")
@@ -49,7 +49,7 @@ describe("QUI-9 frozen legal presentation", () => {
   })
   it.each(["export", "zero_rated"])("retains a lone %s zero row with its classification", treatment => {
     const result = totals([{ ...zero, treatment }], "en-US")
-    expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "VAT 0%"])
+    expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "Tax 0%"])
     expect(result.lines[1]?.reason).toBe(treatment === "export" ? "Export" : "Zero-rated")
   })
   it("still drops a lone unclassified zero row", () => {

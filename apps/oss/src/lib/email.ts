@@ -160,11 +160,11 @@ export function itemsTable(
 ) {
   const columns = lineColumnKeys(basis)
   const mainRate = nominalLineTaxRate(items.map(item => item.taxRate))
-  const deviation = (item: { taxRate?: number }) => deviationVatLabel(item.taxRate, vatRows, mainRate)
+  const deviation = (item: { taxRate?: number }) => deviationVatLabel(item.taxRate, vatRows, mainRate, momsRegistered)
     ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(translate("pdf.lineVatRate", locale, { rate: formatNumber(item.taxRate!, locale) }))}</div>` : ""
   const rows = items.map((item) => `
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}${deviation(item)}${sellerVatLineText(momsRegistered, item.taxRate, locale) ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(sellerVatLineText(momsRegistered, item.taxRate, locale)!)}</div>` : ""}</td>
+      <td style="padding:8px 0;border-bottom:1px solid ${C.hairline};">${escapeHtml(item.description)}${deviation(item)}${!deviation(item) && sellerVatLineText(momsRegistered, item.taxRate, locale) ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(sellerVatLineText(momsRegistered, item.taxRate, locale)!)}</div>` : ""}</td>
       <td data-label="${t("pdf.qty", locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${item.quantity}</td>
       <td data-label="${t(columns.unitPrice, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.unitPrice, currency, locale)}</td>
       <td data-label="${t(columns.amount, locale)}" style="padding:8px 0;border-bottom:1px solid ${C.hairline};text-align:right;">${formatCurrency(item.total, currency, locale)}</td>

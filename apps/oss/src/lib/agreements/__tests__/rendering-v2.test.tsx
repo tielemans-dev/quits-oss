@@ -15,14 +15,14 @@ describe("v2 offer rendering", () => {
     expect(agreementVatPresentation(v1).totals).toBeNull()
     expect(agreementVatPresentation(snapshot).totals?.lines).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Moms 25 %", amount: "0.01" })]))
     const zero = { ...snapshot, vatGroups: vatGroups.map(group => ({ ...group, rate: "0", treatment: "out_of_scope" as const, tax: "0" })) }
-    expect(agreementVatPresentation(zero, "en-US").totals?.lines[1]).toMatchObject({ label: "VAT 0%", reason: "Outside the scope of VAT" })
+    expect(agreementVatPresentation(zero, "en-US").totals?.lines[1]).toMatchObject({ label: "Tax 0%", reason: "Outside the scope of VAT" })
     expect(agreementVatPresentation(zero, "en-US").totals?.note).toBe("No VAT is charged. The supply is outside the scope of VAT.")
     expect(agreementVatPresentation(zero, "en-US").lineLabel("0")).toBe("0% VAT")
   })
   it("shows the service total and VAT basis of the schedule on the page and PDF", () => {
     const document = { snapshot, number: "AGR-1", status: "sent", expectedDates: [], acceptance: null } as unknown as PublicAgreementDto
     const page = renderToStaticMarkup(<I18nProvider><PublicAgreementPage seller={{ name: null, logo: null }} document={document} scope="read" depositsEnabled={true} token="fixture" name="" onNameChange={() => {}} confirmed={false} onConfirmedChange={() => {}} reason="" onReasonChange={() => {}} onDecision={() => {}} busy={false} error={null} /></I18nProvider>)
-    expect(page).toContain("Rounding"); expect(page).toContain("Total incl. VAT"); expect(page).toContain("Payment schedule"); expect(page).toContain("including VAT"); expect(page).toContain("On agreement acceptance")
+    expect(page).toContain("Rounding"); expect(page).toContain("Total incl. tax"); expect(page).toContain("Payment schedule"); expect(page).toContain("including VAT"); expect(page).toContain("On agreement acceptance")
     expect(page).not.toContain("included in the total")
     const pdf = renderToStaticMarkup(<AgreementPdf snapshot={snapshot} number="AGR-1" />)
     expect(pdf).toContain("Afrunding"); expect(pdf).toContain("Total inkl. moms"); expect(pdf).toContain("Payment schedule"); expect(pdf).toContain("20.00"); expect(pdf).toContain("including VAT")

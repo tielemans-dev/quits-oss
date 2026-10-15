@@ -126,6 +126,12 @@ describe("credit note PDF parties", () => {
       .toEqual(expect.arrayContaining(["VAT no. DK12345678", "VAT no. DK24256790"]))
   })
 
+  it.each([undefined, { invalid: true }])("uses the fallback buyer country when the snapshot is unusable: %s", buyerSnapshot => {
+    const result = creditNotePdfParties({ ...issued, buyerSnapshot, contact: { ...contact, country: "SE" } }, {})
+    expect(result.seller.taxIds).toEqual(["VAT no. DK12345678"])
+    expect(result.buyer.lines).toContain("Sweden")
+  })
+
   it("translates tax identifier labels", () => {
     const { seller } = creditNotePdfParties({ ...issued, locale: "da" }, {})
     expect(seller.taxIds).toEqual(["Momsnr. DK12345678"])

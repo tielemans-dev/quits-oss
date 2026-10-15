@@ -38,7 +38,7 @@ export function buildTotals(input: {
           ? translate("pdf.taxRateOf", locale, { rate: rate(row), base: money(row.net) })
           : translate("pdf.taxRate", locale, { rate: rate(row) }),
         amount: row.tax,
-        reason: vatReasonKeys(row).map(key => translate(key, locale)).join(" · ") || undefined,
+        reason: [...vatReasonKeys(row).map(key => translate(key, locale)), ...(row.statements ?? [])].join(" · ") || undefined,
       })
     }
   } else if (Number(input.taxAmount) > 0) {
@@ -47,8 +47,11 @@ export function buildTotals(input: {
   if (input.rounding && /[1-9]/.test(input.rounding)) {
     lines.push({ kind: "rounding", label: translate("pdf.rounding", locale), amount: input.rounding })
   }
-  const zeroReasons = input.vatRows?.filter(row => Number(row.ratePercent) === 0).flatMap(vatReasonKeys)
-  const outOfScope = zeroReasons?.length && zeroReasons.every(key => key === "pdf.vatOutOfScope")
+  const zeroRows = input.vatRows?.filter(row => Number(row.ratePercent) === 0)
+  const outOfScope = zeroRows?.length && zeroRows.every(row => {
+    const treatments = row.treatments ?? (row.treatment ? [row.treatment] : [])
+    return treatments.length > 0 && treatments.every(treatment => treatment === "out_of_scope")
+  })
   const note = outOfScope ? translate(input.vatRows?.some(row => Number(row.ratePercent) > 0) ? "pdf.vatNote.mixed" : "pdf.vatNote.outOfScope", locale) : undefined
   return { lines, note, total: { kind: "total", label: translate(keys.total, locale), amount: String(input.total) } }
 }

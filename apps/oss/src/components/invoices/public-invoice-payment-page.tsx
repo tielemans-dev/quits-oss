@@ -195,14 +195,14 @@ function PublicInvoiceDocument({
                       className="grid grid-cols-[1fr_auto] gap-4 border-b px-4 py-3 last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: formatNumber(toNumber(item.taxRate!), locale) })}</p>}
+                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate, momsRegistered) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: formatNumber(toNumber(item.taxRate!), locale) })}</p>}
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
                             price: money(toNumber(item.unitPriceNet ?? item.unitPriceGross)),
                           })}
                         </p>
-                        {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
+                        {!deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), invoice.vatRows, invoice.taxRate, momsRegistered) && sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
                         {item.unitPriceNet !== undefined ? <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p> : null}
                       </div>
                       <div className="text-right tabular-nums"><p className="font-medium">{money(toNumber(item.lineNet ?? item.lineGross))}</p>

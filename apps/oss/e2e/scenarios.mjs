@@ -117,10 +117,10 @@ export function registerProductScenarios(test, expect) {
       await expect(row.getByRole('cell').nth(3)).toHaveText(usd(line.quantity * line.unitPriceCents))
     }
     // Detail totals state the VAT basis; the editable form keeps its own summary labels.
-    const totals = page.getByText('Subtotal excl. VAT', { exact: true }).locator('xpath=../..')
-    await expect(totals.getByText('Subtotal excl. VAT', { exact: true }).locator('xpath=..')).toContainText(usd(subtotal))
+    const totals = page.getByText('Subtotal excl. tax', { exact: true }).locator('xpath=../..')
+    await expect(totals.getByText('Subtotal excl. tax', { exact: true }).locator('xpath=..')).toContainText(usd(subtotal))
     await expect(totals.getByText(`VAT ${taxPercent}%`, { exact: true }).locator('xpath=..')).toContainText(usd(tax))
-    await expect(totals.getByText('Total incl. VAT', { exact: true }).locator('xpath=..')).toContainText(usd(total))
+    await expect(totals.getByText('Total incl. tax', { exact: true }).locator('xpath=..')).toContainText(usd(total))
   }
 
   const draft = (stamp) => ({

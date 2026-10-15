@@ -59,7 +59,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01", treatment: "standard", treatments: ["standard"] }])
     for (const locale of ["da-DK", "en-US"]) {
       expect(buildTotals({ ...render.pdf.invoice, basis: "net", locale }).lines.filter(row => row.kind === "tax"))
-        .toMatchObject([{ kind: "tax", label: locale === "da-DK" ? "Moms 25 %" : "VAT 25%", amount: "0.00" }])
+        .toMatchObject([{ kind: "tax", label: locale === "da-DK" ? "Moms 25 %" : "Tax 25%", amount: "0.00" }])
     }
   })
   it.each([false, true])("uses net PDF lines and freezes legal identity in policy mode %s", async restricted => {

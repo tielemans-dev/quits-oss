@@ -61,7 +61,12 @@ export function creditNotePdfParties(
 ): { seller: CreditNotePdfSeller; buyer: CreditNotePdfBuyer } {
   const locale = creditNote.locale ?? org.locale
   const sellerSnapshot = parseSellerSnapshot(creditNote.sellerSnapshot)
-  const buyerSnapshot = parseBuyerSnapshot(creditNote.buyerSnapshot)
+  const parsedBuyer = parseBuyerSnapshot(creditNote.buyerSnapshot)
+  const buyerSnapshot = parsedBuyer && Object.values(parsedBuyer).some(value => value != null && value !== "") ? parsedBuyer : null
+
+  const party = buyerSnapshot
+    ? { ...buyerSnapshot, name: buyerSnapshot.name || creditNote.contact.name }
+    : creditNote.contact
 
   const seller: CreditNotePdfSeller = sellerSnapshot
     ? {
@@ -69,7 +74,7 @@ export function creditNotePdfParties(
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
         taxIds: formatTaxIds(sellerPresentationTaxIds(sellerSnapshot.taxIds,
-          sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)), locale, buyerSnapshot?.country ?? "DK", sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)),
+          sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)), locale, party.country ?? "DK", sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)),
         phone: org.companyPhone ?? null,
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
@@ -82,9 +87,6 @@ export function creditNotePdfParties(
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
 
-  const party = buyerSnapshot
-    ? { ...buyerSnapshot, name: buyerSnapshot.name || creditNote.contact.name }
-    : creditNote.contact
   const buyer: CreditNotePdfBuyer = {
     name: party.name,
     company: distinctCompany(party),

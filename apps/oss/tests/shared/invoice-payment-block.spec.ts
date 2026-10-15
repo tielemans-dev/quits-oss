@@ -123,7 +123,7 @@ for (const locale of ['da-DK', 'en-US']) {
         await expect(page.getByText('Issue-time Seller ApS', { exact: true })).toBeVisible()
         await expect(page.getByText(locale === 'da-DK' ? 'CVR-nr. 87654321' : 'CVR no. 87654321', { exact: true })).toBeVisible()
         await expect(page.getByText('Synthetic consulting')).toBeVisible()
-        await expect(page.getByRole('row', { name: `${locale === 'da-DK' ? 'Total inkl. moms' : 'Total incl. VAT'} ${new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(2500)}`, exact: true })).toBeVisible()
+        await expect(page.getByRole('row', { name: `${locale === 'da-DK' ? 'Total inkl. moms' : 'Total incl. tax'} ${new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(2500)}`, exact: true })).toBeVisible()
         if (withBank) {
           await expect(emailPaymentHeading).toBeVisible()
           await expect(emailReferenceHint).toBeVisible()
@@ -180,7 +180,7 @@ for (const locale of ['da-DK', 'en-US']) {
             const rows = page.getByRole('table', { name: locale === 'da-DK' ? 'Sådan betaler du' : 'How to pay' })
             const fallbackQuestion = locale === 'da-DK' ? 'Virker knappen ikke?' : 'Button not working?'
             const fallbackLink = locale === 'da-DK' ? 'Åbn betalingssiden' : 'Open the payment page'
-            await expect(page.getByRole('row', { name: `${locale === 'da-DK' ? 'Total inkl. moms' : 'Total incl. VAT'} ${new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(2500)}`, exact: true })).toBeVisible()
+            await expect(page.getByRole('row', { name: `${locale === 'da-DK' ? 'Total inkl. moms' : 'Total incl. tax'} ${new Intl.NumberFormat(locale, { style: 'currency', currency: 'DKK' }).format(2500)}`, exact: true })).toBeVisible()
             if (step === 'fully settled') {
               await expect(rows).toHaveCount(0)
               await expect(emailPaymentHeading).toHaveCount(0)

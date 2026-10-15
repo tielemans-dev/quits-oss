@@ -203,8 +203,8 @@ function PublicQuoteDocument({
                       className="grid grid-cols-[1fr_auto] gap-4 border-b px-4 py-3 last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), quote.vatRows, quote.taxRate) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: formatNumber(toNumber(item.taxRate!), locale) })}</p>}
-                        {sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale) ? (
+                        <p className="font-medium">{item.description}</p>{deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), quote.vatRows, quote.taxRate, momsRegistered) && <p className="mt-1 w-fit rounded bg-muted px-1 font-mono text-xs">{t("pdf.lineVatRate", { rate: formatNumber(toNumber(item.taxRate!), locale) })}</p>}
+                        {!deviationVatLabel(item.taxRate === undefined ? undefined : toNumber(item.taxRate), quote.vatRows, quote.taxRate, momsRegistered) && sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale) ? (
                           <p className="text-sm text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate == null ? undefined : toNumber(item.taxRate), locale)}</p>
                         ) : null}
                         <p className="text-sm text-muted-foreground">

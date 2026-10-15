@@ -63,7 +63,7 @@ describe("invoice PDF lines", () => {
     const text = invoiceText({ ...danish, currency: "USD", vatRows: [{ ratePercent: "10", net: "1.00", tax: "0.10", gross: "1.10" }] }, { locale: "en-US" })
     expect(text).toContain("Unit Price excl. tax")
     expect(text).toContain("Amount excl. tax")
-    expect(text).toContain("VAT 10%")
+    expect(text).toContain("Tax 10%")
     expect(text).toContain("Supply Date")
   })
 
@@ -159,7 +159,7 @@ describe("invoice PDF totals", () => {
     expect(net).toEqual(expect.arrayContaining(["Subtotal ekskl. moms", "Total inkl. moms"]))
     expect(net).not.toContain("Total")
     const english = invoiceText({ ...rounded, currency: "USD" }, { locale: "en-US" })
-    expect(english).toEqual(expect.arrayContaining(["Subtotal excl. VAT", "Rounding", "Total incl. VAT"]))
+    expect(english).toEqual(expect.arrayContaining(["Subtotal excl. tax", "Rounding", "Total incl. tax"]))
   })
 
   it("names each rate's taxable amount in English when there are several", () => {
@@ -167,7 +167,7 @@ describe("invoice PDF totals", () => {
       ...danish, currency: "USD",
       vatRows: [{ ratePercent: "5", net: "201.00", tax: "10.05", gross: "211.05" }, { ratePercent: "10", net: "100.00", tax: "10.00", gross: "110.00" }],
     }, { locale: "en-US" })
-    expect(text).toEqual(expect.arrayContaining(["VAT 5% of $201.00", "VAT 10% of $100.00"]))
+    expect(text).toEqual(expect.arrayContaining(["Tax 5% of $201.00", "Tax 10% of $100.00"]))
   })
 })
 
@@ -223,4 +223,9 @@ describe("credit note PDF lines", () => {
     const buffer = await renderToBuffer(CreditNotePdfDocument({ creditNote: credit }))
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
   })
+})
+
+it("prints a deviating 25 percent PDF line label once", () => {
+  const output = invoiceText({ ...danish, momsRegistered: true, taxRate: 5, items: [5, 25].map(taxRate => ({ description: `Service ${taxRate}`, taxRate, quantity: 1, unitPrice: 100, total: 100 })) }, { locale: "da-DK" })
+  expect(output.filter(value => value === "25 % moms")).toHaveLength(1)
 })

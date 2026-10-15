@@ -44,7 +44,7 @@ export function lineColumnKeys(basis: PriceBasis | undefined): { unitPrice: Tran
 }
 
 /** VAT of one rate. Amounts are decimal strings in the document's currency. */
-export type VatRow = { ratePercent: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; treatments?: string[]; reasonCodes?: string[] }
+export type VatRow = { ratePercent: string; net: string; tax: string; gross: string; treatment?: string; reasonCode?: string | null; treatments?: string[]; reasonCodes?: string[]; statements?: string[] }
 
 const isZero = (amount: string) => !/[1-9]/.test(amount)
 
@@ -54,7 +54,7 @@ const isZero = (amount: string) => !/[1-9]/.test(amount)
  * see which part carried no VAT.
  */
 export function printableVatRows(rows: readonly VatRow[]): VatRow[] {
-  if (rows.length === 1 && isZero(rows[0]!.ratePercent) && !vatReasonKeys(rows[0]!).length) return []
+  if (rows.length === 1 && isZero(rows[0]!.ratePercent) && !vatReasonKeys(rows[0]!).length && !rows[0]!.statements?.length) return []
   return [...rows]
 }
 
@@ -85,7 +85,7 @@ export function nominalLineTaxRate(rates: readonly (number | null | undefined)[]
   return known.find(rate => rate > 0) ?? known[0]
 }
 
-export function deviationVatLabel(rate: number | undefined, rows: readonly VatRow[] | null | undefined, mainRate?: number): TranslationKey | null {
+export function deviationVatLabel(rate: number | undefined, rows: readonly VatRow[] | null | undefined, mainRate?: number, momsRegistered?: boolean | null): TranslationKey | null {
   const main = mainRate ?? Number(rows?.find(row => Number(row.ratePercent) > 0)?.ratePercent)
-  return rate !== undefined && Number.isFinite(main) && rate !== main ? "pdf.lineVatRate" : null
+  return momsRegistered !== false && rate !== undefined && Number.isFinite(main) && rate !== main ? "pdf.lineVatRate" : null
 }

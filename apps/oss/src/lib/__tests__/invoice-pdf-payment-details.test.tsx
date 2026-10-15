@@ -228,3 +228,9 @@ describe("historical generated payment declarations", () => {
     expect(parseSellerSnapshot(future)?.paymentNote).toBe("Custom instruction")
   })
 })
+
+it("honors the frozen CVR label in the PDF seller block and footer", () => {
+  const output = textOf(InvoicePdfDocument({ invoice, org: { locale: "en-US", cvrLabel: "Frozen CVR:", taxIds: [{ scheme: "cvr", value: "12345678" }] } })).join("\n")
+  expect(output.match(/Frozen CVR: 12345678/g)).toHaveLength(2)
+  expect(output).not.toContain("CVR no.")
+})

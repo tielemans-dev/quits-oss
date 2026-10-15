@@ -74,6 +74,7 @@ describe("stored line rates at the render-input boundary", () => {
       net: nets[index]!.toFixed(digits), tax: taxes[index]!.toFixed(digits), gross: (nets[index]! + taxes[index]!).toFixed(digits),
       treatment: rate === 0 ? zeroTreatment : "standard", treatments: [rate === 0 ? zeroTreatment : "standard"],
       ...(rate === 0 && zeroTreatment === "exempt" ? { reasonCodes: ["health"] } : {}),
+      ...(zeroTreatment === "exempt" ? { statements: ["Synthetic health exemption"] } : {}),
     })).sort((a, b) => Number(a.ratePercent) - Number(b.ratePercent)))
     expect(rendered.items.map(line => line.vatTreatment)).toEqual(rates.map(rate => rate === 0 ? zeroTreatment : "standard"))
     expect(prepared.right.snapshot).toMatchObject({ seller: h.seller, buyer: h.invoice.buyerSnapshot })
@@ -82,7 +83,7 @@ describe("stored line rates at the render-input boundary", () => {
     expect(rates.map(rate => deviationVatLabel(rate, rendered.vatRows, rendered.taxRate))).toEqual(rates.map(rate => rate === main ? null : "pdf.lineVatRate"))
     if (rates.includes(0)) {
       expect(rendered.vatRows).toEqual(expect.arrayContaining([expect.objectContaining({ ratePercent: "0", treatment: zeroTreatment, treatments: [zeroTreatment] })]))
-      expect(buildTotals({ basis: "net", subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, vatRows: rendered.vatRows, currency, locale: "en-US" }).lines).toEqual(expect.arrayContaining([expect.objectContaining({ reason: zeroTreatment === "exempt" ? "Exempt · Health" : "Outside the scope of VAT" })]))
+      expect(buildTotals({ basis: "net", subtotal: rendered.subtotal, taxAmount: rendered.taxAmount, total: rendered.total, vatRows: rendered.vatRows, currency, locale: "en-US" }).lines).toEqual(expect.arrayContaining([expect.objectContaining({ reason: zeroTreatment === "exempt" ? "Exempt · Health · Synthetic health exemption" : "Outside the scope of VAT" })]))
     }
     h.invoice.status = "sent"
     if (!prepared.right.snapshot || typeof prepared.right.snapshot !== "object" || !("money" in prepared.right.snapshot)) throw new Error("Expected frozen money")

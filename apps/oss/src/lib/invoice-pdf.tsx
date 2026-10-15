@@ -344,7 +344,7 @@ export function InvoicePdfDocument({
             {org.companyEmail && <Text style={styles.contactLine}>{org.companyEmail}</Text>}
             {org.companyPhone && <Text style={styles.contactLine}>{org.companyPhone}</Text>}
             {org.companyAddress && <Text style={styles.contactLine}>{org.companyAddress}</Text>}
-            {formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
+            {formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
           </View>
 
           {/* Bill To */}
@@ -375,8 +375,8 @@ export function InvoicePdfDocument({
           {invoice.items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
               <View style={styles.colDescription}>
-                <Text>{item.description}</Text>{deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}
-                {sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
+                <Text>{item.description}</Text>{deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate, momsRegistered) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}
+                {!deviationVatLabel(item.taxRate, invoice.vatRows, invoice.taxRate, momsRegistered) && sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}
               </View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>
@@ -436,7 +436,7 @@ export function InvoicePdfDocument({
           </View>
         )}
         <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
-          <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered), org.companyEmail].filter(Boolean).join(" · ")}</Text>
+          <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel), org.companyEmail].filter(Boolean).join(" · ")}</Text>
           <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
         </View>
       </Page>
