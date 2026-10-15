@@ -367,8 +367,8 @@ describe("OnboardingPage cloud flow", () => {
 })
 
 describe.each([
-  ["da-DK", "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."],
-  ["en-US", "Fill in company name, address and email to continue."],
+  ["da-DK", "Udfyld de markerede felter for at gøre din profil klar til fakturering."],
+  ["en-US", "Fill in the marked fields to get your profile ready for invoicing."],
 ])("onboarding defaults and submit validation in %s", (locale, message) => {
   const label = (english: string) => locale === "da-DK" ? ({ "Locale": "Sprog", "Country": "Land", "Default currency": "Valuta", "Tax setup": "Moms", "Company name": "Virksomhedsnavn", "Company address": "Adresse", "Billing email": "E-mail", "VAT/CVR number": "CVR-nr.", "Finish onboarding": "Afslut opsætning" }[english] ?? english) : english
   it("starts Danish, waits for submit, and completes after correction", async () => {
@@ -417,5 +417,66 @@ describe.each([
     expect((screen.getByLabelText(label("Default currency")) as HTMLSelectElement).value).toBe("GBP")
     expect((screen.getByLabelText(label("Tax setup")) as HTMLSelectElement).value).toBe("custom")
     expect((screen.getByLabelText(label("Country")) as HTMLSelectElement).value).toBe("DK")
+  })
+})
+
+describe.each([
+  ["da-DK", "Udfyld de markerede felter for at gøre din profil klar til fakturering.", "Indtast en gyldig e-mail, fx navn@firma.dk", "Indtast en e-mail", "Udfyld feltet", { name: "Virksomhedsnavn", address: "Adresse", email: "E-mail", finish: "Afslut opsætning" }],
+  ["en-US", "Fill in the marked fields to get your profile ready for invoicing.", "Enter a valid email, like name@company.com", "Enter an email", "Fill in this field", { name: "Company name", address: "Company address", email: "Billing email", finish: "Finish onboarding" }],
+])("onboarding inline validation messages in %s", (locale, banner, invalidEmail, requiredEmail, required, label) => {
+  async function renderIncomplete() {
+    uiLocale.value = locale
+    useSessionMock.mockReturnValue({ data: { session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale }, missing: [] })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
+    render(<RouteComponent />)
+    await waitFor(() => expect((screen.getByLabelText(label.name) as HTMLInputElement)).toBeTruthy())
+  }
+  const submit = () => fireEvent.submit(screen.getByRole("button", { name: label.finish }).closest("form")!)
+
+  it("explains an invalid email inline and clears the message and banner once it is fixed", async () => {
+    await renderIncomplete()
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "not-an-email" } })
+    submit()
+    expect(screen.getByRole("alert").textContent).toBe(banner)
+    expect(screen.getByText(invalidEmail)).toBeTruthy()
+    expect(screen.getByLabelText(label.email).getAttribute("aria-describedby")).toBe("companyEmail-error")
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    expect(screen.queryByText(invalidEmail)).toBeNull()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("asks for a missing email and required fields inline, and clears each as it is filled", async () => {
+    await renderIncomplete()
+    submit()
+    expect(screen.getByText(requiredEmail)).toBeTruthy()
+    for (const [input, id] of [[label.name, "companyName-error"], [label.address, "companyAddress-error"]]) {
+      expect(screen.getByLabelText(input).getAttribute("aria-invalid")).toBe("true")
+      expect(screen.getByLabelText(input).getAttribute("aria-describedby")).toBe(id)
+      expect(document.getElementById(id)?.textContent).toBe(required)
+    }
+    expect(screen.getAllByText(required)).toHaveLength(2)
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    expect(screen.getAllByText(required)).toHaveLength(1)
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    expect(screen.queryByText(required)).toBeNull()
+    expect(screen.queryByText(requiredEmail)).toBeNull()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("clears the banner for a server-reported missing field once it is filled", async () => {
+    await renderIncomplete()
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: ["primaryTaxId"] } as never)
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    submit()
+    expect((await screen.findByRole("alert")).textContent).toBe(banner)
+    fireEvent.change(document.getElementById("primaryTaxId")!, { target: { value: "12345678" } })
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 })

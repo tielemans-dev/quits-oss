@@ -67,8 +67,6 @@ export const enAuthMessages = {
   "auth.onboarding.slugHelp": "URL-friendly identifier for your organization",
   "auth.onboarding.submit": "Create organization",
   "auth.onboarding.submitting": "Creating…",
-  "auth.onboarding.validation.businessBasics": "Fill in company name, address and email to continue.",
-  "auth.onboarding.validation.required": "Fill in {fields} to continue.",
   "auth.onboarding.field.companyName": "Company name",
   "auth.onboarding.field.companyAddress": "Company address",
   "auth.onboarding.field.companyEmail": "Billing email",

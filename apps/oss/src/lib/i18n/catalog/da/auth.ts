@@ -67,8 +67,6 @@ export const daAuthMessages = {
   "auth.onboarding.slugHelp": "URL-venlig identifikator for din organisation",
   "auth.onboarding.submit": "Opret organisation",
   "auth.onboarding.submitting": "Opretter…",
-  "auth.onboarding.validation.businessBasics": "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte.",
-  "auth.onboarding.validation.required": "Udfyld {fields} for at fortsætte.",
   "auth.onboarding.field.companyName": "Virksomhedsnavn",
   "auth.onboarding.field.companyAddress": "Adresse",
   "auth.onboarding.field.companyEmail": "E-mail",

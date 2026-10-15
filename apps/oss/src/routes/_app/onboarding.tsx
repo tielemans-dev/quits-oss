@@ -27,6 +27,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
+import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { CompanySetup } from "../../components/onboarding/company-setup"
@@ -212,8 +213,8 @@ function OnboardingPageContent() {
     pricesIncludeTax: false,
   })
 
-  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim())
+  const emailIssue = companyEmailIssue(values.companyEmail)
+  const invalidBusinessBasics = !values.companyName.trim() || !values.companyAddress.trim() || emailIssue !== null
 
   const onboardingRules = getOnboardingRules({
     countryCode: values.countryCode,
@@ -926,13 +927,9 @@ function OnboardingPageContent() {
               />
             ) : null}
 
-            {hasSubmitted && invalidBusinessBasics ? (
+            {hasSubmitted && (invalidBusinessBasics || outstandingFields.length > 0) ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-                {t('auth.onboarding.validation.businessBasics')}
-              </p>
-            ) : hasSubmitted && outstandingFields.length > 0 ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-                {t('auth.onboarding.validation.required', { fields: outstandingFields.map((field) => t(`auth.onboarding.field.${field}`)).join(', ') })}
+                {t('validation.onboarding.banner')}
               </p>
             ) : null}
 
@@ -950,31 +947,43 @@ function OnboardingPageContent() {
                   <Input
                     id="companyName"
                     aria-invalid={hasSubmitted && (!values.companyName.trim())}
+                    aria-describedby={hasSubmitted && !values.companyName.trim() ? 'companyName-error' : undefined}
                     value={values.companyName}
                     onChange={(e) => updateValue('companyName', e.target.value)}
                     required
                   />
+                  {hasSubmitted && !values.companyName.trim() ? (
+                    <p id="companyName-error" className="text-sm text-destructive">{t('validation.required')}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="companyEmail">{t('auth.onboarding.field.companyEmail')}</Label>
                   <Input
                     id="companyEmail"
-                    aria-invalid={hasSubmitted && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.companyEmail.trim()))}
+                    aria-invalid={hasSubmitted && emailIssue !== null}
+                    aria-describedby={hasSubmitted && emailIssue ? 'companyEmail-error' : undefined}
                     type="email"
                     value={values.companyEmail}
                     onChange={(e) => updateValue('companyEmail', e.target.value)}
                     required
                   />
+                  {hasSubmitted && emailIssue ? (
+                    <p id="companyEmail-error" className="text-sm text-destructive">{t(emailIssue)}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <Label htmlFor="companyAddress">{t('auth.onboarding.field.companyAddress')}</Label>
                   <Input
                     id="companyAddress"
                     aria-invalid={hasSubmitted && (!values.companyAddress.trim())}
+                    aria-describedby={hasSubmitted && !values.companyAddress.trim() ? 'companyAddress-error' : undefined}
                     value={values.companyAddress}
                     onChange={(e) => updateValue('companyAddress', e.target.value)}
                     required
                   />
+                  {hasSubmitted && !values.companyAddress.trim() ? (
+                    <p id="companyAddress-error" className="text-sm text-destructive">{t('validation.required')}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="countryCode">{t('auth.onboarding.field.countryCode')}</Label>
