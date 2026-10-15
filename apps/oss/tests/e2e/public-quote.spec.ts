@@ -115,16 +115,16 @@ test("answers an invalid quote link in the visitor's language", async ({ browser
 
 // Synthetic issued quotes in a disposable test database. No email or payment provider is called.
 for (const locale of [danishLocale, usEnglishLocale]) {
-  for (const width of [390, 1440]) {
-    test(`net quote lines remain consistent after acceptance (${locale.locale}, ${width}px)`, async ({ page }) => {
+  for (const pricesIncludeTax of [false, true]) for (const width of [390, 1440]) {
+    test(`${pricesIncludeTax ? "Gross" : "Net"} quote lines remain consistent after acceptance (${locale.locale}, ${width}px)`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 })
       const seeded = await seedPublicQuote({ locale: { ...locale, currency: "DKK" } })
-      const priced = priceDocumentV2({ currency: "DKK", taxRate: "25", pricesIncludeTax: true, items: [
-        { description: "Brand identity", quantity: "1", unitPrice: "22500" },
-        { description: "Website design", quantity: "1", unitPrice: "5625" },
+      const priced = priceDocumentV2({ currency: "DKK", taxRate: "25", pricesIncludeTax, items: [
+        { description: "Brand identity", quantity: "1", unitPrice: pricesIncludeTax ? "22500" : "18000" },
+        { description: "Website design", quantity: "1", unitPrice: pricesIncludeTax ? "5625" : "4500" },
       ] })
       await prisma.quote.update({ where: { id: seeded.id }, data: {
-        pricesIncludeTax: true, subtotalNet: priced.subtotalNet, totalTax: priced.totalTax, totalGross: priced.totalGross,
+        pricesIncludeTax, subtotalNet: priced.subtotalNet, totalTax: priced.totalTax, totalGross: priced.totalGross,
         items: { deleteMany: {}, create: priced.itemRows },
       } })
       const stored = await prisma.quote.findUniqueOrThrow({ where: { id: seeded.id }, include: { items: { orderBy: { sortOrder: "asc" } } } })
@@ -133,14 +133,14 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       const money = (value: number) => new Intl.NumberFormat(locale.locale, { style: "currency", currency: "DKK" }).format(value)
       const summary = page.locator("h2").first().locator("..")
       const assertLines = async () => {
-        await expect(summary.getByText(money(18000), { exact: true })).toBeVisible()
-        await expect(summary.getByText(money(4500), { exact: true })).toBeVisible()
-        await expect(summary.getByText(money(22500), { exact: true })).toHaveCount(0)
-        await expect(summary.getByText(money(5625), { exact: true })).toHaveCount(0)
-        await expect(summary.getByText(`1\u00a0×\u00a0${money(18000)}`, { exact: true })).toBeVisible()
-        await expect(summary.getByText(`1\u00a0×\u00a0${money(4500)}`, { exact: true })).toBeVisible()
-        await expect(summary.getByText(locale.locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax", { exact: true })).toHaveCount(2)
-        await expect(summary.getByText(locale.locale === "da-DK" ? "Beløb ekskl. moms" : "Amount excl. tax", { exact: true })).toHaveCount(2)
+        await expect(summary.getByText(money(pricesIncludeTax ? 22500 : 18000), { exact: true })).toBeVisible()
+        await expect(summary.getByText(money(pricesIncludeTax ? 5625 : 4500), { exact: true })).toBeVisible()
+        await expect(summary.getByText(money(pricesIncludeTax ? 18000 : 22500), { exact: true })).toHaveCount(0)
+        await expect(summary.getByText(money(pricesIncludeTax ? 4500 : 5625), { exact: true })).toHaveCount(0)
+        await expect(summary.getByText(`1\u00a0×\u00a0${money(pricesIncludeTax ? 22500 : 18000)}`, { exact: true })).toBeVisible()
+        await expect(summary.getByText(`1\u00a0×\u00a0${money(pricesIncludeTax ? 5625 : 4500)}`, { exact: true })).toBeVisible()
+        await expect(summary.getByText(locale.locale === "da-DK" ? `Enhedspris ${pricesIncludeTax ? "inkl." : "ekskl."} moms` : `Unit Price ${pricesIncludeTax ? "incl." : "excl."} tax`, { exact: true })).toHaveCount(2)
+        await expect(summary.getByText(locale.locale === "da-DK" ? `Beløb ${pricesIncludeTax ? "inkl." : "ekskl."} moms` : `Amount ${pricesIncludeTax ? "incl." : "excl."} tax`, { exact: true })).toHaveCount(2)
         await expect(page.locator('[data-slot="amount"]').nth(2)).toHaveText(money(28125))
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
       }

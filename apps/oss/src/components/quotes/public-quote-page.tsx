@@ -1,4 +1,4 @@
-import { deviationVatLabel } from "../../lib/documents/line-amounts"
+import { deviationVatLabel, lineAmounts, lineColumnKeys, priceBasis } from "../../lib/documents/line-amounts"
 import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
@@ -52,6 +52,7 @@ type PublicQuote = {
   rounding?: string
   taxRegime?: string
   currency: string
+  pricesIncludeTax?: boolean
   /** The timezone the document's dates are shown in, as its PDF and email do. */
   timezone: string
   notes: string | null
@@ -159,6 +160,8 @@ function PublicQuoteDocument({
   const sellerTaxIds = formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
+  const basis = priceBasis(quote.pricesIncludeTax)
+  const columns = lineColumnKeys(basis)
   const decisionAt = quote.publicDecisionAt ? format.date(quote.publicDecisionAt) : null
 
   return (
@@ -209,14 +212,14 @@ function PublicQuoteDocument({
                         <p className="text-sm text-muted-foreground">
                           {t("public.document.lineQuantity", {
                             quantity: format.number(toNumber(item.quantity)),
-                            price: money(toNumber(item.unitPriceNet)),
+                            price: money(toNumber(lineAmounts(basis, item).unitPrice)),
                           })}
                         </p>
-                        <p className="text-xs text-muted-foreground">{t("pdf.unitPriceNet")}</p>
+                        <p className="text-xs text-muted-foreground">{t(columns.unitPrice)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-right font-medium tabular-nums">{money(toNumber(item.lineNet))}</p>
-                        <p className="text-xs text-muted-foreground">{t("pdf.amountNet")}</p>
+                        <p className="text-right font-medium tabular-nums">{money(toNumber(lineAmounts(basis, item).amount))}</p>
+                        <p className="text-xs text-muted-foreground">{t(columns.amount)}</p>
                       </div>
                     </div>
                   ))}

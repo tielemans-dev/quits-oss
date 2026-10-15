@@ -8,6 +8,8 @@ import { Plus, Trash2 } from "lucide-react"
 import type { RecurringEnd } from "@quits/contracts/recurring"
 import { trpc } from "../../trpc/client"
 import { formatCurrency } from "../../lib/i18n/format"
+import { visibleFieldError, type FieldError } from "../../lib/validation/field-error"
+import { readableIssues } from "../../lib/validation/readable-errors"
 import { useI18n } from "../../lib/i18n/react"
 import { useOrgCurrency } from "../../hooks/use-org-currency"
 import { LocalizedDateField } from "../localized-date-field"
@@ -32,6 +34,7 @@ import {
 
 type Contact = { id: string; name: string }
 type LineItem = { description: string; quantity: string; unitPrice: string; vat?: DocumentLineInput["vat"] }
+type ValidationField = "name" | "contact" | "items" | "startDate" | "endsAt"
 type EndType = RecurringEnd["type"]
 
 /** The fields of a schedule the dialog can edit. */
@@ -97,9 +100,20 @@ export function RecurringScheduleDialog({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [fieldError, setFieldError] = useState<FieldError<ValidationField> | null>(null)
+  const invalidFields = new Set<ValidationField>()
+  if (!name.trim()) invalidFields.add("name")
+  if (!contactId) invalidFields.add("contact")
+  if (items.some(item => !item.description.trim())) invalidFields.add("items")
+  if (!startDate) invalidFields.add("startDate")
+  if (endType === "on_date" && !endsAt) invalidFields.add("endsAt")
+  const validationError = visibleFieldError(fieldError, invalidFields)
+  const nameError = fieldError?.field === "name" ? validationError : null
+
   useEffect(() => {
     if (!open) return
     setError(null)
+    setFieldError(null)
     setName(schedule?.name ?? "")
     setContactId(schedule?.contactId ?? "")
     setItems(schedule?.items.length ? schedule.items.map((item) => ({ ...item, quantity: String(item.quantity), unitPrice: String(item.unitPrice) })) : [emptyItem()])
@@ -141,13 +155,14 @@ export function RecurringScheduleDialog({
 
   async function handleSubmit() {
     setError(null)
-    if (!name.trim()) return setError(t("recurring.form.validation.name"))
-    if (!contactId) return setError(t("docForm.validation.contactRequired"))
+    setFieldError(null)
+    if (!name.trim()) return setFieldError({ field: "name", message: t("validation.required") })
+    if (!contactId) return setFieldError({ field: "contact", message: t("validation.customer.required") })
     if (items.some((item) => !item.description.trim())) {
-      return setError(t("docForm.validation.itemDescriptionRequired"))
+      return setFieldError({ field: "items", message: t("validation.line.description.required") })
     }
-    if (!startDate) return setError(t("recurring.form.validation.startDate"))
-    if (endType === "on_date" && !endsAt) return setError(t("recurring.form.validation.endsAt"))
+    if (!startDate) return setFieldError({ field: "startDate", message: t("recurring.form.validation.startDate") })
+    if (endType === "on_date" && !endsAt) return setFieldError({ field: "endsAt", message: t("recurring.form.validation.endsAt") })
 
     const fields = {
       name: name.trim(),
@@ -174,7 +189,7 @@ export function RecurringScheduleDialog({
       onOpenChange(false)
       onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("recurring.form.error"))
+      setError(readableIssues(err)?.map(issue => t(issue.key, issue.params)).join(" ") ?? t("validation.save.failed"))
     } finally {
       setSaving(false)
     }
@@ -190,10 +205,10 @@ export function RecurringScheduleDialog({
           <DialogDescription>{t("recurring.form.description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-5">
-          {error && (
+        <div className="grid gap-5" onChangeCapture={() => setError(null)}>
+          {(error || (fieldError?.field !== "name" && validationError)) && (
             <p className="text-sm text-destructive" role="alert">
-              {error}
+              {error || validationError}
             </p>
           )}
 
@@ -204,8 +219,12 @@ export function RecurringScheduleDialog({
                 id="recurring-name"
                 value={name}
                 placeholder={t("recurring.form.namePlaceholder")}
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? "recurring-name-error" : undefined}
+                onBlur={() => { if (!name.trim()) setFieldError({ field: "name", message: t("validation.required") }) }}
                 onChange={(event) => setName(event.target.value)}
               />
+              {nameError && <p id="recurring-name-error" className="text-sm text-destructive" role="alert">{nameError}</p>}
             </div>
             <div className="grid gap-2">
               <Label>{t("docForm.contact")} *</Label>
