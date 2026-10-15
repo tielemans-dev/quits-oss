@@ -120,6 +120,7 @@ async function loadSnapshot(organizationId: string) {
   })
 
   const readiness = evaluateOnboardingReadiness({
+    onboardingVersion: settings.onboardingVersion,
     companyName: settings.companyName,
     companyAddress: settings.companyAddress,
     companyEmail: settings.companyEmail,
