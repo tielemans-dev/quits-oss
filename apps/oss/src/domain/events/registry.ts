@@ -14,7 +14,8 @@ const n = z.number()
 const i = n.int()
 const date = z.iso.datetime()
 const commandError = commandErrorSchema.extend({
-  issues: z.array(z.union([fieldIssueSchema.strict(), z.object({ path: s, message: s }).strict()])).optional(),
+  issues: z.array(z.object({ path: s, message: s }).strict()).optional(),
+  fieldIssues: z.array(fieldIssueSchema.strict()).optional(),
 }).strict()
 const fields = z.object({ fields: z.array(s) }).strict()
 const number = z.object({ number: s }).strict()

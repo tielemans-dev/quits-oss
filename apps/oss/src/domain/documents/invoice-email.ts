@@ -130,7 +130,7 @@ export function requireRecipientEmail(contact: { email: string | null }) {
   const email = contact.email?.trim() ?? ""
   const issue = recipientEmailIssue(contact)
   return issue
-    ? Effect.fail(new InvalidState({ message: "Contact has no email address", code: "missing_recipient", issues: [issue] }))
+    ? Effect.fail(new InvalidState({ message: "Contact has no email address", code: "missing_recipient", fieldIssues: [issue] }))
     : Effect.succeed(email)
 }
 

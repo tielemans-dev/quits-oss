@@ -42,7 +42,8 @@ const t = initTRPC.context<Context>().create({
       : error.cause instanceof DomainRefusal ? (error.cause.code ?? null) : null
     const details = error.cause instanceof DomainRefusal ? (error.cause.details ?? null) : null
     const issues = error.cause instanceof DomainRefusal ? (error.cause.issues ?? null) : null
-    return { ...shape, data: { ...shape.data, reason, details, issues } }
+    const fieldIssues = error.cause instanceof DomainRefusal ? (error.cause.fieldIssues ?? null) : null
+    return { ...shape, data: { ...shape.data, reason, details, issues, fieldIssues } }
   },
 })
 

@@ -20,7 +20,8 @@ const issueKeys: Record<string, TranslationKey> = {
 }
 export function invoiceIssueKey(code: string): TranslationKey { return issueKeys[code] ?? "invoiceValidation.unknown" }
 export function invoiceFieldIssues(error: unknown): FieldIssue[] {
-  const data = (error as { data?: { issues?: unknown } } | null)?.data?.issues
+  const shape = (error as { data?: { fieldIssues?: unknown; issues?: unknown } } | null)?.data
+  const data = Array.isArray(shape?.fieldIssues) ? shape.fieldIssues : shape?.issues
   if (!Array.isArray(data)) return []
   return data.filter((issue): issue is FieldIssue => issue && typeof issue.code === "string" && typeof issue.field === "string" && issue.params && typeof issue.params === "object")
 }

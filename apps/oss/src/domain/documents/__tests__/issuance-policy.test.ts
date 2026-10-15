@@ -89,7 +89,7 @@ describe("optional invoice issuance policy", () => {
     } }])
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", document))).resolves.toBeUndefined()
     const refused = await Effect.runPromise(Effect.either(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD" })))
-    expect(refused).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", issues: [
+    expect(refused).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", fieldIssues: [
       { code: "currency.unsupported", field: "currency", params: { currencies: "DKK, EUR" } },
     ] } })
   })
