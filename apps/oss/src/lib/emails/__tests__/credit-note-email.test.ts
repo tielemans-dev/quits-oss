@@ -33,5 +33,17 @@ describe("credit note email", () => {
     expect(content.html).toContain("Hej Globex")
     expect(content.html).toContain("Årsag")
   })
+  it.each(["da-DK", "en-US"])("uses frozen legal parties and the frozen line rate in %s", locale => {
+    const content = buildCreditNoteEmailContent({ ...params, org: { locale, companyName: "Current seller", companyAddress: "Current address" }, creditNote: { ...params.creditNote,
+      sellerSnapshot: { companyName: "Frozen <seller>", companyAddress: "Seller road 1", momsRegistered: null, taxIds: [{ scheme: "cvr", value: "12345678" }] },
+      buyerSnapshot: { name: "Frozen <buyer>", address: "Buyer road 2", city: "Berlin", zip: "10000", country: "DE", taxIds: [{ scheme: "vat", value: "DE999999999" }] },
+      taxRate: 25, items: [5, 25].map(taxRate => ({ description: `Service ${taxRate}`, quantity: 1, unitPrice: 100, total: 100, taxRate })),
+    } })
+    for (const value of ["Frozen &lt;seller&gt;", "Seller road 1", "12345678", "Frozen &lt;buyer&gt;", "Buyer road 2", "DE999999999"]) expect(content.html).toContain(value)
+    expect(content.html).not.toContain("Current address")
+    expect(content.html).not.toMatch(/(?:VAT no\.|Momsnr\.) DK12345678/)
+    const reduced = content.html.split("<tr>").find(row => row.includes("Service 5"))!
+    expect(reduced).toContain(locale === "da-DK" ? "5 % moms" : "5% tax")
+  })
 
 })

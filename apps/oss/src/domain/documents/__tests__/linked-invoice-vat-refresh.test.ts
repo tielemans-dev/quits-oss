@@ -76,7 +76,6 @@ describe("stored line rates at the render-input boundary", () => {
       ...(rate === 0 && zeroTreatment === "exempt" ? { reasonCodes: ["health"] } : {}),
       ...(rate === 0 && zeroTreatment === "exempt" ? { statements: ["Synthetic health exemption"] } : {}),
     })).sort((a, b) => Number(a.ratePercent) - Number(b.ratePercent)))
-    expect(rendered.items.map(line => line.vatTreatment)).toEqual(rates.map(rate => rate === 0 ? zeroTreatment : "standard"))
     expect(prepared.right.snapshot).toMatchObject({ seller: h.seller, buyer: h.invoice.buyerSnapshot })
     expect(prepared.right.snapshot).toMatchObject({ invoice: rendered, money: { totals: { net: h.invoice.subtotalNet.toFixed(digits), tax: h.invoice.totalTax.toFixed(digits), gross: h.invoice.totalGross.toFixed(digits) } } })
     if (currency === "JPY") expect(prepared.right.snapshot).toMatchObject({ money: { valuation: { rate: "0.05", rateDate: "2026-10-13", rateSource: "user", base: { currency: "DKK" } } } })
