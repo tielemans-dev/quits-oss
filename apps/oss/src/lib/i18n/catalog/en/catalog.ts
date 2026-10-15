@@ -11,7 +11,7 @@ export const enCatalogMessages = {
   "catalog.add": "Add Item",
   "catalog.save": "Save",
   "catalog.cancel": "Cancel",
-  "catalog.loading": "Loading...",
+  "catalog.loading": "Loading…",
   "catalog.empty": "No catalog items yet. Add your first predefined item above.",
   "catalog.placeholder.consulting": "Consulting",
   "catalog.placeholder.hourlyConsulting": "Hourly consulting",

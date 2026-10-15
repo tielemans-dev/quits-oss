@@ -316,8 +316,8 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
         <CardTitle>{t("settings.paymentDetails.title")}</CardTitle>
         <CardDescription>{t("settings.paymentDetails.description")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-6">
-        <fieldset className="grid gap-3">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <fieldset className="grid min-w-0 gap-3">
           <legend className="text-sm font-medium">{t("settings.paymentDetails.group.dk.title")}</legend>
           <p className="-mt-1 text-xs text-muted-foreground">{t("settings.paymentDetails.group.dk.hint")}</p>
           <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
@@ -345,7 +345,7 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
           </div>
         </fieldset>
 
-        <fieldset className="grid gap-3">
+        <fieldset className="grid min-w-0 gap-3">
           <legend className="text-sm font-medium">{t("settings.paymentDetails.group.intl.title")}</legend>
           <p className="-mt-1 text-xs text-muted-foreground">{t("settings.paymentDetails.group.intl.hint")}</p>
           <div className="grid gap-3 sm:grid-cols-[1fr_11rem]">

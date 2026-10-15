@@ -111,7 +111,7 @@ describe("quote detail page responses", () => {
     state.download.mockReturnValueOnce(download.promise).mockRejectedValueOnce(new Error("Unavailable"))
     render(<RouteComponent />)
     fireEvent.click(await screen.findByRole("button", { name: "Download PDF" }))
-    const pending = await screen.findByRole("button", { name: "Downloading PDF..." })
+    const pending = await screen.findByRole("button", { name: "Downloading PDF…" })
     expect((pending as HTMLButtonElement).disabled).toBe(true)
     await act(async () => { download.resolve(); await download.promise })
     expect(state.download).toHaveBeenCalledWith("quote", "q_1", "Q-0001")

@@ -1,5 +1,5 @@
 export const daDashboardMessages = {
-  "dashboard.loading": "Indlæser overblikket...",
+  "dashboard.loading": "Indlæser overblikket…",
   "dashboard.subtitle.start": "Her samles dine penge, så snart du har sendt en faktura.",
   "dashboard.greeting.morning": "God morgen",
   "dashboard.greeting.forenoon": "God formiddag",
@@ -75,7 +75,7 @@ export const daDashboardMessages = {
   "dashboard.attention.action.followUp": "Følg op",
   "dashboard.attention.action.checkDelivery": "Se levering",
 
-  "dashboard.remind.sending": "Sender...",
+  "dashboard.remind.sending": "Sender…",
   "dashboard.remind.sent": "Påmindelse sendt",
   "dashboard.remind.pending": "Påmindelsen er sat i kø",
   "dashboard.remind.unconfirmed": "Levering ikke bekræftet",

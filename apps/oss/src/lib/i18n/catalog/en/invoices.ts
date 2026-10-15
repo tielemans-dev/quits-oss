@@ -32,7 +32,7 @@ export const enInvoicesMessages = {
   "invoices.issuance.rateDate": "Rate date",
 
   "invoices.title": "Invoices",
-  "invoices.loading": "Loading...",
+  "invoices.loading": "Loading…",
   "invoices.action.new": "New Invoice",
   "invoices.action.create": "Create Invoice",
   "invoices.empty.title": "No invoices yet",
@@ -68,8 +68,8 @@ export const enInvoicesMessages = {
   "invoices.new.ai.placeholder":
     "Example: Create an invoice for Acme for 8 hours of design at 1200 DKK/hour, due in 14 days.",
   "invoices.new.ai.action.generate": "Generate Draft",
-  "invoices.new.ai.action.generating": "Generating...",
-  "invoices.new.ai.availability.checking": "Checking AI availability...",
+  "invoices.new.ai.action.generating": "Generating…",
+  "invoices.new.ai.availability.checking": "Checking AI availability…",
   "invoices.new.ai.availability.disabled":
     "AI BYOK is currently disabled for this distribution.",
   "invoices.new.ai.error.promptRequired":
@@ -101,13 +101,13 @@ export const enInvoicesMessages = {
   "invoices.detail.action.edit": "Edit",
   "invoices.detail.action.send": "Send",
   "invoices.detail.action.resendEmail": "Resend email",
-  "invoices.detail.action.sending": "Sending...",
+  "invoices.detail.action.sending": "Sending…",
   "invoices.detail.action.createPaymentLink": "Create Payment Link",
-  "invoices.detail.action.generatingPaymentLink": "Generating Link...",
+  "invoices.detail.action.generatingPaymentLink": "Generating Link…",
   "invoices.detail.paymentLink.unavailable":
     "Payment links are unavailable right now. Check your Stripe settings.",
   "invoices.detail.action.delete": "Delete",
-  "invoices.detail.action.updating": "Updating...",
+  "invoices.detail.action.updating": "Updating…",
   "invoices.detail.action.markPaid": "Mark as Paid",
   "invoices.detail.email.title": "Email delivery",
   "invoices.detail.email.description":

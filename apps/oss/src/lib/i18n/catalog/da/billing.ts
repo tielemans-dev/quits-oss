@@ -1,6 +1,6 @@
 export const daBillingMessages = {
   "billing.title": "Abonnement",
-  "billing.loading": "Indlæser...",
+  "billing.loading": "Indlæser…",
   "billing.error.loadSubscription": "Kunne ikke indlæse abonnementsoplysninger",
   "billing.error.checkout": "Kunne ikke oprette checkout-session",
   "billing.error.portal": "Kunne ikke åbne abonnementsportal",
@@ -25,7 +25,7 @@ export const daBillingMessages = {
     "Dit abonnement er opsagt. Genaktiver for fortsat at bruge premium-funktioner.",
   "billing.pastDue.description":
     "Din betaling er forfalden. Opdater din betalingsmetode for at holde abonnementet aktivt.",
-  "billing.action.redirecting": "Omdirigerer...",
+  "billing.action.redirecting": "Omdirigerer…",
   "billing.action.upgrade": "Opgrader",
   "billing.action.manage": "Administrer abonnement",
   "billing.action.resubscribe": "Genaktiver abonnement",

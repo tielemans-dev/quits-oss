@@ -11,7 +11,7 @@ export const daCatalogMessages = {
   "catalog.add": "Tilføj vare",
   "catalog.save": "Gem",
   "catalog.cancel": "Annuller",
-  "catalog.loading": "Indlæser...",
+  "catalog.loading": "Indlæser…",
   "catalog.empty": "Ingen katalogvarer endnu. Tilføj din første standardvare ovenfor.",
   "catalog.placeholder.consulting": "Rådgivning",
   "catalog.placeholder.hourlyConsulting": "Timebaseret rådgivning",

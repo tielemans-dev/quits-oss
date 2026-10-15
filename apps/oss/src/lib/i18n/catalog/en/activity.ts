@@ -18,7 +18,7 @@ export const enActivityMessages = {
   "activity.filter.agentKey": "Agent keys",
   "activity.filter.organization": "Organization settings",
   "activity.loadMore": "Load more",
-  "activity.loading": "Loading...",
+  "activity.loading": "Loading…",
   "activity.empty": "No activity yet.",
   "activity.error": "Could not load activity.",
   "activity.forbidden": "Your role does not allow viewing the audit log.",

@@ -2,7 +2,7 @@
 export const daRecurringMessages = {
   "recurring.title": "Gentagne fakturaer",
   "recurring.description": "Planer, der opretter fakturaer for dig med fast interval.",
-  "recurring.loading": "Indlæser planer...",
+  "recurring.loading": "Indlæser planer…",
   "recurring.action.new": "Ny plan",
   "recurring.action.edit": "Rediger",
   "recurring.action.pause": "Sæt på pause",

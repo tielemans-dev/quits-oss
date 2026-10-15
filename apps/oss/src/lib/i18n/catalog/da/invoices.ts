@@ -32,7 +32,7 @@ export const daInvoicesMessages = {
   "invoices.issuance.rateDate": "Kursdato",
 
   "invoices.title": "Fakturaer",
-  "invoices.loading": "Indlæser...",
+  "invoices.loading": "Indlæser…",
   "invoices.action.new": "Ny faktura",
   "invoices.action.create": "Opret faktura",
   "invoices.empty.title": "Ingen fakturaer endnu",
@@ -70,9 +70,9 @@ export const daInvoicesMessages = {
   "invoices.new.ai.placeholder":
     "Eksempel: Opret en faktura til Acme for 8 timers design á 1200 DKK/time, forfalder om 14 dage.",
   "invoices.new.ai.action.generate": "Generer kladde",
-  "invoices.new.ai.action.generating": "Genererer...",
+  "invoices.new.ai.action.generating": "Genererer…",
   "invoices.new.ai.availability.checking":
-    "Tjekker AI-tilgængelighed...",
+    "Tjekker AI-tilgængelighed…",
   "invoices.new.ai.availability.disabled":
     "AI BYOK er i øjeblikket deaktiveret for denne distribution.",
   "invoices.new.ai.error.promptRequired":
@@ -105,13 +105,13 @@ export const daInvoicesMessages = {
   "invoices.detail.action.edit": "Rediger",
   "invoices.detail.action.send": "Send",
   "invoices.detail.action.resendEmail": "Send e-mail igen",
-  "invoices.detail.action.sending": "Sender...",
+  "invoices.detail.action.sending": "Sender…",
   "invoices.detail.action.createPaymentLink": "Opret betalingslink",
-  "invoices.detail.action.generatingPaymentLink": "Opretter link...",
+  "invoices.detail.action.generatingPaymentLink": "Opretter link…",
   "invoices.detail.paymentLink.unavailable":
     "Betalingslink er ikke tilgængelige lige nu. Tjek dine Stripe-indstillinger.",
   "invoices.detail.action.delete": "Slet",
-  "invoices.detail.action.updating": "Opdaterer...",
+  "invoices.detail.action.updating": "Opdaterer…",
   "invoices.detail.action.markPaid": "Marker som betalt",
   "invoices.detail.email.title": "E-maillevering",
   "invoices.detail.email.description":
