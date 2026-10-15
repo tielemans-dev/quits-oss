@@ -151,25 +151,114 @@
   white-space: nowrap;
   width: max-content;
 }
-.ob-tasks {
-  list-style: none;
-  padding: 0;
-  margin: 32px 0 24px;
+.ob-preview {
+  margin: 24px 0;
 }
-.ob-tasks li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--border);
+.ob-preview .ob-card {
+  margin: 0 0 16px;
+}
+.ob-lines {
+  display: grid;
+  gap: 8px;
   font-size: 14px;
+  line-height: 20px;
 }
-.ob-tasks li > span:last-child {
-  margin-left: auto;
+.ob-label,
+.ob-invoice-table th,
+.ob-totals dt {
   color: var(--muted-foreground);
+  font-size: 12px;
+}
+.ob-mono,
+.ob-totals dd {
   font:
-    12px "Geist Mono Variable",
+    14px "Geist Mono Variable",
     monospace;
+}
+.ob-invoice-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.ob-invoice-table {
+  width: 100%;
+  margin: 24px 0 16px;
+  border-collapse: collapse;
+}
+.ob-invoice-table th {
+  text-align: left;
+  font-weight: 500;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ob-invoice-table td {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+}
+.ob-totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 24px;
+  margin: 0;
+}
+.ob-totals dd {
+  margin: 0;
+  text-align: right;
+}
+/* Skeleton and value share one grid cell, so the swap moves nothing. Animate only opacity,
+   transform and filter. */
+.ob-slot {
+  display: grid;
+  min-height: 20px;
+  align-items: center;
+}
+.ob-slot > * {
+  grid-area: 1 / 1;
+}
+.ob-slot-skeleton {
+  height: 14px;
+  transition: opacity var(--duration-base) var(--ease-exit) calc(var(--i) * var(--stagger-step));
+}
+.ob-slot[data-filled] .ob-slot-skeleton {
+  opacity: 0;
+  animation: none;
+}
+.ob-slot-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+}
+.ob-slot[data-filled] .ob-slot-value {
+  animation: ob-fill var(--duration-base) var(--ease-enter) calc(var(--i) * var(--stagger-step)) both;
+}
+.ob-check {
+  color: var(--tone-success);
+  animation: ob-check var(--duration-base) var(--ease-enter) calc(var(--i) * var(--stagger-step)) both;
+}
+@keyframes ob-fill {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ob-check {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+@keyframes ob-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .ob-notice {
   background: light-dark(#fffbeb, #32280f);
@@ -358,8 +447,19 @@
   .ob-spin {
     animation: none;
   }
+  /* The app-wide reduced-motion reset is !important; the one fade that survives it must be too. */
+  .ob-slot[data-filled] .ob-slot-value,
+  .ob-check {
+    animation: ob-fade var(--duration-fade) var(--ease-enter) both !important;
+  }
+  .ob-slot-skeleton {
+    transition: opacity var(--duration-fade) var(--ease-enter) !important;
+  }
 }
 @media (max-width: 520px) {
+  .ob-invoice-parties {
+    grid-template-columns: 1fr;
+  }
   .ob-shell {
     padding: 24px 20px 48px;
   }

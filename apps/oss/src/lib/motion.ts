@@ -28,3 +28,6 @@ export const DURATION = {
 } as const
 
 export const STAGGER_STEP = milliseconds("stagger-step")
+
+/** True when the user asked for reduced motion; script-driven motion then fades only. */
+export const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
