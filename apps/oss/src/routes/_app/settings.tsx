@@ -212,7 +212,7 @@ function SettingsPage() {
   const [success, setSuccess] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
-  // A displayed saved choice must not reconfirm VAT evidence on unrelated saves.
+  // An explicit radio change. Without one, Save confirms the displayed stored choice (see handleSubmit).
   const [sellerVatChoiceReviewed, setSellerVatChoiceReviewed] = useState(false)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
@@ -542,9 +542,19 @@ function SettingsPage() {
     const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
       ? null
       : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null) ? momsRegistered : undefined
+    const sellerVatChoiceShown = sellerVatConfirmationEnabled === true && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
+    // Settings pre-selects the stored choice, and re-checking a checked radio fires no change. Saving
+    // with the choice displayed therefore confirms it, so a stored choice without hosted evidence
+    // needs no toggle. Unchanged evidence is kept as is. Only a choice the seller can see is sent, and an
+    // unreviewed one only with a complete Danish identity (CVR in the exact form
+    // prepareSellerVatConfirmation accepts), so unrelated saves are not blocked by it.
+    const displayedSellerVatChoice = sellerVatChoice === false && !(isSelfHostDistribution || nonVatEnabled) ? null : sellerVatChoice
+    const sellerIdentityComplete = Boolean(companyNameInput && companyAddressInput) && /^(DK)?\d{8}$/u.test(primaryTaxId.trim())
+    const confirmedSellerVatChoice = !sellerVatChoiceShown || withdrawSellerVatEvidence ? null
+      : sellerVatChoiceReviewed ? sellerVatChoice : sellerIdentityComplete ? displayedSellerVatChoice : null
     try {
-      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoiceReviewed || withdrawSellerVatEvidence)
-        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : sellerVatChoice })).token
+      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (confirmedSellerVatChoice !== null || withdrawSellerVatEvidence)
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : confirmedSellerVatChoice })).token
         : undefined
       const savedSettings = await trpc.settings.update.mutate({
         countryCode,
@@ -558,7 +568,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoiceReviewed ? sellerVatChoice ?? undefined : undefined : momsRegisteredUpdate,
+        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : confirmedSellerVatChoice ?? undefined : momsRegisteredUpdate,
         sellerVatConfirmationToken,
         paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
