@@ -14,6 +14,8 @@ import {
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 import { defineCommand } from "../command"
+import { fingerprint } from "../approval-contexts"
+import { lockDocument } from "../documents/locks"
 import { InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
 
@@ -232,23 +234,41 @@ export const deleteContact = defineCommand({
     }),
 })
 
+const reminderResumeTarget = (id: string) => Effect.gen(function* () {
+  const db = yield* Db
+  const command = yield* Command
+  yield* lockDocument("contact", id, { strength: "no_key_update" })
+  const contact = yield* Effect.promise(() => db.contact.findFirst({ where: { id, organizationId: command.organizationId } }))
+  if (!contact) return yield* new NotFound({ message: "Contact not found", entity: "contact", id })
+  if (!contact.email) return yield* new InvalidState({ message: "Contact has no email address", code: "contact_email_missing" })
+  return { contact, recipient: normalizeReminderRecipient(contact.email) }
+})
+
 export const resumeContactReminders = defineCommand({
   type: "contact.reminders.resume",
-  permission: "contact:update",
-  outwardFacing: false,
+  permission: "invoice:send",
+  outwardFacing: true,
   input: z.object({ id: z.string() }),
   summarize: (input) => `Resume automatic reminders for contact ${input.id}`,
+  approvalContext: (input) => Effect.gen(function* () {
+    const { contact, recipient } = yield* reminderResumeTarget(input.id)
+    return {
+      summary: `Resume automatic payment reminders for ${contact.name} to ${recipient}`,
+      version: fingerprint([contact.id, contact.name, recipient]),
+      details: { customer: contact.name, recipient },
+    }
+  }),
   handle: (input) => Effect.gen(function* () {
     const db = yield* Db
     const command = yield* Command
-    const contact = yield* Effect.promise(() => db.contact.findFirst({ where: { id: input.id, organizationId: command.organizationId } }))
-    if (!contact) return yield* new NotFound({ message: "Contact not found", entity: "contact", id: input.id })
-    if (!contact.email) return yield* new InvalidState({ message: "Contact has no email address", code: "contact_email_missing" })
-    yield* Effect.promise(() => db.recipientReminderPreference.updateMany({
-      where: { organizationId: command.organizationId, recipient: normalizeReminderRecipient(contact.email!) },
+    const { contact, recipient } = yield* reminderResumeTarget(input.id)
+    const updated = yield* Effect.promise(() => db.recipientReminderPreference.updateMany({
+      where: { organizationId: command.organizationId, recipient, unsubscribedAt: { not: null } },
       data: { unsubscribedAt: null },
     }))
-    command.emit({ aggregateType: "contact", aggregateId: contact.id, type: "contact.updated", payload: { fields: ["reminderUnsubscribedAt"] } })
+    if (updated.count > 0) {
+      command.emit({ aggregateType: "contact", aggregateId: contact.id, type: "contact.updated", payload: { fields: ["reminderUnsubscribedAt"] } })
+    }
     return { id: contact.id }
   }),
 })

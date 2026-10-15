@@ -52,6 +52,9 @@ describe("reminder unsubscribe state and POST", () => {
     const token = signReminderUnsubscribeToken(row, secret)
     const post = (url: string, data: Record<string, string>) => new Request(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(data) })
     const url = "https://app.example.test/reminders/unsubscribe"
+    const stoppedAt = row.unsubscribedAt
+    expect((await postReminderUnsubscribe(post(`${url}?token=${token}`, { "List-Unsubscribe": "One-Click", intent: "resume" }), db, true)).status).toBe(204)
+    expect(row.unsubscribedAt).toBe(stoppedAt)
     expect((await postReminderUnsubscribe(post(url, { token, intent: "resume" }), db, false)).status).toBe(303)
     expect(row.unsubscribedAt).toBeNull()
     expect(await reminderUnsubscribeState(db, token, "GET")).toMatchObject({ kind: "confirm" })

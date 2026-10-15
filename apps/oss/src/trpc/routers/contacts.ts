@@ -29,10 +29,10 @@ export const contactsRouter = router({
         where: { organizationId_recipient: { organizationId: ctx.organizationId, recipient: normalizeReminderRecipient(contact.email) } },
         select: { unsubscribedAt: true },
       }) : null
-      return { ...contact, reminderUnsubscribedAt: preference?.unsubscribedAt ?? null, canResumeReminders: actorCan(ctx.actor, "contact:update") }
+      return { ...contact, reminderUnsubscribedAt: preference?.unsubscribedAt ?? null, canResumeReminders: actorCan(ctx.actor, "invoice:send") }
     }),
 
-  resumeReminders: authorizedProcedure("contact:update")
+  resumeReminders: authorizedProcedure("invoice:send")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) =>
       unwrapOutcome(await executeCommand(resumeContactReminders, input, { actor: ctx.actor }))
