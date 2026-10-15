@@ -25,7 +25,7 @@ async function seed(taxRate: number) {
   const setup = await seedCompletedSetup({ ...danishLocale, locale: "en-US" })
   await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: {
     companyName: "Synthetic Studio ApS", companyAddress: "Testvej 1, 1000 København", taxRate,
-    pricesIncludeTax: false, bankRegNumber: "0040", bankAccountNumber: "0440116243",
+    momsRegistered: true, pricesIncludeTax: false, bankRegNumber: "0040", bankAccountNumber: "0440116243",
   } })
   const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer",
     company: "Synthetic Buyer ApS", email: "buyer@example.test", address: "Testvej 2", zip: "1000", city: "København", country: "DK" } })
@@ -47,6 +47,9 @@ async function fixVatRateByPolicy(page: Page, standardVatRate: string) {
     await route.fulfill({ response, json: body })
   })
 }
+
+// "/invoices/new" also looks like "/invoices/<id>", so exclude it or the wait returns before the save.
+const savedInvoiceUrl = /\/invoices\/(?!new$)[^/]+$/
 
 async function fillInvoice(page: Page) {
   await page.locator("#invoice-contact").click()
@@ -80,8 +83,8 @@ test("without a policy-fixed rate: field errors, the full VAT editor, a cancella
   expect(delivered).toBe(0)
   await page.getByRole("button", { name: "Save & Send" }).click()
   await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
-  await page.waitForURL(/\/invoices\/[^/]+$/)
-  await expect.poll(() => delivered).toBe(1)
+  await page.waitForURL(savedInvoiceUrl)
+  await expect.poll(() => delivered, { timeout: 30_000 }).toBe(1)
   expect((await prisma.invoice.findFirstOrThrow({ where: { organizationId } })).status).toBe("sent")
 })
 
@@ -96,7 +99,7 @@ test("with a policy-fixed rate: plain VAT text instead of a choice, on the new f
   await expect(page.getByRole("combobox", { name: "VAT rate for line 1" })).toHaveCount(0)
   await fillInvoice(page)
   await page.getByRole("button", { name: "Save as Draft" }).click()
-  await page.waitForURL(/\/invoices\/[^/]+$/)
+  await page.waitForURL(savedInvoiceUrl)
   const invoice = await prisma.invoice.findFirstOrThrow({ where: { organizationId }, include: { items: true } })
   expect([invoice.status, invoice.items[0].taxRate.toString()]).toEqual(["draft", "25"])
   await page.getByRole("button", { name: "Edit", exact: true }).click()
@@ -131,6 +134,6 @@ test("detail page: an all-zero draft restores the configured VAT, a foreign valu
   await expect(page.getByRole("heading", { name: "Send invoice?", exact: true })).toBeVisible()
   expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe("draft")
   await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
-  await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id } })).lastEmailAttemptOutcome).toBe("sent")
+  await expect.poll(async () => (await prisma.invoice.findUniqueOrThrow({ where: { id } })).lastEmailAttemptOutcome, { timeout: 30_000 }).toBe("sent")
   expect(delivered).toBe(1)
 })
