@@ -4,6 +4,9 @@ export const enInvoicesMessages = {
   "invoices.summary.paidThisMonth": "Paid this month",
   "invoices.summary.count": "{count} invoices",
 
+  "invoices.aconto.amount": "Aconto deduction incl. VAT",
+  "invoices.aconto.help": "Leave empty to deduct the available amount from earlier aconto invoices. Enter 0 to remove draft deductions.",
+  "invoices.aconto.apply": "Update deduction",
   "invoices.issuance.supplyDate": "Supply date",
   "invoices.issuance.confirmDates": "Confirm the supply date before issuing. A supply before the issue date requires accountant review for posting.",
   "invoices.issuance.rate": "Base exchange rate: {baseCurrency} per 1 {currency}",

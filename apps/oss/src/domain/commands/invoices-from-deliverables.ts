@@ -1,4 +1,6 @@
 import { requireDepositsEnabled } from "../agreements/deposit-capability"
+import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { applyDepositDeductions, deductInvoiceDeposits } from "./invoice-deposits"
 import { addUtcDays } from "../features/recurring-dates"
 import { formatIsoDate } from "../../lib/exports/format"
 import { Effect } from "effect"
@@ -55,6 +57,7 @@ export const createInvoiceFromDeliverables = defineCommand({
       }, include }))
       command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_created", payload: { number: invoice.number, contactId: invoice.contactId, totalGross: invoice.totalGross.toNumber() } })
       yield* reserveLines(agreement.id, invoice.id, selected)
+      if (purpose === "sale" && !saleIds.length && getRuntimeCapabilities().agreements.depositsEnabled) yield* applyDepositDeductions(invoice)
       if (purpose === "sale") result.saleInvoiceId = invoice.id
       else result.prepaymentInvoiceId = invoice.id
     }
@@ -122,4 +125,4 @@ export const invoiceScheduleAsSale = defineCommand({
     return updated
   }),
 })
-export const invoiceDeliverableCommands = [createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale] as const
+export const invoiceDeliverableCommands = [createInvoiceFromDeliverables, addInvoiceDeliverables, invoiceScheduleAsSale, deductInvoiceDeposits] as const

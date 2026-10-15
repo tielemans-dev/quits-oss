@@ -2,6 +2,7 @@ import { releaseDeliverableReservation, authorizeDeliverableRebill } from "../..
 import { deliverableReleaseReservationInputSchema, deliverableAuthorizeRebillInputSchema } from "@quits/contracts/billing"
 import { recordBaseValuation, recordBaseValuationInputSchema } from "../../commands/base-valuation"
 import { createInvoiceFromDeliverables, addInvoiceDeliverables } from "../../commands/invoices-from-deliverables"
+import { deductInvoiceDeposits } from "../../commands/invoice-deposits"
 import { invoiceCreateFromDeliverablesInputSchema, invoiceAddDeliverablesInputSchema } from "@quits/contracts/invoices"
 import {
   invoiceCreateDraftV2InputSchema,
@@ -33,6 +34,7 @@ const presentSent = (
 })
 
 export const invoiceTools: AgentTool[] = [
+  defineCommandTool({ name: "invoice_deduct_deposits", title: "Deduct aconto invoices", description: "Updates deductions on a linked final draft. amountGross is an exact decimal string including VAT; omit for all available, or use 0 to release draft deductions. Issued invoices cannot change. Sources and matching frozen VAT belong to the same agreement and customer. Nothing is sent.", command: deductInvoiceDeposits, input: deductInvoiceDeposits.input, present: presentInvoice }),
   defineCommandTool({ name: "invoice_record_base_valuation", title: "Record reviewed historical valuation", description: "Human review only. Records a historical base rate with an evidence note. Agents receive human_review_required.", command: recordBaseValuation, input: recordBaseValuationInputSchema, present: presentInvoice }),
 
   defineCommandTool({ name: "invoice_create_from_deliverables", title: "Invoice deliverables",

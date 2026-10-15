@@ -51,6 +51,7 @@ export function requireVatIssuance(document: {
   sellerSnapshot: unknown
   buyerSnapshot: unknown
   items: Array<{
+    sourceKind?: string | null
     vatRateInput: string | null
     vatTreatment: string
     vatReasonCode: string | null
@@ -102,6 +103,7 @@ export function requireVatIssuance(document: {
           pricesIncludeTax: document.pricesIncludeTax,
           net: document.subtotalNet.toString(), tax: document.totalTax.toString(), gross: document.totalGross.toString(),
           lines: document.items.map((item) => ({
+            deduction: item.sourceKind === "aconto",
             vat: { treatment: item.vatTreatment, reasonCode: item.vatReasonCode, country: item.vatCountry, rate: item.vatRateInput ?? percentageToFraction(item.taxRate.toString()) },
             net: item.lineNet.toString(), tax: item.lineTax.toString(), gross: item.lineGross.toString(),
           })),

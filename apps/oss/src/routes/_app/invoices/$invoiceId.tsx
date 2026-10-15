@@ -107,6 +107,7 @@ type Contact = {
 }
 
 type InvoiceItem = {
+  sourceKind?: string | null
   deliverableId?: string | null
   lineNet?: string | number
   lineTax?: string | number
@@ -139,6 +140,8 @@ type Invoice = {
   disputed?: boolean
   disputedRevision?: number
   purpose?: "sale" | "prepayment"
+  scheduleSaleChoice?: unknown
+  editRevision?: number
   agreementId?: string | null
   agreementTaxRate?: string | null
   id: string
@@ -299,6 +302,7 @@ function InvoiceDetailPage() {
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
+  const [acontoAmount, setAcontoAmount] = useState("")
   // The edit values as of this render, so a save can tell which fields changed while it was in flight.
   const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editSupplyDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
   const editValues = useMemo(() => ({ editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems])
@@ -383,7 +387,7 @@ function InvoiceDetailPage() {
     const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
-      invoice.items.map((item) => ({
+      invoice.items.filter(item => item.sourceKind !== "aconto").map((item) => ({
         rowKey: newRowKey(),
         id: item.id, deliverableId: item.deliverableId ?? undefined,
         ...(item.deliverableId ? { frozenNet: Number(item.lineNet), frozenTax: Number(item.lineTax), frozenGross: Number(item.lineGross) } : {}),
@@ -717,9 +721,10 @@ function InvoiceDetailPage() {
     // An adopter policy fixes the rate and treatment, so a compact VAT column replaces the classification editor.
     const restrictedVat = !!readiness?.standardVatRate
     const editColumns = restrictedVat ? "md:grid-cols-[180px_minmax(0,1fr)_80px_100px_150px_100px_40px]" : "md:grid-cols-[180px_minmax(0,1fr)_80px_100px_100px_40px]"
-    const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
-    const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
-    const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
+    const deductions = invoice.items.filter(item => item.sourceKind === "aconto")
+    const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0) + deductions.reduce((sum, item) => sum + Number(item.lineNet), 0)
+    const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0) + deductions.reduce((sum, item) => sum + Number(item.lineTax), 0)
+    const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0) + deductions.reduce((sum, item) => sum + Number(item.lineGross), 0)
 
     return (
       <div className="p-4 sm:p-6 max-w-5xl" ref={editForm}>
@@ -1057,6 +1062,17 @@ function InvoiceDetailPage() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl">
       {bankNudge.dialog}
+      {(depositsEnabled || invoice.items.some(item => item.sourceKind === "aconto")) && !readOnly && invoice.agreementId && invoice.status === "draft" && invoice.purpose === "sale" && !invoice.scheduleSaleChoice && <section className="rounded-md border p-4 grid gap-3">
+        <Label htmlFor="aconto-amount">{t("invoices.aconto.amount")}</Label>
+        <Input id="aconto-amount" type="number" min="0" step="0.01" value={acontoAmount} onChange={event => setAcontoAmount(event.target.value)} />
+        <p className="text-sm text-muted-foreground">{t("invoices.aconto.help")}</p>
+        <Button className="w-fit" disabled={acting} onClick={async () => {
+          setActing(true)
+          try { await trpc.invoices.deductDeposits.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, ...(acontoAmount.trim() ? { amountGross: acontoAmount.trim() } : {}) }); await reloadInvoice() }
+          catch (failure) { setError(failure instanceof Error ? failure.message : t("agreements.error")) }
+          finally { setActing(false) }
+        }}>{t("invoices.aconto.apply")}</Button>
+      </section>}
       {depositsEnabled && invoice.purpose === "prepayment" && invoice.status === "draft" && <section className="rounded-md border p-4 grid gap-3">
         <p>{t("agreements.prepaymentNotice")}</p>
         <AlertDialog><AlertDialogTrigger asChild><Button disabled={acting}>{t("agreements.convertSchedule")}</Button></AlertDialogTrigger>
