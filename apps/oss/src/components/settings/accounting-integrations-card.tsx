@@ -22,7 +22,7 @@ const UNSUPPORTED = /^(unsupported_|advances_|applications_|purpose_|event_not_s
 /** Plain-language reason for a stored delivery error code. Unknown codes never leak to the screen. */
 export function describeAccountingError(code: string | null, provider: string, t: Translate) {
   const params = { provider }
-  if (code === "missing_mapping" || code === "transport_error" || code === "reconciliation_required" || code === "attempts_exhausted" ||
+  if (code === "reconnect_review_required" || code === "missing_mapping" || code === "transport_error" || code === "reconciliation_required" || code === "attempts_exhausted" ||
       code === "payload_totals_mismatch" || code === "provider_totals_mismatch" || code === "source_review_required") return t(`accounting.deliveryError.${code}`, params)
   if (code && UNSUPPORTED.test(code)) return t("accounting.deliveryError.unsupported")
   const status = /^http_(\d{3})$/.exec(code ?? "")?.[1]
@@ -126,6 +126,7 @@ export function AccountingIntegrationsCard() {
               {delivery ? (
                 <div className="grid gap-1 text-sm text-muted-foreground">
                   <span>{t("accounting.account", { id: item.remoteAccountId ?? "" })}</span>
+                  {item.syncStartAt ? <span>{t("accounting.syncStart", { date: formatDateTime(item.syncStartAt, locale) })}</span> : null}
                   <span>{delivery.lastDeliveredAt ? t("accounting.lastDelivered", { date: formatDateTime(delivery.lastDeliveredAt, locale) }) : t("accounting.neverDelivered")}</span>
                   <span>{t("accounting.failed", { count: delivery.failedCount })}</span>
                   {delivery.failedCount > 0 ? (
@@ -135,7 +136,7 @@ export function AccountingIntegrationsCard() {
                   ) : null}
                   {canDisconnect && delivery.failedDeliveryId ? (
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId! }), t("accounting.action.error"))}>{t("accounting.retry")}</Button>
+                      <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, ...(delivery.lastErrorCode === "reconnect_review_required" ? { confirmReconnect: true } : {}) }), t("accounting.action.error"))}>{t("accounting.retry")}</Button>
                       <AlertDialog onOpenChange={() => setSkipReason("")}>
                         <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.skip")}</Button></AlertDialogTrigger>
                         <AlertDialogContent>

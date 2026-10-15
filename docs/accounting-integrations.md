@@ -168,14 +168,23 @@ Legacy payments without immutable evidence remain refused. Admins can retry fail
 deliveries with a fresh send budget and cleared backoff, retaining pinned requests
 and reconciliation. Skip requires an audit reason and advances the contiguous cursor
 so later documents can continue. Both actions target the current connection generation.
+Reconnecting creates a new generation, but prior delivered/skipped events never enter its send queue. Pending,
+failed and in-flight predecessors require an explicit admin retry on the new connection
+or a skip with a reason. Retry requires `confirmReconnect`; same-account retries retain
+the pinned request and reconciliation, while a different account prepares a new request.
+Original delivery evidence stays in its old generation, including through repeated reconnects.
 
 ## Per-organization connections
 
 `AccountingConnection` stores one provider, remote account ID, generation, status,
 mapping revision and encrypted credential per organization. `connectAccounting`
 encrypts before writing with the existing server secret helper and starts a new
-generation on each authorization. `disconnectAccounting` pauses delivery and
-clears local credentials idempotently. The lookup selects the pure provider and
+generation on each authorization. The first authorization accepts an optional
+`syncStartAt`, defaulting to its connection time. Reconnect preserves that boundary.
+The unfiltered outbox scan records earlier events as skipped so the cursor can advance,
+and holds unscanned history before reconnect for an admin decision. Settings shows the
+saved start date. The date picker belongs to the future authorization flow.
+`disconnectAccounting` pauses delivery and clears local credentials idempotently. The lookup selects the pure provider and
 returns metadata without reading credentials. Remote revocation remains OAuth work.
 
 Settings shows each provider as not connected, connected or error. Error is derived: a
@@ -197,8 +206,7 @@ one event per organization. Without a configured runtime it returns disabled bef
 scanning or claiming events. Self-hosted and hosted runtimes use the same optional
 interface. There are no default network calls or hosted gates.
 
-Before enabling live delivery, add sync start positions and reconciliation across
-connection generations so reconnecting cannot replay history automatically. Add
+Before enabling live delivery, add provider-specific reconciliation and
 remote revocation through e-conomic's agreement-grant redirect and Dinero's Visma
 Connect authorization code flow, with no pasted keys. Authenticated configuration
 stays inside the app.
@@ -223,7 +231,7 @@ stays inside the app.
 - Richer frozen payment events with date, base valuation and settlement evidence.
 - OAuth/agreement-grant authorization and remote revocation.
 - Live transport/reconciliation, remote total checks, booking operation records,
-  invoice dependency resolution and sync start positions.
+  and invoice dependency resolution.
 - Persisted settings resolution and provider-specific remote validation before enabling transport.
 - Settings UI for account/VAT mapping, a connect button that starts authorization,
   and delivery history beyond the earliest failed delivery.

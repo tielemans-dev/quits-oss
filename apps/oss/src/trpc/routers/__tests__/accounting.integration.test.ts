@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { appRouter } from "../../router"
 import { prisma } from "../../../lib/db"
-import { deliverAccounting } from "../../../domain/accounting/delivery"
+import { connectAccounting } from "../../../domain/accounting/connections"
+import { deliverAccounting, type AccountingTransport } from "../../../domain/accounting/delivery"
 import { dineroProvider } from "../../../domain/accounting/dinero"
 import { invoiceFixture } from "../../../domain/accounting/__tests__/fixtures"
 
@@ -12,7 +13,7 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
 
 ;(hasTestDatabase ? describe : describe.skip)("accounting integrations router", () => {
   const cleanups: Array<() => Promise<void>> = []
-  afterEach(async () => { while (cleanups.length) await cleanups.pop()?.() })
+  afterEach(async () => { vi.unstubAllEnvs(); while (cleanups.length) await cleanups.pop()?.() })
 
   async function failedDelivery() {
     const org = await createTestOrganization({ roles: ["admin", "member", "accountant"] })
@@ -27,11 +28,12 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     const first = await prisma.eventConsumerDelivery.create({ data: { ...scope, sequence: 1, status: "failed", attempts: 5, availableAt: new Date("2099-01-01"), error: { code: "http_400" } } })
     await prisma.eventConsumerDelivery.create({ data: { ...scope, sequence: 2 } })
     const admin = callerFor(org.organizationId, org.actors.admin.userId)
-    const connections = { find: async () => ({ key: "generation-1", mappingRevision: "1", provider: dineroProvider,
+    const connections = { find: async () => ({ key: (await prisma.accountingConnection.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).generation, mappingRevision: "1", provider: dineroProvider,
       settings: async () => ({ contactGuid: guid, documentGuid: guid, invoiceLinks: {}, vatMappings: { [invoice.vatGroups[0]!.key]: { accountNumber: 1000 } } }),
       request: (prepared: Extract<ReturnType<typeof dineroProvider.map>, { status: "prepared" }>) => prepared.payload }) }
-    const run = () => deliverAccounting({ organizationId: org.organizationId, connections, transport: { send: async () => ({ status: 201, externalRef: "remote-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } }), reconcile: async () => ({ status: "absent" as const }) } })
-    return { org, scope, first, admin, run }
+    const transport = { send: vi.fn(async () => ({ status: 201, externalRef: "remote-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } })), reconcile: vi.fn(async (): Promise<Awaited<ReturnType<AccountingTransport["reconcile"]>>> => ({ status: "absent" })) }
+    const run = () => deliverAccounting({ organizationId: org.organizationId, connections, transport })
+    return { org, scope, first, admin, run, transport }
   }
 
   it("audits disconnect once and clears local authorization", async () => {
@@ -60,6 +62,46 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     expect(event).toMatchObject({ actorId: f.org.actors.admin.userId, commandId: expect.any(String), payload: { action, deliveryId: f.first.id, reason: action === "skip" ? input.reason.trim() : null } })
     await expect(f.admin.accounting[action](input)).rejects.toMatchObject({ code: "BAD_REQUEST" })
     expect(await prisma.domainEvent.count({ where: { organizationId: f.org.organizationId, type: event.type } })).toBe(1)
+  })
+
+  it.each(["1234", "different-account"])("retries explicitly on %s with account-specific request handling", async remoteAccountId => {
+    const f = await failedDelivery()
+    await f.admin.accounting.retry({ deliveryId: f.first.id })
+    f.transport.send.mockResolvedValueOnce({ status: 400, externalRef: "", totals: { net: "1", tax: "0.25", gross: "1.25" } })
+    expect(await f.run()).toBe("failed")
+    const pinned = await prisma.eventConsumerDelivery.findUniqueOrThrow({ where: { id: f.first.id } })
+    vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-accounting-test-encryption-key")
+    await connectAccounting({ organizationId: f.org.organizationId, provider: "dinero", remoteAccountId, credential: "synthetic", mappingRevision: "1" })
+    expect(await f.run()).toBe("failed")
+    const deliveryId = (await f.admin.accounting.status()).providers[1]!.delivery!.failedDeliveryId!
+    await f.admin.accounting.retry({ deliveryId, confirmReconnect: true })
+    f.transport.reconcile.mockResolvedValueOnce({ status: "delivered", externalRef: "recovered", totals: { net: "1", tax: "0.25", gross: "1.25" } })
+    expect(await f.run()).toBe("delivered")
+    if (remoteAccountId === "1234") {
+      expect(f.transport.reconcile).toHaveBeenCalledWith(pinned.prepared, expect.any(AbortSignal))
+      expect(f.transport.send).toHaveBeenCalledTimes(1)
+    } else {
+      expect(f.transport.reconcile).not.toHaveBeenCalled()
+      expect(f.transport.send).toHaveBeenCalledTimes(2)
+    }
+  })
+
+  it.each(["retry", "skip"] as const)("requires an explicit %s decision for old pending deliveries", async action => {
+    const f = await failedDelivery()
+    await prisma.eventConsumerDelivery.update({ where: { id: f.first.id }, data: { status: "pending" } })
+    vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-accounting-test-encryption-key")
+    await connectAccounting({ organizationId: f.org.organizationId, provider: "dinero", remoteAccountId: "another-account", credential: "synthetic", mappingRevision: "1" })
+    expect(await f.run()).toBe("failed")
+    const state = await f.admin.accounting.status(), delivery = state.providers[1]!.delivery!
+    expect(delivery.lastErrorCode).toBe("reconnect_review_required")
+    const input = { deliveryId: delivery.failedDeliveryId!, reason: "Reviewed previous account", confirmReconnect: true }
+    await expect(f.admin.accounting.retry({ deliveryId: input.deliveryId })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    await f.admin.accounting[action](input)
+    expect(await prisma.eventConsumerDelivery.findUnique({ where: { id: input.deliveryId } })).toMatchObject({ status: action === "retry" ? "pending" : "skipped" })
+    // The original record remains as evidence; the decision belongs to the new generation.
+    expect(await prisma.eventConsumerDelivery.findUnique({ where: { id: f.first.id } })).toMatchObject({ status: "failed" })
+    const audit = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: f.org.organizationId, type: "accounting.action_recorded" } })
+    expect(audit).toMatchObject({ actorId: f.org.actors.admin.userId, payload: { action, deliveryId: input.deliveryId } })
   })
 
   it("rejects non-admins, other organizations, old generations and empty skip reasons", async () => {

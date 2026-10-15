@@ -7,6 +7,7 @@ export const ACCOUNTING_PROVIDER_IDS = ["economic", "dinero"] as const satisfies
 export type AccountingProviderStatus = {
   provider: AccountingProviderId
   status: "not_connected" | "connected" | "error"
+  syncStartAt?: Date
   remoteAccountId: string | null
   delivery: { lastDeliveredAt: Date | null; failedCount: number; lastErrorCode: string | null; failedDeliveryId: string | null } | null
 }
@@ -18,11 +19,11 @@ export type AccountingProviderStatus = {
 export async function readAccountingStatus(organizationId: string, db: PrismaClient = prisma): Promise<AccountingProviderStatus[]> {
   const connection = await db.accountingConnection.findFirst({
     where: { organizationId, status: "connected", credentialEnc: { not: null } },
-    select: { provider: true, generation: true, remoteAccountId: true },
+    select: { provider: true, generation: true, remoteAccountId: true, syncStartAt: true },
   })
   const delivery = connection ? await readDelivery(organizationId, `accounting:${connection.provider}:${connection.generation}`, db) : null
   return ACCOUNTING_PROVIDER_IDS.map(provider => provider === connection?.provider
-    ? { provider, status: delivery && delivery.failedCount > 0 ? "error" : "connected", remoteAccountId: connection.remoteAccountId, delivery }
+    ? { provider, status: delivery && delivery.failedCount > 0 ? "error" : "connected", remoteAccountId: connection.remoteAccountId, syncStartAt: connection.syncStartAt, delivery }
     : { provider, status: "not_connected", remoteAccountId: null, delivery: null })
 }
 

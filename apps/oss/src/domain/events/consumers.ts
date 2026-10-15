@@ -9,6 +9,7 @@ import { Prisma, type PrismaClient } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { upcastEvent } from "./upcast"
 
+export type ScanDisposition = { status: "pending" | "failed" | "skipped"; error?: Prisma.InputJsonValue }
 type Db = PrismaClient | Prisma.TransactionClient
 type Consumer = { organizationId: string; consumerKey: string }
 
@@ -33,7 +34,8 @@ async function cursor(tx: Prisma.TransactionClient, input: Consumer) {
 }
 
 /** Call inside a transaction. A conflict must roll back its delivery inserts as well. */
-export async function scan(input: Consumer & { interestedTypes: readonly string[]; limit: number }, db: Db = prisma) {
+export async function scan(input: Consumer & { interestedTypes: readonly string[]; limit: number;
+  dispositions?: (events: Array<{ sequence: number; occurredAt: Date }>, tx: Prisma.TransactionClient) => Promise<Map<number, ScanDisposition>> }, db: Db = prisma) {
   const limit = batchLimit(input.limit)
   const scope = { organizationId: input.organizationId, consumerKey: input.consumerKey }
   return transaction(db, async (tx) => {
@@ -44,8 +46,9 @@ export async function scan(input: Consumer & { interestedTypes: readonly string[
     })
     if (events.length === 0) return current
     const interested = new Set(input.interestedTypes)
+    const dispositions = await input.dispositions?.(events, tx)
     await tx.eventConsumerDelivery.createMany({
-      data: events.map((event) => ({ ...scope, sequence: event.sequence, status: interested.has(event.type) ? "pending" : "skipped" })),
+      data: events.map((event) => ({ ...scope, sequence: event.sequence, ...(interested.has(event.type) ? dispositions?.get(event.sequence) ?? { status: "pending" } : { status: "skipped" }) })),
       skipDuplicates: true,
     })
     const scannedSequence = events.at(-1)!.sequence

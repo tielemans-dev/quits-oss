@@ -3,6 +3,7 @@ import type { PrismaClient, Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
 import { advance, claim, complete, fail, scan } from "../events/consumers"
 import type { AccountingEvent, AccountingProvider } from "./provider"
+import { accountingDispositions } from "./sync-position"
 import { equalTotals, fingerprint, payloadTotalsMatch, totalsSchema, type Totals } from "./safeguards"
 
 const safeguardMessages: Record<string, string> = {
@@ -30,6 +31,9 @@ export interface AccountingTransport {
 export interface AccountingConnections<S, P> {
   find(organizationId: string): Promise<{
     key: string // Immutable connection generation, changed when the remote account changes.
+    syncStartAt?: Date
+    reviewBefore?: Date | null
+    isCurrent?(): Promise<boolean>
     mappingRevision: string
     provider: AccountingProvider<S, P>
     settings(event: AccountingEvent & { id: string }): Promise<S> // Frozen, event-specific evidence.
@@ -70,7 +74,8 @@ export async function deliverAccounting<S, P>(input: {
     organizationId: input.organizationId,
     consumerKey: `accounting:${connection.provider.id}:${connection.key}`,
   }
-  await scan({ ...scope, interestedTypes: ["invoice.issued", "credit_note.issued", "payment.recorded"], limit: 100 }, db)
+  await scan({ ...scope, interestedTypes: ["invoice.issued", "credit_note.issued", "payment.recorded"], limit: 100,
+    dispositions: (events, tx) => accountingDispositions(scope, connection, events, tx) }, db)
   await advance(scope, db)
   // Never pass an earlier failed, leased or delayed request. Sequence alone cannot ensure dependencies.
   const first = await db.eventConsumerDelivery.findFirst({
@@ -152,6 +157,7 @@ export async function deliverAccounting<S, P>(input: {
     return failure("preparation_failed")
   }
   try {
+    if (connection.isCurrent && !await connection.isCurrent()) return failure("reconnect_review_required")
     // Manual retry resets the send budget, but a pinned request still needs reconciliation.
     if (row.attempts > 1 || row.prepared) {
       const previous = await bounded(signal => input.transport.reconcile(request, signal))
@@ -160,6 +166,7 @@ export async function deliverAccounting<S, P>(input: {
       if (row.externalRef) return failure("reconciliation_required")
     }
     if (row.attempts > 5) return failure("attempts_exhausted")
+    if (connection.isCurrent && !await connection.isCurrent()) return failure("reconnect_review_required")
     const response = await bounded(signal => input.transport.send(request, signal))
     if (response.status >= 200 && response.status < 300 && response.externalRef) return delivered(response.externalRef, response.totals)
     const transient = response.status === 408 || response.status === 429 || response.status >= 500 || response.status < 300

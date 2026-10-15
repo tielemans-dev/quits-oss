@@ -38,6 +38,20 @@ afterEach(() => {
 
 describe("AccountingIntegrationsCard", () => {
   const failed = { ...clean, failedCount: 1, failedDeliveryId: "delivery-1", lastErrorCode: "http_400" }
+  it("shows the saved start and an explicit reconnect decision", async () => {
+    const providers = dinero({ ...failed, lastErrorCode: "reconnect_review_required" }, "error")
+    Object.assign(providers[1]!, { syncStartAt: new Date("2026-10-01T00:00:00Z") })
+    load(providers)
+    render(<AccountingIntegrationsCard />)
+    expect(await screen.findByText(/Syncing from/)).toBeTruthy()
+    expect(screen.getByText(/Check the previous account before choosing Retry delivery/)).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Retry delivery" })).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Skip delivery" })).toBeTruthy()
+    expect(api.retry).not.toHaveBeenCalled()
+    api.retry.mockResolvedValue({ providers: dinero(clean), canDisconnect: true })
+    fireEvent.click(screen.getByRole("button", { name: "Retry delivery" }))
+    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1", confirmReconnect: true }))
+  })
   it("retries the earliest failure and refreshes the card", async () => {
     load(dinero(failed, "error"))
     api.retry.mockResolvedValue({ providers: dinero(clean), canDisconnect: true })
