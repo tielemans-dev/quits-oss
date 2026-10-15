@@ -27,6 +27,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
+import { translateCvrError } from '../../lib/i18n/cvr-error'
 import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
@@ -633,7 +634,7 @@ function OnboardingPageContent() {
       if (target || search.lang) loadPage(returnDestination)
       else navigate({ to: '/' })
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t('auth.onboarding.finish.error')
+      const message = cause instanceof Error ? translateCvrError(cause.message, t) : t('auth.onboarding.finish.error')
       setError(message)
       setSubmitting(false)
     }
