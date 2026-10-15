@@ -8,6 +8,7 @@ import { getInstallationStatus, normalizeInstallationStatus } from '../lib/insta
 import type { InstallationStatus } from '../lib/installation-state'
 import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
 import { SETUP_DEFAULT_LOCALE } from '../lib/setup-locale'
+import { onboardingShellLanguage } from '../lib/login-return'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
@@ -95,7 +96,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       // First-run setup has no organization yet; its page speaks the setup default.
       state.matches.some((match) => match.routeId === '/setup')
         ? SETUP_DEFAULT_LOCALE
-        : (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
+        // Onboarding opened with `lang` renders in it (shell included), so the document must say so.
+        : onboardingShellLanguage(state.location.pathname, state.location.search) ??
+          (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
   })
   useEffect(() => {
     rememberInstallationStatus(installation)

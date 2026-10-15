@@ -1,3 +1,4 @@
+import type { StripeAccountStatus } from "@quits/contracts/payments"
 import Stripe from "stripe"
 import { prisma } from "../db"
 import { getRuntimeExtensions } from "../runtime/extensions"
@@ -15,24 +16,31 @@ export type StripePaymentConfigurationSnapshot = {
   stripePublishableKey: string | null
   stripeSecretKeyEnc: string | null
   stripeWebhookSecretEnc: string | null
+  /** Cached Connect readiness. Only `active` counts as card payments being configured. */
+  stripeAccountStatus?: StripeAccountStatus | null
 }
 
+function stripeByokConfigured(snapshot: StripePaymentConfigurationSnapshot) {
+  return Boolean(
+    snapshot.stripePublishableKey &&
+      snapshot.stripeSecretKeyEnc &&
+      snapshot.stripeWebhookSecretEnc
+  )
+}
+
+/** Card payments are configured when BYOK keys are complete or the Connect account is active. */
 export function getStripePaymentConfigurationState(
   snapshot: StripePaymentConfigurationSnapshot
 ) {
   return {
-    configured: Boolean(
-      snapshot.stripePublishableKey &&
-        snapshot.stripeSecretKeyEnc &&
-        snapshot.stripeWebhookSecretEnc
-    ),
+    configured: stripeByokConfigured(snapshot) || snapshot.stripeAccountStatus === "active",
   }
 }
 
 export function getStripePaymentCredentials(
   snapshot: StripePaymentConfigurationSnapshot
 ) {
-  if (!getStripePaymentConfigurationState(snapshot).configured) {
+  if (!stripeByokConfigured(snapshot)) {
     return null
   }
 

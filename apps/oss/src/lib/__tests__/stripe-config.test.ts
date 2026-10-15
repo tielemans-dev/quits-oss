@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto"
 import { afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../db"
 import { decryptSecret } from "../secrets"
-import { getStripePaymentConfigurationState } from "../payments/stripe"
+import { resolveInvoiceEmailContext } from "../../domain/documents/invoice-email"
+import {
+  getStripePaymentConfigurationState,
+  getStripePaymentCredentials,
+} from "../payments/stripe"
 import { appRouter } from "../../trpc/router"
 import { ensureTestMembership } from "../../test-utils/membership"
 
@@ -36,6 +40,61 @@ describe("stripe payment configuration state", () => {
         stripeWebhookSecretEnc: "encrypted-webhook",
       }).configured
     ).toBe(true)
+  })
+
+  it("treats an active Connect account as configured without decrypting missing BYOK keys", () => {
+    const snapshot = {
+      stripePublishableKey: null,
+      stripeSecretKeyEnc: null,
+      stripeWebhookSecretEnc: null,
+      stripeAccountStatus: "active" as const,
+    }
+
+    expect(getStripePaymentConfigurationState(snapshot).configured).toBe(true)
+    expect(getStripePaymentCredentials(snapshot)).toBeNull()
+  })
+
+  it("keeps a non-active Connect account unconfigured when BYOK keys are missing", () => {
+    for (const stripeAccountStatus of ["none", "pending", "restricted", null, undefined] as const) {
+      expect(
+        getStripePaymentConfigurationState({
+          stripePublishableKey: null,
+          stripeSecretKeyEnc: null,
+          stripeWebhookSecretEnc: null,
+          stripeAccountStatus,
+        }).configured
+      ).toBe(false)
+    }
+  })
+
+  it("keeps complete BYOK configured when the Connect account is not active", () => {
+    expect(
+      getStripePaymentConfigurationState({
+        stripePublishableKey: "pk_test_123",
+        stripeSecretKeyEnc: "encrypted-secret",
+        stripeWebhookSecretEnc: "encrypted-webhook",
+        stripeAccountStatus: "pending",
+      }).configured
+    ).toBe(true)
+  })
+
+  it("marks invoice emails as payment-configured for an active Connect account without BYOK keys", () => {
+    const settings = {
+      companyName: "Acme",
+      companyEmail: "billing@acme.test",
+      locale: "en-US",
+      timezone: "Europe/Copenhagen",
+      stripePublishableKey: null,
+      stripeSecretKeyEnc: null,
+      stripeWebhookSecretEnc: null,
+    }
+
+    expect(
+      resolveInvoiceEmailContext({ ...settings, stripeAccountStatus: "active" }).stripeConfigured
+    ).toBe(true)
+    expect(
+      resolveInvoiceEmailContext({ ...settings, stripeAccountStatus: "pending" }).stripeConfigured
+    ).toBe(false)
   })
 })
 
