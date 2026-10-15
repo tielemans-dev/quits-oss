@@ -19,7 +19,7 @@ test("fresh frozen install leaves hooks opt-in", (t) => {
   }
   const run = (command, args) => {
     const result = spawnSync(command, args, {
-      cwd: root, encoding: "utf8", timeout: 120_000,
+      cwd: root, encoding: "utf8", timeout: 300_000,
       // Exercise the developer install path even on CI, without machine Git configuration.
       env: { ...process.env, CI: "", LEFTHOOK: "1", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" },
     })

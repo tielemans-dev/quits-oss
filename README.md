@@ -206,7 +206,10 @@ invoices.
 
 `bun install` leaves Git hooks untouched. The root `trustedDependencies` allowlist
 permits Prisma's runtime checks and engine download and esbuild's binary setup;
-it excludes Lefthook's automatic hook installation.
+it excludes Lefthook's automatic hook installation. This explicit list replaces
+Bun's default trust list. When adding a dependency that needs an install script,
+review its script and add the package to `trustedDependencies` if required.
+Transitive native dependencies need the same review.
 
 To opt in after installing dependencies, first check for an existing hook manager
 or custom `core.hooksPath`. Use one hook manager. Then run `bun run hooks:install`
@@ -244,7 +247,9 @@ Build, test, integration-test and typecheck commands generate the Prisma client
 first, including on a fresh checkout or a root Turbo cache hit. Before running
 Vitest, TypeScript or `knip:report` directly in a fresh checkout, run
 `bun run prisma:generate` from the repository root once; direct tools bypass the
-package-script preparation hooks.
+package-script preparation hooks. Root commands that already generated the client
+pass `QUITS_PRISMA_PREGENERATED=1` so the app hook skips duplicate work. Direct app
+commands still generate; leave this internal flag unset when invoking them.
 
 Run the repo quality gates:
 
@@ -276,7 +281,10 @@ or delete code.
 `knip.json` covers the app, contracts, shared helpers, and repository scripts.
 Package manifest exports remain public entrypoints. App routes, tests, config
 files, and standalone automation scripts are additional entrypoints. Generated
-Prisma code and the generated route tree are excluded from findings.
+Prisma code is outside the project globs. Vendored UI component exports and types
+are omitted from unused-member findings; their dependency imports are still checked.
+The two `qui56-baseline-*` capture imports are local Vite aliases and are excluded
+from dependency findings.
 
 The app's Vite, Prisma, Playwright, and Vitest plugins are disabled because loading
 their executable configs can load environment files or initialize development
