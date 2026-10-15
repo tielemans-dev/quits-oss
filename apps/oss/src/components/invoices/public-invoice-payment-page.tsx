@@ -276,7 +276,7 @@ function PublicInvoiceDocument({
               </section>
             ) : null}
 
-            {paymentState === "unpaid" ? (
+            {paymentState === "unpaid" && balanceDue > 0 ? (
               state.stripeEnabled ? (
                 <Button type="button" disabled={submitting} onClick={onPay}>
                   {t("public.invoice.pay.action")}
