@@ -1,5 +1,7 @@
 import { actorCan } from "../../domain/actor"
-import { disconnectAccounting } from "../../domain/accounting/connections"
+import { disconnectAccountingCommand, retryAccountingDelivery, skipAccountingDelivery, retryAccountingInput, skipAccountingInput } from "../../domain/commands/accounting"
+import { executeCommand } from "../../domain/execute"
+import { unwrapOutcome } from "../outcome"
 import { readAccountingStatus } from "../../domain/accounting/status"
 import { authorizedProcedure, router } from "../init"
 
@@ -12,7 +14,15 @@ export const accountingRouter = router({
 
   /** Idempotent. Pauses delivery and clears the local credential; remote revocation arrives with OAuth. */
   disconnect: authorizedProcedure("settings:update").mutation(async ({ ctx }) => {
-    await disconnectAccounting(ctx.organizationId)
+    unwrapOutcome(await executeCommand(disconnectAccountingCommand, {}, { actor: ctx.actor }))
+    return { providers: await readAccountingStatus(ctx.organizationId), canDisconnect: true }
+  }),
+  retry: authorizedProcedure("settings:update").input(retryAccountingInput).mutation(async ({ ctx, input }) => {
+    unwrapOutcome(await executeCommand(retryAccountingDelivery, input, { actor: ctx.actor }))
+    return { providers: await readAccountingStatus(ctx.organizationId), canDisconnect: true }
+  }),
+  skip: authorizedProcedure("settings:update").input(skipAccountingInput).mutation(async ({ ctx, input }) => {
+    unwrapOutcome(await executeCommand(skipAccountingDelivery, input, { actor: ctx.actor }))
     return { providers: await readAccountingStatus(ctx.organizationId), canDisconnect: true }
   }),
 })

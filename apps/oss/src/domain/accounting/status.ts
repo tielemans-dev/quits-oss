@@ -8,7 +8,7 @@ export type AccountingProviderStatus = {
   provider: AccountingProviderId
   status: "not_connected" | "connected" | "error"
   remoteAccountId: string | null
-  delivery: { lastDeliveredAt: Date | null; failedCount: number; lastErrorCode: string | null } | null
+  delivery: { lastDeliveredAt: Date | null; failedCount: number; lastErrorCode: string | null; failedDeliveryId: string | null } | null
 }
 
 /**
@@ -32,8 +32,8 @@ async function readDelivery(organizationId: string, consumerKey: string, db: Pri
   const [delivered, failedCount, failed] = await Promise.all([
     db.eventConsumerDelivery.findFirst({ where: { ...scope, status: "done" }, ...newest }),
     db.eventConsumerDelivery.count({ where: { ...scope, status: "failed" } }),
-    db.eventConsumerDelivery.findFirst({ where: { ...scope, status: "failed" }, ...newest }),
+    db.eventConsumerDelivery.findFirst({ where: { ...scope, status: "failed" }, orderBy: { sequence: "asc" }, select: { id: true, error: true } }),
   ])
   const code = (failed?.error as { code?: unknown } | null)?.code
-  return { lastDeliveredAt: delivered?.updatedAt ?? null, failedCount, lastErrorCode: typeof code === "string" ? code : null }
+  return { lastDeliveredAt: delivered?.updatedAt ?? null, failedCount, lastErrorCode: typeof code === "string" ? code : null, failedDeliveryId: failed?.id ?? null }
 }

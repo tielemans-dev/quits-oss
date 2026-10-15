@@ -1,5 +1,9 @@
 /** Owned by the accounting integrations settings. */
 export const enAccountingMessages = {
+  "activity.event.accounting.action_recorded": "Accounting action recorded",
+  "activity.event.accounting.action_recorded.disconnect": "Disconnected accounting ({provider})",
+  "activity.event.accounting.action_recorded.retry": "Retried accounting delivery {deliveryId} ({provider})",
+  "activity.event.accounting.action_recorded.skip": "Skipped accounting delivery {deliveryId} ({provider}): {reason}",
   "accounting.title": "Accounting integrations",
   "accounting.description": "Send issued invoices, credit notes and payments to your accounting system.",
   "accounting.loading": "Loading accounting integrations…",
@@ -23,6 +27,12 @@ export const enAccountingMessages = {
   "accounting.disconnect.cancel": "Cancel",
   "accounting.disconnect.confirm": "Disconnect",
   "accounting.disconnect.error": "Could not disconnect. Try again.",
+  "accounting.retry": "Retry delivery",
+  "accounting.skip": "Skip delivery",
+  "accounting.skip.title": "Skip the earliest failed delivery?",
+  "accounting.skip.description": "This document will not be sent again. Later documents can continue. Check your accounting system first and record why you are skipping it.",
+  "accounting.skip.reason": "Reason for skipping",
+  "accounting.action.error": "Could not update the delivery. Try again.",
   "accounting.deliveryError.missing_mapping": "An account or VAT code is not mapped for this document.",
   "accounting.deliveryError.unsupported": "This document can't be sent to accounting yet.",
   "accounting.deliveryError.transport_error": "Quits could not reach {provider}.",

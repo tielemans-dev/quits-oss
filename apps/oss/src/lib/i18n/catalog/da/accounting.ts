@@ -1,5 +1,9 @@
 /** Owned by the accounting integrations settings. */
 export const daAccountingMessages = {
+  "activity.event.accounting.action_recorded": "Regnskabshandling registreret",
+  "activity.event.accounting.action_recorded.disconnect": "Afbrød regnskabsforbindelsen ({provider})",
+  "activity.event.accounting.action_recorded.retry": "Prøvede regnskabslevering {deliveryId} igen ({provider})",
+  "activity.event.accounting.action_recorded.skip": "Sprang regnskabslevering {deliveryId} over ({provider}): {reason}",
   "accounting.title": "Regnskabsintegrationer",
   "accounting.description": "Send udstedte fakturaer, kreditnotaer og betalinger til dit regnskabsprogram.",
   "accounting.loading": "Indlæser regnskabsintegrationer …",
@@ -23,6 +27,12 @@ export const daAccountingMessages = {
   "accounting.disconnect.cancel": "Annuller",
   "accounting.disconnect.confirm": "Afbryd forbindelsen",
   "accounting.disconnect.error": "Kunne ikke afbryde forbindelsen. Prøv igen.",
+  "accounting.retry": "Prøv leveringen igen",
+  "accounting.skip": "Spring leveringen over",
+  "accounting.skip.title": "Spring den første mislykkede levering over?",
+  "accounting.skip.description": "Dette dokument bliver ikke sendt igen. Senere dokumenter kan fortsætte. Tjek dit regnskabsprogram først, og angiv, hvorfor du springer leveringen over.",
+  "accounting.skip.reason": "Årsag til at springe over",
+  "accounting.action.error": "Kunne ikke opdatere leveringen. Prøv igen.",
   "accounting.deliveryError.missing_mapping": "En konto eller momskode er ikke tilknyttet dette dokument.",
   "accounting.deliveryError.unsupported": "Dette dokument kan endnu ikke sendes til regnskabet.",
   "accounting.deliveryError.transport_error": "Quits kunne ikke få forbindelse til {provider}.",

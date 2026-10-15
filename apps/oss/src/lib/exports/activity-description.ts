@@ -51,6 +51,7 @@ function changedByText(payload: Record<string, unknown>): string | null {
 /** The catalog key for an event, choosing a variant from its payload where one exists. */
 export function activityMessageKey(event: DescribableEvent): TranslationKey | null {
   let key = `activity.event.${event.type}`
+  if (event.type === "accounting.action_recorded" && typeof event.payload.action === "string") key = `${key}.${event.payload.action}`
   if (event.type === "settlement.changed" && typeof event.payload.action === "string") key = `${key}.${event.payload.action}`
   if (event.type === "quote.converted" && !event.payload.invoiceNumber) key = `${key}.draft`
   if (event.type === "invoice.sent") {
