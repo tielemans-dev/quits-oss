@@ -17,7 +17,7 @@ import { SidebarProvider } from '../components/ui/sidebar'
 import { AppSidebar } from '../components/app-sidebar'
 import { AppMain } from '../components/shell/app-main'
 import { I18nProvider } from '../lib/i18n/react'
-import { loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination } from '../lib/login-return'
+import { loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, onboardingShellLanguage } from '../lib/login-return'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
@@ -68,7 +68,8 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   const { locale } = Route.useRouteContext()
-  return <I18nProvider initialLocale={locale}><AppLayoutContent /></I18nProvider>
+  const onboardingLanguage = useLocation({ select: location => onboardingShellLanguage(location.pathname, location.search) })
+  return <I18nProvider initialLocale={onboardingLanguage ?? locale}><AppLayoutContent /></I18nProvider>
 }
 
 function AppLayoutContent() {
