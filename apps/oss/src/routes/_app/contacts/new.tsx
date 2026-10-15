@@ -21,6 +21,9 @@ export const Route = createFileRoute("/_app/contacts/new")({
   component: NewContactPage,
 })
 
+/** How long the form waits for the organization's default country before it opens without one. */
+const COUNTRY_LOOKUP_TIMEOUT_MS = 3000
+
 function NewContactPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -28,15 +31,18 @@ function NewContactPage() {
   const [error, setError] = useState<string | null>(null)
   const [organizationCountry, setOrganizationCountry] = useState<string | null>(null)
   // The form stays closed to submission until the default country answered, so a quick submit cannot drop it.
-  // A failed lookup opens it with the country left to the person.
+  // A failed or stalled lookup opens it with the country left to the person; an answer that arrives later still fills
+  // the select until they choose one.
   const [countrySettled, setCountrySettled] = useState(false)
   useEffect(() => {
     let cancelled = false
+    const settle = () => { if (!cancelled) setCountrySettled(true) }
+    const timeout = setTimeout(settle, COUNTRY_LOOKUP_TIMEOUT_MS)
     trpc.settings.get.query()
       .then(settings => { if (!cancelled) setOrganizationCountry(settings.countryCode) })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setCountrySettled(true) })
-    return () => { cancelled = true }
+      .finally(settle)
+    return () => { cancelled = true; clearTimeout(timeout) }
   }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
