@@ -3,12 +3,24 @@ import { formatIsoDate } from "../exports/format"
 /**
  * The status badge an invoice shows. Partial payment is tracked in `paymentStatus`, not the
  * lifecycle status, so a sent invoice with some money received reads as "partially paid".
- * Overdue stays overdue: that is the more urgent fact.
+ * Overdue stays overdue: that is the more urgent fact, until a reminder for it has been sent
+ * (`reminderSent`, from a reminder job step that succeeded): then it reads "reminder sent".
  */
 export function invoiceDisplayStatus(
   invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
   timezone?: string | null,
-  now: Date = new Date()
+  now: Date = new Date(),
+  reminderSent = false
+) {
+  const status = lifecycleDisplayStatus(invoice, timezone, now)
+  // Only an overdue invoice has a reminder to show; once it is paid or credited, that is the news.
+  return reminderSent && status === "overdue" ? "reminder_sent" : status
+}
+
+function lifecycleDisplayStatus(
+  invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
+  timezone: string | null | undefined,
+  now: Date
 ) {
   const collectible = ["sent", "viewed", "overdue"].includes(invoice.status)
   if (collectible && invoice.paymentStatus === "paid") return "paid"
