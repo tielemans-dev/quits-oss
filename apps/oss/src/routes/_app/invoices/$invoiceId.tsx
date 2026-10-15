@@ -585,6 +585,17 @@ function InvoiceDetailPage() {
       return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
     }
     const a11y = (id: string, invalid: boolean) => ({ "aria-invalid": invalid || undefined, "aria-describedby": invalid ? id : undefined })
+    // Each line column has its own message element; a control is described only by its column's message and any whole-line message.
+    const lineColumns = ["line", "description", "quantity", "unitPrice", "vat"] as const
+    const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
+    const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
+      const ids = [
+        ...(editIssues.some((issue) => issue.field === "items" && issue.line === index && issue.column === column) ? [lineIssueId(index, column)] : []),
+        ...(column !== "vat" && editIssues.some((issue) => issue.field === "items" && issue.line === index && !issue.column) ? [lineIssueId(index, "line")] : []),
+      ]
+      return ids.length ? ids.join(" ") : undefined
+    }
+    const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
@@ -685,7 +696,7 @@ function InvoiceDetailPage() {
                       placeholder={t("docForm.column.description")}
                       disabled={!!item.deliverableId}
                       value={item.description}
-                      {...a11y(`edit-line-${index}-error`, hasIssue("items", index, "description"))}
+                      {...lineA11y(index, "description")}
                       onChange={(e) => updateEditItem(index, "description", e.target.value)}
                     />
                     <div className="grid min-w-0 gap-1">
@@ -695,7 +706,7 @@ function InvoiceDetailPage() {
                         type="text"
                         inputMode="decimal"
                         aria-label={t("docForm.column.qty")}
-                        {...a11y(`edit-line-${index}-error`, hasIssue("items", index, "quantity"))}
+                        {...lineA11y(index, "quantity")}
                         aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success || hasIssue("items", index, "quantity") || undefined}
                         disabled={!!item.deliverableId}
                         value={item.quantity || ""}
@@ -713,7 +724,7 @@ function InvoiceDetailPage() {
                         step="0.0001"
                         disabled={!!item.deliverableId}
                         value={item.unitPrice || ""}
-                        {...a11y(`edit-line-${index}-error`, hasIssue("items", index, "unitPrice"))}
+                        {...lineA11y(index, "unitPrice")}
                         onChange={(e) =>
                           updateEditItem(index, "unitPrice", e.target.value)
                         }
@@ -736,7 +747,7 @@ function InvoiceDetailPage() {
                     </Button>
                     {editIssues.some((issue) => issue.field === "items" && issue.line === index) && (
                       <div className="col-span-full">
-                        {fieldMessage(`edit-line-${index}-error`, (issue) => issue.field === "items" && issue.line === index)}
+                        {lineColumns.map((column) => <div key={column}>{fieldMessage(lineIssueId(index, column), (issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === column)}</div>)}
                       </div>
                     )}
                   </div>
@@ -755,7 +766,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => hasIssue("items", index, "vat") ? `edit-line-${index}-error` : undefined} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence"); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={hasIssue("vatEvidence") ? "edit-vatEvidence-error" : undefined} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence"); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} />
             {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence")}
             {!invoice.agreementId && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
@@ -775,7 +786,7 @@ function InvoiceDetailPage() {
                       step="0.01"
                       value={editTaxRate || ""}
                       {...a11y("edit-taxRate-error", hasIssue("taxRate"))}
-                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate"); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate" || (issue.field === "items" && issue.column === "vat")); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
                       className="w-16 h-7 text-xs"
                     />
                     <span className="text-muted-foreground text-xs">%</span>

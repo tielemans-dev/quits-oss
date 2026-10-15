@@ -38,8 +38,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe.each([
-  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
-  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
+  ["da-DK", { vatTreatment: "Momsbehandling for linje 1", edit: "Rediger", notes5000: "Højst 5000 tegn", cancel: "Annuller", save: "Gem ændringer", description: "Beskriv, hvad du fakturerer for", qty: "Indtast et antal, fx 1 eller 2,5", price: "Indtast en pris, fx 1250,00", unknown: "Tjek feltet og prøv igen", failed: "Vi kunne ikke gemme lige nu. Prøv igen om et øjeblik." }],
+  ["en-GB", { vatTreatment: "VAT treatment for line 1", edit: "Edit", notes5000: "5000 characters max", cancel: "Cancel", save: "Save Changes", description: "Describe what you're invoicing for", qty: "Enter a quantity, like 1 or 2.5", price: "Enter a price, like 1250.00", unknown: "Check this field and try again", failed: "We couldn't save right now. Try again in a moment." }],
 ])("invoice edit validation messages in %s", (locale, copy) => {
   async function openEditor() {
     render(<I18nProvider locale={locale}><Detail /></I18nProvider>)
@@ -116,15 +116,32 @@ describe.each([
     api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "custom", path: ["items", 0, "vat", "country"], message: "bad country" }])))
     fireEvent.click(await openEditor())
     const message = await screen.findByText(copy.unknown)
-    expect(message.closest("#edit-line-0-error")).not.toBeNull()
+    expect(message.closest("#edit-line-0-vat-error")).not.toBeNull()
     for (const value of ["Work", "100"]) expect(screen.getByDisplayValue(value).getAttribute("aria-invalid")).toBeNull()
     const treatment = screen.getByRole("combobox", { name: copy.vatTreatment })
     expect(treatment.getAttribute("aria-invalid")).toBe("true")
-    expect(treatment.getAttribute("aria-describedby")).toBe("edit-line-0-error")
+    expect(treatment.getAttribute("aria-describedby")).toBe("edit-line-0-vat-error")
     const country = treatment.closest("div")!.querySelectorAll("input")
     fireEvent.change(country[country.length - 1], { target: { value: "SE" } })
     expect(screen.queryByText(copy.unknown)).toBeNull()
     expect(treatment.getAttribute("aria-invalid")).toBeNull()
+  })
+
+  it("describes each line control only by its own column's message", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "too_small", path: ["items", 0, "description"] }, { code: "invalid_type", path: ["items", 0, "unitPrice"] }])))
+    fireEvent.click(await openEditor())
+    await screen.findByText(copy.description)
+    const describedText = (element: HTMLElement) => element.getAttribute("aria-describedby")!.split(" ").map((id) => document.getElementById(id)?.textContent).join(" | ")
+    expect(describedText(screen.getByDisplayValue("Work"))).toBe(copy.description)
+    expect(describedText(screen.getByDisplayValue("100"))).toBe(copy.price)
+  })
+
+  it("clears line VAT errors when the document tax rate resets line classifications", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ code: "custom", path: ["items", 0, "vat", "rate"] }])))
+    fireEvent.click(await openEditor())
+    await screen.findByText(copy.unknown)
+    fireEvent.change(document.querySelector<HTMLInputElement>("input[max='100']")!, { target: { value: "25" } })
+    expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
   it("shows one message when a value fails several checks", async () => {
