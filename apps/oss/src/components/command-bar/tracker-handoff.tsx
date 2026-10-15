@@ -2,16 +2,16 @@ import { Loader2, X } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 
+import { DURATION, EASE_ENTER } from "../../lib/motion"
 import { cn } from "../../lib/utils"
 import { holdTracker } from "../jobs/tracker-hold"
 import { Button } from "../ui/button"
-import { MORPH_EASING } from "./use-morph"
 
 /** The square the tracker toast grows out of, in the corner (see `tracker-morph` in styles.css). */
 const SQUARE = 176
 const MARGIN = 16
-const SHRINK_MS = 200
-const FLY_MS = 260
+const SHRINK_MS = DURATION.squareShrink
+const FLY_MS = DURATION.squareFly
 /** Once the job is queued, the square waits this long for the toast before it lets go anyway. */
 const SETTLE_MS = 1500
 const TOAST = '[data-slot="reminder-tracker"]'
@@ -23,12 +23,12 @@ const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce
 function fly(el: HTMLElement, from: DOMRect, done: () => void) {
   const corner = { left: window.innerWidth - MARGIN - SQUARE, top: window.innerHeight - MARGIN - SQUARE }
   const box = (left: number, top: number, size: { width: number; height: number }, radius: number) =>
-    ({ left: `${left}px`, top: `${top}px`, width: `${size.width}px`, height: `${size.height}px`, borderRadius: `${radius}px`, easing: MORPH_EASING })
+    ({ left: `${left}px`, top: `${top}px`, width: `${size.width}px`, height: `${size.height}px`, borderRadius: `${radius}px`, easing: EASE_ENTER })
   const square = { width: SQUARE, height: SQUARE }
   if (typeof el.animate !== "function") return done()
   // Reduced motion: no travel, the square only fades in where it ends.
   const animation = reducedMotion()
-    ? el.animate({ opacity: [0, 1] }, { duration: 150 })
+    ? el.animate({ opacity: [0, 1] }, { duration: DURATION.fade })
     : el.animate(
         [
           box(from.left, from.top, from, 18),
