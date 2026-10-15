@@ -12,6 +12,10 @@ import { getCurrencyExponent } from "@quits/shared/currency"
 import { Prisma, type SettlementReceipt } from "../../../generated/prisma/client"
 import { actorKey } from "../actor"
 import { defineCommand } from "../command"
+import {
+  queuePaymentReceivedEmails,
+  withdrawPaymentNotifications,
+} from "../documents/payment-notifications"
 import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
@@ -357,6 +361,8 @@ export const allocateReceipt = defineCommand({
               currency: allocation.currency,
             },
           })
+          // Allocations are made by a person, so only the seller is told.
+          yield* queuePaymentReceivedEmails({ invoice: refreshed.invoice, payment })
         }
       }
       return { ...plan, paymentIds }
@@ -543,7 +549,14 @@ export const changeReceipt = defineCommand({
             data: { voidedAt: command.now, voidReason: input.reason },
           }),
         )
-        yield* refreshInvoiceSettlement(payment.invoiceId)
+        const refreshed = yield* refreshInvoiceSettlement(payment.invoiceId)
+        yield* Effect.promise(() =>
+          withdrawPaymentNotifications(db, {
+            paymentId: payment.id,
+            invoiceId: payment.invoiceId,
+            stillPaidInFull: refreshed.settlement.paymentStatus === "paid",
+          }),
+        )
       } else if (input.action === "reverse_refund" && refund) {
         if (refund.reversedAt)
           return yield* new InvalidState({

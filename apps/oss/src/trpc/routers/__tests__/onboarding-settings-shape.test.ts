@@ -13,7 +13,7 @@ import { onboardingAiRouter } from "../onboarding-ai"
 import { confirmOnboardingV2 } from "../../../lib/onboarding/confirm-v2"
 import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
 
-const mocks = vi.hoisted(() => ({ nonVatAllowed: true, taxIds: [] as Array<{ id: string; scheme: string; value: string; countryCode: string | null; isPrimary: boolean }>, settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown>, barrier: null as null | { arrivals: number; ready: Promise<void>; release: () => void }, databaseError: null as Error | null }))
+const mocks = vi.hoisted(() => ({ cloud: true, cvrGet: vi.fn(async (cvr: string) => ({ cvr, status: "active", statusClass: "active" })), nonVatAllowed: true, taxIds: [] as Array<{ id: string; scheme: string; value: string; countryCode: string | null; isPrimary: boolean }>, settings: null as Record<string, unknown> | null, creates: [] as Array<Record<string, unknown>>, baseCurrency: "DKK", v2: false, suggestedValues: {} as Record<string, unknown>, barrier: null as null | { arrivals: number; ready: Promise<void>; release: () => void }, databaseError: null as Error | null }))
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")
   const t = initTRPC.context<Context>().create()
@@ -25,9 +25,9 @@ vi.mock("../../init", async () => {
   } }))
   return { router: t.router, authorizedProcedure: () => procedure, protectedProcedure: procedure }
 })
-vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
-vi.mock("../../../lib/runtime/extensions", () => ({ isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
-vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => undefined, getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
+vi.mock("../../../lib/distribution", () => ({ get isCloudDistribution() { return mocks.cloud } }))
+vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeExtensions: () => [], isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
+vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => ({ get: mocks.cvrGet }), getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
 vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false }))
 vi.mock("../../../lib/db", () => {
@@ -114,7 +114,7 @@ function overlapInitializations() {
   mocks.barrier = { arrivals: 0, ready, release }
 }
 
-beforeEach(() => { mocks.barrier = null; mocks.databaseError = null; mocks.nonVatAllowed = true })
+beforeEach(() => { mocks.cloud = true; mocks.cvrGet.mockReset().mockImplementation(async (cvr: string) => ({ cvr, status: "active", statusClass: "active" })); mocks.taxIds = []; mocks.barrier = null; mocks.databaseError = null; mocks.nonVatAllowed = true })
 
 describe("concurrent onboarding settings initialization", () => {
   beforeEach(() => { mocks.settings = null; mocks.creates = []; mocks.v2 = false; mocks.barrier = null; mocks.databaseError = null })
@@ -156,8 +156,8 @@ describe("onboarding Prisma create payloads", () => {
     mocks.baseCurrency = "EUR"
     await caller().saveDraft({ countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", pricesIncludeTax: true, primaryTaxId: undefined })
     expect(mocks.creates).toHaveLength(3)
-    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
-    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
+    expect(mocks.creates[1]).toMatchObject({ ...defaults, taxRate: null, countryCode: "DE", locale: "en-US", currency: "EUR", defaultCurrency: "EUR", baseCurrency: "EUR", pricesIncludeTax: true })
+    expect(mocks.settings).toMatchObject({ countryCode: "DE", baseCurrency: "EUR", currency: "EUR", defaultCurrency: "EUR", pricesIncludeTax: true, taxRate: null })
   })
   it("validates profile completion creates even with an existing row", async () => {
     await caller().getStatus()
@@ -250,7 +250,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
     await settingsCaller().update({ momsRegistered: false, taxRate: 0 })
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true })
-    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR: 24256790"])
+    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR-nr. 24256790"])
     expect(mocks.taxIds[1]).toMatchObject({ scheme: "vat", value: "DE123456789", countryCode: "DE" })
   })
   it("leaves an explicitly foreign primary ID unchanged", async () => {
@@ -288,7 +288,8 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(mocks.taxIds.find(id => id.id === "old-dk")).toBeUndefined()
     expect(mocks.taxIds.filter(id => id.countryCode === "DK").map(id => id.value)).toEqual(["24256790", "DK24256790"])
   })
-  it("updates a replaced primary identity's country when moving the organization", async () => {
+  it("updates a replaced primary identity's country when moving a self-hosted organization", async () => {
+    mocks.cloud = false
     mocks.settings = null
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
     await settingsCaller().update({ countryCode: "DE", primaryTaxIdScheme: "vat", primaryTaxId: "123456789" })
@@ -297,6 +298,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(buildSellerParty({ snapshot: seller, settings: null, taxIds: [], documentCountryCode: "DE" }).vatId).toBe("DE123456789")
   })
   it.each(["cvr", "DK_CVR", "vat", "DK_VAT"])("updates the paired Danish VAT after registered confirmation and %s edit, preserving other IDs and frozen history", async scheme => {
+    mocks.cloud = false
     mocks.settings = null
     await confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")
     mocks.taxIds.push({ id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }, { id: "other", scheme: "other", value: "secondary", countryCode: "DK", isPrimary: false })
@@ -329,5 +331,52 @@ describe("atomic Settings Danish VAT repairs", () => {
     const nextSeller = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
     expect(buildSellerParty({ snapshot: nextSeller, settings: null, taxIds: [], documentCountryCode: "DK" }).vatId).toBe("DK12345678")
     expect(buildUblDocument(historicalDocument)).toBe(historicalUbl)
+  })
+})
+
+const updateTaxId = (route: string, patch: { primaryTaxId: string; primaryTaxIdScheme?: string }) =>
+  route === "draft" ? caller().saveDraft(patch) : route === "settings" ? settingsCaller().update(patch)
+    : aiCaller().applyOnboardingPatch({ patch, source: "manual" })
+
+describe("hosted CVR admission remains enforced", () => {
+  beforeEach(() => { mocks.settings = { ...defaults }; mocks.v2 = false; mocks.taxIds = [{ id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true }] })
+  it("preserves the admitted CVR when a draft omits the optional tax ID", async () => {
+    await caller().saveDraft({ primaryTaxId: undefined })
+    expect(mocks.taxIds[0]?.value).toBe("24256790")
+    expect(mocks.cvrGet).not.toHaveBeenCalled()
+  })
+  it.each(["outage", "ceased"])("saves unrelated Settings edits with an unchanged CVR during %s", async state => {
+    if (state === "outage") mocks.cvrGet.mockRejectedValue(new Error("synthetic outage"))
+    else mocks.cvrGet.mockResolvedValue({ cvr: "24256790", status: "ceased", statusClass: "blocked" })
+    await settingsCaller().update({ primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", companyLogo: "https://example.test/logo.png" })
+    expect(mocks.settings?.companyLogo).toBe("https://example.test/logo.png")
+    expect(mocks.cvrGet).not.toHaveBeenCalled()
+  })
+  it("revalidates an unchanged CVR submitted without its scheme", async () => {
+    mocks.cvrGet.mockRejectedValue(new Error("synthetic outage"))
+    await expect(settingsCaller().update({ primaryTaxId: "24256790" })).rejects.toMatchObject({ message: "cvr.unavailable" })
+    expect(mocks.cvrGet).toHaveBeenCalledOnce()
+    expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790" })
+  })
+  it.each(["draft", "settings", "ai"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
+    for (const patch of [{ primaryTaxId: "" }, { primaryTaxId: "12345678" }, { primaryTaxId: "24256790", primaryTaxIdScheme: "other" }]) {
+      await expect(updateTaxId(route, patch)).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      expect(mocks.taxIds[0]?.value).toBe("24256790")
+    }
+  })
+  it.each(["draft", "settings", "ai"])("refuses an inactive replacement and accepts a revalidated replacement in %s", async route => {
+    const patch = { primaryTaxId: "45676102", primaryTaxIdScheme: "cvr" }
+    mocks.cvrGet.mockResolvedValueOnce({ cvr: patch.primaryTaxId, status: "ceased", statusClass: "blocked" })
+    await expect(updateTaxId(route, patch)).rejects.toMatchObject({ message: "cvr.inactive" })
+    expect(mocks.taxIds[0]?.value).toBe("24256790")
+    await updateTaxId(route, patch)
+    expect(mocks.taxIds[0]?.value).toBe(patch.primaryTaxId)
+  })
+  it.each([true, false])("replays a completed confirmation during registry outage, same key: %s", async sameKey => {
+    const result = { status: "complete", version: 2, completedAt: "2026-10-15T10:00:00.000Z", bankMissing: true }
+    mocks.settings = { ...defaults, onboardingStatus: "complete", onboardingV2Key: sameKey ? confirmInput().idempotencyKey : "another-key", onboardingV2Result: result }
+    mocks.cvrGet.mockRejectedValue(new Error("synthetic outage"))
+    await expect(confirmOnboardingV2("org-121", confirmInput(), "signup@example.test")).resolves.toEqual(sameKey ? result : { status: "already_complete" })
+    expect(mocks.cvrGet).not.toHaveBeenCalled()
   })
 })

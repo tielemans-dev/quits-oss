@@ -121,6 +121,9 @@ Source-available invoicing for freelancers and small businesses.
 
 ### Isolated worktrees in T3 Code
 
+For 60fps route recordings and before/after motion comparisons, see
+[Record motion for design review](docs/recording-motion.md).
+
 Run `bun install --frozen-lockfile` in each new worktree before Setup Worktree.
 Install Bun and PostgreSQL `psql`, `createdb`, and `dropdb`. Supply
 `QUITS_WORKTREE_POSTGRES_URL` explicitly in the process environment: a loopback
@@ -237,6 +240,12 @@ Run the standard test suite:
 bun run test
 ```
 
+Build, test, integration-test and typecheck commands generate the Prisma client
+first, including on a fresh checkout or a root Turbo cache hit. Before running
+Vitest, TypeScript or `knip:report` directly in a fresh checkout, run
+`bun run prisma:generate` from the repository root once; direct tools bypass the
+package-script preparation hooks.
+
 Run the repo quality gates:
 
 ```bash
@@ -313,6 +322,7 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
 | `BETTER_AUTH_SECRET` | Secret for auth (min 32 chars) | Yes |
+| `QUITS_REMINDER_UNSUBSCRIBE_SECRET` | Optional stable signing key for reminder preference links, at least 32 characters. Falls back to `BETTER_AUTH_SECRET`. Rotating the signing key invalidates existing links; stored opt-outs remain unchanged. | No |
 | `BETTER_AUTH_URL` | App URL (e.g. `http://localhost:3000`) | Yes |
 | `BETTER_AUTH_GOOGLE_CLIENT_ID` | Google OAuth client ID (optional) | No |
 | `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) | No |

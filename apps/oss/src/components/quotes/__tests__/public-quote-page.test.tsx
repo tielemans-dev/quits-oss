@@ -91,7 +91,7 @@ describe("PublicQuotePage", () => {
       const html = page("da-DK", <PublicQuotePage token="test" state={{ kind: "ready", ...session }} />)
       const container = document.createElement("div")
       container.innerHTML = html
-      const lines = container.querySelector("h2")!.nextElementSibling!
+      const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", "da-DK"))!.nextElementSibling!
       for (const [index, row] of quote.items.entries()) {
         expect(lines.children[index]?.textContent).toContain(money(row.unitPriceNet))
         expect(lines.children[index]?.textContent).toContain(money(row.lineNet))
@@ -120,7 +120,7 @@ describe("PublicQuotePage", () => {
       const html = page(locale, <PublicQuotePage token="test" state={{ kind: "ready", decisionState, seller, quote }} />)
       const container = document.createElement("div")
       container.innerHTML = html
-      const lines = container.querySelector("h2")!.nextElementSibling!
+      const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", locale))!.nextElementSibling!
       expect(lines.textContent).toContain(money(18000))
       expect(lines.textContent).toContain(money(4500))
       expect(lines.textContent).not.toContain(money(22500))
@@ -132,12 +132,13 @@ describe("PublicQuotePage", () => {
   })
 
   it.each([
-    ["en-US", "Subtotal excl. tax", "Tax (25%)", "Total incl. tax"],
-    ["da-DK", "Subtotal ekskl. moms", "Moms (25 %)", "Total inkl. moms"],
+    ["en-US", "Subtotal excl. tax", "Tax 25%", "Total incl. tax"],
+    ["da-DK", "Subtotal ekskl. moms", "Moms 25 %", "Total inkl. moms"],
   ])("shows stored VAT totals in %s", (locale, subtotal, tax, total) => {
     const html = page(locale, <PublicQuotePage token="signed-token" state={{
       kind: "ready", decisionState: "pending", seller, quote: { ...baseQuote, currency: "DKK" },
     }} />)
+    expect(html).toContain("Main Street 1")
     expect(html).toContain(subtotal)
     expect(html).toContain(tax)
     expect(html).toContain(total)
@@ -166,7 +167,7 @@ describe("PublicQuotePage", () => {
         vatRows: [{ ratePercent: "0", net: "1000.00", tax: "0.00", gross: "1000.00" }] },
     }} />)
     expect(html).not.toContain("Moms (")
-    expect(html).toContain("Total inkl. moms")
+    expect(html).toContain("Total")
   })
 
   it("shows each stored VAT rate and rounding without deriving a rate from header totals", () => {
@@ -182,6 +183,30 @@ describe("PublicQuotePage", () => {
     const container = document.createElement("div")
     container.innerHTML = html
     expect(container.querySelectorAll('[data-slot="amount"]')[4]?.textContent).toBe("$1,200.01")
+  })
+  it("shows the frozen buyer identity with its tax IDs, not the edited contact", () => {
+    const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, contact: { name: "Renamed Contact", email: null, company: "Renamed Co" },
+        buyerSnapshot: { name: "Issued Buyer", company: "Issued Buyer ApS", country: "DK", taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
+    }} />)
+    expect(html).toContain("Issued Buyer ApS")
+    expect(html).toContain("87654321")
+    expect(html).not.toContain("Renamed")
+  })
+  it("keeps the seller's tax IDs out of the customer card", () => {
+    const html = page("en-US", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote,
+        sellerSnapshot: { ...baseQuote.sellerSnapshot, taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] },
+        buyerSnapshot: { ...baseQuote.buyerSnapshot, country: "DK", taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
+    }} />)
+    const container = document.createElement("div")
+    container.innerHTML = html
+    const customerCard = [...container.querySelectorAll("div.rounded-lg.border")].find(card => card.textContent?.includes("Buyer Name"))!
+    expect(customerCard.textContent).toContain("87654321")
+    expect(customerCard.textContent).not.toContain("12345678")
+    expect(container.textContent).toContain("12345678")
   })
   it("top-aligns content-sized cards, uses micro labels and right-aligned tabular amounts", () => {
     const html = page("en-US", <PublicQuotePage token="test" state={{ kind: "ready", decisionState: "pending", seller, quote: baseQuote }} />)

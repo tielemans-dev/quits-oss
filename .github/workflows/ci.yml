@@ -2,20 +2,26 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  merge_group:
 
 concurrency:
-  # Unique non-PR groups also prevent replacement of pending push/tag runs.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && startsWith(github.ref, 'refs/pull/') }}
+  # Unique non-PR groups also prevent replacement of pending main/tag runs.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   paths:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
       run-expensive: ${{ steps.classify.outputs.run-expensive }}
+      run-browser: ${{ steps.classify.outputs.run-browser }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,6 +29,9 @@ jobs:
           persist-credentials: false
       - name: Validate required-check failure propagation
         run: node --test .github/scripts/ci-gate.test.mjs
+      # Cheap and dependency-free, so it also covers PRs that only change COPY.md or the copy rules.
+      - name: Copy gates
+        run: node scripts/i18n-copy-check.mjs
       - name: Classify documentation-only PRs
         id: classify
         env:
@@ -31,6 +40,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           run_expensive=true
+          run_browser=true
           if [ "$EVENT_NAME" = pull_request ]; then
             git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths"
             # An empty or unreadable diff must not bypass verification.
@@ -44,11 +54,22 @@ jobs:
               done < "$RUNNER_TEMP/changed-paths"
             fi
           fi
+          # Browser suites may also skip prose and workflow-only PRs. Other checks still run.
+          if [ "$EVENT_NAME" = pull_request ] && [ -s "$RUNNER_TEMP/changed-paths" ]; then
+            run_browser=false
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                docs/*|*.md|.github/*) ;;
+                *) run_browser=true; break ;;
+              esac
+            done < "$RUNNER_TEMP/changed-paths"
+          fi
+          echo "run-browser=$run_browser" >> "$GITHUB_OUTPUT"
           echo "run-expensive=$run_expensive" >> "$GITHUB_OUTPUT"
 
   lint:
     needs: paths
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
@@ -65,7 +86,7 @@ jobs:
 
   typecheck:
     needs: paths
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
@@ -83,7 +104,7 @@ jobs:
 
   unit:
     needs: paths
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -120,7 +141,7 @@ jobs:
   runtime:
     needs: paths
     # Run on classification failure unless cancelled; only successful docs-only results may skip.
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
     runs-on: ubuntu-latest
     services:
       mailpit:
@@ -184,17 +205,21 @@ jobs:
         run: bun run build
 
       - name: Install Playwright browser
+        if: needs.paths.outputs.run-browser != 'false'
         working-directory: apps/oss
         run: bunx playwright install --with-deps chromium
 
       - name: Verify onboarding review choices and draft persistence
+        if: needs.paths.outputs.run-browser != 'false'
         working-directory: apps/oss
         run: bunx playwright test --config playwright.onboarding-v2.config.ts --workers=1
 
       - name: Run browser smoke tests
+        if: needs.paths.outputs.run-browser != 'false'
         run: bun run test:e2e
 
       - name: Verify credit note email and PDF with Mailpit
+        if: needs.paths.outputs.run-browser != 'false'
         env:
           EMAIL_PROVIDER: smtp
           SMTP_HOST: 127.0.0.1
@@ -205,6 +230,7 @@ jobs:
         run: bun run test:e2e credit-note-detail.spec.ts --workers=1
 
       - name: Capture QUI-64 before and after screenshots
+        if: needs.paths.outputs.run-browser != 'false'
         env:
           EMAIL_PROVIDER: smtp
           SMTP_HOST: 127.0.0.1
@@ -253,7 +279,7 @@ jobs:
   shared-browser-worker:
     name: Shared product browser execution
     needs: paths
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-browser != 'false')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -306,7 +332,7 @@ jobs:
   shared-browser:
     name: Shared product browser scenarios
     needs: [paths, shared-browser-worker]
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -319,7 +345,7 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [paths, lint, typecheck, unit, runtime, shared-browser-worker]
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -331,7 +357,7 @@ jobs:
 
   verify:
     needs: ci-ok
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     steps:
       - name: Preserve the required verify check
@@ -341,7 +367,7 @@ jobs:
 
   quote-evidence:
     name: Quote evidence (${{ matrix.phase }})
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 130
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 130) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -440,7 +466,7 @@ jobs:
 
   qui56-scope:
     name: Select PR122 evidence revisions
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens'
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens') }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -473,7 +499,7 @@ jobs:
   qui56-evidence:
     name: Authenticated QUI-56 current-main before and PR122 after
     needs: qui56-scope
-    if: needs.qui56-scope.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (needs.qui56-scope.outputs.changed == 'true') }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -584,7 +610,7 @@ jobs:
 
   onboarding-pr121-evidence:
     name: PR 121 onboarding evidence
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 121
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 121) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:

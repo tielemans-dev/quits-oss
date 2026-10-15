@@ -14,7 +14,10 @@ import { NoopBillingProvider } from "../billing/noop-provider"
 import type { BillingProvider } from "../billing/types"
 import type { DocumentSendingDomainRecord, DocumentSendingDomainStatus } from "../document-email-sending"
 import { suggestOnboardingPatchHeuristically } from "../onboarding/ai-fallback"
+import type { StripeConnectSettingsHandler } from "./stripe-connect-settings"
+
 export type { CvrLookupCompany } from "../onboarding/search-cvr"
+export type { StripeConnectSettingsAction, StripeConnectSettingsHandler } from "./stripe-connect-settings"
 
 export type OnboardingAiSuggestInput = {
   userMessage: string
@@ -70,7 +73,7 @@ export type CvrLookupProvider = {
   get(cvr: string, context: CvrLookupContext): Promise<CvrCompany | null>
   suggestions?(cvr: string, context: CvrLookupContext): Promise<OnboardingSuggestions>
 }
-export type CvrLookupContext = { userId: string; organizationId: string; signal: AbortSignal }
+export type CvrLookupContext = { userId: string; organizationId?: string; signal: AbortSignal }
 
 export type RuntimeServices = {
   cvrLookupProvider?: CvrLookupProvider
@@ -82,6 +85,11 @@ export type RuntimeServices = {
   managedDocumentDomainProvider: ManagedDocumentDomainProvider
   /** Hosted AI provider, billed by the distribution. Absent in self-hosted installs. */
   managedAiProvider?: AiProvider
+  /**
+   * Hosted Stripe Connect actions for settings. While this is absent, those settings
+   * actions stay disabled.
+   */
+  stripeConnectSettings?: StripeConnectSettingsHandler
 }
 
 const unsupportedManagedDocumentDomains = async (): Promise<never> => {
@@ -136,3 +144,7 @@ export function getManagedAiProvider(): AiProvider | undefined {
 }
 
 export function getCvrLookupProvider() { return runtimeServices.cvrLookupProvider }
+
+export function getStripeConnectSettingsHandler(): StripeConnectSettingsHandler | undefined {
+  return runtimeServices.stripeConnectSettings
+}

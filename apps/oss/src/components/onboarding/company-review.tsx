@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { confirmOnboardingV2Schema, isValidDanishCvr, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
 import { useI18n } from "../../lib/i18n/react"
+import { translateCvrError } from "../../lib/i18n/cvr-error"
 import { trpc } from "../../trpc/client"
 import { SellerVatStatus } from "../seller-vat-status"
 import { Button } from "../ui/button"
@@ -35,7 +36,7 @@ export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = fa
       const result = await trpc.onboarding.confirmV2.mutate({ ...summary, sellerVatConfirmationToken: token })
       if (result.status === "complete" || result.status === "already_complete") onComplete()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("settings.error.saveFailed"))
+      setError(cause instanceof Error ? translateCvrError(cause.message, t) : t("settings.error.saveFailed"))
     } finally { setSaving(false) }
   }
   // Only a hosted distribution with both capabilities may mount this confirmation flow.

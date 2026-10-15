@@ -8,6 +8,7 @@ vi.mock("../../lib/email", async () => {
 
 import { appRouter } from "../../trpc/router"
 import { prisma } from "../../lib/db"
+import * as reminderPreferences from "../../lib/reminders/unsubscribe"
 import { deliver, EmailSendError } from "../../lib/email"
 import { deliverSmtp } from "../../lib/email-smtp-node"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
@@ -66,6 +67,7 @@ describeIfDatabase("email outbox", () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     resetRuntimePlatform()
     while (cleanups.length) await cleanups.pop()?.()
     process.env.RESEND_API_KEY = previousEnv.RESEND_API_KEY
@@ -122,6 +124,27 @@ describeIfDatabase("email outbox", () => {
     expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: EMAIL_DELIVERY_JOB } })).toBe(0)
     expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: null })
     expect(await prisma.quote.findUniqueOrThrow({ where: { id: quote.result.id } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: null })
+  })
+
+  it("keeps seller-initiated invoice and quote sends and their retries available after reminder unsubscribe", async () => {
+    const { org, invoiceId } = await setup()
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { contact: true } })
+    const preference = await prisma.recipientReminderPreference.create({ data: { organizationId: org.organizationId, recipient: invoice.contact.email!.trim().toLowerCase(), locale: "en-US", unsubscribedAt: new Date() } })
+    const quote = await executeIssuanceCommand(createQuoteDraft, { contactId: invoice.contactId, expiryDate: "2099-12-01", taxRate: 0, items: [{ description: "Consulting", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
+    if (quote.status !== "completed") throw new Error("Quote setup failed")
+    vi.mocked(deliver).mockRejectedValueOnce(new Error("response lost"))
+    expect(await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
+    const job = await deliveryJob(org.organizationId)
+    const originalMessage = vi.mocked(deliver).mock.calls[0]![0]
+    expect(originalMessage.headers).toHaveProperty("List-Unsubscribe")
+    expect(originalMessage.html).toContain("Unsubscribe from automatic reminders")
+    await makeDue(job.id)
+    await runDueJobs({ organizationIds: [org.organizationId] })
+    expect(vi.mocked(deliver).mock.calls[1]![0]).toEqual(originalMessage)
+    expect(await executeIssuanceCommand(sendQuote, { id: quote.result.id }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
+    expect(deliver).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(deliver).mock.calls[2]![0].headers).toHaveProperty("List-Unsubscribe")
+    expect(await prisma.recipientReminderPreference.findUniqueOrThrow({ where: { id: preference.id } })).toMatchObject({ unsubscribedAt: preference.unsubscribedAt })
   })
 
   it("never retries an ambiguous SMTP submission, even when configuration changes", async () => {
@@ -535,7 +558,8 @@ describeIfDatabase("email outbox", () => {
     await makeDue(job.id)
     await runDueJobs({ organizationIds: [org.organizationId] })
 
-    expect(deliver).toHaveBeenCalledTimes(1)
+    // Paying the invoice also notifies the seller; only the customer's reminder is under test.
+    expect(vi.mocked(deliver).mock.calls.filter(([message]) => message.to === "billing@acme.test")).toHaveLength(1)
     const row = await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.result.reminderId } })
     expect(row.outcome).toBe("unconfirmed")
     expect(row.outcomeMessage).toContain("delivery not confirmed")
@@ -649,6 +673,26 @@ describeIfDatabase("email outbox", () => {
     })
     return { ...ctx, reminderId: reminder.id }
   }
+
+  it("retries SMTP after the final withdrawal check throws before submission", async () => {
+    const { org, reminderId } = await queuedScheduledReminder()
+    useSmtp()
+    const check = vi.spyOn(reminderPreferences, "automaticReminderSuppressed")
+      .mockResolvedValueOnce(false).mockRejectedValueOnce(new Error("Temporary withdrawal query failure"))
+    expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ retrying: 1 })
+    expect(check).toHaveBeenCalledTimes(2)
+    expect(deliver).not.toHaveBeenCalled()
+    const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId, type: EMAIL_DELIVERY_JOB, status: "pending" } })
+    expect(job.payload).toMatchObject({ requests: 0 })
+    expect(job.result).toBeNull()
+    check.mockRestore()
+    await makeDue(job.id)
+    expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ succeeded: 1, failed: 0 })
+    expect(deliver).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(deliver).mock.calls[0]?.[1]).toMatchObject({ provider: "smtp" })
+    expect(await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ result: { outcome: "delivered" } })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminderId } })).toMatchObject({ outcome: "sent" })
+  })
 
   it("withdraws a queued scheduled reminder once automatic reminders are turned off", async () => {
     const { org, reminderId } = await queuedScheduledReminder()

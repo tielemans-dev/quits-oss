@@ -91,6 +91,9 @@ suites. Do not run a full suite or build to prove a small change.
   touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
   bunx vitest run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
   `vitest.global.config.ts` instead when that config owns the test.
+- Direct `bunx vitest` needs the generated Prisma client. Run
+  `bun run prisma:generate` from the root first. T3 worktree setup also
+  generates the client.
 - Lint changed source files with `bunx oxlint --deny-warnings
   --report-unused-disable-directives <changed-files>` from the owning workspace.
   For app types, use `bun run typecheck:app` from the root. For contracts, shared
@@ -131,6 +134,11 @@ suites. Do not run a full suite or build to prove a small change.
   and risks. Use T3's PR watch for updates and end the turn; do not poll.
 
 ## Docs rules
+
+- Copy changes: `bun run i18n:check` also runs the copy gates (Danish values left as English, glossary
+  wording). Rules and allowlists are in `scripts/i18n/copy-rules.json`; opt out inline with
+  `// copy-check: allow <rule-id> <reason>`. Reviewers: when a diff changes price, trial, non-VAT or B2B
+  wording or behavior, check `docs/public-promises.md`.
 
 - Do not hardcode version strings in prose; use package metadata as the authority.
 - Keep plans, evidence dumps, research notes, scratch files, and PR-only assets

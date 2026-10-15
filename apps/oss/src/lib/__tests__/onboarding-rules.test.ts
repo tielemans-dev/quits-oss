@@ -17,7 +17,7 @@ describe("getOnboardingRules", () => {
       timezone: "Europe/Copenhagen",
       defaultCurrency: "DKK",
       taxRegime: "eu_vat",
-      pricesIncludeTax: true,
+      pricesIncludeTax: false,
     })
     expect(rules.showPrimaryTaxId).toBe(true)
     expect(rules.requirePrimaryTaxId).toBe(true)
@@ -35,7 +35,7 @@ describe("getOnboardingRules", () => {
       timezone: "Europe/Copenhagen",
       defaultCurrency: "DKK",
       taxRegime: "custom",
-      pricesIncludeTax: true,
+      pricesIncludeTax: false,
     })
     expect(rules.showPrimaryTaxId).toBe(false)
     expect(rules.requirePrimaryTaxId).toBe(false)

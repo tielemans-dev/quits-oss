@@ -1,6 +1,7 @@
 export const daContactsMessages = {
   "contacts.title": "Kunder",
   "contacts.loading": "Indlæser...",
+  "contacts.field.required": "(påkrævet)",
   "contacts.field.name": "Navn",
   "contacts.field.email": "E-mail",
   "contacts.field.phone": "Telefon",
@@ -10,7 +11,7 @@ export const daContactsMessages = {
   "contacts.field.state": "Region",
   "contacts.field.zip": "Postnr.",
   "contacts.field.country": "Land",
-  "contacts.field.taxId": "CVR/VAT-nummer",
+  "contacts.field.taxId": "CVR/momsnummer",
   "contacts.field.notes": "Noter",
   "contacts.phone.invalid": "Indtast et gyldigt telefonnummer",
   "contacts.placeholder.name": "John Doe",

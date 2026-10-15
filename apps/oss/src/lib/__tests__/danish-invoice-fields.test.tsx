@@ -45,7 +45,7 @@ describe("full invoice legal fields", () => {
     ]
     for (const output of outputs) {
       const text = normalize(output)
-      expect(text).toContain(locale === "da-DK" ? "Moms (25 %)" : "Tax (25%)")
+      expect(text).toContain(locale === "da-DK" ? "Moms 25 %" : "Tax 25%")
       expect(text).toContain(locale === "da-DK" ? "0,00" : "0.00")
       expect(text).toContain(locale === "da-DK" ? "0,01" : "0.01")
     }
@@ -83,12 +83,12 @@ describe("full invoice legal fields", () => {
       items: [{ id: "line", description: "Synthetic consulting", quantity: 2, unitPriceNet: 500, unitPriceGross: 625, lineNet: 1000, lineGross: 1250, sortOrder: 0 }],
     } }} /></LocalizedDocument>))
     for (const text of [pdf, email, pay]) {
-      for (const field of ["SYNTHETIC-0042", "Synthetic Seller ApS", text === email ? "CVR-nr.: 12345678" : "CVR: 12345678", "Testvej 1", "Synthetic Buyer", "Synthetic Buyer ApS", "Testvej 2", "1000", "København", "Synthetic consulting", "2", locale === "da-DK" ? "500,00" : "500.00", locale === "da-DK" ? "1.000,00" : "1,000.00", locale === "da-DK" ? "250,00" : "250.00", locale === "da-DK" ? "1.250,00" : "1,250.00", "25", locale === "da-DK" ? "Leveringsdato" : "Supply Date", locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax"]) expect(text).toContain(field)
+      for (const field of ["SYNTHETIC-0042", "Synthetic Seller ApS", locale === "da-DK" ? "CVR-nr. 12345678" : "CVR no. 12345678", "Testvej 1", "Synthetic Buyer", "Synthetic Buyer ApS", "Testvej 2", "1000", "København", "Synthetic consulting", "2", locale === "da-DK" ? "500,00" : "500.00", locale === "da-DK" ? "1.000,00" : "1,000.00", locale === "da-DK" ? "250,00" : "250.00", locale === "da-DK" ? "1.250,00" : "1,250.00", "25", locale === "da-DK" ? "Leveringsdato" : "Supply Date", locale === "da-DK" ? "Enhedspris ekskl. moms" : "Unit Price excl. tax"]) expect(text).toContain(field)
       expect(text).not.toContain("Changed live")
     }
     expect(pdf).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
-    expect(email).toContain("DK")
-    expect(pay).toContain("DK")
+    expect(email).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
+    expect(pay).toContain(locale === "da-DK" ? "Danmark" : "Denmark")
     expect(pdf).toContain(locale === "da-DK" ? "9. oktober 2026" : "October 9, 2026")
     expect(email).toContain(locale === "da-DK" ? "8. okt. 2026" : "8 Oct 2026")
     expect(pay).toContain(locale === "da-DK" ? "8. okt. 2026" : "Oct 8, 2026")

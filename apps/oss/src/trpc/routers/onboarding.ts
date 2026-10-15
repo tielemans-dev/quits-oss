@@ -21,6 +21,7 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
 import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
 import { authorizedProcedure, protectedProcedure, router } from "../init"
@@ -240,7 +241,7 @@ export const onboardingRouter = router({
   }),
   confirmV2: authorizedProcedure("settings:update")
     .input(z.preprocess<z.output<typeof confirmOnboardingV2Schema>, typeof confirmOnboardingV2Schema, z.input<typeof confirmOnboardingV2Schema>>((value) => {
-      const result = (getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
+      const result = (isCloudDistribution || getRuntimeCapabilities().sellerVatConfirmation?.enabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(value)
       if (!result.success) {
         const key = result.error.issues.some(issue => issue.path[0] === "cvr") ? "cvr.invalid" : "save.failed"
         throw new TRPCError({ code: "BAD_REQUEST", message: key })
@@ -305,6 +306,7 @@ export const onboardingRouter = router({
       if ("defaultCurrency" in input) {
         assertSettingsCurrency(input.defaultCurrency)
         settingsUpdateData.defaultCurrency = input.defaultCurrency
+        settingsUpdateData.currency = input.defaultCurrency
       }
       if ("taxRegime" in input) settingsUpdateData.taxRegime = input.taxRegime
       if ("pricesIncludeTax" in input)
@@ -320,6 +322,10 @@ export const onboardingRouter = router({
         if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
           settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
         }
+        if (isCloudDistribution && input.primaryTaxId !== undefined) {
+          await requireOnboardingCvr({ cvr: input.primaryTaxId?.trim().replace(/^DK/, ""),
+            scheme: input.primaryTaxIdScheme, cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
+        }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
         await tx.orgSettings.upsert({
           where: { organizationId: ctx.organizationId },
@@ -331,7 +337,7 @@ export const onboardingRouter = router({
           },
         })
 
-        if ("primaryTaxId" in input) {
+        if (input.primaryTaxId !== undefined) {
           const trimmedTaxId = input.primaryTaxId?.trim() ?? ""
           if (!trimmedTaxId) {
             await tx.organizationTaxId.deleteMany({
@@ -385,6 +391,10 @@ export const onboardingRouter = router({
             message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
           })
         }
+        await requireOnboardingCvr({
+          cvr: snapshot.values.primaryTaxId?.replace(/^DK/, ""), cloud: true,
+          userId: ctx.user.id, organizationId: ctx.organizationId,
+        })
         // The provider owns durable eligibility and retries across transaction rollback.
         await billingProvider.startTrial?.(ctx.organizationId)
         await tx.orgSettings.update({

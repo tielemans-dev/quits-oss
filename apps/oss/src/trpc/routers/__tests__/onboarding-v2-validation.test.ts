@@ -27,10 +27,10 @@ describe("manual v2 CVR validation at the server boundary", () => {
     await expect(caller.confirmV2({ ...manual, momsRegistered })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "cvr.invalid" })
     expect(save).not.toHaveBeenCalled()
   })
-  it("preserves valid empty-CVR manual setup without confirmation", async () => {
+  it("rejects empty-CVR manual setup without confirmation", async () => {
     capabilities(false)
-    await expect(caller.confirmV2(manual)).resolves.toMatchObject({ status: "complete" })
-    expect(save).toHaveBeenCalledWith("org", expect.objectContaining({ cvr: "", momsRegistered: false }), "signup@example.test", expect.objectContaining({ userId: "user", sessionId: "session" }))
+    await expect(caller.confirmV2(manual)).rejects.toMatchObject({ code: "BAD_REQUEST", message: "cvr.invalid" })
+    expect(save).not.toHaveBeenCalled()
   })
   it.each([true, false])("passes valid reviewed CVR, choice %s and token to transactional confirmation", async momsRegistered => {
     capabilities(true)

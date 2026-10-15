@@ -1,7 +1,7 @@
 import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
+import { isValidDanishCvr, DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -27,6 +27,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
+import { translateCvrError } from '../../lib/i18n/cvr-error'
 import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
@@ -152,20 +153,24 @@ function OnboardingPageContent() {
   const { data: session } = useSession()
   const hasActiveOrg = Boolean(session?.session.activeOrganizationId)
 
+  // Hosted onboarding picks its flow (v2, v2 company setup, legacy manual) from two reads: CVR
+  // availability and runtime capabilities. Neither may decide alone, so both start unknown and the
+  // flow only mounts once both are known. A failed read stays unknown (with a retry): reading it as
+  // "disabled" would mount a flow without seller-VAT confirmation. A retry starts both reads over, so
+  // no flow can mount from a mix of old and new results and then be replaced when the other read lands.
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
-  // A failed availability lookup stays unknown (with a retry) instead of reading as "v2 disabled",
-  // which would let an organization created for v2 fall through to the legacy setup form.
   const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
-  const [v2AvailabilityAttempt, setV2AvailabilityAttempt] = useState(0)
+  const [discoveryAttempt, setDiscoveryAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
-    // Each attempt starts unknown, so a stale success can't mount v2 after this attempt fails.
     setV2Availability(null)
     setV2AvailabilityFailed(false)
-    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS).then(result => { if (!cancelled) setV2Availability(result) }).catch(() => { if (!cancelled) setV2AvailabilityFailed(true) })
+    withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      .then(result => { if (!cancelled) setV2Availability(result) })
+      .catch(() => { if (!cancelled) { setV2Availability(null); setV2AvailabilityFailed(true) } })
     return () => { cancelled = true }
-  }, [isCloud, hasActiveOrg, v2AvailabilityAttempt])
+  }, [isCloud, hasActiveOrg, discoveryAttempt])
 
   // Before an organization exists, cvr.setupAvailable (same predicate as cvr.available) decides
   // whether onboarding v2 applies. v2 then only needs a name to create the organization; the CVR lookup, review and
@@ -189,6 +194,7 @@ function OnboardingPageContent() {
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
+  const [manualCvr, setManualCvr] = useState('')
   // App-side messages for the name-only and lookup forms (native browser tooltips are English-only).
   const [manualNameError, setManualNameError] = useState<'validation.required' | null>(null)
   const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
@@ -391,6 +397,7 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilities(null)
     setRuntimeCapabilitiesFailed(false)
 
     withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
@@ -412,8 +419,7 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-    // The v2 retry also re-reads capabilities: v2 needs them for seller-VAT confirmation.
-  }, [hasActiveOrg, isCloud, v2AvailabilityAttempt])
+  }, [hasActiveOrg, isCloud, discoveryAttempt])
 
   useEffect(() => {
     if (!runtimeCapabilities?.onboardingAi.enabled && method === 'ai') {
@@ -476,7 +482,10 @@ function OnboardingPageContent() {
 
   async function createOrganizationFromCompanyName(name: string, company?: CvrLookupCompany) {
     setError(null)
+    const cvr = company?.cvr ?? manualCvr.trim()
+    if ((isCloud || cvr) && !isValidDanishCvr(cvr)) { setError(t('cvr.invalid')); return }
     setSubmitting(true)
+    let confirmedCompany = company
     let created: Awaited<ReturnType<typeof createNamedOrganization>>
     try {
       created = await createNamedOrganization({
@@ -488,8 +497,13 @@ function OnboardingPageContent() {
           throw new Error(checked.error.message ?? 'slug check failed')
         },
         create: async (body) => {
-          const result = await authClient.organization.create(body)
-          if (result.data?.id) return { ok: true, id: result.data.id }
+          const result = await authClient.organization.create({ ...body, metadata: { cvr } })
+          if (result.data?.id) {
+            confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
+            return { ok: true, id: result.data.id }
+          }
+          setError(t(result.error?.code === 'cvr.inactive' ? 'auth.onboarding.cvrInactive'
+            : result.error?.code === 'cvr.unavailable' ? 'auth.onboarding.lookup.failed' : 'auth.onboarding.error'))
           return { ok: false, message: result.error?.message ?? '' }
         },
       })
@@ -499,16 +513,16 @@ function OnboardingPageContent() {
       return
     }
     if (!created.ok) {
-      setError(t('auth.onboarding.error'))
+      setError(current => current ?? t('auth.onboarding.error'))
       setSubmitting(false)
       return
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    // v2 collects and confirms company details itself; staging would save a legacy draft first.
-    if (session?.user?.id && !noOrgV2) {
+    // Carry the verified registry selection into the review after switching organizations.
+    if (session?.user?.id) {
       try {
-        stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
+        stageSelectedCompany(session.user.id, created.id, confirmedCompany ?? { name, address: '', cvr })
       } catch {
         // Creation already succeeded; storage must not prevent selecting the new organization.
       }
@@ -620,7 +634,7 @@ function OnboardingPageContent() {
       if (target || search.lang) loadPage(returnDestination)
       else navigate({ to: '/' })
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t('auth.onboarding.finish.error')
+      const message = cause instanceof Error ? translateCvrError(cause.message, t) : t('auth.onboarding.finish.error')
       setError(message)
       setSubmitting(false)
     }
@@ -700,7 +714,7 @@ function OnboardingPageContent() {
       )
     }
 
-    const nameOnly = entryMode === 'manual' || noOrgV2 === true
+    const nameOnly = entryMode === 'manual'
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
@@ -712,6 +726,7 @@ function OnboardingPageContent() {
               {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
+          {isCloud && <p className="px-6 pb-4 text-sm text-muted-foreground">{t('auth.onboarding.b2bOnly')}. {t('auth.onboarding.cvrFree')}</p>}
           {nameOnly ? (
             <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
@@ -721,6 +736,9 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
+                  <Label htmlFor="company-cvr">{t('auth.onboarding.cvrLabel')}</Label>
+                  <Input id="company-cvr" inputMode="numeric" maxLength={8} required={isCloud} value={manualCvr}
+                    onChange={event => setManualCvr(event.target.value)} />
                   <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
                   <Input
                     id="company-name"
@@ -746,7 +764,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && !noOrgV2 && <Button
+                {isCloud && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -856,30 +874,21 @@ function OnboardingPageContent() {
     )
   }
 
-  // Until v2 availability resolves, render neither the legacy setup form nor v2: the legacy
-  // form would otherwise flash (or stick, on a slow lookup) for organizations that use v2.
-  const v2CapabilitiesMissing = v2Availability?.enabled === true && runtimeCapabilities === null
-  if (hasActiveOrg && ((v2Availability === null && v2AvailabilityFailed) || (v2CapabilitiesMissing && runtimeCapabilitiesFailed))) {
+  // Until both reads are known, render no flow: a legacy form that flashes up would be replaced (and
+  // its input lost) once the other read picks v2, and v2 without capabilities has confirmation off.
+  if (isCloud && hasActiveOrg && (v2Availability === null || runtimeCapabilities === null)) {
+    const failed = v2AvailabilityFailed || runtimeCapabilitiesFailed
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
-            <CardDescription role="alert">{t('auth.onboarding.loadError')}</CardDescription>
+            <CardDescription role={failed ? 'alert' : 'status'}>{t(failed ? 'auth.onboarding.loadError' : 'auth.onboarding.loading')}</CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button type="button" className="w-full" onClick={() => setV2AvailabilityAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
-  if (hasActiveOrg && (v2Availability === null || v2CapabilitiesMissing)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardDescription role="status">{t('auth.onboarding.loading')}</CardDescription>
-          </CardHeader>
+          {failed && (
+            <CardFooter>
+              <Button type="button" className="w-full" onClick={() => setDiscoveryAttempt(n => n + 1)}>{t('onboardingV2.retry')}</Button>
+            </CardFooter>
+          )}
         </Card>
       </div>
     )
@@ -1051,9 +1060,9 @@ function OnboardingPageContent() {
                     }`}
                     onClick={() => applySuggestedDefaults(values.countryCode, 'individual')}
                   >
-                    <p className="text-sm font-semibold">{t('auth.onboarding.identity.individual')}</p>
+                    <p className="text-sm font-semibold">{t(isCloud ? 'auth.onboarding.identity.soleTrader' : 'auth.onboarding.identity.individual')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {t('auth.onboarding.identity.individualHelp')}
+                      {t(isCloud ? 'auth.onboarding.identity.soleTraderHelp' : 'auth.onboarding.identity.individualHelp')}
                     </p>
                   </button>
                   <button

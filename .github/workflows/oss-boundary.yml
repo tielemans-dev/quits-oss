@@ -2,15 +2,20 @@ name: OSS Boundary
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  merge_group:
 
 concurrency:
-  # Unique non-PR groups also prevent replacement of pending push/tag runs.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && startsWith(github.ref, 'refs/pull/') }}
+  # Unique non-PR groups also prevent replacement of pending main/tag runs.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   paths:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -50,7 +55,7 @@ jobs:
     name: OSS boundary execution
     needs: paths
     # Run on classification failure unless cancelled; only successful docs-only results may skip.
-    if: ${{ !cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false') }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -90,14 +95,15 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The tracked client may predate schema changes in this PR.
+      - name: Generate Prisma client
+        run: bun --filter @quits/oss prisma:generate
+
       - name: Lint
         run: bun run lint
 
       - name: Typecheck
         run: bun run typecheck
-
-      - name: Generate Prisma client
-        run: bun --filter @quits/oss prisma:generate
 
       - name: Apply migrations
         working-directory: apps/oss
@@ -117,7 +123,7 @@ jobs:
   verify-oss-boundary:
     name: verify-oss-boundary
     needs: [paths, boundary-worker]
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

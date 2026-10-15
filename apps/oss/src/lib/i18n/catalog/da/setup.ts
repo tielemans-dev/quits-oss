@@ -1,5 +1,7 @@
 export const daSetupMessages = {
   "cvr.invalid": "Indtast et gyldigt CVR-nummer.",
+  "cvr.inactive": "CVR-nummeret skal tilhøre en aktiv virksomhed. Prøv et andet CVR-nummer.",
+  "cvr.unavailable": "CVR-opslaget er ikke tilgængeligt. Prøv igen om lidt.",
   "save.failed": "Kunne ikke gemme. Prøv igen.",
   "setup.title": "Opsæt din Quits-instans",
   "setup.subtitle": "Konfigurer dit arbejdsområde, før du inviterer dit team og opretter fakturaer.",

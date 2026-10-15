@@ -1,3 +1,5 @@
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
+import { isCloudDistribution } from "../../lib/distribution"
 import { translate } from "../../lib/i18n/translate"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
@@ -27,10 +29,16 @@ import {
   type AiProviderKind,
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
-import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
+import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget, stripeByokConfigured, usesStripeConnectCheckout } from "../../lib/payments/stripe"
+import { appLogger } from "../../lib/observability"
+import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
-import { getManagedDocumentDomainProvider } from "../../lib/runtime/services"
+import { getManagedDocumentDomainProvider, getStripeConnectSettingsHandler } from "../../lib/runtime/services"
+import {
+  stripeConnectRedirectUrl,
+  stripeConnectSettingsActions,
+} from "../../lib/runtime/stripe-connect-settings"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode, isNationalRegistrationScheme, nationalRegistrationForScheme } from "../../lib/compliance/registry"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
@@ -242,13 +250,24 @@ export const settingsRouter = router({
       hasIssuedDocuments(prisma, ctx.organizationId),
     ])
     const settings = existingSettings ?? (await createDefaultOrgSettings(ctx.organizationId))
+    const runtimeCapabilities = getRuntimeCapabilities()
+    const connectMode = usesStripeConnectCheckout()
     const stripeState = getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
       stripeWebhookSecretEnc: settings.stripeWebhookSecretEnc,
       stripeAccountStatus: settings.stripeAccountStatus,
     })
-    const runtimeCapabilities = getRuntimeCapabilities()
+    // Cached readiness alone does not supply the runtime's Connect checkout client.
+    const stripeTarget = stripeState.configured
+      ? await resolveStripeCheckoutTarget(
+          { organizationId: ctx.organizationId },
+          { connectReady: settings.stripeAccountStatus === "active" },
+        ).catch(() => {
+          appLogger.warn("settings.stripe_checkout_target_unavailable", { organizationId: ctx.organizationId })
+          return null
+        })
+      : null
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
     const environment = getRuntimeEnv()
     const emailDelivery = getEmailDeliveryRuntimeStatus({
@@ -294,14 +313,20 @@ export const settingsRouter = router({
       aiProvider: isAiProviderKind(settings.aiProvider) ? settings.aiProvider : "openrouter",
       aiBaseUrl: settings.aiBaseUrl,
       aiModel: settings.aiModel,
-      stripeByokConfigured: stripeState.configured,
+      stripeByokConfigured: stripeByokConfigured(settings),
+      stripePaymentsEnabled: Boolean(stripeTarget),
+      stripeCheckoutKind: stripeTarget?.kind ?? null,
       stripePublishableKey: settings.stripePublishableKey,
       stripeAccount: readStripeAccount({
-        managed: runtimeCapabilities.payments.managed,
+        managed: connectMode,
         accountId: settings.stripeAccountId,
         status: settings.stripeAccountStatus,
         statusAt: settings.stripeAccountStatusAt,
       }),
+      stripeConnectActions:
+        runtimeCapabilities.payments.managed &&
+        getStripeConnectSettingsHandler() != null &&
+        actorCan(ctx.actor, "settings:update"),
       primaryTaxId: primaryTaxId?.value ?? null,
       primaryTaxIdScheme: primaryTaxId?.scheme ?? null,
       emailDelivery,
@@ -369,6 +394,14 @@ export const settingsRouter = router({
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
+        if (isCloudDistribution && primaryTaxId !== undefined) {
+          const stored = await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })
+          if (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase()) {
+            await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
+              cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
+          }
+        }
         // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
         const clearsRegistration = resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat"
         if (clearsRegistration) settingsInput.momsRegistered = null
@@ -390,6 +423,9 @@ export const settingsRouter = router({
         const effectiveRegistration = settingsInput.momsRegistered === undefined
           ? current?.momsRegistered
           : settingsInput.momsRegistered
+        if (settingsInput.taxRate === undefined && settingsInput.countryCode && settingsInput.countryCode !== current?.countryCode) {
+          settingsInput.taxRate = settingsInput.countryCode === "DK" ? 25 : null
+        }
         if (!clearsRegistration && effectiveRegistration === false) settingsInput.taxRate = 0
         const localizedIssues = validateLocalizedFields(resolvedCountry, {
           phone: settingsInput.companyPhone,
@@ -681,6 +717,29 @@ export const settingsRouter = router({
         supportsCustomDomain: provider.supported,
       })
     }),
+
+  /**
+   * Calls the hosted Connect handler when one is registered. Does not create account
+   * links or change the stored account.
+   */
+  runStripeConnectAction: authorizedProcedure("settings:update")
+    .input(z.object({ action: z.enum(stripeConnectSettingsActions) }))
+    .mutation(async ({ ctx, input }) => {
+      const handler = getStripeConnectSettingsHandler()
+      if (!getRuntimeCapabilities().payments.managed || !handler) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Stripe Connect actions are not available",
+        })
+      }
+      try {
+        const result = await handler.run(input.action, { organizationId: ctx.organizationId })
+        return { url: stripeConnectRedirectUrl(result?.url) }
+      } catch {
+        appLogger.warn("settings.stripe_connect_action_failed", { organizationId: ctx.organizationId, action: input.action })
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not update Stripe Connect. Please try again." })
+      }
+    }),
 })
 
 /**
@@ -695,7 +754,7 @@ function assertStripeByokWritable(input: {
   clearStripeSecretKey?: boolean
   clearStripeWebhookSecret?: boolean
 }, current: { stripePublishableKey: string | null } | null) {
-  if (!getRuntimeCapabilities().payments.managed) return
+  if (!usesStripeConnectCheckout()) return
   const publishableChanged =
     input.stripePublishableKey !== undefined &&
     input.stripePublishableKey !== (current?.stripePublishableKey ?? null)

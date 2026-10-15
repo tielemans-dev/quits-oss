@@ -9,6 +9,7 @@ export function isSetupGuardBypassPath(pathname: string) {
     pathname === "/accept-invitation" ||
     pathname.startsWith("/accept-invitation/") ||
     pathname.startsWith("/api/") ||
+    pathname === "/reminders/unsubscribe" ||
     pathname === "/health" ||
     pathname === "/healthz"
   )

@@ -18,6 +18,8 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RESET_EXPIRES_IN } f
 import { admitRecoveryRequest, recoveryClientKey } from "../auth/password-recovery"
 import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
+import { buildDkSettingsDefaults } from "../onboarding/dk-presets"
+import { requireOnboardingCvr } from "../onboarding/require-cvr"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = SignupAdmission & {
@@ -102,6 +104,46 @@ export function buildQuitsAuthOptions(input: {
     // Organization deletion must not remove financial records or their evidence.
     disableOrganizationDeletion: true,
     allowUserToCreateOrganization: true,
+    organizationHooks: {
+      async beforeCreateOrganization({ organization, user }) {
+        try {
+          const company = await requireOnboardingCvr({
+            cvr: organization.metadata?.cvr, cloud: cloudDistribution, userId: user.id,
+          })
+          return { data: {
+            ...organization,
+            ...(company ? { name: company.name } : {}),
+            metadata: { ...organization.metadata, onboardingCompany: company
+              ? { cvr: company.cvr, name: company.name, address: company.address } : undefined },
+          } }
+        } catch (error) {
+          // Do not expose upstream response details through the auth API.
+          const code = error instanceof Error && ["cvr.invalid", "cvr.inactive"].includes(error.message)
+            ? error.message : "cvr.unavailable"
+          throw new APIError("BAD_REQUEST", { code, message: code })
+        }
+      },
+      async afterCreateOrganization({ organization }) {
+        const facts = organization.metadata?.onboardingCompany
+        try {
+          await input.prisma.$transaction(async tx => {
+            await tx.orgSettings.create({ data: {
+              organizationId: organization.id, ...buildDkSettingsDefaults(),
+              companyName: organization.name, companyAddress: facts?.address ?? null,
+            } })
+            if (organization.metadata?.cvr) await tx.organizationTaxId.create({ data: {
+              organizationId: organization.id, scheme: "cvr", value: organization.metadata!.cvr,
+              countryCode: "DK", isPrimary: true,
+            } })
+          })
+        } catch {
+          // Settings/tax IDs rolled back; deleting the new org cascades its member.
+          // Better Auth sets the active organization only after this hook succeeds.
+          await input.prisma.organization.delete({ where: { id: organization.id } })
+          throw new APIError("BAD_REQUEST", { code: "cvr.unavailable", message: "cvr.unavailable" })
+        }
+      },
+    },
     creatorRole: "admin",
     membershipLimit: 50,
     async sendInvitationEmail(data) {

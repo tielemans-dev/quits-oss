@@ -31,9 +31,11 @@ export default defineConfig({
     url: baseURL,
     env: {
       ...process.env,
+      // The smoke server does not need the devtools bus or its shared hashed port.
+      QUITS_DEVTOOLS_EVENT_BUS: "off",
       DATABASE_URL: databaseUrl,
       BETTER_AUTH_SECRET:
-        process.env.BETTER_AUTH_SECRET ?? "playwright-auth-secret-that-is-over-32-characters",
+        (process.env.BETTER_AUTH_SECRET ??= "playwright-auth-secret-that-is-over-32-characters"),
       BETTER_AUTH_URL: baseURL,
       VITE_QUITS_DISTRIBUTION: distribution,
       QUITS_APP_ORIGIN: baseURL,

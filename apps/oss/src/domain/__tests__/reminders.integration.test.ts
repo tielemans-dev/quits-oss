@@ -9,6 +9,9 @@ vi.mock("../../lib/email", async () => {
 
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
+import { REMINDER_UNSUBSCRIBED_MESSAGE, reminderUnsubscribeState } from "../../lib/reminders/unsubscribe"
+import { signReminderUnsubscribeToken } from "../../lib/reminders/unsubscribe-token"
+import { EMAIL_DELIVERY_JOB } from "../delivery/outbox"
 import { formatCurrency } from "../../lib/i18n/format"
 import { deliver, EmailSendError } from "../../lib/email"
 import { findEmailDeliveryJobs, retryEmailDeliveries } from "../../test-utils/email-outbox"
@@ -175,6 +178,66 @@ describeIfDatabase("overdue and reminders", () => {
 
   const eventsOf = (organizationId: string, type: string) =>
     prisma.domainEvent.findMany({ where: { organizationId, type }, orderBy: { sequence: "asc" } })
+
+  async function unsubscribe(context: Awaited<ReturnType<typeof setup>>) {
+    const preference = await prisma.recipientReminderPreference.upsert({
+      where: { organizationId_recipient: { organizationId: context.org.organizationId, recipient: context.email.toLowerCase() } },
+      create: { organizationId: context.org.organizationId, recipient: context.email.toLowerCase(), locale: "en-US" },
+      update: {},
+    })
+    const token = signReminderUnsubscribeToken(preference, process.env.BETTER_AUTH_SECRET!)
+    expect(await reminderUnsubscribeState(prisma, token, "POST")).toMatchObject({ kind: "done" })
+  }
+
+  it("skips reserved automatic reminders while other recipients, organizations and manual reminders continue", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const otherOrg = await setup({ email: context.email, policy: { enabled: true, offsetsDays: [7] } })
+    const otherContact = await prisma.contact.create({ data: { organizationId: context.org.organizationId, name: "Other buyer", email: `other-${randomUUID()}@example.com` } })
+    const otherRecipient = { ...context, contactId: otherContact.id, email: otherContact.email! }
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+    await createInvoice(otherOrg, { issuedDaysAgo: 30, dueInDays: -10 })
+    await createInvoice(otherRecipient, { issuedDaysAgo: 30, dueInDays: -10 })
+    await runReminderTask(new Date(), { organizationIds: [context.org.organizationId] })
+    await unsubscribe(context)
+    await remindersTick(context, otherOrg)
+    expect(await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: invoice.id } })).toMatchObject({ outcome: "skipped", outcomeMessage: REMINDER_UNSUBSCRIBED_MESSAGE })
+    expect(sendsTo(context.email)).toBe(1) // The same mailbox still gets the other organization's reminder.
+    expect(sendsTo(otherRecipient.email)).toBe(1)
+    expect(await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })).toMatchObject({ status: "completed" })
+    expect(sendsTo(context.email)).toBe(2)
+  })
+
+  it("stops further automatic reminder attempts after an uncertain delivery and unsubscribe", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+    sendMock.mockRejectedValueOnce(new Error("provider response lost"))
+    await remindersTick(context)
+    expect(sendsTo(context.email)).toBe(1)
+    await unsubscribe(context)
+    await retryEmailDeliveries(context.org.organizationId)
+    expect(sendsTo(context.email)).toBe(1)
+    expect(await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: invoice.id } })).toMatchObject({ outcome: "unconfirmed" })
+  })
+
+  it("withdraws an automatic reminder already in the email outbox before contacting the provider", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+    const now = new Date()
+    const reminder = await prisma.invoiceReminder.create({ data: { invoiceId: invoice.id, offsetDays: 7, scheduledFor: daysFromNow(-3), sentAt: now, outcome: "sending" } })
+    const job = await prisma.job.create({ data: {
+      organizationId: context.org.organizationId, type: EMAIL_DELIVERY_JOB, dedupeKey: `unsubscribe-test:${reminder.id}`,
+      payload: {
+        message: { from: "seller@example.com", to: context.email, subject: "Reminder", html: "<p>Reminder</p>" },
+        idempotencyKey: `unsubscribe-test:${reminder.id}`, actor: context.org.actors.admin, commandId: randomUUID(), approvedByUserId: null, requests: 0,
+        completion: { kind: "reminder", target: { reminderId: reminder.id, invoiceId: invoice.id, attemptAt: now.toISOString(), number: invoice.number!, recipient: context.email, offsetDays: "7", balanceDue: "100", manual: "false" } },
+      },
+    } })
+    await unsubscribe(context)
+    await runJobsNow([job.id])
+    expect(sendsTo(context.email)).toBe(0)
+    expect(await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ result: { outcome: "withdrawn", message: REMINDER_UNSUBSCRIBED_MESSAGE } })
+    expect(await prisma.invoiceReminder.findUniqueOrThrow({ where: { id: reminder.id } })).toMatchObject({ outcome: "skipped", outcomeMessage: REMINDER_UNSUBSCRIBED_MESSAGE })
+  })
 
   it("marks past-due invoices with a balance overdue once, through audited commands", async () => {
     const context = await setup()
@@ -575,6 +638,7 @@ describeIfDatabase("overdue and reminders", () => {
 
     const first = await executeCommand(sendReminderNow, { invoiceId: invoice.id }, { actor: context.org.actors.admin })
     expect(first.status).toBe("completed")
+    await unsubscribe(context)
     const [reminder] = await prisma.invoiceReminder.findMany({ where: { invoiceId: invoice.id } })
     expect(reminder).toMatchObject({ offsetDays: 5, outcome: "sending" })
 

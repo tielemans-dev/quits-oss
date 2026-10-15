@@ -1,5 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { decryptSecret } from "../../../lib/secrets"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { decryptSecret, encryptSecret } from "../../../lib/secrets"
+import { setRuntimeExtensions } from "../../../lib/runtime/extensions"
+import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
+import { appLogger } from "../../../lib/observability"
 import { settingsRouter } from "../settings"
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   txFindUnique: vi.fn(),
   txUpsert: vi.fn(),
   paymentsManaged: false,
+  canUpdateSettings: true,
 }))
 
 vi.mock("../../../lib/db", () => ({
@@ -35,7 +39,8 @@ vi.mock("../../../domain/documents/base-currency", async (importOriginal) => ({
 
 vi.mock("../../../domain/actor", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../domain/actor")>()),
-  actorCan: () => true,
+  actorCan: (_actor: unknown, permission: string) =>
+    permission !== "settings:update" || mocks.canUpdateSettings,
 }))
 
 vi.mock("../../../domain/user-actor", () => ({
@@ -94,8 +99,8 @@ function settingsRow(overrides: Record<string, unknown> = {}) {
     aiApiKeyEnc: null,
     aiModel: "openai/gpt-4o-mini",
     stripePublishableKey: "pk_test_123456789",
-    stripeSecretKeyEnc: "enc-secret",
-    stripeWebhookSecretEnc: "enc-webhook",
+    stripeSecretKeyEnc: encryptSecret("sk_test_12345678901234567890"),
+    stripeWebhookSecretEnc: encryptSecret("whsec_12345678901234567890"),
     stripeAccountId: null,
     stripeAccountStatus: "none",
     stripeAccountStatusAt: null,
@@ -130,7 +135,12 @@ const byokKeys = {
 describe("settings stripe account contract", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRuntimeServices()
+    setRuntimeExtensions([])
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-at-least-16")
+    vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
     mocks.paymentsManaged = false
+    mocks.canUpdateSettings = true
     mocks.findFirst.mockResolvedValue(null)
     mocks.txFindUnique.mockResolvedValue({
       countryCode: "DK",
@@ -153,11 +163,23 @@ describe("settings stripe account contract", () => {
       status: "none",
       statusAt: null,
     })
+    expect(settings.stripeConnectActions).toBe(false)
     expect(settings.stripePublishableKey).toBe("pk_test_123456789")
     expect(settings.stripeByokConfigured).toBe(true)
+    expect(settings.stripePaymentsEnabled).toBe(true)
+    expect(settings.stripeCheckoutKind).toBe("byok")
   })
 
-  it("counts an active Connect account as payment-configured without BYOK keys", async () => {
+  it("requires Connect in cloud settings even before capabilities or handlers are registered", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeAccountStatus: "active" }))
+    const result = await createCaller().get()
+    expect(result.stripeAccount.mode).toBe("connect")
+    expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutKind).toBeNull()
+  })
+
+  it("does not report BYOK keys for an active Connect account without keys", async () => {
     mocks.findUnique.mockResolvedValue(
       settingsRow({
         stripePublishableKey: null,
@@ -171,7 +193,7 @@ describe("settings stripe account contract", () => {
 
     const settings = await createCaller().get()
 
-    expect(settings.stripeByokConfigured).toBe(true)
+    expect(settings.stripeByokConfigured).toBe(false)
     expect(settings.stripePublishableKey).toBeNull()
   })
 
@@ -210,6 +232,118 @@ describe("settings stripe account contract", () => {
       status: "active",
       statusAt: "2026-10-12T12:00:00.000Z",
     })
+    expect(settings.stripeConnectActions).toBe(false)
+  })
+
+  describe.each(["none", "pending", "restricted", "active"] as const)("%s account", (status) => {
+    it.each([false, true])("reports checkout readiness with BYOK configured=%s", async (byok) => {
+      mocks.paymentsManaged = true
+      mocks.findUnique.mockResolvedValue(settingsRow({
+        stripeAccountId: status === "none" ? null : "acct_test",
+        stripeAccountStatus: status,
+        ...(!byok ? {
+          stripePublishableKey: null,
+          stripeSecretKeyEnc: null,
+          stripeWebhookSecretEnc: null,
+        } : {}),
+      }))
+
+      // Managed settings never advertise stored BYOK keys as a checkout fallback.
+      expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
+
+      const resolveTarget = vi.fn(async () => ({
+        kind: "connect" as const,
+        stripeAccount: "acct_test",
+        client: { checkout: { sessions: { create: vi.fn(), expire: vi.fn(), retrieve: vi.fn() } } },
+      }))
+      setRuntimeExtensions([{
+        id: "test-connect-checkout",
+        resolveStripeCheckoutTarget: resolveTarget,
+      }])
+      const result = await createCaller().get()
+      expect(result.stripePaymentsEnabled).toBe(status === "active")
+      expect(result.stripeCheckoutKind).toBe(status === "active" ? "connect" : null)
+      expect(resolveTarget).toHaveBeenCalledTimes(status === "active" ? 1 : 0)
+      expect(result.stripeByokConfigured).toBe(byok)
+    })
+  })
+
+  it("reports Connect actions only when payments are managed and a handler is registered", async () => {
+    mocks.findUnique.mockResolvedValue(settingsRow())
+    const run = vi.fn(async () => {})
+    setRuntimeServices({ stripeConnectSettings: { run } })
+
+    expect((await createCaller().get()).stripeConnectActions).toBe(false)
+
+    mocks.paymentsManaged = true
+    expect((await createCaller().get()).stripeConnectActions).toBe(true)
+
+    mocks.canUpdateSettings = false
+    expect((await createCaller().get()).stripeConnectActions).toBe(false)
+  })
+
+  it("keeps Settings usable when the checkout target cannot be resolved", async () => {
+    mocks.paymentsManaged = true
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeAccountStatus: "active" }))
+    setRuntimeExtensions([{
+      id: "test-unavailable-checkout",
+      resolveStripeCheckoutTarget: async () => { throw new Error("Checkout unavailable") },
+    }])
+    const warn = vi.spyOn(appLogger, "warn")
+    expect((await createCaller().get()).stripePaymentsEnabled).toBe(false)
+    expect(warn).toHaveBeenCalledWith("settings.stripe_checkout_target_unavailable", { organizationId: "org-1" })
+    warn.mockRestore()
+  })
+
+  it("warns and reports payments unavailable when stored keys cannot be decrypted", async () => {
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeSecretKeyEnc: "invalid-ciphertext" }))
+    const warn = vi.spyOn(appLogger, "warn")
+    const result = await createCaller().get()
+    expect(result.stripePaymentsEnabled).toBe(false)
+    expect(result.stripeCheckoutKind).toBeNull()
+    expect(warn).toHaveBeenCalledWith("settings.stripe_checkout_target_unavailable", { organizationId: "org-1" })
+    warn.mockRestore()
+  })
+
+  it("calls the registered Connect handler and does not persist the account", async () => {
+    mocks.paymentsManaged = true
+    const run = vi.fn(async () => ({ url: "https://connect.stripe.com/setup/s/test" }))
+    setRuntimeServices({ stripeConnectSettings: { run } })
+
+    await expect(createCaller().runStripeConnectAction({ action: "resume" })).resolves.toEqual({
+      url: "https://connect.stripe.com/setup/s/test",
+    })
+    expect(run).toHaveBeenCalledWith("resume", { organizationId: "org-1" })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
+
+    run.mockResolvedValueOnce({ url: "http://example.test/insecure" })
+    await expect(createCaller().runStripeConnectAction({ action: "connect" })).resolves.toEqual({
+      url: null,
+    })
+  })
+
+  it("does not expose runtime handler error details", async () => {
+    mocks.paymentsManaged = true
+    setRuntimeServices({ stripeConnectSettings: { run: async () => { throw new Error("private provider details") } } })
+    await expect(createCaller().runStripeConnectAction({ action: "connect" })).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR", message: "Could not update Stripe Connect. Please try again.",
+    })
+  })
+
+  it("refuses new Stripe keys on cloud before managed capabilities register", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    await expect(createCaller().update(byokKeys)).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
+  })
+
+  it("refuses Connect actions when no handler is registered", async () => {
+    mocks.paymentsManaged = true
+
+    await expect(createCaller().runStripeConnectAction({ action: "disconnect" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "Stripe Connect actions are not available",
+    })
+    expect(mocks.txUpsert).not.toHaveBeenCalled()
   })
 
   it("stores Stripe keys when payments are not managed", async () => {
@@ -305,4 +439,10 @@ describe("settings stripe account contract", () => {
     expect(update.stripeSecretKeyEnc).toBeNull()
     expect(update.stripeWebhookSecretEnc).toBeNull()
   })
+})
+
+afterEach(() => {
+  resetRuntimeServices()
+  setRuntimeExtensions([])
+  vi.unstubAllEnvs()
 })

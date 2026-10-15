@@ -8,7 +8,7 @@ dist-ssr
 .tanstack
 .wrangler
 .output
-.turbo
+.turbo/
 .vinxi
 __unconfig*
 todos.json
@@ -16,7 +16,7 @@ todos.json
 apps/oss/playwright-report/
 apps/oss/test-results/
 
-/generated/prisma
+**/generated/prisma/
 
 apps/oss/data/artifacts/
 
@@ -28,3 +28,4 @@ apps/oss/data/artifacts/
 !/docs/qa/oss-cloud-split-qa.md
 /docs/verification/
 /.github/assets/*/
+artifacts/motion/

@@ -295,7 +295,7 @@ describe("OnboardingPage cloud flow", () => {
     )
 
     fireEvent.click(
-      screen.getByRole("button", { name: /I invoice as an individual/i })
+      screen.getByRole("button", { name: /Sole trader with a CVR number/i })
     )
     expect(screen.queryByLabelText("VAT/CVR number")).toBeNull()
 
@@ -309,7 +309,7 @@ describe("OnboardingPage cloud flow", () => {
     expect(screen.getByText("Advanced defaults")).toBeTruthy()
   })
 
-  it("drops the layout's cached session once onboarding is completed, so the next page is not sent back", async () => {
+  it("translates a refused draft, then drops the layout's cached session after a successful retry", async () => {
     useSessionMock.mockReturnValue({
       data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } },
     })
@@ -337,12 +337,16 @@ describe("OnboardingPage cloud flow", () => {
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
     vi.mocked(trpc.onboarding.completeManual.mutate).mockResolvedValue({ isComplete: true } as never)
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockRejectedValueOnce(new Error("cvr.inactive"))
     const load = vi.fn(async () => ({ user: { id: "u_1" }, cloudOnboardingComplete: false }))
     await reuseAppLayoutSession(load)
 
     render(<RouteComponent />)
     await waitFor(() => expect(onboardingStatusQuery).toHaveBeenCalled())
     fireEvent.click(await screen.findByRole("button", { name: "Finish onboarding" }))
+    await screen.findByText("The CVR number must belong to an active business. Try another CVR number.")
+    expect(navigate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Finish onboarding" }))
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
     await reuseAppLayoutSession(load)

@@ -43,12 +43,20 @@ export type RuntimeExtension = {
     | undefined
     | Promise<StripeConnectWebhookVerifier | undefined>
   /**
-   * Overrides the default BYOK checkout target. A returned target is used as-is.
-   * Null and undefined leave BYOK in place.
+   * Registers Connect card routing and disables BYOK fallback in this runtime.
+   * Only active Connect targets may charge. Null and undefined mean unavailable.
    */
   resolveStripeCheckoutTarget?: (
     context: StripeCheckoutTargetContext
   ) => StripeCheckoutTarget | null | undefined | Promise<StripeCheckoutTarget | null | undefined>
+  /**
+   * Connect accounts that may still hold an open Checkout session, including one
+   * the seller no longer charges. Self-hosted runtimes leave this unset.
+   * A miss on one account is not expiry.
+   */
+  resolveStripeCheckoutExpiryTargets?: (
+    context: StripeCheckoutTargetContext
+  ) => readonly StripeCheckoutTarget[] | null | undefined | Promise<readonly StripeCheckoutTarget[] | null | undefined>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000

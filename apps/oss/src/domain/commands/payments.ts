@@ -19,6 +19,7 @@ import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { documentRef } from "../documents/numbering"
 import { Command, Db } from "../services"
 import { paymentRecordApproval, paymentVoidApproval } from "../approval-contexts"
+import { queuePaymentReceivedEmails, withdrawPaymentNotifications } from "../documents/payment-notifications"
 
 const paymentsLogger = appLogger.child("payments")
 
@@ -215,6 +216,9 @@ const applyPayment = (input: ApplyPaymentInput) =>
           currency: invoice.currency,
         },
       })
+      // Partial payments never reach here: the settlement is "partially_paid" until the
+      // balance (after credit notes) is zero.
+      yield* queuePaymentReceivedEmails({ invoice: refreshed.invoice, payment })
     }
 
     return { payment, invoice: refreshed.invoice, balanceDue: refreshed.settlement.balanceDue }
@@ -449,6 +453,13 @@ export const voidPayment = defineCommand({
         })
       )
       const refreshed = yield* refreshInvoiceSettlement(invoice.id)
+      yield* Effect.promise(() =>
+        withdrawPaymentNotifications(db, {
+          paymentId: payment.id,
+          invoiceId: invoice.id,
+          stillPaidInFull: refreshed.settlement.paymentStatus === "paid",
+        })
+      )
 
       command.emit({
         aggregateType: "invoice",

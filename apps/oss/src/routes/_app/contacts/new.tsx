@@ -1,5 +1,6 @@
+import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -20,11 +21,29 @@ export const Route = createFileRoute("/_app/contacts/new")({
   component: NewContactPage,
 })
 
+/** How long the form waits for the organization's default country before it opens without one. */
+const COUNTRY_LOOKUP_TIMEOUT_MS = 3000
+
 function NewContactPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [organizationCountry, setOrganizationCountry] = useState<string | null>(null)
+  // The form stays closed to submission until the default country answered, so a quick submit cannot drop it.
+  // A failed or stalled lookup opens it with the country left to the person; an answer that arrives later still fills
+  // the select until they choose one.
+  const [countrySettled, setCountrySettled] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const settle = () => { if (!cancelled) setCountrySettled(true) }
+    const timeout = setTimeout(settle, COUNTRY_LOOKUP_TIMEOUT_MS)
+    trpc.settings.get.query()
+      .then(settings => { if (!cancelled) setOrganizationCountry(settings.countryCode) })
+      .catch(() => {})
+      .finally(settle)
+    return () => { cancelled = true; clearTimeout(timeout) }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -81,7 +100,7 @@ function NewContactPage() {
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="name">{t("contacts.field.name")} *</Label>
+              <Label htmlFor="name">{t("contacts.field.name")} {t("contacts.field.required")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -150,7 +169,7 @@ function NewContactPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <Input id="country" name="country" maxLength={80} />
+                <CountrySelect id="country" name="country" defaultCountry={organizationCountry} />
               </div>
             </div>
 
@@ -216,7 +235,7 @@ function NewContactPage() {
             >
               {t("contacts.action.cancel")}
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !countrySettled}>
               {saving ? t("contacts.action.creating") : t("contacts.action.create")}
             </Button>
           </CardFooter>

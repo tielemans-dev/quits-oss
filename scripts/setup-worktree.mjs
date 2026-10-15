@@ -36,6 +36,7 @@ export async function setup(cwd = process.cwd(), source = process.env, execute =
     await save()
     entry.ready = false
     await save()
+    await execute("bun", ["x", "--no-install", "prisma", "generate"], { cwd: resolve(root, "apps/oss"), env })
     await execute("bun", ["x", "--no-install", "prisma", "migrate", "deploy"], { cwd: resolve(root, "apps/oss"), env })
     entry.ready = true
     await save()
