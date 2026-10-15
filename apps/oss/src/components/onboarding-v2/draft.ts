@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { DANISH_ONBOARDING_V2_DEFAULTS } from "@quits/contracts/onboarding"
+import { companyStarters } from "../../lib/onboarding/company-starters"
 import {
   cvrCompanySchema,
   onboardingSuggestionsSchema,
@@ -36,6 +37,7 @@ export const draftSchema = z.object({
   company: cvrCompanySchema.nullable(),
   suggestions: onboardingSuggestionsSchema.nullable(),
   suggestionsState: z.enum(["pending", "ready", "hidden"]),
+  acceptedLineIds: z.array(z.string().max(80)).max(8).default([]),
   /** The user answered the seller VAT question; kept so edits and reloads keep the answer. */
   vatChoiceConfirmed: z.boolean().default(false),
 })
@@ -51,7 +53,8 @@ export function newDraft(
     idempotencyKey: crypto.randomUUID(),
     source: company ? "cvr" : "manual",
     company,
-    suggestions: null,
+    suggestions: company && suggestions ? companyStarters(company) : null,
+    acceptedLineIds: [],
     suggestionsState: company && suggestions ? "pending" : "hidden",
     vatChoiceConfirmed: false,
     values: {
@@ -135,9 +138,9 @@ export function confirmationPayload(draft: OnboardingDraft) {
       invoicePrefix: v.invoicePrefix,
       paymentTermsDays: v.paymentTermsDays,
     },
-    ...(draft.suggestionsState === "ready" && draft.suggestions
+    ...(draft.suggestionsState !== "hidden" && draft.suggestions && draft.acceptedLineIds.length
       ? {
-          catalogSuggestions: draft.suggestions.lines.map((line) => ({
+          catalogSuggestions: draft.suggestions.lines.filter(line => draft.acceptedLineIds.includes(line.id)).map((line) => ({
             name: line.description.slice(0, 120),
             description: line.description,
             defaultUnitPrice: line.unitPrice,

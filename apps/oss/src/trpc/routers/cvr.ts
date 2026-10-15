@@ -4,6 +4,7 @@ import { cvrCompanySchema, onboardingSuggestionsSchema } from "@quits/contracts/
 import { isCloudDistribution } from "../../lib/distribution"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
+import { researchCompany } from "../../lib/onboarding/company-research"
 import { authorizedProcedure, protectedProcedure, router } from "../init"
 
 function lookupSignal(...signals: (AbortSignal | undefined)[]) {
@@ -35,7 +36,7 @@ export const cvrRouter = router({
     }),
   available: authorizedProcedure("settings:read").query(() => ({
     enabled: cvrOnboardingEnabled(),
-    suggestions: Boolean(getCvrLookupProvider()?.suggestions),
+    suggestions: cvrOnboardingEnabled(),
   })),
   // Signed-in users without an organization use the same predicate as `available`, so the
   // name-only v2 start is only offered when the v2 wizard will actually render after creation.
@@ -63,13 +64,15 @@ export const cvrRouter = router({
   suggestions: authorizedProcedure("settings:update")
     .input(z.object({ cvr: z.string().regex(/^\d{8}$/) }))
     .output(onboardingSuggestionsSchema)
-    .query(({ ctx, input, signal }) => {
+    .query(async ({ ctx, input, signal }) => {
       const lookup = provider()
-      if (!lookup.suggestions) throw new TRPCError({ code: "NOT_IMPLEMENTED" })
-      return lookup.suggestions(input.cvr, {
+      const context = {
         userId: ctx.user.id,
         organizationId: ctx.organizationId,
         signal: lookupSignal(signal, ctx.request?.signal),
-      })
+      }
+      const company = await lookup.get(input.cvr, context)
+      if (!company || company.cvr !== input.cvr) return { customers: [], lines: [] }
+      return researchCompany(company, lookup, context)
     }),
 })

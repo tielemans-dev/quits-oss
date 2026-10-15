@@ -22,7 +22,17 @@ vi.mock("../../init", async () => {
   const procedure = t.procedure.use(({ next }) => next({ ctx: { user: { id: "user" }, organizationId: "org" } }))
   return { router: t.router, authorizedProcedure: () => procedure, protectedProcedure: procedure }
 })
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); lookup.mockClear() })
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); lookup.mockClear() })
+
+it("offers deterministic suggestions without invoking the adapter's legacy suggestions method", async () => {
+  vi.stubEnv("QUITS_COMPANY_RESEARCH_AI_ENABLED", "false")
+  const caller = cvrRouter.createCaller({ session: null })
+  expect((await caller.available()).suggestions).toBe(true)
+  lookup.mockResolvedValueOnce({ cvr: "12345678", name: "Test", address: "", companyForm: "ApS",
+    industryCode: "620100", status: "active", statusClass: "active", momsRegistered: true } as never)
+  expect((await caller.suggestions({ cvr: "12345678" })).lines[0].description).toBe("Softwareudvikling")
+  expect(lookup).toHaveBeenCalledTimes(1)
+})
 
 it.each(["search", "get", "suggestions", "customer", "searchCvr"] as const)("cancels CVR %s on request and procedure cancellation and timeout", async method => {
   vi.useFakeTimers()
