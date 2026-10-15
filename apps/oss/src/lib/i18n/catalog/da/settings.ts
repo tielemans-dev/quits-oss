@@ -163,6 +163,36 @@ export const daSettingsMessages = {
   "settings.payments.removeSecret": "Fjern gemt secret key",
   "settings.payments.removeWebhook": "Fjern gemt webhook-secret",
   "settings.payments.undo": "Fortryd",
+  "settings.payments.connect.title": "Tilknyt Stripe",
+  "settings.payments.connect.description":
+    "Kortbetalinger kræver en aktiv Stripe Connect-konto.",
+  "settings.payments.connect.status.none": "Ikke tilknyttet",
+  "settings.payments.connect.status.pending": "Onboarding er ikke færdig",
+  "settings.payments.connect.status.active": "Aktiv",
+  "settings.payments.connect.status.restricted": "Begrænset",
+  "settings.payments.connect.help.none":
+    "Tilknyt din Stripe-konto.",
+  "settings.payments.connect.help.pending":
+    "Gør din konto færdig i Stripe.",
+  "settings.payments.connect.help.active":
+    "Stripe er tilknyttet. Stripe opkræver gebyrer hos din Stripe-konto.",
+  "settings.payments.connect.help.restricted":
+    "Stripe begrænser denne konto. Se, hvad der skal rettes i Stripe.",
+  "settings.payments.connect.legacy.active": "Gemte tidligere Stripe-nøgler bruges ikke til kortbetalinger. Du kan fjerne dem.",
+  "settings.payments.connect.legacy.removing": "Gem indstillingerne for at fjerne de tidligere Stripe-nøgler. Stripe Connect og bankoverførsel påvirkes ikke.",
+  "settings.payments.connect.legacy.remove": "Fjern tidligere Stripe-nøgler",
+  "settings.payments.connect.account.label": "Stripe-konto",
+  "settings.payments.connect.payments.enabled": "Kortbetalinger er slået til via Stripe Connect.",
+  "settings.payments.connect.payments.unavailable": "Kortbetalinger er ikke tilgængelige. Bankoverførsel er stadig tilgængelig.",
+  "settings.payments.connect.action.connect": "Tilknyt Stripe",
+  "settings.payments.connect.action.resume": "Fortsæt onboarding",
+  "settings.payments.connect.action.fix": "Ret i Stripe",
+  "settings.payments.connect.action.disconnect": "Fjern tilknytning",
+  "settings.payments.connect.disconnect.title": "Fjern Stripe-tilknytning?",
+  "settings.payments.connect.disconnect.description":
+    "Kortbetalinger stopper. Bankoverførsel er stadig tilgængelig. Kontoen forbliver åben i Stripe.",
+  "settings.payments.connect.disconnect.confirm": "Fjern tilknytning",
+  "settings.payments.connect.disconnect.cancel": "Annuller",
   "settings.section.ai.title": "AI-fakturakladning",
   "settings.section.ai.description":
     "Vælg hvordan AI-fakturakladder genereres, og konfigurer forbindelsen.",
