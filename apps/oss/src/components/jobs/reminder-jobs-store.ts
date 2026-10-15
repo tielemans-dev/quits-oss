@@ -60,6 +60,14 @@ export async function retryReminderStep(jobId: string, stepId: string) {
   await refreshReminderJobs()
 }
 
+export async function exportVat(from: string, clientRequestId: string) {
+  queueing += 1
+  const queued = trpc.jobs.exportVat.mutate({ from, clientRequestId })
+  void refreshReminderJobs()
+  try { return await queued }
+  finally { queueing -= 1; await refreshReminderJobs() }
+}
+
 /** Stable, so React does not resubscribe on every render and cut the polling chain between two reads. */
 function subscribe(listener: () => void) {
   listeners.add(listener)
