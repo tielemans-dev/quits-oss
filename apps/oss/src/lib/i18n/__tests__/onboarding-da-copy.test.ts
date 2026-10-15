@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { daMessages } from "../messages"
+import { daMessages, enMessages } from "../messages"
 
 const english = [
   "Finish onboarding",
@@ -18,6 +18,13 @@ const english = [
 describe("Danish onboarding copy", () => {
   const entries = Object.entries(daMessages).filter(([key]) => key.startsWith("auth.onboarding."))
 
+  it("explains the hosted CVR requirement and free registration in both languages", () => {
+    expect(daMessages["auth.onboarding.b2bOnly"]).toBe("quits er til virksomheder med CVR-nummer")
+    expect(enMessages["auth.onboarding.b2bOnly"]).toBe("quits is for businesses with a CVR number")
+    expect(daMessages["auth.onboarding.cvrFree"]).toContain("gratis")
+    expect(enMessages["auth.onboarding.cvrFree"]).toContain("free")
+    expect(enMessages["auth.onboarding.cvrLabel"]).toBe("CVR number")
+  })
   it("translates every onboarding string and uses moms and CVR-nr.", () => {
     expect(entries.length).toBeGreaterThan(40)
     for (const [key, value] of entries) {
