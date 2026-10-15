@@ -24,7 +24,7 @@ export const enPaymentDetailsMessages = {
   "settings.paymentDetails.readOnly": "Only owners and admins can change payment details.",
   "settings.paymentDetails.save": "Save payment details",
   "settings.paymentDetails.saving": "Saving…",
-  "settings.paymentDetails.saved": "Payment details saved.",
+  "settings.paymentDetails.saved": "Bank details saved",
   "settings.paymentDetails.error.load": "Could not load payment details.",
   "settings.paymentDetails.error.save": "Could not save payment details.",
   "settings.paymentDetails.error.regNumber": "Enter exactly 4 digits.",

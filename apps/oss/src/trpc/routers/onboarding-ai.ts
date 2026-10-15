@@ -346,7 +346,8 @@ async function applyPatchToOrgSettings(
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         select: { id: true },
       })
-      const scheme = patch.primaryTaxIdScheme ?? "vat"
+      const country = patch.countryCode ?? settings?.countryCode ?? (await tx.orgSettings.findUniqueOrThrow({ where: { organizationId }, select: { countryCode: true } })).countryCode
+      const scheme = country === "DK" ? "cvr" : patch.primaryTaxIdScheme ?? "vat"
 
       if (existing) {
         await tx.organizationTaxId.update({
@@ -354,6 +355,7 @@ async function applyPatchToOrgSettings(
           data: {
             value: primaryTaxId,
             scheme,
+            countryCode: country,
             isPrimary: true,
           },
         })
@@ -363,6 +365,7 @@ async function applyPatchToOrgSettings(
             organizationId,
             value: primaryTaxId,
             scheme,
+            countryCode: country,
             isPrimary: true,
           },
         })

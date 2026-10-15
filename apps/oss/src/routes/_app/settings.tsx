@@ -1,3 +1,5 @@
+import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
+import type { FieldIssue } from "@quits/contracts/agent"
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
@@ -229,6 +231,7 @@ function SettingsPage() {
   const [taxRegime, setTaxRegime] = useState<"us_sales_tax" | "eu_vat" | "custom">("us_sales_tax")
   const [paymentTermsDaysInput, setPaymentTermsDaysInput] = useState("14")
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
+  const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
   const [primaryTaxId, setPrimaryTaxId] = useState("")
   const [primaryTaxIdScheme, setPrimaryTaxIdScheme] = useState("vat")
   const [companyLogo, setCompanyLogo] = useState("")
@@ -522,6 +525,12 @@ function SettingsPage() {
       return
     }
 
+    setFieldIssues([])
+    if (countryCode === "DK" && primaryTaxId.trim() && !/^\d{8}$/.test(primaryTaxId.replace(/\s+/g, "").replace(/^DK/i, ""))) {
+      setFieldIssues([{ code: "cvr.invalid", field: "primaryTaxId", params: {} }])
+      setSaving(false)
+      return
+    }
     const formValidationError = validateSettingsFormInput({
       timezone: timezoneInput,
       taxRateRaw,
@@ -565,7 +574,7 @@ function SettingsPage() {
         taxRegime,
         pricesIncludeTax,
         primaryTaxId: primaryTaxId || undefined,
-        primaryTaxIdScheme,
+        primaryTaxIdScheme: countryCode === "DK" && !sellerVatConfirmationEnabled ? "cvr" : primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
         momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : confirmedSellerVatChoice ?? undefined : momsRegisteredUpdate,
@@ -645,6 +654,7 @@ function SettingsPage() {
         void loadAiModels()
       }
     } catch (err) {
+      setFieldIssues(invoiceFieldIssues(err))
       setError(
         err instanceof Error
           ? err.message
@@ -1108,11 +1118,14 @@ function SettingsPage() {
                     <Input
                       id="primaryTaxId"
                       name="primaryTaxId"
-                      maxLength={40}
+                      maxLength={countryCode === "DK" ? 8 : 40}
+                      inputMode={countryCode === "DK" ? "numeric" : undefined}
+                      aria-invalid={fieldIssues.some(issue => issue.field === "primaryTaxId")}
                       placeholder={primaryTaxIdLabel}
                       value={primaryTaxId}
                       onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
                     />
+                    {fieldIssues.filter(issue => issue.field === "primaryTaxId").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
                     <p className="text-xs text-muted-foreground">
                       {primaryTaxIdHelp}
                     </p>
@@ -1126,7 +1139,7 @@ function SettingsPage() {
                   </>
                 )}
               </div>
-              {taxRules.showPrimaryTaxId ? (
+              {taxRules.showPrimaryTaxId && (countryCode !== "DK" || sellerVatConfirmationEnabled) ? (
                 <div className="grid gap-2">
                   <Label htmlFor="primaryTaxIdScheme">{t("settings.primaryTaxIdScheme.label")}</Label>
                   <Select value={primaryTaxIdScheme} onValueChange={value => { setPrimaryTaxIdScheme(value); clearSellerVatReview() }}>

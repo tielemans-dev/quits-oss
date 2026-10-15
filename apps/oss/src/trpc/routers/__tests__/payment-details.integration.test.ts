@@ -52,10 +52,10 @@ describeIfDatabase("paymentDetails router", () => {
 
   it("starts empty and stores what an admin saves", async () => {
     const { org, admin } = await organization()
-    expect(await admin.paymentDetails.get()).toEqual({ ...empty, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toMatchObject({ ...empty, canUpdate: true })
 
     expect(await admin.paymentDetails.update(complete)).toEqual({ ...complete, canUpdate: true })
-    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toMatchObject({ ...complete, canUpdate: true })
 
     expect(
       await prisma.orgSettings.findUniqueOrThrow({
@@ -110,7 +110,7 @@ describeIfDatabase("paymentDetails router", () => {
       ...ibanOnly,
       canUpdate: true,
     })
-    const { canUpdate: _, ...saved } = await admin.paymentDetails.get()
+    const { canUpdate: _, nextInvoiceNumber: _number, ...saved } = await admin.paymentDetails.get()
     expect(saved).toEqual(ibanOnly)
     const { canUpdate: __, ...cleared } = await admin.paymentDetails.update({})
     expect(cleared).toEqual(empty)
@@ -150,27 +150,35 @@ describeIfDatabase("paymentDetails router", () => {
     const { admin } = await organization()
     await admin.paymentDetails.update(complete)
     await expect(admin.paymentDetails.update(input)).rejects.toMatchObject({ code: "BAD_REQUEST" })
-    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toMatchObject({ ...complete, canUpdate: true })
   })
 
   it("lets members and accountants read the details but not change them", async () => {
     const { admin, member, accountant } = await organization()
     await admin.paymentDetails.update(complete)
 
-    expect(await member.paymentDetails.get()).toEqual({ ...complete, canUpdate: false })
-    expect(await accountant.paymentDetails.get()).toEqual({ ...complete, canUpdate: false })
+    expect(await member.paymentDetails.get()).toMatchObject({ ...complete, canUpdate: false })
+    expect(await accountant.paymentDetails.get()).toMatchObject({ ...complete, canUpdate: false })
     await expect(member.paymentDetails.update({ bankAccount: { iban: "DK5000400440116243" } })).rejects.toMatchObject({
       code: "FORBIDDEN",
     })
     await expect(accountant.paymentDetails.update({})).rejects.toMatchObject({ code: "FORBIDDEN" })
-    expect(await admin.paymentDetails.get()).toEqual({ ...complete, canUpdate: true })
+    expect(await admin.paymentDetails.get()).toMatchObject({ ...complete, canUpdate: true })
   })
 
   it("keeps each organization's details to itself", async () => {
     const first = await organization()
     const second = await organization()
     await first.admin.paymentDetails.update(complete)
-    expect(await second.admin.paymentDetails.get()).toEqual({ ...empty, canUpdate: true })
+    expect(await second.admin.paymentDetails.get()).toMatchObject({ ...empty, canUpdate: true })
+  })
+
+  it("previews the next invoice number without advancing it", async () => {
+    const { org, admin } = await organization()
+    expect((await admin.paymentDetails.get()).nextInvoiceNumber).toBe("INV-0001")
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { invoiceNextNum: 2 } })
+    expect((await admin.paymentDetails.get()).nextInvoiceNumber).toBe("INV-0002")
+    expect((await admin.paymentDetails.get()).nextInvoiceNumber).toBe("INV-0002")
   })
 
   it("requires a signed-in user", async () => {

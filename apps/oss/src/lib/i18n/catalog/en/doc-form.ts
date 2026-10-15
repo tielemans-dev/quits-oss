@@ -42,6 +42,7 @@ export const enDocFormMessages = {
   "invoiceValidation.description.tooLong": "Use at most 500 characters",
   "invoiceValidation.unitPrice.invalid": "Enter a price as a plain number, like 1200 or 99.95",
   "invoiceValidation.policyUnavailable": "Invoice rules could not be checked right now. You can save a draft and send it later.",
+  "settings.cvr.label": "CVR number",
   "docForm.validation.quantityInvalid":
     "Enter a quantity greater than 0 and at most 1000000, using a decimal point and up to 6 decimal places. Exponent notation is not allowed.",
 } as const

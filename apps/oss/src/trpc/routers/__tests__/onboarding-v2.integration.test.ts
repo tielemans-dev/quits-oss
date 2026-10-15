@@ -581,7 +581,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it("serializes confirmation after an AI patch including its tax identifier write", async () => {
     const id = await organization()
     const api = await caller(id)
-    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    await api.onboarding.saveDraft({ countryCode: "DK", companyName: "Original", primaryTaxId: "Original ID" })
     const name = `qui56_ai_${id.replaceAll("-", "")}`
     // A PostgreSQL advisory barrier holds the actual identifier write before commit.
     await prisma.$executeRawUnsafe(`CREATE FUNCTION "${name}"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."organizationId" = '${id}' THEN PERFORM pg_advisory_xact_lock(hashtext('${id}')); END IF; RETURN NEW; END $$`)

@@ -59,7 +59,7 @@ const type = (label: string, value: string) => fireEvent.change(field(label), { 
 
 async function renderAs(state: typeof empty | typeof complete, options: { canUpdate?: boolean; locale?: string } = {}) {
   const canUpdate = options.canUpdate ?? true
-  api.get.mockResolvedValue({ ...state, canUpdate })
+  api.get.mockResolvedValue({ ...state, canUpdate, nextInvoiceNumber: "INV-0002" })
   const view = render(<PaymentDetailsCard locale={options.locale} />)
   await waitFor(() => expect(api.get).toHaveBeenCalled())
   await screen.findByText("settings.paymentDetails.title")
@@ -105,7 +105,7 @@ describe("PaymentDetailsCard", () => {
     expect(within(preview).getByText("DK50 0040 0440 1162 43")).toBeTruthy()
     expect(within(preview).getByText("DABADKKK")).toBeTruthy()
     expect(within(preview).getByText("MobilePay Box 12345")).toBeTruthy()
-    expect(preview.textContent).toContain("Payment message: INV-0001")
+    expect(preview.textContent).toContain("Payment message: INV-0002")
     expect(screen.queryByText("settings.paymentDetails.preview.empty")).toBeNull()
   })
 
@@ -114,7 +114,7 @@ describe("PaymentDetailsCard", () => {
     const preview = screen.getByTestId("payment-details-preview")
     expect(within(preview).getByText("Betalingsoplysninger")).toBeTruthy()
     expect(within(preview).getByText("Kontohaver")).toBeTruthy()
-    expect(preview.textContent).toContain("Betalingsbesked: INV-0001")
+    expect(preview.textContent).toContain("Betalingsbesked: INV-0002")
     cleanup()
 
     await renderAs(complete, { locale: "en-US" })

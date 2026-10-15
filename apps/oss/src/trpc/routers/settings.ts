@@ -1,6 +1,7 @@
 import { translate } from "../../lib/i18n/translate"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
+import { toTrpcError } from "../outcome"
 import { confirmSellerVatStatus } from "../../lib/runtime/seller-vat-confirmation"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
@@ -395,6 +396,7 @@ export const settingsRouter = router({
           phone: settingsInput.companyPhone,
           taxId: primaryTaxId,
         })
+        if (resolvedCountry === "DK" && localizedIssues.taxId) throw toTrpcError({ tag: "InvalidState", code: "invalid_cvr", message: "Enter a valid CVR number", issues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] })
         if (Object.values(localizedIssues).some(Boolean)) {
           throw new TRPCError({
             code: "BAD_REQUEST",

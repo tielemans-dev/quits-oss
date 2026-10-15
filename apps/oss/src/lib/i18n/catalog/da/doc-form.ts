@@ -42,6 +42,7 @@ export const daDocFormMessages = {
   "invoiceValidation.description.tooLong": "Brug højst 500 tegn",
   "invoiceValidation.unitPrice.invalid": "Skriv en pris som et almindeligt tal, f.eks. 1200 eller 99,95",
   "invoiceValidation.policyUnavailable": "Fakturareglerne kunne ikke kontrolleres lige nu. Du kan gemme en kladde og sende den senere.",
+  "settings.cvr.label": "CVR-nummer",
   "docForm.validation.quantityInvalid":
     "Angiv et antal større end 0 og højst 1.000.000 med komma eller punktum og op til 6 decimaler. Eksponentnotation er ikke tilladt.",
 } as const

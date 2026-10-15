@@ -472,7 +472,8 @@ describe("Settings tax relevance", () => {
     expect(screen.queryByLabelText("Primary Seller Tax ID")).toBeNull()
 
     cleanup()
-  resetRequestOrganizationForTesting()
+    resetRequestOrganizationForTesting()
+    initializeRequestOrganizationId("org_1")
     currentSettingsData = buildSettingsData({
       countryCode: "DK",
       locale: "da-DK",

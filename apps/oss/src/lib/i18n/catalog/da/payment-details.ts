@@ -24,7 +24,7 @@ export const daPaymentDetailsMessages = {
   "settings.paymentDetails.readOnly": "Kun ejere og administratorer kan ændre betalingsoplysningerne.",
   "settings.paymentDetails.save": "Gem betalingsoplysninger",
   "settings.paymentDetails.saving": "Gemmer…",
-  "settings.paymentDetails.saved": "Betalingsoplysningerne er gemt.",
+  "settings.paymentDetails.saved": "Bankoplysninger gemt",
   "settings.paymentDetails.error.load": "Betalingsoplysningerne kunne ikke indlæses.",
   "settings.paymentDetails.error.save": "Betalingsoplysningerne kunne ikke gemmes.",
   "settings.paymentDetails.error.regNumber": "Angiv præcis 4 cifre.",
