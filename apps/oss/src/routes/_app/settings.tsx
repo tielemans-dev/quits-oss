@@ -64,6 +64,7 @@ import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/
 import { AiDraftsCard } from "../../components/settings/ai-drafts-card"
 import { VatPeriodCard } from "../../components/settings/vat-period-card"
 import type { VatPeriod } from "../../lib/vat-deadline"
+import { AccountingIntegrationsCard } from "../../components/settings/accounting-integrations-card"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
@@ -1874,6 +1875,7 @@ function SettingsPage() {
       <div className="mt-6 grid gap-6">
         <PaymentDetailsCard locale={settings?.locale} />
         <ReminderPolicyCard />
+        <AccountingIntegrationsCard />
         <AgentKeysCard />
         <AuditLogCard />
       </div>
