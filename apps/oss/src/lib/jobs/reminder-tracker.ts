@@ -1,3 +1,5 @@
+import type { TranslationKey } from "../i18n/messages"
+
 /** The part of a `jobs.list` job the tracker reads. The server is the only source of progress. */
 export type TrackerJob = {
   id: string
@@ -15,6 +17,12 @@ export type TrackerJob = {
 /** `waiting` has not started; `sending` is in flight; `failed` is also a step a failed job never ran. */
 export type StepState = "waiting" | "sending" | "sent" | "failed"
 export type TrackerPhase = "running" | "done" | "failed"
+
+export const TRACKER_TITLE = {
+  running: "reminders.tracker.title.running",
+  done: "reminders.tracker.title.done",
+  failed: "reminders.tracker.title.failed",
+} as const satisfies Record<TrackerPhase, TranslationKey>
 
 function stepState(status: string, jobFailed: boolean): StepState {
   if (status === "succeeded") return "sent"
@@ -43,4 +51,24 @@ export function remindedInvoiceIds(jobs: readonly TrackerJob[]): Set<string> {
       job.steps.flatMap((step) => (step.status === "succeeded" && step.invoiceId ? [step.invoiceId] : []))
     )
   )
+}
+
+const RECENT_FAILURE_MS = 24 * 60 * 60 * 1000
+
+/**
+ * The one job the toast shows: the newest that is running, was running in this tab and has not
+ * been dismissed, or failed recently enough to still be worth a retry after a reload.
+ */
+export function pickTrackedJob(
+  jobs: readonly TrackerJob[],
+  seen: ReadonlySet<string>,
+  dismissed: ReadonlySet<string>,
+  now = Date.now()
+) {
+  return jobs.find((job) => {
+    if (dismissed.has(job.id)) return false
+    const { phase } = trackerView(job)
+    if (phase === "running" || seen.has(job.id)) return true
+    return phase === "failed" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS
+  })
 }

@@ -351,7 +351,25 @@ html[data-document] {
   padding: 0;
 }
 
-/* Status pill crossfade (components/jobs/swapping-status-badge.tsx). Reduced motion keeps the fade. */
+/* Tracker toast: grows out of the 176px spinner square; its parent draws the shadow so the clip keeps it. */
+@keyframes tracker-morph {
+  from {
+    clip-path: inset(calc(100% - 11rem) 0 0 calc(100% - 11rem) round 1rem);
+  }
+  to {
+    clip-path: inset(0 round 1rem);
+  }
+}
+@keyframes tracker-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes tracker-spinner-out {
+  to {
+    opacity: 0;
+  }
+}
 @keyframes pill-in {
   from {
     opacity: 0;
@@ -361,6 +379,12 @@ html[data-document] {
   to {
     opacity: 0;
   }
+}
+.tracker-morph {
+  animation: tracker-morph 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.tracker-spinner {
+  animation: tracker-spinner-out 380ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 .pill-in,
 .pill-out {
@@ -377,5 +401,11 @@ html[data-document] {
   .pill-in,
   .pill-out {
     animation-delay: 0ms;
+  }
+  .tracker-morph {
+    animation: tracker-fade 200ms linear both;
+  }
+  .tracker-spinner {
+    display: none;
   }
 }
