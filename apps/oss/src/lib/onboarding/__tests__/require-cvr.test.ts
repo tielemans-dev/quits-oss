@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { requireOnboardingCvr } from "../require-cvr"
 import { resetRuntimeServices, setRuntimeServices } from "../../runtime/services"
 import { buildQuitsAuthOptions } from "../../runtime/auth-config"
+
 const company = { cvr: "24256790", name: "Registered business", address: "Testvej 1",
   companyForm: "Enkeltmandsvirksomhed", status: "active" as const, statusClass: "active" as const, momsRegistered: false }
 const get = vi.fn()

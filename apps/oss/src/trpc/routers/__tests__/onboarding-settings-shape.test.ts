@@ -335,6 +335,11 @@ describe("atomic Settings Danish VAT repairs", () => {
 
 describe("hosted CVR admission remains enforced", () => {
   beforeEach(() => { mocks.settings = { ...defaults }; mocks.v2 = false; mocks.taxIds = [{ id: "primary", scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true }] })
+  it("preserves the admitted CVR when a draft omits the optional tax ID", async () => {
+    await caller().saveDraft({ primaryTaxId: undefined })
+    expect(mocks.taxIds[0]?.value).toBe("24256790")
+    expect(mocks.cvrGet).not.toHaveBeenCalled()
+  })
   it.each(["draft", "settings"])("rejects clearing, invalid replacement and scheme bypass in %s", async route => {
     for (const patch of [{ primaryTaxId: "" }, { primaryTaxId: "12345678" }, { primaryTaxId: "24256790", primaryTaxIdScheme: "other" }]) {
       await expect(route === "draft" ? caller().saveDraft(patch) : settingsCaller().update(patch)).rejects.toMatchObject({ code: "BAD_REQUEST", message: "cvr.invalid" })

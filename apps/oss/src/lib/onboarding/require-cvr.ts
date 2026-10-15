@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { getCvrLookupProvider } from "../runtime/services"
+
 /** Registry checks belong to the hosted provider; self-host only checks the CVR format. */
 export async function requireOnboardingCvr(input: {
   cvr: unknown; cloud: boolean; userId: string; organizationId?: string; scheme?: string
