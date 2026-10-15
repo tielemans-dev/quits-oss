@@ -141,7 +141,7 @@ async function fixture(unitPrice = "100", taxRate = "25", pricesIncludeTax = fal
     completed(await execute(deductInvoiceDeposits, { id, amountGross: "0" }, { actor: ctx.actor }))
     expect(await execute(deductInvoiceDeposits, { id }, { actor: ctx.actor })).toMatchObject({ status: "failed", error: { code: "deposits_disabled" } })
     completed(await execute(sendInvoice, { id: await ctx.create(2) }, { actor: ctx.actor }))
-    expect(getAgentTool({ kind: "agent", organizationId: ctx.actor.organizationId, agentKeyId: "synthetic", ownerRoles: ctx.actor.roles, label: "Test agent", scopes: ["invoice:update"], mode: "auto" }, "invoice_deduct_deposits").commandType).toBe("invoice.deduct_deposits")
+    expect(getAgentTool({ kind: "agent", organizationId: ctx.actor.organizationId, agentKeyId: "synthetic", ownerRoles: ctx.actor.roles, label: "Test agent", scopes: ["invoice:update"], mode: "full_access" }, "invoice_deduct_deposits").commandType).toBe("invoice.deduct_deposits")
   })
   it("rejects removing work underneath a reserved deduction", async () => {
     const ctx = await fixture(), id = await ctx.create(1), doc = await read(id), work = doc.items.find(line => line.deliverableId)!

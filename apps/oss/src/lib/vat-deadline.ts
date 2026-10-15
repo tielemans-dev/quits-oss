@@ -50,3 +50,17 @@ export function nextVatDeadline(period: VatPeriod, today: string): VatDeadline {
   }
   throw new Error("unreachable: the next year's deadlines always lie ahead")
 }
+
+/** The reporting dates belonging to the same next deadline shown in Morgenoverblik. */
+export function nextVatReportingPeriod(period: VatPeriod, today: string) {
+  const deadline = nextVatDeadline(period, today)
+  const entries = DEADLINES[period]
+  const index = entries.findIndex(entry => entry.label === deadline.label)
+  const year = Number(deadline.date.slice(0, 4)) - entries[index]!.yearOffset
+  const months = period === "quarterly" ? 3 : 6
+  return {
+    ...deadline,
+    from: new Date(Date.UTC(year, index * months, 1)).toISOString().slice(0, 10),
+    to: new Date(Date.UTC(year, (index + 1) * months, 0)).toISOString().slice(0, 10),
+  }
+}

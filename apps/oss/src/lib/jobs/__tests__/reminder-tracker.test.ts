@@ -59,6 +59,12 @@ describe("pickTrackedJob", () => {
   const failed = job(["failed"], { status: "failed" }, "failed")
   const none = new Set<string>()
 
+  it("restores the download of a completed VAT export after reload until dismissed", () => {
+    const exported = { ...finished, kind: "vat.summary" }
+    expect(pickTrackedJob([exported], none, none, now)?.id).toBe("finished")
+    expect(pickTrackedJob([exported], none, new Set(["finished"]), now)).toBeUndefined()
+  })
+
   it("shows a running job, also after a reload", () => {
     expect(pickTrackedJob([finished, running], none, none, now)?.id).toBe("running")
   })
