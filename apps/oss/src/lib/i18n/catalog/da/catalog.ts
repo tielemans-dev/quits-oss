@@ -6,6 +6,8 @@ export const daCatalogMessages = {
   "catalog.defaultUnitPrice": "Standard enhedspris",
   "catalog.defaultPrice": "Standardpris",
   "catalog.actions": "Handlinger",
+  "catalog.action.edit": "Rediger {name}",
+  "catalog.action.archive": "Arkiver {name}",
   "catalog.add": "Tilføj vare",
   "catalog.save": "Gem",
   "catalog.cancel": "Annuller",

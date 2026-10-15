@@ -279,6 +279,7 @@ function CatalogPage() {
                               size="icon-sm"
                               variant="ghost"
                               onClick={() => startEdit(item)}
+                              aria-label={t("catalog.action.edit", { name: item.name })}
                               type="button"
                             >
                               <Pencil className="size-4" />
@@ -288,6 +289,7 @@ function CatalogPage() {
                               variant="ghost"
                               onClick={() => handleArchive(item.id)}
                               disabled={saving}
+                              aria-label={t("catalog.action.archive", { name: item.name })}
                               type="button"
                             >
                               <Trash2 className="size-4 text-muted-foreground" />

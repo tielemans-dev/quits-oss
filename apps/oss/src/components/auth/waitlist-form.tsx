@@ -105,7 +105,7 @@ export function WaitlistForm({ initialEmail, privacyVersion, privacyPath, onJoin
       </div>
       {consentError && <p id="waitlist-consent-error" role="alert" className="text-xs text-destructive">▪ {t('auth.waitlist.errConsent')}</p>}
     </div>
-    {banner && <p role="alert" className={banner === 'rate' ? 'text-xs text-amber-700' : 'text-xs text-destructive'}>▪ {t(banner === 'rate' ? 'auth.waitlist.errRate' : 'auth.waitlist.errNetwork')}</p>}
+    {banner && <p role="alert" className={banner === 'rate' ? 'text-xs text-tone-warning' : 'text-xs text-destructive'}>▪ {t(banner === 'rate' ? 'auth.waitlist.errRate' : 'auth.waitlist.errNetwork')}</p>}
     <Button type="submit" className="w-full bg-foreground text-background hover:bg-foreground/90" disabled={busy}>{t(busy ? 'auth.waitlist.submitting' : 'auth.waitlist.submit')}</Button>
     <span className="sr-only" role="status">{busy ? t('auth.waitlist.submitting') : ''}</span>
   </form>

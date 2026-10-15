@@ -1792,7 +1792,12 @@ function SettingsPage() {
                       {!isSelf && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 text-muted-foreground hover:text-destructive"
+                              aria-label={t("settings.team.action.removeMember", { name: m.user.name })}
+                            >
                               <X className="size-3.5" />
                             </Button>
                           </AlertDialogTrigger>
@@ -1853,6 +1858,7 @@ function SettingsPage() {
                       variant="ghost"
                       size="icon"
                       className="size-7 text-muted-foreground hover:text-destructive"
+                      aria-label={t("settings.team.action.cancelInvite", { email: inv.email })}
                       onClick={() => handleCancelInvite(inv.id)}
                     >
                       <X className="size-3.5" />
