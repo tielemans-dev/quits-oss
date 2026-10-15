@@ -165,20 +165,22 @@ export const daSettingsMessages = {
   "settings.payments.undo": "Fortryd",
   "settings.payments.connect.title": "Tilknyt Stripe",
   "settings.payments.connect.description":
-    "Kunder betaler fakturaer med kort via din Stripe-konto.",
+    "Tilknyt din Stripe-konto for at modtage kortbetalinger.",
   "settings.payments.connect.status.none": "Ikke tilknyttet",
   "settings.payments.connect.status.pending": "Onboarding er ikke færdig",
   "settings.payments.connect.status.active": "Aktiv",
   "settings.payments.connect.status.restricted": "Begrænset",
   "settings.payments.connect.help.none":
-    "Kortbetalinger er slået fra, indtil Stripe er tilknyttet.",
+    "Tilknyt din Stripe-konto.",
   "settings.payments.connect.help.pending":
-    "Afslut onboarding i Stripe for at slå kortbetalinger til.",
+    "Gør din konto færdig i Stripe.",
   "settings.payments.connect.help.active":
-    "Kortbetalinger er slået til. Stripe trækker behandlingsgebyrer på din konto.",
+    "Stripe er tilknyttet. Stripe trækker behandlingsgebyrer på din konto.",
   "settings.payments.connect.help.restricted":
-    "Stripe begrænser denne konto. Kortbetalinger er slået fra, indtil du retter det i Stripe.",
+    "Stripe begrænser denne konto. Se, hvad der skal rettes i Stripe.",
   "settings.payments.connect.account.label": "Stripe-konto",
+  "settings.payments.connect.payments.enabled": "Kortbetalinger er slået til.",
+  "settings.payments.connect.payments.unavailable": "Kortbetalinger er endnu ikke tilgængelige.",
   "settings.payments.connect.action.connect": "Tilknyt Stripe",
   "settings.payments.connect.action.resume": "Fortsæt onboarding",
   "settings.payments.connect.action.fix": "Ret i Stripe",

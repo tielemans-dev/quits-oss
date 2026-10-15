@@ -24,6 +24,16 @@ afterEach(() => {
 })
 
 describe("StripeConnectCard", () => {
+  describe.each(["none", "pending", "restricted", "active"] as const)("%s account", (status) => {
+    it.each([false, true])("shows payment readiness from Settings (%s)", (paymentsEnabled) => {
+      render(<StripeConnectCard account={account(status)} paymentsEnabled={paymentsEnabled} />)
+      const shown = paymentsEnabled ? "enabled" : "unavailable"
+      const hidden = paymentsEnabled ? "unavailable" : "enabled"
+      expect(screen.getByText(`settings.payments.connect.payments.${shown}`)).toBeTruthy()
+      expect(screen.queryByText(`settings.payments.connect.payments.${hidden}`)).toBeNull()
+    })
+  })
+
   it("shows not connected with a connect action and no disconnect", () => {
     const onConnect = vi.fn()
     render(<StripeConnectCard account={account("none")} onConnect={onConnect} />)

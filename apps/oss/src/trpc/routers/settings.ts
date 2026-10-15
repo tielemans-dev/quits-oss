@@ -27,7 +27,7 @@ import {
   type AiProviderKind,
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
-import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
+import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget } from "../../lib/payments/stripe"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
@@ -253,6 +253,10 @@ export const settingsRouter = router({
       stripeWebhookSecretEnc: settings.stripeWebhookSecretEnc,
       stripeAccountStatus: settings.stripeAccountStatus,
     })
+    // Cached readiness alone does not supply the runtime's Connect checkout client.
+    const stripePaymentsEnabled = stripeState.configured && Boolean(
+      await resolveStripeCheckoutTarget({ organizationId: ctx.organizationId }).catch(() => null)
+    )
     const runtimeCapabilities = getRuntimeCapabilities()
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
     const environment = getRuntimeEnv()
@@ -300,6 +304,7 @@ export const settingsRouter = router({
       aiBaseUrl: settings.aiBaseUrl,
       aiModel: settings.aiModel,
       stripeByokConfigured: stripeState.configured,
+      stripePaymentsEnabled,
       stripePublishableKey: settings.stripePublishableKey,
       stripeAccount: readStripeAccount({
         managed: runtimeCapabilities.payments.managed,

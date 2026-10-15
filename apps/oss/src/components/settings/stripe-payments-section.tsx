@@ -70,6 +70,7 @@ export function stripeByokUpdate(input: {
 export function StripePaymentsSection({
   account = BYOK_ACCOUNT,
   stripeByokConfigured,
+  stripePaymentsEnabled = false,
   stripePublishableKey,
   clearStripeSecretKey,
   clearStripeWebhookSecret,
@@ -81,6 +82,7 @@ export function StripePaymentsSection({
 }: {
   account?: OrgStripeAccount
   stripeByokConfigured: boolean
+  stripePaymentsEnabled?: boolean
   stripePublishableKey: string | null
   clearStripeSecretKey: boolean
   clearStripeWebhookSecret: boolean
@@ -88,7 +90,7 @@ export function StripePaymentsSection({
   onClearStripeWebhookSecretChange: (clear: boolean) => void
   /** True only when a runtime handler is registered and the caller may update settings. */
   connectActions?: boolean
-  onConnectSettings?: (next: { stripeAccount: OrgStripeAccount; stripeConnectActions: boolean }) => void
+  onConnectSettings?: (next: { stripeAccount: OrgStripeAccount; stripeConnectActions: boolean; stripePaymentsEnabled: boolean }) => void
   onConnectError?: (message: string | null) => void
 }) {
   const { t } = useI18n()
@@ -106,6 +108,7 @@ export function StripePaymentsSection({
       onConnectSettings?.({
         stripeAccount: next.stripeAccount,
         stripeConnectActions: next.stripeConnectActions,
+        stripePaymentsEnabled: next.stripePaymentsEnabled,
       })
     } catch (err) {
       onConnectError?.(err instanceof Error ? err.message : t("settings.error.saveFailed"))
@@ -116,6 +119,7 @@ export function StripePaymentsSection({
     return (
       <StripeConnectCard
         account={account}
+        paymentsEnabled={stripePaymentsEnabled}
         {...stripeConnectActionHandlers(connectActions, (action) => {
           void runConnectAction(action)
         })}

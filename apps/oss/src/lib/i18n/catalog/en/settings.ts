@@ -164,20 +164,22 @@ export const enSettingsMessages = {
   "settings.payments.undo": "Undo",
   "settings.payments.connect.title": "Connect Stripe",
   "settings.payments.connect.description":
-    "Customers pay invoices by card through your Stripe account.",
+    "Connect your Stripe account to accept card payments.",
   "settings.payments.connect.status.none": "Not connected",
   "settings.payments.connect.status.pending": "Onboarding incomplete",
   "settings.payments.connect.status.active": "Active",
   "settings.payments.connect.status.restricted": "Restricted",
   "settings.payments.connect.help.none":
-    "Card payments stay off until Stripe is connected.",
+    "Connect your Stripe account.",
   "settings.payments.connect.help.pending":
-    "Finish onboarding in Stripe to turn card payments on.",
+    "Finish setting up your account in Stripe.",
   "settings.payments.connect.help.active":
-    "Card payments are on. Processing fees are charged on your Stripe account.",
+    "Stripe is connected. Processing fees are charged to your Stripe account.",
   "settings.payments.connect.help.restricted":
-    "Stripe is restricting this account. Card payments stay off until you fix it in Stripe.",
+    "Stripe is restricting this account. Check what needs fixing in Stripe.",
   "settings.payments.connect.account.label": "Stripe account",
+  "settings.payments.connect.payments.enabled": "Card payments are on.",
+  "settings.payments.connect.payments.unavailable": "Card payments are not yet available.",
   "settings.payments.connect.action.connect": "Connect Stripe",
   "settings.payments.connect.action.resume": "Resume onboarding",
   "settings.payments.connect.action.fix": "Fix in Stripe",
