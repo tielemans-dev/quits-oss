@@ -1,11 +1,9 @@
-import { mkdir } from "node:fs/promises"
-import { resolve } from "node:path"
 import { expect, test } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { adminCredentials, appOrigin, danishLocale, resetDatabase, seedPublicInvoice, usEnglishLocale, waitForClientReady } from "./support"
 
 for (const locale of [danishLocale, usEnglishLocale]) {
-  test(`draft delivery date can be changed and cleared in ${locale.locale}`, async ({ browser }, testInfo) => {
+  test(`draft delivery date can be changed and cleared in ${locale.locale}`, async ({ browser }) => {
     test.setTimeout(120_000)
     await resetDatabase()
     const seeded = await seedPublicInvoice({ locale })
@@ -26,18 +24,6 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.goto(`/invoices/${invoice.id}`)
       await waitForClientReady(page)
       await edit.click()
-      const captureDir = process.env.QUI137_CAPTURE_DIR ?? testInfo.outputPath("screenshots")
-      await mkdir(captureDir, { recursive: true })
-      for (const width of [390, 1440]) {
-        await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 })
-        const path = resolve(captureDir, `edit-${locale.locale}-${width}.png`)
-        await page.screenshot({ path, fullPage: true })
-        await testInfo.attach(`edit-${locale.locale}-${width}`, { path, contentType: "image/png" })
-      }
-      if (process.env.QUI137_SCREENSHOT_STAGE === "before") {
-        await expect(delivery).toHaveCount(0)
-        return
-      }
       await expect(delivery).toHaveText(da ? "05.10.2026" : "10/05/2026")
       await delivery.click()
       await page.locator('button[data-day="10/7/2026"]').click()

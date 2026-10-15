@@ -452,7 +452,7 @@ function InvoiceDetailPage() {
       })
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
-      setIssuance(current => ({ ...current, supplyDate: editSupplyDate }))
+      setIssuance(current => ({ ...current, supplyDate: editSupplyDate || initialIssuanceValues().supplyDate }))
       // Edits made while the save was in flight are not in this response; keep the editor open so they are not lost.
       if (editSnapshot.current !== submitted) return
       setEditing(false)
