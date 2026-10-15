@@ -171,6 +171,26 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ locale: "en-US", primaryTaxId: null }))
   })
 
+  it("does not store a legacy locale draft when onboarding v2 is active", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
+  })
+
+  it("does not store a legacy locale draft when capabilities are unavailable", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("unavailable"))
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
+  })
+
   it("prefills localized defaults and hides irrelevant tax fields", async () => {
     useSessionMock.mockReturnValue({
       data: {

@@ -305,10 +305,18 @@ function OnboardingPageContent() {
           }
           if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
-            try {
-              await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
-            } catch {
-              // The field already shows the current language. The next visit can store it.
+            // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
+            // draft. When capabilities are unknown, skip the write; the next visit can store it.
+            const v2Active = await trpc.runtime.capabilities.query()
+              .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
+              .catch(() => true)
+            if (cancelled) return
+            if (!v2Active) {
+              try {
+                await trpc.onboarding.saveDraft.mutate({ locale: parsed.locale, primaryTaxId: null })
+              } catch {
+                // The field already shows the current language. The next visit can store it.
+              }
             }
           }
           setValues(parsed)
