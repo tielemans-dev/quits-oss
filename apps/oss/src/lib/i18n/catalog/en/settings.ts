@@ -162,6 +162,38 @@ export const enSettingsMessages = {
   "settings.payments.removeSecret": "Remove saved secret key",
   "settings.payments.removeWebhook": "Remove saved webhook secret",
   "settings.payments.undo": "Undo",
+  "settings.payments.connect.title": "Connect Stripe",
+  "settings.payments.connect.description":
+    "Connect your Stripe account to accept card payments.",
+  "settings.payments.connect.status.none": "Not connected",
+  "settings.payments.connect.status.pending": "Onboarding incomplete",
+  "settings.payments.connect.status.active": "Active",
+  "settings.payments.connect.status.restricted": "Restricted",
+  "settings.payments.connect.help.none":
+    "Connect your Stripe account.",
+  "settings.payments.connect.help.pending":
+    "Finish setting up your account in Stripe.",
+  "settings.payments.connect.help.active":
+    "Stripe is connected. Processing fees are charged to your Stripe account.",
+  "settings.payments.connect.help.restricted":
+    "Stripe is restricting this account. Check what needs fixing in Stripe.",
+  "settings.payments.connect.payments.byok": "Card payments use your own Stripe keys. Stripe Connect is not used for these payments.",
+  "settings.payments.connect.payments.connect": "Card payments use Stripe Connect.",
+  "settings.payments.connect.legacy.active": "Legacy Stripe keys are still active as a fallback. Remove them to use only Stripe Connect.",
+  "settings.payments.connect.legacy.removing": "Save settings to remove the legacy Stripe keys. Card payments will then require an active Stripe Connect account.",
+  "settings.payments.connect.legacy.remove": "Remove legacy Stripe keys",
+  "settings.payments.connect.account.label": "Stripe account",
+  "settings.payments.connect.payments.enabled": "Card payments are on.",
+  "settings.payments.connect.payments.unavailable": "Card payments are not yet available.",
+  "settings.payments.connect.action.connect": "Connect Stripe",
+  "settings.payments.connect.action.resume": "Resume onboarding",
+  "settings.payments.connect.action.fix": "Fix in Stripe",
+  "settings.payments.connect.action.disconnect": "Disconnect",
+  "settings.payments.connect.disconnect.title": "Disconnect Stripe?",
+  "settings.payments.connect.disconnect.description":
+    "This removes the connected account from the organization. The account stays open in Stripe.",
+  "settings.payments.connect.disconnect.confirm": "Disconnect",
+  "settings.payments.connect.disconnect.cancel": "Cancel",
   "settings.section.ai.title": "AI Invoice Drafting",
   "settings.section.ai.description":
     "Choose how AI invoice drafts are generated and configure the connection.",

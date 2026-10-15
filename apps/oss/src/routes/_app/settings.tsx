@@ -54,6 +54,7 @@ import {
 import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
+import type { OrgStripeAccount } from "@quits/contracts/payments"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
@@ -64,6 +65,7 @@ import { ReminderPolicyCard } from "../../components/settings/reminder-policy-ca
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
+import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -148,7 +150,11 @@ type SettingsData = {
   aiModel: string
   aiByokConfigured: boolean
   stripeByokConfigured: boolean
+  stripePaymentsEnabled?: boolean
+  stripeCheckoutKind?: "byok" | "connect" | null
   stripePublishableKey: string | null
+  stripeAccount?: OrgStripeAccount
+  stripeConnectActions?: boolean
   emailDelivery: {
     managed: boolean
     configured: boolean
@@ -589,11 +595,14 @@ function SettingsPage() {
               clearAiApiKey,
             }
           : {}),
-        stripePublishableKey: stripePublishableKeyInput || undefined,
-        stripeSecretKey: stripeSecretKeyInput || undefined,
-        stripeWebhookSecret: stripeWebhookSecretInput || undefined,
-        clearStripeSecretKey,
-        clearStripeWebhookSecret,
+        ...stripeByokUpdate({
+          mode: settings?.stripeAccount?.mode,
+          stripePublishableKey: stripePublishableKeyInput,
+          stripeSecretKey: stripeSecretKeyInput,
+          stripeWebhookSecret: stripeWebhookSecretInput,
+          clearStripeSecretKey,
+          clearStripeWebhookSecret,
+        }),
       })
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
@@ -1293,6 +1302,19 @@ function SettingsPage() {
           />
         ) : null}
 
+        <StripePaymentsSection
+          account={settings.stripeAccount}
+          stripeByokConfigured={settings.stripeByokConfigured}
+          stripePaymentsEnabled={settings.stripePaymentsEnabled}
+          stripeCheckoutKind={settings.stripeCheckoutKind}
+          clearStripeSecretKey={clearStripeSecretKey}
+          clearStripeWebhookSecret={clearStripeWebhookSecret}
+          onClearStripeSecretKeyChange={setClearStripeSecretKey}
+          onClearStripeWebhookSecretChange={setClearStripeWebhookSecret}
+          connectActions={settings.stripeConnectActions}
+          onConnectError={setError}
+          onConnectSettings={(next) => setSettings((current) => current ? { ...current, ...next } : current)}
+        >
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.section.payments.title")}</CardTitle>
@@ -1386,6 +1408,7 @@ function SettingsPage() {
             )}
           </CardContent>
         </Card>
+        </StripePaymentsSection>
 
         {/* AI invoice drafting */}
         <Card>
