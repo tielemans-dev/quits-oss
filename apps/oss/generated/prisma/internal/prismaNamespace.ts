@@ -414,6 +414,7 @@ export const ModelName = {
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
   Job: 'Job',
+  JobStep: 'JobStep',
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
@@ -423,7 +424,8 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  RecipientReminderPreference: 'RecipientReminderPreference'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -439,7 +441,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "jobStep" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "recipientReminderPreference"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2663,6 +2665,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    JobStep: {
+      payload: Prisma.$JobStepPayload<ExtArgs>
+      fields: Prisma.JobStepFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.JobStepFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.JobStepFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        findFirst: {
+          args: Prisma.JobStepFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.JobStepFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        findMany: {
+          args: Prisma.JobStepFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>[]
+        }
+        create: {
+          args: Prisma.JobStepCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        createMany: {
+          args: Prisma.JobStepCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.JobStepCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>[]
+        }
+        delete: {
+          args: Prisma.JobStepDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        update: {
+          args: Prisma.JobStepUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        deleteMany: {
+          args: Prisma.JobStepDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.JobStepUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.JobStepUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>[]
+        }
+        upsert: {
+          args: Prisma.JobStepUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$JobStepPayload>
+        }
+        aggregate: {
+          args: Prisma.JobStepAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateJobStep>
+        }
+        groupBy: {
+          args: Prisma.JobStepGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.JobStepGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.JobStepCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.JobStepCountAggregateOutputType> | number
+        }
+      }
+    }
     SchedulerScan: {
       payload: Prisma.$SchedulerScanPayload<ExtArgs>
       fields: Prisma.SchedulerScanFieldRefs
@@ -3403,6 +3479,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RecipientReminderPreference: {
+      payload: Prisma.$RecipientReminderPreferencePayload<ExtArgs>
+      fields: Prisma.RecipientReminderPreferenceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RecipientReminderPreferenceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RecipientReminderPreferenceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        findFirst: {
+          args: Prisma.RecipientReminderPreferenceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RecipientReminderPreferenceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        findMany: {
+          args: Prisma.RecipientReminderPreferenceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
+        }
+        create: {
+          args: Prisma.RecipientReminderPreferenceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        createMany: {
+          args: Prisma.RecipientReminderPreferenceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RecipientReminderPreferenceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
+        }
+        delete: {
+          args: Prisma.RecipientReminderPreferenceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        update: {
+          args: Prisma.RecipientReminderPreferenceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        deleteMany: {
+          args: Prisma.RecipientReminderPreferenceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RecipientReminderPreferenceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RecipientReminderPreferenceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
+        }
+        upsert: {
+          args: Prisma.RecipientReminderPreferenceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
+        }
+        aggregate: {
+          args: Prisma.RecipientReminderPreferenceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRecipientReminderPreference>
+        }
+        groupBy: {
+          args: Prisma.RecipientReminderPreferenceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecipientReminderPreferenceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RecipientReminderPreferenceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecipientReminderPreferenceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -4126,6 +4276,7 @@ export const JobScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   type: 'type',
+  title: 'title',
   payload: 'payload',
   status: 'status',
   attempts: 'attempts',
@@ -4139,6 +4290,23 @@ export const JobScalarFieldEnum = {
 } as const
 
 export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
+
+
+export const JobStepScalarFieldEnum = {
+  id: 'id',
+  jobId: 'jobId',
+  position: 'position',
+  label: 'label',
+  invoiceId: 'invoiceId',
+  status: 'status',
+  error: 'error',
+  attempts: 'attempts',
+  deliveryKey: 'deliveryKey',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JobStepScalarFieldEnum = (typeof JobStepScalarFieldEnum)[keyof typeof JobStepScalarFieldEnum]
 
 
 export const SchedulerScanScalarFieldEnum = {
@@ -4378,6 +4546,18 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
+export const RecipientReminderPreferenceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  recipient: 'recipient',
+  locale: 'locale',
+  unsubscribedAt: 'unsubscribedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RecipientReminderPreferenceScalarFieldEnum = (typeof RecipientReminderPreferenceScalarFieldEnum)[keyof typeof RecipientReminderPreferenceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4538,6 +4718,20 @@ export type ListEnumInvoicePurposeFieldRefInput<$PrismaModel> = FieldRefInputTyp
 
 
 /**
+ * Reference to a field of type 'JobStepStatus'
+ */
+export type EnumJobStepStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'JobStepStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'JobStepStatus[]'
+ */
+export type ListEnumJobStepStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'JobStepStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'EventConsumerDeliveryStatus'
  */
 export type EnumEventConsumerDeliveryStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EventConsumerDeliveryStatus'>
@@ -4689,6 +4883,7 @@ export type GlobalOmitConfig = {
   approvalRequest?: Prisma.ApprovalRequestOmit
   agentKey?: Prisma.AgentKeyOmit
   job?: Prisma.JobOmit
+  jobStep?: Prisma.JobStepOmit
   schedulerScan?: Prisma.SchedulerScanOmit
   agreement?: Prisma.AgreementOmit
   deliverable?: Prisma.DeliverableOmit
@@ -4699,6 +4894,7 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
+  recipientReminderPreference?: Prisma.RecipientReminderPreferenceOmit
 }
 
 /* Types for Logging */

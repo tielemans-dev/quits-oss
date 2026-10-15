@@ -38,6 +38,7 @@ export type JobMinAggregateOutputType = {
   id: string | null
   organizationId: string | null
   type: string | null
+  title: string | null
   status: string | null
   attempts: number | null
   runAfter: Date | null
@@ -52,6 +53,7 @@ export type JobMaxAggregateOutputType = {
   id: string | null
   organizationId: string | null
   type: string | null
+  title: string | null
   status: string | null
   attempts: number | null
   runAfter: Date | null
@@ -66,6 +68,7 @@ export type JobCountAggregateOutputType = {
   id: number
   organizationId: number
   type: number
+  title: number
   payload: number
   status: number
   attempts: number
@@ -92,6 +95,7 @@ export type JobMinAggregateInputType = {
   id?: true
   organizationId?: true
   type?: true
+  title?: true
   status?: true
   attempts?: true
   runAfter?: true
@@ -106,6 +110,7 @@ export type JobMaxAggregateInputType = {
   id?: true
   organizationId?: true
   type?: true
+  title?: true
   status?: true
   attempts?: true
   runAfter?: true
@@ -120,6 +125,7 @@ export type JobCountAggregateInputType = {
   id?: true
   organizationId?: true
   type?: true
+  title?: true
   payload?: true
   status?: true
   attempts?: true
@@ -223,6 +229,7 @@ export type JobGroupByOutputType = {
   id: string
   organizationId: string
   type: string
+  title: string | null
   payload: runtime.JsonValue
   status: string
   attempts: number
@@ -262,6 +269,7 @@ export type JobWhereInput = {
   id?: Prisma.StringFilter<"Job"> | string
   organizationId?: Prisma.StringFilter<"Job"> | string
   type?: Prisma.StringFilter<"Job"> | string
+  title?: Prisma.StringNullableFilter<"Job"> | string | null
   payload?: Prisma.JsonFilter<"Job">
   status?: Prisma.StringFilter<"Job"> | string
   attempts?: Prisma.IntFilter<"Job"> | number
@@ -272,12 +280,14 @@ export type JobWhereInput = {
   dedupeKey?: Prisma.StringNullableFilter<"Job"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Job"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Job"> | Date | string
+  steps?: Prisma.JobStepListRelationFilter
 }
 
 export type JobOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  title?: Prisma.SortOrderInput | Prisma.SortOrder
   payload?: Prisma.SortOrder
   status?: Prisma.SortOrder
   attempts?: Prisma.SortOrder
@@ -288,6 +298,7 @@ export type JobOrderByWithRelationInput = {
   dedupeKey?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  steps?: Prisma.JobStepOrderByRelationAggregateInput
 }
 
 export type JobWhereUniqueInput = Prisma.AtLeast<{
@@ -298,6 +309,7 @@ export type JobWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.JobWhereInput | Prisma.JobWhereInput[]
   organizationId?: Prisma.StringFilter<"Job"> | string
   type?: Prisma.StringFilter<"Job"> | string
+  title?: Prisma.StringNullableFilter<"Job"> | string | null
   payload?: Prisma.JsonFilter<"Job">
   status?: Prisma.StringFilter<"Job"> | string
   attempts?: Prisma.IntFilter<"Job"> | number
@@ -307,12 +319,14 @@ export type JobWhereUniqueInput = Prisma.AtLeast<{
   claimToken?: Prisma.StringNullableFilter<"Job"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Job"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Job"> | Date | string
+  steps?: Prisma.JobStepListRelationFilter
 }, "id" | "dedupeKey">
 
 export type JobOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  title?: Prisma.SortOrderInput | Prisma.SortOrder
   payload?: Prisma.SortOrder
   status?: Prisma.SortOrder
   attempts?: Prisma.SortOrder
@@ -337,6 +351,7 @@ export type JobScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Job"> | string
   organizationId?: Prisma.StringWithAggregatesFilter<"Job"> | string
   type?: Prisma.StringWithAggregatesFilter<"Job"> | string
+  title?: Prisma.StringNullableWithAggregatesFilter<"Job"> | string | null
   payload?: Prisma.JsonWithAggregatesFilter<"Job">
   status?: Prisma.StringWithAggregatesFilter<"Job"> | string
   attempts?: Prisma.IntWithAggregatesFilter<"Job"> | number
@@ -353,6 +368,7 @@ export type JobCreateInput = {
   id?: string
   organizationId: string
   type: string
+  title?: string | null
   payload: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: string
   attempts?: number
@@ -363,12 +379,14 @@ export type JobCreateInput = {
   dedupeKey?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  steps?: Prisma.JobStepCreateNestedManyWithoutJobInput
 }
 
 export type JobUncheckedCreateInput = {
   id?: string
   organizationId: string
   type: string
+  title?: string | null
   payload: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: string
   attempts?: number
@@ -379,12 +397,14 @@ export type JobUncheckedCreateInput = {
   dedupeKey?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  steps?: Prisma.JobStepUncheckedCreateNestedManyWithoutJobInput
 }
 
 export type JobUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   attempts?: Prisma.IntFieldUpdateOperationsInput | number
@@ -395,12 +415,14 @@ export type JobUpdateInput = {
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  steps?: Prisma.JobStepUpdateManyWithoutJobNestedInput
 }
 
 export type JobUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   attempts?: Prisma.IntFieldUpdateOperationsInput | number
@@ -411,12 +433,14 @@ export type JobUncheckedUpdateInput = {
   dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  steps?: Prisma.JobStepUncheckedUpdateManyWithoutJobNestedInput
 }
 
 export type JobCreateManyInput = {
   id?: string
   organizationId: string
   type: string
+  title?: string | null
   payload: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: string
   attempts?: number
@@ -433,6 +457,7 @@ export type JobUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   attempts?: Prisma.IntFieldUpdateOperationsInput | number
@@ -449,6 +474,7 @@ export type JobUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   status?: Prisma.StringFieldUpdateOperationsInput | string
   attempts?: Prisma.IntFieldUpdateOperationsInput | number
@@ -465,6 +491,7 @@ export type JobCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  title?: Prisma.SortOrder
   payload?: Prisma.SortOrder
   status?: Prisma.SortOrder
   attempts?: Prisma.SortOrder
@@ -485,6 +512,7 @@ export type JobMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  title?: Prisma.SortOrder
   status?: Prisma.SortOrder
   attempts?: Prisma.SortOrder
   runAfter?: Prisma.SortOrder
@@ -499,6 +527,7 @@ export type JobMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   organizationId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  title?: Prisma.SortOrder
   status?: Prisma.SortOrder
   attempts?: Prisma.SortOrder
   runAfter?: Prisma.SortOrder
@@ -513,12 +542,145 @@ export type JobSumOrderByAggregateInput = {
   attempts?: Prisma.SortOrder
 }
 
+export type JobScalarRelationFilter = {
+  is?: Prisma.JobWhereInput
+  isNot?: Prisma.JobWhereInput
+}
+
+export type JobCreateNestedOneWithoutStepsInput = {
+  create?: Prisma.XOR<Prisma.JobCreateWithoutStepsInput, Prisma.JobUncheckedCreateWithoutStepsInput>
+  connectOrCreate?: Prisma.JobCreateOrConnectWithoutStepsInput
+  connect?: Prisma.JobWhereUniqueInput
+}
+
+export type JobUpdateOneRequiredWithoutStepsNestedInput = {
+  create?: Prisma.XOR<Prisma.JobCreateWithoutStepsInput, Prisma.JobUncheckedCreateWithoutStepsInput>
+  connectOrCreate?: Prisma.JobCreateOrConnectWithoutStepsInput
+  upsert?: Prisma.JobUpsertWithoutStepsInput
+  connect?: Prisma.JobWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.JobUpdateToOneWithWhereWithoutStepsInput, Prisma.JobUpdateWithoutStepsInput>, Prisma.JobUncheckedUpdateWithoutStepsInput>
+}
+
+export type JobCreateWithoutStepsInput = {
+  id?: string
+  organizationId: string
+  type: string
+  title?: string | null
+  payload: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  status?: string
+  attempts?: number
+  runAfter?: Date | string
+  lastError?: string | null
+  result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: string | null
+  dedupeKey?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type JobUncheckedCreateWithoutStepsInput = {
+  id?: string
+  organizationId: string
+  type: string
+  title?: string | null
+  payload: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  status?: string
+  attempts?: number
+  runAfter?: Date | string
+  lastError?: string | null
+  result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: string | null
+  dedupeKey?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type JobCreateOrConnectWithoutStepsInput = {
+  where: Prisma.JobWhereUniqueInput
+  create: Prisma.XOR<Prisma.JobCreateWithoutStepsInput, Prisma.JobUncheckedCreateWithoutStepsInput>
+}
+
+export type JobUpsertWithoutStepsInput = {
+  update: Prisma.XOR<Prisma.JobUpdateWithoutStepsInput, Prisma.JobUncheckedUpdateWithoutStepsInput>
+  create: Prisma.XOR<Prisma.JobCreateWithoutStepsInput, Prisma.JobUncheckedCreateWithoutStepsInput>
+  where?: Prisma.JobWhereInput
+}
+
+export type JobUpdateToOneWithWhereWithoutStepsInput = {
+  where?: Prisma.JobWhereInput
+  data: Prisma.XOR<Prisma.JobUpdateWithoutStepsInput, Prisma.JobUncheckedUpdateWithoutStepsInput>
+}
+
+export type JobUpdateWithoutStepsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  attempts?: Prisma.IntFieldUpdateOperationsInput | number
+  runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type JobUncheckedUpdateWithoutStepsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  organizationId?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  payload?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  attempts?: Prisma.IntFieldUpdateOperationsInput | number
+  runAfter?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  result?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  claimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dedupeKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+
+/**
+ * Count Type JobCountOutputType
+ */
+
+export type JobCountOutputType = {
+  steps: number
+}
+
+export type JobCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  steps?: boolean | JobCountOutputTypeCountStepsArgs
+}
+
+/**
+ * JobCountOutputType without action
+ */
+export type JobCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the JobCountOutputType
+   */
+  select?: Prisma.JobCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * JobCountOutputType without action
+ */
+export type JobCountOutputTypeCountStepsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.JobStepWhereInput
+}
 
 
 export type JobSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   organizationId?: boolean
   type?: boolean
+  title?: boolean
   payload?: boolean
   status?: boolean
   attempts?: boolean
@@ -529,12 +691,15 @@ export type JobSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   dedupeKey?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  steps?: boolean | Prisma.Job$stepsArgs<ExtArgs>
+  _count?: boolean | Prisma.JobCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["job"]>
 
 export type JobSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   organizationId?: boolean
   type?: boolean
+  title?: boolean
   payload?: boolean
   status?: boolean
   attempts?: boolean
@@ -551,6 +716,7 @@ export type JobSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   id?: boolean
   organizationId?: boolean
   type?: boolean
+  title?: boolean
   payload?: boolean
   status?: boolean
   attempts?: boolean
@@ -567,6 +733,7 @@ export type JobSelectScalar = {
   id?: boolean
   organizationId?: boolean
   type?: boolean
+  title?: boolean
   payload?: boolean
   status?: boolean
   attempts?: boolean
@@ -579,15 +746,24 @@ export type JobSelectScalar = {
   updatedAt?: boolean
 }
 
-export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "type" | "payload" | "status" | "attempts" | "runAfter" | "lastError" | "result" | "claimToken" | "dedupeKey" | "createdAt" | "updatedAt", ExtArgs["result"]["job"]>
+export type JobOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "type" | "title" | "payload" | "status" | "attempts" | "runAfter" | "lastError" | "result" | "claimToken" | "dedupeKey" | "createdAt" | "updatedAt", ExtArgs["result"]["job"]>
+export type JobInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  steps?: boolean | Prisma.Job$stepsArgs<ExtArgs>
+  _count?: boolean | Prisma.JobCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type JobIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type JobIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $JobPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Job"
-  objects: {}
+  objects: {
+    steps: Prisma.$JobStepPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     organizationId: string
     type: string
+    title: string | null
     payload: runtime.JsonValue
     status: string
     attempts: number
@@ -998,6 +1174,7 @@ readonly fields: JobFieldRefs;
  */
 export interface Prisma__JobClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  steps<T extends Prisma.Job$stepsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Job$stepsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JobStepPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1030,6 +1207,7 @@ export interface JobFieldRefs {
   readonly id: Prisma.FieldRef<"Job", 'String'>
   readonly organizationId: Prisma.FieldRef<"Job", 'String'>
   readonly type: Prisma.FieldRef<"Job", 'String'>
+  readonly title: Prisma.FieldRef<"Job", 'String'>
   readonly payload: Prisma.FieldRef<"Job", 'Json'>
   readonly status: Prisma.FieldRef<"Job", 'String'>
   readonly attempts: Prisma.FieldRef<"Job", 'Int'>
@@ -1057,6 +1235,10 @@ export type JobFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * Filter, which Job to fetch.
    */
   where: Prisma.JobWhereUniqueInput
@@ -1075,6 +1257,10 @@ export type JobFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions.In
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * Filter, which Job to fetch.
    */
   where: Prisma.JobWhereUniqueInput
@@ -1092,6 +1278,10 @@ export type JobFindFirstArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Omit specific fields from the Job
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
   /**
    * Filter, which Job to fetch.
    */
@@ -1141,6 +1331,10 @@ export type JobFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * Filter, which Job to fetch.
    */
   where?: Prisma.JobWhereInput
@@ -1189,6 +1383,10 @@ export type JobFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * Filter, which Jobs to fetch.
    */
   where?: Prisma.JobWhereInput
@@ -1231,6 +1429,10 @@ export type JobCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs 
    * Omit specific fields from the Job
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
   /**
    * The data needed to create a Job.
    */
@@ -1279,6 +1481,10 @@ export type JobUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs 
    * Omit specific fields from the Job
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
   /**
    * The data needed to update a Job.
    */
@@ -1346,6 +1552,10 @@ export type JobUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs 
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * The filter to search for the Job to update in case it exists.
    */
   where: Prisma.JobWhereUniqueInput
@@ -1372,6 +1582,10 @@ export type JobDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs 
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
+  /**
    * Filter which Job to delete.
    */
   where: Prisma.JobWhereUniqueInput
@@ -1392,6 +1606,30 @@ export type JobDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 }
 
 /**
+ * Job.steps
+ */
+export type Job$stepsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the JobStep
+   */
+  select?: Prisma.JobStepSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the JobStep
+   */
+  omit?: Prisma.JobStepOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobStepInclude<ExtArgs> | null
+  where?: Prisma.JobStepWhereInput
+  orderBy?: Prisma.JobStepOrderByWithRelationInput | Prisma.JobStepOrderByWithRelationInput[]
+  cursor?: Prisma.JobStepWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.JobStepScalarFieldEnum | Prisma.JobStepScalarFieldEnum[]
+}
+
+/**
  * Job without action
  */
 export type JobDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1403,4 +1641,8 @@ export type JobDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Job
    */
   omit?: Prisma.JobOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JobInclude<ExtArgs> | null
 }

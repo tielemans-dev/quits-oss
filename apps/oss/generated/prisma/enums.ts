@@ -27,6 +27,16 @@ export const InvoicePurpose = {
 export type InvoicePurpose = (typeof InvoicePurpose)[keyof typeof InvoicePurpose]
 
 
+export const JobStepStatus = {
+  pending: 'pending',
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed'
+} as const
+
+export type JobStepStatus = (typeof JobStepStatus)[keyof typeof JobStepStatus]
+
+
 export const EventConsumerDeliveryStatus = {
   pending: 'pending',
   claimed: 'claimed',

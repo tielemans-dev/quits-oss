@@ -192,6 +192,11 @@ export type AgentKey = Prisma.AgentKeyModel
  */
 export type Job = Prisma.JobModel
 /**
+ * Model JobStep
+ * 
+ */
+export type JobStep = Prisma.JobStepModel
+/**
  * Model SchedulerScan
  * When a scheduler task last claimed an organization; ticks claim the least recently scanned.
  * A tick holding an organization stamps `claimToken` and `claimedUntil`; other ticks skip it
@@ -243,3 +248,8 @@ export type ArtifactStaging = Prisma.ArtifactStagingModel
  * 
  */
 export type IssuanceCandidate = Prisma.IssuanceCandidateModel
+/**
+ * Model RecipientReminderPreference
+ * 
+ */
+export type RecipientReminderPreference = Prisma.RecipientReminderPreferenceModel

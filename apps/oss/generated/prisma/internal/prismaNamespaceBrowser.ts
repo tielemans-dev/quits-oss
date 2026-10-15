@@ -81,6 +81,7 @@ export const ModelName = {
   ApprovalRequest: 'ApprovalRequest',
   AgentKey: 'AgentKey',
   Job: 'Job',
+  JobStep: 'JobStep',
   SchedulerScan: 'SchedulerScan',
   Agreement: 'Agreement',
   Deliverable: 'Deliverable',
@@ -90,7 +91,8 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  RecipientReminderPreference: 'RecipientReminderPreference'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -793,6 +795,7 @@ export const JobScalarFieldEnum = {
   id: 'id',
   organizationId: 'organizationId',
   type: 'type',
+  title: 'title',
   payload: 'payload',
   status: 'status',
   attempts: 'attempts',
@@ -806,6 +809,23 @@ export const JobScalarFieldEnum = {
 } as const
 
 export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
+
+
+export const JobStepScalarFieldEnum = {
+  id: 'id',
+  jobId: 'jobId',
+  position: 'position',
+  label: 'label',
+  invoiceId: 'invoiceId',
+  status: 'status',
+  error: 'error',
+  attempts: 'attempts',
+  deliveryKey: 'deliveryKey',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type JobStepScalarFieldEnum = (typeof JobStepScalarFieldEnum)[keyof typeof JobStepScalarFieldEnum]
 
 
 export const SchedulerScanScalarFieldEnum = {
@@ -1043,6 +1063,18 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const RecipientReminderPreferenceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  recipient: 'recipient',
+  locale: 'locale',
+  unsubscribedAt: 'unsubscribedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RecipientReminderPreferenceScalarFieldEnum = (typeof RecipientReminderPreferenceScalarFieldEnum)[keyof typeof RecipientReminderPreferenceScalarFieldEnum]
 
 
 export const SortOrder = {
