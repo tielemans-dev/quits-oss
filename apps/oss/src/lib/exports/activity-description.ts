@@ -63,7 +63,7 @@ export function activityMessageKey(event: DescribableEvent): TranslationKey | nu
 /** A one-line, human-readable description of a domain event. */
 export function describeActivity(event: DescribableEvent, t: Translate): string {
   const key = activityMessageKey(event)
-  if (!key) return t("activity.event.unknown", { type: event.type })
+  if (!key) return t("activity.event.unknown")
   const vars = payloadVars(event.payload)
   const fields = changedFieldNames(event.payload, t)
   if (fields) vars.fields = fields

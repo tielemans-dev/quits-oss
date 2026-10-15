@@ -14,7 +14,8 @@ describe("activity descriptions", () => {
     ["invoice.issued", "Faktura INV-0001 udstedt", "Invoice INV-0001 issued"],
     ["invoice.credited", "Faktura INV-0001 krediteret med kreditnota CN-0001", "Invoice INV-0001 credited with credit note CN-0001"],
     ["quote.accepted", "Tilbud INV-0001 accepteret", "Quote INV-0001 accepted"],
-    ["quote.converted", "Tilbud INV-0001 konverteret til faktura INV-0002", "Quote INV-0001 converted to invoice INV-0002"],
+    ["quote.converted", "Tilbud INV-0001 faktureret som INV-0002", "Quote INV-0001 invoiced as INV-0002"],
+    ["invoice.became_overdue", "Faktura INV-0001 er forfaldet", "Invoice INV-0001 is overdue"],
     ["credit_note.issued", "Kreditnota INV-0001 udstedt", "Credit note INV-0001 issued"],
   ])("localizes %s with payload values", (type, danish, english) => {
     const event = { type, aggregateType: "document", payload: { number: "INV-0001", creditNoteNumber: "CN-0001", invoiceNumber: "INV-0002" } }
@@ -54,8 +55,8 @@ describe("activity descriptions", () => {
 
   it("does not invent an English description for an unknown event", () => {
     const event = { type: "widget.updated", aggregateType: "widget", payload: {} }
-    expect(describeActivity(event, da)).toBe("Aktivitet registreret (widget.updated)")
-    expect(describeActivity(event, en)).toBe("Activity recorded (widget.updated)")
+    expect(describeActivity(event, da)).toBe("Aktivitet registreret")
+    expect(describeActivity(event, en)).toBe("Activity recorded")
   })
 
   it("describes known events with payload values", () => {
