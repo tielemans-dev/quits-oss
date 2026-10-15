@@ -14,6 +14,10 @@ vi.mock("../../lib/active-organization", () => ({ useRequestOrganizationId: () =
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: fixture.load }))
 vi.mock("../../trpc/client", () => ({ trpc: {
   settings: { get: { query: fixture.settings } },
+  invoices: { sendReadiness: { query: async () => {
+    const settings = await fixture.load("synthetic-org")
+    return { ...settings, issues: [], warnings: [], taxRate: String(settings.taxRate ?? 0), baseCurrency: "DKK" }
+  } } },
   contacts: { list: { query: async () => [] } },
   catalog: { list: { query: async () => [] } },
   runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: false } }) } },

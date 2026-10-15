@@ -40,9 +40,11 @@ async function fillNewDocument(page: Page, kind: "invoices" | "quotes") {
   await page.getByRole("option", { name: "VAT Customer" }).click()
   await chooseDate(page, kind === "invoices" ? "dueDate" : "expiryDate")
   await page.getByRole("spinbutton").last().fill("25")
-  await page.getByPlaceholder("Description", { exact: true }).first().fill("Standard service")
+  // The invoice editor labels the description; the quote form identifies it by placeholder.
+  const description = (index: number) => kind === "invoices" ? page.getByLabel("Description", { exact: true }).nth(index) : page.getByPlaceholder("Description", { exact: true }).nth(index)
+  await description(0).fill("Standard service")
   if (kind === "invoices") {
-    const row = page.getByPlaceholder("Description", { exact: true }).first().locator("..")
+    const row = description(0).locator("xpath=ancestor::*[.//input][1]")
     await row.getByLabel("Qty", { exact: true }).fill("1")
     await row.getByRole("spinbutton").fill("100")
   } else {
@@ -55,8 +57,9 @@ test("creates and sends an invoice with two VAT groups matching the calculator",
   const { organizationId } = await setup(page)
   await fillNewDocument(page, "invoices")
   await page.getByRole("button", { name: "Add Item", exact: true }).click()
-  await page.getByPlaceholder("Description", { exact: true }).nth(1).fill("Health service")
-  await page.getByPlaceholder("Description", { exact: true }).nth(1).locator("..").getByRole("spinbutton").fill("100")
+  const second = page.getByLabel("Description", { exact: true }).nth(1)
+  await second.fill("Health service")
+  await second.locator("xpath=ancestor::*[.//input][1]").getByRole("spinbutton").fill("100")
   await page.getByLabel("VAT treatment for line 2").selectOption("exempt")
   await page.getByLabel("VAT reason for line 2").selectOption("health")
   await page.getByLabel("VAT statement / exemption reason").fill("Health exemption")

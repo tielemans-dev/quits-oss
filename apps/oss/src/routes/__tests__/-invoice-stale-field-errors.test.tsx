@@ -15,6 +15,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   settings: { get: { query: fixture.settings } },
   contacts: { list: { query: async () => [{ id: "c1", name: "Acme ApS" }] } },
   catalog: { list: { query: async () => [] } },
+  invoices: { sendReadiness: { query: async () => ({ issues: [], baseCurrency: "DKK", taxRate: "25", pricesIncludeTax: false, momsRegistered: true, countryCode: "DK" }) } },
   runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: false } }) } },
 } }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key, locale: "da-DK" }) }))
@@ -60,7 +61,7 @@ describe("new invoice stale field errors", () => {
     await pickCustomer()
     await submit()
     expect((await screen.findByRole("alert")).textContent).toBe("docForm.validation.itemDescriptionRequired")
-    fireEvent.change(screen.getByPlaceholderText("docForm.column.description"), { target: { value: "Consulting" } })
+    fireEvent.change(screen.getByLabelText("docForm.column.description"), { target: { value: "Consulting" } })
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
   })
 })
