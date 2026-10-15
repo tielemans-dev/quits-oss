@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type { ComponentType, ReactNode } from "react"
 import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 
@@ -382,7 +382,7 @@ describe("Settings tax relevance", () => {
     settingsGetQuery.mockResolvedValue(current)
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input }))
     const { container } = render(<RouteComponent />)
-    const radios = await screen.findAllByRole("radio") as HTMLInputElement[]
+    const radios = within(await screen.findByRole("group", { name: "vatStatus.label" })).getAllByRole("radio") as HTMLInputElement[]
     let edits = 0
     const edit = () => {
       edits++

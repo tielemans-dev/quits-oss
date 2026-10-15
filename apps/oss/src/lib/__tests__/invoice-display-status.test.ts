@@ -109,4 +109,27 @@ describe("invoiceDisplayStatus", () => {
       expect(invoiceDisplayStatus({ ...invoice, ...change }, tz, now, true)).toBe(expected)
     })
   })
+
+  describe("an invoice that is being issued", () => {
+    const drafted = { ...invoice, status: "draft", dueDate: "2026-10-30T00:00:00Z" }
+
+    it("reads sending, not draft, while its email is still being delivered", () => {
+      expect(invoiceDisplayStatus({ ...drafted, lastEmailAttemptOutcome: "sending" }, "UTC", now)).toBe("sending")
+    })
+
+    it("reads draft again once a refused delivery has settled", () => {
+      expect(invoiceDisplayStatus({ ...drafted, lastEmailAttemptOutcome: "failed" }, "UTC", now)).toBe("draft")
+      expect(invoiceDisplayStatus(drafted, "UTC", now)).toBe("draft")
+    })
+
+    it.each(["sent", "viewed", "overdue", "paid", "credited"])("never reads draft for an issued %s invoice, whatever the last email attempt was", status => {
+      for (const lastEmailAttemptOutcome of ["sending", "sent", "failed", "unconfirmed", "skipped", null]) {
+        expect(invoiceDisplayStatus({ ...invoice, status, lastEmailAttemptOutcome }, "UTC", now)).not.toBe("draft")
+      }
+    })
+
+    it("keeps an issued invoice issued after a failed resend", () => {
+      expect(invoiceDisplayStatus({ ...invoice, dueDate: "2026-10-30T00:00:00Z", lastEmailAttemptOutcome: "failed" }, "UTC", now)).toBe("sent")
+    })
+  })
 })

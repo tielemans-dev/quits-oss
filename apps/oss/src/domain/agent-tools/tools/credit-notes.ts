@@ -52,6 +52,7 @@ export const creditNoteTools: AgentTool[] = [
       const rows = await prisma.creditNote.findMany({
         where: {
           organizationId: actor.organizationId,
+          status: { not: "cancelled" },
           ...(input.invoiceId ? { invoiceId: input.invoiceId } : {}),
           ...afterNewest(decodeCursor(input.cursor)),
         },

@@ -20,6 +20,7 @@ test("happy path, bank, editable facts/defaults and removable suggestions", asyn
   await page.getByRole("spinbutton", { name: "Betalingsfrist (dage)" }).fill("30")
   await page.getByRole("textbox", { name: "Reg.nr.", exact: true }).fill("1234")
   await page.getByRole("textbox", { name: "Kontonr.", exact: true }).fill("12345678")
+  await page.getByRole("checkbox", { name: /Designarbejde/ }).check()
   await page.getByRole("button", { name: "Fjern Små og mellemstore virksomheder" }).click()
   await confirm(page).click()
   await expect(page.getByRole("status")).toHaveText("KLAR")
@@ -117,6 +118,21 @@ test("agent failure omits the suggestion card and allows confirmation", async ({
   await expect(page.getByText("Finder forslag…")).toHaveCount(0)
   await expect(page.getByRole("region", { name: "Forslag", exact: true })).toHaveCount(0)
   await expect(confirm(page)).toBeEnabled()
+})
+test("industry defaults survive research failure and are saved only after selection", async ({ page }) => {
+  let payload: Record<string, unknown> = {}
+  await page.route("**/confirm", async route => {
+    payload = route.request().postDataJSON()
+    await route.fulfill({ json: { status: "complete" } })
+  })
+  await review(page, "industry-fail")
+  const line = page.getByRole("checkbox", { name: /Softwareudvikling/ })
+  await expect(line).not.toBeChecked()
+  await line.check()
+  await page.reload()
+  await expect(line).toBeChecked()
+  await confirm(page).click()
+  expect(payload.catalogSuggestions).toMatchObject([{ name: "Softwareudvikling" }])
 })
 test("ceased has no presets and manual entry remains available", async ({ page }) => {
   await reviewCeased(page)

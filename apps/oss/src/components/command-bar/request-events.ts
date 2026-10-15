@@ -1,5 +1,5 @@
 /** What a card did once the person confirmed it, for the page behind it to show. */
-export type RequestDone = { kind: "invoice"; invoiceId: string }
+export type RequestDone = { kind: "invoice" | "creditNote"; invoiceId: string }
 
 const listeners = new Set<(done: RequestDone) => void>()
 

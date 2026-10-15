@@ -32,6 +32,8 @@ function translate(key: string, params?: Record<string, unknown>) {
   if (key === "invoiceSend.title") return `Send invoice ${params?.number}?`
   if (key === "invoiceSend.titleWithoutNumber") return "Send invoice?"
   if (key === "invoiceSend.body") return `Send to ${params?.recipient}`
+  if (key === "status.sent") return "Sent"
+  if (key === "status.draft") return "Draft"
   return key
 }
 
@@ -873,5 +875,68 @@ describe("detail confirmation with known readiness issues", () => {
     await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.send" })) })
     expect(screen.queryByRole("button", { name: "invoiceSend.confirm" })).toBeNull()
     expect(api.send).not.toHaveBeenCalled()
+  })
+})
+
+const providerText = "550 5.1.1 smtp.example.test: mailbox rejected by upstream provider"
+const emailFailure = (reason: string) => Object.assign(new Error(providerText), { data: { code: "PRECONDITION_FAILED", reason } })
+describe("a failed invoice email", () => {
+  it.each(["email_provider_refused", "email_provider_unreachable", "email_unavailable", "email_not_sent"])("shows the friendly notice for %s and keeps the issued invoice issued", async reason => {
+    api.get.mockResolvedValue({ ...invoice, status: "sent" })
+    api.resend.mockRejectedValue(emailFailure(reason))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.resendEmail" }))
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(await screen.findByText("invoices.detail.email.sendFailed.title")).toBeTruthy()
+    expect(screen.getByText("invoices.detail.email.sendFailed.body")).toBeTruthy()
+    expect(document.body.textContent).not.toContain(providerText)
+    // Resending never changes the invoice: it is still issued, not a draft, and nothing else was called.
+    expect(screen.getByText("Sent")).toBeTruthy()
+    expect(screen.queryByText("Draft")).toBeNull()
+    expect(api.send).not.toHaveBeenCalled()
+    expect(api.update).not.toHaveBeenCalled()
+  })
+  it("can be retried from the notice, which then goes away", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "sent" })
+    api.resend.mockRejectedValueOnce(emailFailure("email_provider_refused")).mockResolvedValue({ emailSent: true })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.resendEmail" }))
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.email.sendFailed.retry" })) })
+    expect(api.resend).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText("invoices.detail.email.sendFailed.title")).toBeNull()
+  })
+  it("shows the notice, not the provider's text, when sending a draft fails at the email step", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft", number: null })
+    api.send.mockRejectedValue(emailFailure("email_provider_refused"))
+    render(<DetailPage />)
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.send" }))
+    await screen.findByRole("dialog")
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(await screen.findByText("invoices.detail.email.sendFailed.title")).toBeTruthy()
+    expect(document.body.textContent).not.toContain(providerText)
+    // A retry goes through the send review again.
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.sendFailed.retry" })) })
+    expect(await screen.findByRole("button", { name: "invoiceSend.confirm" })).toBeTruthy()
+  })
+  it("never shows the text of an unexpected server error", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "sent" })
+    api.resend.mockRejectedValue(Object.assign(new Error("PrismaClientKnownRequestError at db.invoice.update"), { data: { code: "INTERNAL_SERVER_ERROR", reason: null } }))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.resendEmail" }))
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
+    expect(await screen.findByText("invoices.detail.error.sendFailed")).toBeTruthy()
+    expect(document.body.textContent).not.toContain("Prisma")
+  })
+  it("passes only a marker, not provider text, from create-and-send to the invoice page", async () => {
+    api.readiness.mockResolvedValue({ issues: [], recipientVersion: RECIPIENT_VERSION, nextNumber: "INV-0001", taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
+    api.send.mockRejectedValue(emailFailure("email_provider_refused"))
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ search: expect.objectContaining({ sendError: "email_send_failed" }) })))
   })
 })

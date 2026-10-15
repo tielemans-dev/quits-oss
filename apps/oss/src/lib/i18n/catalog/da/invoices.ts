@@ -108,6 +108,8 @@ export const daInvoicesMessages = {
   "invoices.detail.action.sending": "Sender...",
   "invoices.detail.action.createPaymentLink": "Opret betalingslink",
   "invoices.detail.action.generatingPaymentLink": "Opretter link...",
+  "invoices.detail.paymentLink.unavailable":
+    "Betalingslink er ikke tilgængelige lige nu. Tjek dine Stripe-indstillinger.",
   "invoices.detail.action.delete": "Slet",
   "invoices.detail.action.updating": "Opdaterer...",
   "invoices.detail.action.markPaid": "Marker som betalt",
@@ -146,6 +148,9 @@ export const daInvoicesMessages = {
   "invoices.detail.paymentLink.description.bankTransfer":
     "Del dette hostede link med kunden, så de kan betale med bankoverførsel.",
   "invoices.detail.paymentLink.copy": "Kopiér link",
+  "invoices.detail.email.sendFailed.title": "Fakturaen blev ikke sendt",
+  "invoices.detail.email.sendFailed.body": "Vi kunne ikke sende e-mailen lige nu. Fakturaen er gemt, så du kan prøve igen om lidt.",
+  "invoices.detail.email.sendFailed.retry": "Prøv igen",
   "invoices.detail.email.status.sending": "Sender",
   "invoices.detail.email.reason.sending": "E-mailudbyderen har endnu ikke bekræftet leveringen. Der prøves automatisk igen, og kunden får ikke en dublet. Fakturaen kan ikke redigeres, før leveringen er bekræftet eller opgivet.",
   "invoices.detail.email.status.unconfirmed": "Levering ikke bekræftet",

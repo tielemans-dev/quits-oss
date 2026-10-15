@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
+import { actorCan } from "../../domain/actor"
+import { fillRequest } from "../../lib/ai/request-fallback"
 import { FALLBACK_AI_MODELS, generateInvoiceDraft } from "../../lib/ai/invoice-draft"
 import {
   AiProviderError,
@@ -105,6 +107,24 @@ function toTrpcAiError(error: AiProviderError) {
 }
 
 export const aiRouter = router({
+  fillRequest: authorizedProcedure("contact:read")
+    .input(z.object({ prompt: z.string().trim().min(10).max(4000) }))
+    .mutation(async ({ ctx, input }) => {
+      const ai = getRuntimeCapabilities().aiInvoiceDraft
+      if (!ai.requestFallbackEnabled || !ai.enabled || (!actorCan(ctx.actor, "invoice:create") && !actorCan(ctx.actor, "invoice:send"))) return null
+      const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { aiDraftsEnabled: true } })
+      if (settings?.aiDraftsEnabled === false) return null
+      const customers = await prisma.contact.findMany({ where: { organizationId: ctx.organizationId }, select: { id: true, name: true, taxId: true } })
+      const draft = await fillRequest({
+        enabled: true, input: input.prompt, context: { customers: customers.map(customer => ({ id: customer.id, name: customer.name, cvr: customer.taxId })), catalogItems: [] },
+        resolve: async () => {
+          const config = await readOrgAiSettings(ctx.organizationId)
+          return { provider: resolveOrgAiProvider(config), model: config.model }
+        },
+      })
+      return draft && actorCan(ctx.actor, draft.intent === "invoice" ? "invoice:create" : "invoice:send") ? draft : null
+    }),
+
   listModels: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     // The built-in list holds OpenRouter ids; a custom endpoint only gets its current model.
     const fallback = () => ({

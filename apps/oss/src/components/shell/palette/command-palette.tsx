@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Dialog as DialogPrimitive, VisuallyHidden } from 'radix-ui'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { trpc } from '../../../trpc/client'
 import { DURATION } from '../../../lib/motion'
 import { cn } from '../../../lib/utils'
 import { useMorph } from '../../command-bar/use-morph'
@@ -79,7 +80,7 @@ function useSections(
     setPendingIds(waiting)
     return () => run.abort()
     // `context` is rebuilt every render; its parts that matter are listed.
-  }, [providers, context.query, context.billingEnabled, context.can, context.t, active])
+  }, [providers, context.query, context.billingEnabled, context.can, context.t, context.requestFallbackEnabled, active])
 
   const sections = useMemo(() => {
     const seen = new Set<string>()
@@ -117,6 +118,13 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   // Where focus was before the palette opened, and goes back to when it closes.
   const returnFocusTo = useRef<HTMLElement | null>(null)
 
+  const [requestFallbackEnabled, setRequestFallbackEnabled] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    trpc.runtime.capabilities.query().then(value => { if (!cancelled) setRequestFallbackEnabled(value.aiInvoiceDraft.requestFallbackEnabled === true) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [open])
   const registered = useRegisteredPaletteProviders()
   const placeholderKey = useSearchPlaceholderKey()
   // An extension cannot take a built-in's id: both would render under the same section.
@@ -125,8 +133,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     [registered]
   )
   const context = useMemo<Omit<PaletteContext, 'signal'>>(
-    () => ({ query, can, billingEnabled, t }),
-    [query, can, billingEnabled, t]
+    () => ({ query, can, billingEnabled, t, requestFallbackEnabled }),
+    [query, can, billingEnabled, t, requestFallbackEnabled]
   )
   const { sections, pending } = useSections(providers, context, open)
   const items = useMemo(() => sections.flatMap((section) => section.items), [sections])

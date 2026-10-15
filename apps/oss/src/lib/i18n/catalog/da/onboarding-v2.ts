@@ -102,7 +102,7 @@ export const daOnboardingV2Messages = {
   "onboardingV2.manual.confirm": "Opret virksomhed",
   "onboardingV2.manual.search": "Søg i CVR igen",
   "onboardingV2.suggestions.title": "Forslag",
-  "onboardingV2.suggestions.sub": "Forslag ud fra din virksomhed. Fjern dem, du ikke kan bruge.",
+  "onboardingV2.suggestions.sub": "Vælg de linjer, du vil beholde. Intet tilføjes, før du vælger det og bekræfter.",
   "onboardingV2.suggestions.customers": "Typiske kunder",
   "onboardingV2.suggestions.lines": "Standardlinjer på fakturaen",
   "onboardingV2.suggestions.tag": "FORSLAG",

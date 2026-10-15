@@ -42,6 +42,7 @@ export function RequestCardSlot({
       style={{ "--stagger-delay": `${delay}ms` } as CSSProperties}
       className={cn("request-stagger outline-none", className)}
     >
+      {intent.suggested && <p role="status" className="text-muted-foreground px-4 pt-3 text-xs">{t("shell.request.suggested")}</p>}
       {Card ? (
         <Card intent={intent} onDismiss={onDismiss} />
       ) : (

@@ -28,6 +28,7 @@ export type PaletteActions = {
 export type PaletteContext = {
   /** What the person typed, as typed. Empty when the palette has just opened. */
   query: string
+  requestFallbackEnabled?: boolean
   /** Whether the person may do the action, by the organization's role. */
   can: (action: PaletteCapability) => boolean
   /** Whether this deployment has billing, which decides whether Billing is offered. */
@@ -44,7 +45,7 @@ export type PaletteContext = {
 }
 
 /** The create actions the shell knows permissions for. */
-export type PaletteCapability = 'invoice:create' | 'invoice:send' | 'quote:create' | 'contact:create' | 'contact:read' | 'agreement:create'
+export type PaletteCapability = 'invoice:create' | 'invoice:send' | 'creditNote:create' | 'payment:create' | 'payment:void' | 'quote:create' | 'contact:create' | 'contact:read' | 'agreement:create'
 
 export type PaletteItem = {
   /** Unique across all sections; also the DOM id of the option. */

@@ -9,7 +9,7 @@ import {
   creditNoteSendInputSchema,
 } from "@quits/contracts/credit-notes"
 import { z } from "zod"
-import { issueCreditNote, sendCreditNote } from "../../domain/commands/credit-notes"
+import { createCreditNoteDraft, discardCreditNoteDraft, issueCreditNote, sendCreditNote } from "../../domain/commands/credit-notes"
 import { creditAvailabilityFor, creditTaxRate } from "../../domain/documents/credit-pricing"
 import { actorCan } from "../../domain/actor"
 import { executeCommand } from "../../domain/execute"
@@ -79,6 +79,7 @@ export const creditNotesRouter = router({
       const creditNotes = await prisma.creditNote.findMany({
         where: {
           organizationId: ctx.organizationId,
+          status: { not: "cancelled" },
           ...(input?.invoiceId ? { invoiceId: input.invoiceId } : {}),
         },
         include: listInclude,
@@ -131,6 +132,7 @@ export const creditNotesRouter = router({
       const invoice = await prisma.invoice.findFirst({
         where: { id: input.invoiceId, organizationId: ctx.organizationId },
         include: {
+          contact: { select: { name: true } },
           items: { orderBy: { sortOrder: "asc" } },
           creditNotes: { where: { status: "issued" }, include: { items: true } },
         },
@@ -144,6 +146,7 @@ export const creditNotesRouter = router({
       return {
         invoiceId: invoice.id,
         invoiceNumber: invoice.number,
+        customerName: invoice.contact.name,
         invoiceStatus: invoice.status,
         currency: invoice.currency,
         locale: invoice.locale,
@@ -151,6 +154,25 @@ export const creditNotesRouter = router({
         availability,
       }
     }),
+
+  createDraft: authorizedProcedure("creditNote:create")
+    .input(z.object({ selection: creditNoteIssueInputSchema, clientRequestId: z.uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = unwrapOutcome(await executeCommand(createCreditNoteDraft, input.selection, { actor: ctx.actor, clientRequestId: `credit-draft:${input.clientRequestId}` }))
+      return { id: result.id, number: result.number }
+    }),
+  discardDraft: authorizedProcedure("creditNote:create").input(creditNoteIdInputSchema)
+    .mutation(async ({ ctx, input }) => unwrapOutcome(await executeCommand(discardCreditNoteDraft, input, { actor: ctx.actor }))),
+  issueDraft: authorizedProcedure("creditNote:create").input(creditNoteIdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const draft = await prisma.creditNote.findFirst({ where: { id: input.id, organizationId: ctx.organizationId, status: "draft" } })
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND" })
+      const selection = creditNoteIssueInputSchema.parse(draft.draftSelection)
+      const result = unwrapOutcome(await executeIssuanceCommand(issueCreditNote, { ...selection, id: draft.id }, { actor: ctx.actor }))
+      return { id: result.id, number: result.number }
+    }),
+  findInvoice: authorizedProcedure("creditNote:read").input(z.object({ number: z.string().min(1).max(50) }))
+    .query(({ ctx, input }) => prisma.invoice.findFirst({ where: { organizationId: ctx.organizationId, number: input.number, status: { not: "draft" } }, select: { id: true } })),
 
   issue: authorizedProcedure("creditNote:create")
     .input(creditNoteIssueInputSchema)

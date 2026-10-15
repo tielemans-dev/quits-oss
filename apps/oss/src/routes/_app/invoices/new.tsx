@@ -213,7 +213,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   }
   function backToRequest() {
     if (!handed) return
-    handOff("card", { input: handed.input, contactId, dueDate, issuance, taxRate, pricesIncludeTax, vatEvidence, notes, items: items.map(item => normalizeInvoiceQuantity(item, locale)) })
+    handOff("card", { input: handed.input, suggested: handed.suggested, contactId, dueDate, issuance, taxRate, pricesIncludeTax, vatEvidence, notes, items: items.map(item => normalizeInvoiceQuantity(item, locale)) })
     void navigate({ to: "/" })
   }
   async function requestSend() {

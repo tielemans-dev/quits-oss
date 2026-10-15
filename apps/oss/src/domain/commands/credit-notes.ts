@@ -2,7 +2,7 @@ import type { RenderInput } from "../documents/render-input"
 import { Effect } from "effect"
 import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "../documents/vat-summary"
-import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
+import { creditNoteIssueInputSchema, creditNoteSendInputSchema, type CreditNoteIssueInput } from "@quits/contracts/credit-notes"
 import { Prisma } from "../../../generated/prisma/client"
 import { composeMessage } from "../../lib/email"
 import { buildCreditNoteEmailContent } from "../../lib/emails/credit-note-email"
@@ -18,6 +18,7 @@ import { loadDocumentContext } from "../documents/context"
 import { InvalidState, NotFound } from "../errors"
 import { Command, Db } from "../services"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
+import { lockArtifactOrganization } from "../documents/artifacts"
 import { lockDocument } from "../documents/locks"
 import { creditNoteIssueApproval, creditNoteSendApproval } from "../approval-contexts"
 
@@ -60,15 +61,26 @@ export const issueCreditNote = defineCommand({
         ? `Credit ${input.amount} on invoice ${input.invoiceId}: ${input.reason}`
         : `Credit ${input.lines.length} line(s) of invoice ${input.invoiceId}: ${input.reason}`,
   approvalContext: (input) => creditNoteIssueApproval(input),
-  handle: (input) =>
-    Effect.gen(function* () {
+  handle: (input) => saveCreditNote(input),
+})
+
+function saveCreditNote(input: CreditNoteIssueInput, draft = false) {
+  return Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
       const { organizationId, now } = command
+      if (draft) yield* Effect.promise(() => lockArtifactOrganization(db, organizationId))
       const invoice = yield* lockInvoiceForCredit(input.invoiceId)
 
       const built = yield* priceCreditNote(invoice, input)
-      if (new Prisma.Decimal(built.totalGross).greaterThan(computeSettlement(invoice).balanceDue)) {
+      if (input.id) {
+        yield* lockDocument("creditNote", input.id)
+        const existing = yield* Effect.promise(() => db.creditNote.findFirst({ where: { id: input.id, organizationId, invoiceId: invoice.id, status: "draft" } }))
+        if (!existing) return yield* new InvalidState({ code: "not_draft", message: "Credit note is no longer a draft" })
+        if (!existing.totalGross.equals(built.totalGross) || !existing.totalTax.equals(built.totalTax) || !existing.subtotalNet.equals(built.subtotalNet))
+          return yield* new InvalidState({ code: "credit_changed", message: "The remaining credit changed. Discard this draft and create a new one." })
+      }
+      if (!draft && new Prisma.Decimal(built.totalGross).greaterThan(computeSettlement(invoice).balanceDue)) {
         const funded = yield* Effect.promise(() => db.payment.count({ where: { invoiceId: invoice.id, receiptId: { not: null }, voidedAt: null } }))
         if (funded) return yield* new InvalidState({ code: "receipt_allocations_pending", message: "Reverse receipt allocations before crediting paid amounts, then refund or reallocate the released funds" })
       }
@@ -76,15 +88,14 @@ export const issueCreditNote = defineCommand({
       const { settings, sellerTaxIds } = yield* loadDocumentContext
       const number = command.issuance?.number ?? (yield* allocateDocumentNumber("creditNote"))
 
-      const creditNote = yield* Effect.promise(() =>
-        db.creditNote.create({
-          data: {
+      const data = {
             ...(command.issuance ? { id: command.issuance.documentId } : {}),
             organizationId,
             invoiceId: invoice.id,
             contactId: invoice.contactId,
             number,
-            status: "issued",
+            status: draft ? "draft" : "issued",
+            draftSelection: draft ? input as Prisma.InputJsonValue : Prisma.DbNull,
             reason: input.reason,
             issueDate: command.issuance?.issuedAt ?? now,
             subtotalNet: built.subtotalNet,
@@ -108,10 +119,11 @@ export const issueCreditNote = defineCommand({
             items: {
               create: built.lines.map(({ groupKey: _groupKey, ...line }, index) => ({ ...line, ...(command.issuance ? { id: `${command.issuance.documentId}:${index}` } : {}), sortOrder: index })),
             },
-          },
-          include: { items: { orderBy: { sortOrder: "asc" } } },
-        })
-      )
+      }
+      const creditNote = yield* Effect.promise(() => input.id
+        ? db.creditNote.update({ where: { id: input.id }, data: { ...data, items: { deleteMany: {}, ...data.items } }, include: { items: { orderBy: { sortOrder: "asc" } } } })
+        : db.creditNote.create({ data, include: { items: { orderBy: { sortOrder: "asc" } } } }))
+      if (draft) return creditNote
 
       const { settlement, previousStatus } = yield* refreshInvoiceSettlement(invoice.id)
 
@@ -125,7 +137,28 @@ export const issueCreditNote = defineCommand({
       }
 
       return creditNote
-    }),
+    })
+}
+
+export const createCreditNoteDraft = defineCommand({
+  type: "credit_note.create_draft", permission: "creditNote:create", outwardFacing: false,
+  input: creditNoteIssueInputSchema.refine(input => !input.id),
+  summarize: input => `Draft credit for invoice ${input.invoiceId}`,
+  handle: input => saveCreditNote(input, true),
+})
+
+export const discardCreditNoteDraft = defineCommand({
+  type: "credit_note.discard_draft", permission: "creditNote:create", outwardFacing: false,
+  input: creditNoteSendInputSchema,
+  summarize: input => `Discard credit note draft ${input.id}`,
+  handle: input => Effect.gen(function* () {
+    const db = yield* Db
+    const { organizationId } = yield* Command
+    yield* lockDocument("creditNote", input.id)
+    const result = yield* Effect.promise(() => db.creditNote.updateMany({ where: { id: input.id, organizationId, status: "draft" }, data: { status: "cancelled" } }))
+    if (!result.count) return yield* new InvalidState({ code: "not_draft", message: "Only a draft can be discarded" })
+    return { id: input.id }
+  }),
 })
 
 export const sendCreditNote = defineCommand({
@@ -156,6 +189,7 @@ export const sendCreditNote = defineCommand({
         return yield* new NotFound({ message: "Credit note not found", entity: "credit_note", id: input.id })
       }
 
+      if (creditNote.status !== "issued") return yield* new InvalidState({ code: "not_issued", message: "Issue the credit note before sending it" })
       const { settings } = yield* loadDocumentContext
       const { envelope, emailDelivery } = resolveInvoiceEmailContext(settings)
       const recipient = yield* requireRecipientEmail(creditNote.contact)
@@ -232,4 +266,4 @@ export const sendCreditNote = defineCommand({
 })
 
 /** Owned by the credit notes feature. Credit notes are immutable once issued. */
-export const creditNoteCommands: readonly AnyCommandDefinition[] = [issueCreditNote, sendCreditNote]
+export const creditNoteCommands: readonly AnyCommandDefinition[] = [createCreditNoteDraft, discardCreditNoteDraft, issueCreditNote, sendCreditNote]

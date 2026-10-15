@@ -569,6 +569,7 @@ model CreditNote {
   pricesIncludeTax        Boolean          @default(false)
   sellerSnapshot          Json?
   buyerSnapshot           Json?
+  draftSelection          Json?
   notes                   String?
   lastEmailAttemptAt      DateTime?
   lastEmailAttemptOutcome String?

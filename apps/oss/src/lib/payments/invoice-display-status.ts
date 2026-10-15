@@ -5,14 +5,19 @@ import { formatIsoDate } from "../exports/format"
  * lifecycle status, so a sent invoice with some money received reads as "partially paid".
  * Overdue stays overdue: that is the more urgent fact, until a reminder for it has been sent
  * (`reminderSent`, from a reminder job step that succeeded): then it reads "reminder sent".
+ *
+ * An invoice being sent is still a `draft` row, with its number, until the provider settles the
+ * delivery. It reads "sending" meanwhile, never "draft": a failed delivery that gave the number
+ * back reads draft again once settled.
  */
 export function invoiceDisplayStatus(
-  invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date },
+  invoice: { status: string; paymentStatus: string; balanceDue: number; dueDate?: string | Date; lastEmailAttemptOutcome?: string | null },
   timezone?: string | null,
   // Lists pass their shared YYYY-MM-DD to avoid formatting the same zoned date for every row.
   now: Date | string = new Date(),
   reminderSent = false
 ) {
+  if (invoice.status === "draft" && invoice.lastEmailAttemptOutcome === "sending") return "sending"
   const status = lifecycleDisplayStatus(invoice, timezone, now)
   // Only an overdue invoice has a reminder to show; once it is paid or credited, that is the news.
   return reminderSent && status === "overdue" ? "reminder_sent" : status

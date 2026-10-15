@@ -102,7 +102,7 @@ export const enOnboardingV2Messages = {
   "onboardingV2.manual.confirm": "Create company",
   "onboardingV2.manual.search": "Search CVR again",
   "onboardingV2.suggestions.title": "Suggestions",
-  "onboardingV2.suggestions.sub": "Suggestions based on your company. Remove any you don't need.",
+  "onboardingV2.suggestions.sub": "Choose the items you want to keep. Nothing is added unless you select it and confirm.",
   "onboardingV2.suggestions.customers": "Typical customers",
   "onboardingV2.suggestions.lines": "Default invoice lines",
   "onboardingV2.suggestions.tag": "SUGGESTION",

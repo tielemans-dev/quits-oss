@@ -8,6 +8,7 @@ export const cvrCompanySchema = z
     address: z.string().max(240),
     companyForm: z.string().max(80),
     industry: z.string().max(160).optional(),
+    industryCode: z.string().regex(/^\d{6}$/).optional(),
     status: z.enum([
       "active",
       "ceased",

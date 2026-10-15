@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest"
 import type { Context } from "../../init"
 import { cvrRouter } from "../cvr"
+import { onboardingRouter } from "../onboarding"
 
 const lookup = vi.hoisted(() => vi.fn(async (_value: string, context: { signal: AbortSignal }) => {
   context.signal.throwIfAborted()
@@ -9,6 +10,8 @@ const lookup = vi.hoisted(() => vi.fn(async (_value: string, context: { signal: 
   })
 }))
 vi.mock("../../../lib/distribution", () => ({ isCloudDistribution: true }))
+vi.mock("../../../lib/db", () => ({ prisma: {} }))
+vi.mock("../../../lib/onboarding/confirm-v2", () => ({ confirmOnboardingV2: vi.fn() }))
 vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeCapabilities: () => ({ onboardingV2: { enabled: true } }) }))
 vi.mock("../../../lib/runtime/services", () => ({
   getCvrLookupProvider: () => ({ search: lookup, get: lookup, suggestions: lookup }),
@@ -19,9 +22,19 @@ vi.mock("../../init", async () => {
   const procedure = t.procedure.use(({ next }) => next({ ctx: { user: { id: "user" }, organizationId: "org" } }))
   return { router: t.router, authorizedProcedure: () => procedure, protectedProcedure: procedure }
 })
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); lookup.mockClear() })
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); lookup.mockClear() })
 
-it.each(["search", "get", "suggestions", "customer"] as const)("cancels CVR %s on request and procedure cancellation and timeout", async method => {
+it("offers deterministic suggestions without invoking the adapter's legacy suggestions method", async () => {
+  vi.stubEnv("QUITS_COMPANY_RESEARCH_AI_ENABLED", "false")
+  const caller = cvrRouter.createCaller({ session: null })
+  expect((await caller.available()).suggestions).toBe(true)
+  lookup.mockResolvedValueOnce({ cvr: "12345678", name: "Test", address: "", companyForm: "ApS",
+    industryCode: "620100", status: "active", statusClass: "active", momsRegistered: true } as never)
+  expect((await caller.suggestions({ cvr: "12345678" })).lines[0].description).toBe("Softwareudvikling")
+  expect(lookup).toHaveBeenCalledTimes(1)
+})
+
+it.each(["search", "get", "suggestions", "customer", "searchCvr"] as const)("cancels CVR %s on request and procedure cancellation and timeout", async method => {
   vi.useFakeTimers()
   vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
     const controller = new AbortController()
@@ -31,11 +44,14 @@ it.each(["search", "get", "suggestions", "customer"] as const)("cancels CVR %s o
   for (const source of ["request", "procedure", "timeout", "already-aborted"] as const) {
     const request = new AbortController(), procedure = new AbortController()
     if (source === "already-aborted") request.abort()
-    const caller = cvrRouter.createCaller({ session: null, request: {
+    const context = { session: null, request: {
       url: "http://localhost", headers: new Headers(), signal: request.signal,
-    } }, { signal: procedure.signal })
+    } }
+    const caller = cvrRouter.createCaller(context, { signal: procedure.signal })
     const calls = lookup.mock.calls.length
-    const result = method === "search" ? caller.search({ q: "Nordlys" }) : caller[method]({ cvr: "12345678" })
+    const result = method === "searchCvr"
+      ? onboardingRouter.createCaller(context, { signal: procedure.signal }).searchCvr({ q: "Nordlys" })
+      : method === "search" ? caller.search({ q: "Nordlys" }) : caller[method]({ cvr: "12345678" })
     const rejected = expect(result).rejects.toThrow()
     await vi.advanceTimersByTimeAsync(0)
     if (source === "request") request.abort()

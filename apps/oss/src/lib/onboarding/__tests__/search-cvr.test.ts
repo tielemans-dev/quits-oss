@@ -9,6 +9,14 @@ const company = {
 }
 
 describe("searchOwnCvr", () => {
+  it("does not start a provider call for an already-cancelled request", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const lookup = { search: vi.fn(async () => []) }
+    await expect(searchOwnCvr({ query: "Nordlys", cloud: true, userId: "user", lookup, signal: controller.signal }))
+      .rejects.toThrow()
+    expect(lookup.search).not.toHaveBeenCalled()
+  })
   it("passes request cancellation to the pre-organization lookup", async () => {
     const controller = new AbortController()
     let received!: AbortSignal

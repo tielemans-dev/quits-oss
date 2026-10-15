@@ -33,3 +33,15 @@ it("accepts null (unknown) VAT status in the CVR company contract", () => {
   expect(cvrCompanySchema.parse({ ...cvrCompany, momsRegistered: null }).momsRegistered).toBeNull()
   expect(() => cvrCompanySchema.parse({ ...cvrCompany, momsRegistered: undefined })).toThrow()
 })
+
+it("saves only explicitly selected lines and treats older restored drafts as unaccepted", () => {
+  const draft = newDraft({ ...cvrCompany, industryCode: "620100", momsRegistered: true }, "s@example.test", true)
+  expect(confirmationPayload(draft)).not.toHaveProperty("catalogSuggestions")
+  draft.acceptedLineIds = [draft.suggestions!.lines[0].id]
+  expect(confirmationPayload(draft).catalogSuggestions?.map(row => row.name)).toEqual(["Softwareudvikling"])
+  const { acceptedLineIds: _ids, ...legacy } = draft
+  expect(confirmationPayload(draftSchema.parse(legacy))).not.toHaveProperty("catalogSuggestions")
+  expect(confirmationPayload({ ...draft, suggestionsState: "hidden" })).not.toHaveProperty("catalogSuggestions")
+  draft.suggestions!.lines = []
+  expect(confirmationPayload(draft).catalogSuggestions).toEqual([])
+})

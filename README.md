@@ -339,8 +339,10 @@ Long-running Node processes keep reset email delivery in the background. Runtime
 | `FROM_EMAIL` | Sender email address used for outgoing emails | No |
 | `CRON_SECRET` | Bearer token required by `/api/cron/tick` and `/api/cron/mark-overdue` | Yes (prod) |
 | `QUITS_DISTRIBUTION` | Runtime distribution (`selfhost` or `cloud`) | No (defaults to `selfhost`) |
+| `QUITS_COMPANY_RESEARCH_AI_ENABLED` | Opts into background onboarding suggestions from public company text supplied by a trusted `CvrLookupProvider.researchSources` adapter. Uses the configured AI provider and hosted AI drafts setting; industry defaults need no model | No (defaults to `false`) |
 | `QUITS_ONBOARDING_AI_ENABLED` | Enables cloud onboarding AI endpoints | No (defaults by distribution) |
 | `QUITS_ONBOARDING_AI_MANAGED_ENABLED` | Marks onboarding AI as managed capability | No (defaults by distribution) |
+| `QUITS_AI_REQUEST_FALLBACK_ENABLED` | Suggests command-bar fields for unparsed requests using the organisation's configured AI provider. No provider is required while disabled | No (defaults to `false`) |
 | `QUITS_AI_CUSTOM_ENDPOINT_ENABLED` | Lets organisations point invoice drafting at any OpenAI-compatible endpoint | No (`true` self-hosted, `false` cloud) |
 | `QUITS_AI_CUSTOM_ENDPOINT_HOSTS` | Comma-separated hosts (optionally `host:port`) that custom AI endpoints may use, e.g. `localhost:11434,llm.internal`. When unset, any host is allowed. Set it on installs shared by several organisations, because an organisation admin can otherwise make the server send requests to any address it can reach | No |
 | `QUITS_AI_LOCAL_AGENT_ENABLED` | Lets organisations draft invoices with a CLI agent on the server; needs `QUITS_AI_LOCAL_AGENT_COMMAND` | No (defaults to `false`, self-hosted only) |

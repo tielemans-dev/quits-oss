@@ -59,6 +59,7 @@ type Invoice = {
   number: string | null
   status: string
   paymentStatus: string
+  lastEmailAttemptOutcome: string | null
   issueDate: string
   dueDate: string
   total: number
