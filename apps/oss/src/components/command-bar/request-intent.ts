@@ -4,7 +4,7 @@ import { parsePaymentRequest } from "../../lib/payments/payment-match"
 import { parseRequest, type RequestContext, type RequestDraft } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment" | "creditNote"; input: string; suggested?: RequestDraft }
+export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment" | "creditNote" | "repeat"; input: string; suggested?: RequestDraft }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
 export type RequestRecognizer = (input: string, suggested?: RequestDraft) => RequestIntent | null
@@ -22,7 +22,7 @@ export const recognizeRequest: RequestRecognizer = (input, suggested) => {
 }
 
 /** The permission each card's confirming click needs. */
-const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create", creditNote: "creditNote:create" } as const
+const REQUIRED = { invoice: "invoice:create", repeat: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create", creditNote: "creditNote:create" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(

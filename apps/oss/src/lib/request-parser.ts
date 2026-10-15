@@ -20,7 +20,7 @@ export type RequestLine = {
   catalogItemId?: string
 }
 export type RequestDraft = {
-  intent: "invoice" | "overdue"
+  intent: "invoice" | "overdue" | "repeat"
   customer?: CustomerMatch
   items: RequestLine[]
   /** Rule strength from 0 to 1, not a probability or permission to act. */
@@ -82,6 +82,12 @@ export function parseRequest(input: string, context: RequestContext): RequestDra
   const invoice = /^\s*(?:faktura\s+til|fakturer)(?:\s+|$)/iu.exec(input)
   if (!invoice) return null
   const body = input.slice(invoice[0].length).trim()
+  // "fakturer Lindholm som sidst": the customer's last invoice again; the card reads the lines from it.
+  const again = /^(.+?)\s+som\s+sidst[?!.]?$/iu.exec(body)
+  if (again) {
+    const customer = matchCustomer(again[1]!, context.customers)
+    return { intent: "repeat", customer, items: [], confidence: customer.status === "matched" ? 1 : customer.status === "suggested" ? 0.6 : 0.5, remainder: "" }
+  }
   const cvr = /^(?:cvr\s*:?\s*)?(?:dk\s*)?\d{8}(?![\p{L}\p{N}])/iu.exec(body)
   // Only a numeric expression with a unit, currency or price separator starts a
   // line. Digits in names such as Studio 54 ApS and 3Shape A/S remain names.
