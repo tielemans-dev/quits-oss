@@ -262,7 +262,7 @@ describe('return after required organization flow', () => {
     expect(await screen.findByText('Choose your organization')).toBeTruthy()
     expect(screen.queryByText('Look up your own CVR')).toBeNull()
   })
-  it.each([
+  it.each<Record<string, string> & { lang?: 'da' | 'en' }>([
     { next: '/invoices?filter=a%20b#details', lang: 'da' },
     { redirect: '/contacts#details', lang: 'en' },
     { lang: 'da' },
