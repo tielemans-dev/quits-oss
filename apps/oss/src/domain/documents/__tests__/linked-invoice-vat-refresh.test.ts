@@ -43,6 +43,7 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
 describe("stored line rates at the render-input boundary", () => {
   it.each([
     { currency: "DKK", rates: [0, 25, 5], nets: [100, 100, 100], taxes: [0, 25, 5], main: 25, zeroTreatment: "exempt" },
+    { currency: "DKK", rates: [5, 25], nets: [100, 100], taxes: [5, 25], main: 5, zeroTreatment: "out_of_scope" },
     { currency: "JPY", rates: [25], nets: [105], taxes: [26], main: 25, zeroTreatment: "out_of_scope" },
     { currency: "DKK", rates: [0], nets: [100], taxes: [0], main: 0, zeroTreatment: "out_of_scope" },
   ])("freezes nominal rates, totals and zero treatments for $currency/$rates without a header rate", async ({ currency, rates, nets, taxes, main, zeroTreatment }) => {

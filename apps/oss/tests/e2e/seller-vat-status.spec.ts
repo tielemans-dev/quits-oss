@@ -272,7 +272,7 @@ for (const locale of ["da-DK", "en-US"]) {
       } })
       await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
       const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId,
-        name: "Synthetic Buyer", company: null, email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: "DK",
+        name: "Synthetic Buyer", company: null, email: "buyer@example.test", address: "Testvej 2", city: "København", zip: "1000", country: mixed ? "Danmark" : "",
         taxIds: { create: { scheme: "vat", value: "DK24256790", countryCode: "DK", isPrimary: true } },
       } })
       const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
@@ -332,7 +332,7 @@ for (const locale of ["da-DK", "en-US"]) {
       expect(invoice.totalTax.toNumber()).toBe(mixed ? (hosted ? 900 : 450) : 0)
       expect(invoice.totalGross.toNumber()).toBe(mixed ? (hosted ? 4500 : 4050) : 100)
       const token = signInvoicePaymentToken({ invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" }, "qui62-browser-payment-test-secret")
-      const expectedText = ["12345674", "Testvej 1, 1000 København", "DK24256790", "Synthetic Buyer", `Synthetic service ${mixed ? 36 : 1}`,
+      const expectedText = [locale === "da-DK" ? "CVR-nr. 12345674" : "CVR no. 12345674", "Testvej 1, 1000 København", "DK24256790", "Synthetic Buyer", `Synthetic service ${mixed ? 36 : 1}`,
         ...(mixed && !hosted ? ["Synthetic health exemption evidence", translate("vat.reason.health", locale), locale === "da-DK" ? "Moms 0 %" : "Tax 0%"] : [])]
       const assertPartiesAndVat = async () => {
         for (const value of expectedText) await expect(page.getByText(value, { exact: false }).first()).toBeVisible()
