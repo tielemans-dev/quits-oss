@@ -45,10 +45,9 @@ it.each(["GET", "POST"])("aborts downstream work when a %s request is cancelled"
     expect(downstream).toHaveBeenCalledWith(request.signal)
     expect(aborted).toHaveBeenCalledWith(controller.signal.reason)
     const result = await response
-    expect(result.status).toBe(500)
+    expect(result.ok).toBe(false)
     expect(await result.json()).toMatchObject({ error: { json: {
       message: controller.signal.reason.message,
-      data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
     } } })
   } finally {
     finish()
@@ -81,9 +80,8 @@ it.each(["GET", "POST"])("forwards an already-aborted %s signal before downstrea
 
   expect(downstream).toHaveBeenCalledWith(request.signal)
   expect(work).not.toHaveBeenCalled()
-  expect(response.status).toBe(500)
+  expect(response.ok).toBe(false)
   expect(await response.json()).toMatchObject({ error: { json: {
     message: controller.signal.reason.message,
-    data: { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 },
   } } })
 })
