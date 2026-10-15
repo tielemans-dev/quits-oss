@@ -116,7 +116,12 @@ describeIfDatabase("onboarding ai contract", () => {
     try {
       const caller = await createCaller("cloud", orgId)
       const runtimeServices = await import("../../../lib/runtime/services")
+      const lookupCompany = vi.fn(async (cvr: string) => ({
+        cvr, name: "Acme Cloud", address: "Testvej 1", companyForm: "ApS",
+        status: "active" as const, statusClass: "active" as const, momsRegistered: true,
+      }))
       runtimeServices.setRuntimeServices({
+        cvrLookupProvider: { search: async () => [], get: lookupCompany },
         onboardingAiService: {
           suggestPatch: async () => ({
             patch: {
@@ -127,7 +132,7 @@ describeIfDatabase("onboarding ai contract", () => {
               timezone: "Europe/Copenhagen",
               defaultCurrency: "DKK",
               taxRegime: "eu_vat",
-              primaryTaxId: "DK12345678",
+              primaryTaxId: "DK24256790",
               primaryTaxIdScheme: "DK_VAT",
               invoicePrefix: "INV",
               quotePrefix: "QTE",
@@ -163,6 +168,9 @@ describeIfDatabase("onboarding ai contract", () => {
         source: "ai",
         patch: suggestion.patch,
       })
+      expect(lookupCompany).toHaveBeenCalledWith("24256790", expect.objectContaining({
+        userId: "onboarding-ai-user", organizationId: orgId,
+      }))
       expect(applied.values.companyName).toBe("Acme Cloud")
       expect(applied.missing).toContain("companyAddress")
 
