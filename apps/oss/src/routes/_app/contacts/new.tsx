@@ -1,5 +1,6 @@
+import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -25,6 +26,12 @@ function NewContactPage() {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [organizationCountry, setOrganizationCountry] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    trpc.settings.get.query().then(settings => { if (!cancelled) setOrganizationCountry(settings.countryCode) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -81,7 +88,7 @@ function NewContactPage() {
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="name">{t("contacts.field.name")} *</Label>
+              <Label htmlFor="name">{t("contacts.field.name")} {t("contacts.field.required")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -150,7 +157,7 @@ function NewContactPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <Input id="country" name="country" maxLength={80} />
+                <CountrySelect id="country" name="country" defaultCountry={organizationCountry} />
               </div>
             </div>
 

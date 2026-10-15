@@ -22,7 +22,7 @@ function nextMonthDue() {
 export function registerProductScenarios(test, expect) {
   async function createContact(page, entryURL, name) {
     await page.goto(new URL('/contacts/new', entryURL).href)
-    await page.getByLabel('Name *', { exact: true }).fill(name)
+    await page.getByLabel('Name (required)', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
     await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
     await expect(page).toHaveURL(new URL('/contacts', entryURL).href)
@@ -178,7 +178,7 @@ export function registerProductScenarios(test, expect) {
   test('creates a contact through the UI and persists it', async ({ page, entryURL }) => {
     const name = `Browser customer ${Date.now()}`
     await page.goto(new URL('/contacts/new', entryURL).href)
-    await page.getByLabel('Name *', { exact: true }).fill(name)
+    await page.getByLabel('Name (required)', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
     await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
     await expect(page).toHaveURL(new URL('/contacts', entryURL).href)

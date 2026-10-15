@@ -1,4 +1,5 @@
 import type { DocumentTaxId, BuyerSnapshot } from "@quits/contracts/documents"
+import { countryName } from "../country-names"
 import { normalizeLocale } from "../i18n/locale"
 
 /** A Danish national identifier, whether stored as CVR or a Danish VAT identifier. */
@@ -27,11 +28,11 @@ export function invoiceTaxIds(taxIds: readonly DocumentTaxId[] | undefined, cvrL
   return cvr ? [`${cvrLabel} ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
 }
 
-export function buyerAddress(buyer: BuyerSnapshot | null | undefined): string[] {
-  return [buyer?.address, [buyer?.zip, buyer?.city, buyer?.state].filter(Boolean).join(" "), buyer?.country].filter((value): value is string => Boolean(value))
+export function buyerAddress(buyer: BuyerSnapshot | null | undefined, locale: string | null | undefined = "en-US"): string[] {
+  return [buyer?.address, [buyer?.zip, buyer?.city, buyer?.state].filter(Boolean).join(" "), countryName(buyer?.country, locale)].filter((value): value is string => Boolean(value))
 }
 
-/** PDF postal presentation. Public payment-page country presentation is managed separately. */
+/** PDF postal presentation. */
 export function pdfBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, locale?: string | null): string[] {
   const countryCode = buyer.country?.trim().toUpperCase()
   const country = countryCode && /^[A-Z]{2}$/.test(countryCode)

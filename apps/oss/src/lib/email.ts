@@ -374,7 +374,7 @@ export function buildInvoiceEmailContent({
       </div>
     </div>
 
-    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[distinctCompany(invoice.buyer), ...buyerAddress(invoice.buyer), ...formatTaxIds(invoice.buyer.taxIds, locale)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
+    ${invoice.buyer ? `<div><div>${t("pdf.billTo", locale)}</div><div>${escapeHtml(invoice.buyer.name ?? "")}</div>${[distinctCompany(invoice.buyer), ...buyerAddress(invoice.buyer, locale), ...formatTaxIds(invoice.buyer.taxIds, locale)].filter(Boolean).map(value => `<div>${escapeHtml(value!)}</div>`).join("")}</div>` : ""}
     ${itemsTable(invoice.items, invoice.currency, locale, invoice.priceBasis, true, momsRegistered, invoice.vatRows)}
     ${totalsBlock(invoice, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}

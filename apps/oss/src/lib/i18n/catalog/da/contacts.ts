@@ -1,6 +1,7 @@
 export const daContactsMessages = {
   "contacts.title": "Kunder",
   "contacts.loading": "Indlæser...",
+  "contacts.field.required": "(påkrævet)",
   "contacts.field.name": "Navn",
   "contacts.field.email": "E-mail",
   "contacts.field.phone": "Telefon",

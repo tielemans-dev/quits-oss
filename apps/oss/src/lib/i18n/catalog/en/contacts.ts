@@ -1,6 +1,7 @@
 export const enContactsMessages = {
   "contacts.title": "Customers",
   "contacts.loading": "Loading...",
+  "contacts.field.required": "(required)",
   "contacts.field.name": "Name",
   "contacts.field.email": "Email",
   "contacts.field.phone": "Phone",
