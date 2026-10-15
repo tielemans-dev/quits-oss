@@ -37,18 +37,27 @@ const AUDIENCES = ["client", "seller"] as const
 const idempotencyKey = (paymentId: string, audience: (typeof AUDIENCES)[number]) => `payment-received-${paymentId}-${audience}`
 
 /**
- * Withdraws a payment's notifications that no provider request has started for. Call it in the
- * command that voids or undoes the payment, so it serializes with a worker on the job rows: a
- * worker that already passed `withdrawalReason` loses its claim and fails its next write, before
- * it contacts the provider. A request already started keeps its own outcome, because the provider
- * may have it; that is the only window left open.
+ * Withdraws the notifications no provider request has started for, when a payment is voided or
+ * undone: its own, and, if the invoice is no longer paid in full, those of every other payment of
+ * the invoice, since they would report a payment in full that no longer holds. Call it in the
+ * command that reverses the payment, so it serializes with a worker on the job rows: a worker that
+ * already passed `withdrawalReason` loses its claim and fails its next write, before it contacts
+ * the provider. A request already started keeps its own outcome, because the provider may have it;
+ * that is the only window left open.
  */
-export async function withdrawPaymentNotifications(db: Prisma.TransactionClient, paymentId: string) {
+export async function withdrawPaymentNotifications(
+  db: Prisma.TransactionClient,
+  input: { paymentId: string; invoiceId: string; stillPaidInFull: boolean }
+) {
+  const own = { dedupeKey: { in: AUDIENCES.map((audience) => deliveryKey(idempotencyKey(input.paymentId, audience))) } }
+  const ofInvoice = {
+    dedupeKey: { startsWith: deliveryKey("payment-received-") },
+    payload: { path: ["completion", "target", "invoiceId"], equals: input.invoiceId },
+  }
   await db.job.updateMany({
     where: {
-      dedupeKey: { in: AUDIENCES.map((audience) => deliveryKey(idempotencyKey(paymentId, audience))) },
       result: { equals: Prisma.DbNull },
-      payload: { path: ["requests"], equals: 0 },
+      AND: [{ payload: { path: ["requests"], equals: 0 } }, { OR: input.stillPaidInFull ? [own] : [own, ofInvoice] }],
     },
     data: { status: "done", claimToken: null, result: { outcome: "withdrawn", message: PAYMENT_VOIDED_MESSAGE } },
   })

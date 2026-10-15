@@ -452,8 +452,14 @@ export const voidPayment = defineCommand({
           data: { voidedAt: command.now, voidReason: input.reason },
         })
       )
-      yield* Effect.promise(() => withdrawPaymentNotifications(db, payment.id))
       const refreshed = yield* refreshInvoiceSettlement(invoice.id)
+      yield* Effect.promise(() =>
+        withdrawPaymentNotifications(db, {
+          paymentId: payment.id,
+          invoiceId: invoice.id,
+          stillPaidInFull: refreshed.settlement.paymentStatus === "paid",
+        })
+      )
 
       command.emit({
         aggregateType: "invoice",

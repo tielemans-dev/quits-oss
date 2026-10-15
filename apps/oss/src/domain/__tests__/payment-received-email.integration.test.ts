@@ -89,6 +89,27 @@ describeIfDatabase("payment received emails", () => {
     return jobs
   }
 
+  /** Runs the due jobs; right after the worker reads the payment as eligible, `action` commits. */
+  async function dispatchWhile(organizationId: string, paymentId: string, action: () => Promise<unknown>) {
+    const delegate = prisma.payment as unknown as { findUnique: (args: { where: { id?: string } }) => Promise<unknown> }
+    const original = delegate.findUnique.bind(delegate)
+    let acted = false
+    delegate.findUnique = async (args) => {
+      const found = await original(args)
+      if (!acted && args.where.id === paymentId) {
+        acted = true
+        await action()
+      }
+      return found
+    }
+    try {
+      await runDueJobs({ organizationIds: [organizationId] })
+    } finally {
+      delegate.findUnique = original
+    }
+    return acted
+  }
+
   /** Messages handed to the provider since the last call; the commit already ran the queued jobs. */
   async function sentMessages(organizationId: string) {
     await runDueJobs({ organizationIds: [organizationId] })
@@ -223,26 +244,41 @@ describeIfDatabase("payment received emails", () => {
     const jobs = await rewindToUnsent(org.organizationId)
 
     // Pause dispatch right after the worker read the payment as eligible, and commit the undo then.
-    const original = prisma.payment.findUnique.bind(prisma.payment)
     let undone: Awaited<ReturnType<typeof executeIssuanceCommand>> | undefined
-    const spy = vi.spyOn(prisma.payment, "findUnique").mockImplementation(((args: Parameters<typeof original>[0]) =>
-      original(args).then(async (found) => {
-        if (!undone && args.where.id === marked.result.paymentId) {
-          undone = await executeIssuanceCommand(
-            undoInvoiceMarkPaid,
-            { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() },
-            { actor: org.actors.admin }
-          )
-        }
-        return found
-      })) as unknown as typeof prisma.payment.findUnique)
-    try {
-      await runDueJobs({ organizationIds: [org.organizationId] })
-    } finally {
-      spy.mockRestore()
-    }
+    const acted = await dispatchWhile(org.organizationId, marked.result.paymentId, async () => {
+      undone = await executeIssuanceCommand(
+        undoInvoiceMarkPaid,
+        { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() },
+        { actor: org.actors.admin }
+      )
+    })
 
+    expect(acted).toBe(true)
     expect(undone?.status).toBe("completed")
+    expect(deliver).not.toHaveBeenCalled()
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })).result).toMatchObject({ outcome: "withdrawn" })
+  })
+
+  it("does not send when voiding an earlier payment reopens the invoice during dispatch", async () => {
+    const { org, invoiceId } = await setup()
+    const record = async (amount: number) => {
+      const recorded = await executeIssuanceCommand(recordPayment, { invoiceId, amount, paidAt: "2026-06-01", method: "bank_transfer" }, { actor: org.actors.admin })
+      if (recorded.status !== "completed") throw new Error("record failed")
+      return recorded.result.payment.id
+    }
+    const partial = await record(100)
+    const final = await record(150)
+    const jobs = await rewindToUnsent(org.organizationId)
+    expect(jobs).toHaveLength(1)
+
+    // The worker reads the final payment as eligible; then the earlier partial payment is voided.
+    let voided: Awaited<ReturnType<typeof executeIssuanceCommand>> | undefined
+    await dispatchWhile(org.organizationId, final, async () => {
+      voided = await executeIssuanceCommand(voidPayment, { paymentId: partial, reason: "Entered twice" }, { actor: org.actors.admin })
+    })
+
+    expect(voided?.status).toBe("completed")
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).paymentStatus).toBe("partially_paid")
     expect(deliver).not.toHaveBeenCalled()
     expect((await prisma.job.findUniqueOrThrow({ where: { id: jobs[0]!.id } })).result).toMatchObject({ outcome: "withdrawn" })
   })
