@@ -32,6 +32,8 @@ export function submitInvoice(
     sendImmediately: boolean
     /** The recipient version the person reviewed; the server refuses the send if the contact has changed since. */
     reviewedRecipient?: string
+    /** Queue the send to run when the undo window closes, instead of sending at once. */
+    holdSend?: boolean
     beforeSend?: (id: string) => Promise<boolean>
     t: Translate
   }
@@ -65,7 +67,8 @@ export function submitInvoice(
     },
     beforeSend: options.beforeSend,
     send: async (id) => {
-      const result = await trpc.invoices.send.mutate({ id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) })
+      const input = { id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) }
+      const result = options.holdSend ? await trpc.jobs.sendInvoiceLater.mutate(input).then(() => ({})) : await trpc.invoices.send.mutate(input)
       clearDraftValuation(id, currency, baseCurrency)
       return result
     },

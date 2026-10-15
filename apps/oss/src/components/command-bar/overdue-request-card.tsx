@@ -7,6 +7,7 @@ import { trpc } from "../../trpc/client"
 import { tCount } from "../dashboard/i18n"
 import { sendReminderBatch, useReminderJobs } from "../jobs/reminder-jobs-store"
 import { Button } from "../ui/button"
+import { syncHeldJobs } from "../undo/undo-store"
 import { MAX_BATCH, overdueInvoices, totalsByCurrency, type Invoice } from "./overdue-invoices"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
@@ -72,7 +73,8 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
     // The square owns the send and any retry; the same id keeps a retry from queueing twice.
     handOffToTracker(
       surface!.getBoundingClientRect(),
-      () => sendReminderBatch(ids, id),
+      // Queued, the batch waits out the undo window; its toast offers Fortryd until then.
+      async () => { const job = await sendReminderBatch(ids, id); await syncHeldJobs(); return job },
       { failed: t("shell.request.overdue.error.send"), retry: t("reminders.tracker.retry"), close: t("reminders.tracker.dismiss") }
     )
     dismissRef.current()

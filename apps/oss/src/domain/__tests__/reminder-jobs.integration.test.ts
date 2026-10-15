@@ -44,8 +44,10 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     const submissions = await Promise.all([api.sendReminders(request), api.sendReminders(request)])
     expect(submissions[0]).toEqual(submissions[1])
     const { jobId } = submissions[0]
+    // The undo window holds a new batch; tests that run it step past the window first.
+    const closeWindow = () => prisma.job.updateMany({ where: { organizationId: org.organizationId, type: REMINDER_BATCH_JOB, status: "pending" }, data: { runAfter: new Date(0) } })
     const sweep = async () => {
-      await prisma.job.updateMany({ where: { organizationId: org.organizationId, type: REMINDER_BATCH_JOB, status: "pending" }, data: { runAfter: new Date(0) } })
+      await closeWindow()
       await runDueJobs({ organizationIds: [org.organizationId] })
       const job = await api.get({ jobId })
       expect(job.progress).toEqual({ total: job.steps.length,
@@ -61,7 +63,7 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
       }
       throw new Error("Job did not finish")
     }
-    return { org, api, caller, jobId, invoiceIds, request, sweep, finish }
+    return { org, api, caller, jobId, invoiceIds, request, sweep, finish, closeWindow }
   }
 
   it("rejects changed invoice sets on replay through either entry point", async () => {
@@ -122,6 +124,7 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     const other = await ctx.api.sendReminders(request)
     expect(other.jobId).not.toBe(ctx.jobId)
     expect(await ctx.api.sendReminders(request)).toEqual(other)
+    await ctx.closeWindow()
     await runJobsNow([ctx.jobId])
     expect(await prisma.commandReceipt.findMany({ where: {
       organizationId: ctx.org.organizationId, clientRequestId: { in: [clientRequestId, `reminder.queue_batch:${clientRequestId}`] },
@@ -228,6 +231,7 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     })
     registerJobHandler(REMINDER_BATCH_JOB, handler)
     const scope = { organizationIds: [ctx.org.organizationId], limit: 1 }
+    await ctx.closeWindow()
     const runners = Promise.all([runDueJobs(scope), runDueJobs(scope)])
     try {
       await entered
@@ -254,6 +258,7 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
       })
     }
     await prisma.member.deleteMany({ where: { organizationId: ctx.org.organizationId, userId: ctx.org.actors.admin.userId } })
+    await ctx.closeWindow()
     await runDueJobs({ organizationIds: [ctx.org.organizationId] })
     const state = await ctx.caller(ctx.org.actors.accountant.userId).get({ jobId: ctx.jobId })
     expect(state.steps[0].status).toBe(committed ? "succeeded" : "failed")

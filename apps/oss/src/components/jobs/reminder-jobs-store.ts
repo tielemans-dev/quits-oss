@@ -40,8 +40,8 @@ async function read() {
 }
 
 /**
- * The mutation returns once the batch has run, so the job is read while it does. A caller that may
- * try again passes the same `clientRequestId`, and the server queues the job once.
+ * The job is held for the undo window and then runs; it is read while it waits and while it runs.
+ * A caller that may try again passes the same `clientRequestId`, and the server queues the job once.
  */
 export async function sendReminderBatch(invoiceIds: string[], clientRequestId: string = crypto.randomUUID()) {
   queueing += 1

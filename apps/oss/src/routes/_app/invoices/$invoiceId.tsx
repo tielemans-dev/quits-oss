@@ -82,6 +82,7 @@ import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/docum
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
+import { showUndo } from "../../../components/undo/undo-store"
 import { readableIssues, type ReadableIssue } from "../../../lib/validation/readable-errors"
 import { followLineIssue } from "../../../lib/validation/line-issues"
 
@@ -619,7 +620,15 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setActing(true)
     try {
-      await trpc.invoices.markPaid.mutate({ invoiceId: invoice.id, requestId: crypto.randomUUID() })
+      const invoiceId = invoice.id
+      const { paymentId } = await trpc.invoices.markPaid.mutate({ invoiceId, requestId: crypto.randomUUID() })
+      showUndo({
+        kind: "paid",
+        undo: async () => {
+          await trpc.invoices.undoMarkPaid.mutate({ invoiceId, paymentId, requestId: crypto.randomUUID() })
+          await reloadInvoice()
+        },
+      })
       await reloadInvoice()
     } catch (err) {
       setError(

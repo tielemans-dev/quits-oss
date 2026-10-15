@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), navigate: vi.fn(), learned: vi.fn(), clear: vi.fn(), restore: vi.fn() }))
+const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), later: vi.fn(), held: vi.fn(), navigate: vi.fn(), learned: vi.fn(), clear: vi.fn(), restore: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => api.navigate }))
 vi.mock("../../../trpc/client", () => ({
   trpc: {
@@ -13,6 +13,7 @@ vi.mock("../../../trpc/client", () => ({
       sendReadiness: { query: api.readiness }, createV2: { mutate: api.create }, send: { mutate: api.send },
       learnedDefaults: { query: api.learned }, clearLearnedDefault: { mutate: api.clear }, restoreLearnedDefault: { mutate: api.restore },
     },
+    jobs: { sendInvoiceLater: { mutate: api.later }, held: { query: api.held } },
   },
 }))
 vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" }))
@@ -50,6 +51,8 @@ beforeEach(() => {
   api.learned.mockResolvedValue({ paymentTerms: null })
   api.clear.mockResolvedValue({ cleared: true })
   api.restore.mockResolvedValue(undefined)
+  api.later.mockResolvedValue({ jobId: "job-1" })
+  api.held.mockResolvedValue([])
 })
 afterEach(() => {
   cleanup()
@@ -93,7 +96,7 @@ describe("invoice request card", () => {
     expect((screen.getByRole("button", { name: "Send faktura" }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it("sends through the form's create and send, shows the check, then lets go and tells the page", async () => {
+  it("creates the draft, holds the send for the undo window, shows the check, then lets go without telling the page it is sent", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const done = vi.fn()
     const off = onRequestDone(done)
@@ -101,7 +104,7 @@ describe("invoice request card", () => {
 
     await send()
 
-    await screen.findByText("Faktura sendt")
+    await screen.findByText("Faktura sendes")
     expect(api.create).toHaveBeenCalledWith(
       expect.objectContaining({
         contactId: "buyer",
@@ -110,13 +113,15 @@ describe("invoice request card", () => {
         items: [{ description: "konsulent", quantity: "10", unitPrice: "850", vat: undefined }],
       })
     )
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-1", reviewedVersion: "r1" }))
+    // Nothing leaves now: the send is queued to run when the window closes, and Fortryd can still cancel it.
+    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-1", reviewedVersion: "r1" }))
+    expect(api.send).not.toHaveBeenCalled()
     expect(text()).toContain("10.625,00 kr. · Havbrise Logistik A/S")
     expect(onDismiss).not.toHaveBeenCalled()
     expect(done).not.toHaveBeenCalled()
 
     await act(async () => { await vi.advanceTimersByTimeAsync(1950) })
-    expect(done).toHaveBeenCalledWith({ kind: "invoice", invoiceId: "inv-1" })
+    expect(done).not.toHaveBeenCalled() // the page hears of the invoice when it has really gone out
     await act(async () => { await vi.advanceTimersByTimeAsync(300) })
     expect(onDismiss).toHaveBeenCalledTimes(1)
     off()
@@ -155,7 +160,7 @@ describe("invoice request card", () => {
   })
 
   it("shows the invoice's own error when the send fails after the draft exists", async () => {
-    api.send.mockRejectedValue(new Error("Mailudbyderen afviste mailen"))
+    api.later.mockRejectedValue(new Error("Mailudbyderen afviste mailen"))
     const onDismiss = renderCard("faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent")
     await send()
 
@@ -173,7 +178,7 @@ describe("invoice request card", () => {
 
     await screen.findByRole("alert")
     expect(api.navigate).not.toHaveBeenCalled()
-    expect(api.send).not.toHaveBeenCalled()
+    expect(api.later).not.toHaveBeenCalled()
   })
 
   describe("som sidst", () => {
