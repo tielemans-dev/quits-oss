@@ -109,6 +109,29 @@ export type PaymentVoidInput = z.infer<typeof paymentVoidInputSchema>
 export type PaymentListInput = z.infer<typeof paymentListInputSchema>
 export type StripeCheckoutSession = z.infer<typeof stripeCheckoutSessionSchema>
 
+/** How an organization supplies Stripe: its own keys, or a hosted Connect account. */
+export const stripePaymentModeSchema = z.enum(["byok", "connect"])
+
+/**
+ * Cached Connect readiness. `none` means no account is linked. `pending` is onboarding,
+ * `active` can take card payments, and `restricted` needs the customer to fix Stripe.
+ */
+export const stripeAccountStatusSchema = z.enum(["none", "pending", "active", "restricted"])
+
+/** Settings view of the organization's Stripe account. `mode` follows `payments.managed`. */
+export const orgStripeAccountSchema = z
+  .object({
+    mode: stripePaymentModeSchema,
+    accountId: z.string().nullable(),
+    status: stripeAccountStatusSchema,
+    statusAt: z.iso.datetime().nullable(),
+  })
+  .strict()
+
+export type StripePaymentMode = z.infer<typeof stripePaymentModeSchema>
+export type StripeAccountStatus = z.infer<typeof stripeAccountStatusSchema>
+export type OrgStripeAccount = z.infer<typeof orgStripeAccountSchema>
+
 /** Settlement commands use exact major-unit strings; unsupported currency precision is refused. */
 export const settlementAmountSchema = z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/)
 export const settlementEvidenceSchema = z.object({

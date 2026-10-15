@@ -1,8 +1,8 @@
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
-import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -63,6 +63,7 @@ import { PaymentDetailsCard } from "../../components/settings/payment-details-ca
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
+import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -197,6 +198,8 @@ function isHttpLogoUrl(value: string) {
 }
 
 function SettingsPage() {
+  const router = useRouter()
+  const layoutContext = Route.useRouteContext()
   const { t, locale: displayLocale } = useI18n()
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
@@ -209,6 +212,8 @@ function SettingsPage() {
   const [success, setSuccess] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
+  // An explicit radio change. Without one, Save confirms the displayed stored choice (see handleSubmit).
+  const [sellerVatChoiceReviewed, setSellerVatChoiceReviewed] = useState(false)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState<boolean | null>(null)
@@ -301,6 +306,11 @@ function SettingsPage() {
     if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
   }, [])
 
+  const reportSettingsLoadError = useEffectEvent(() => {
+    setError(t("settings.error.loadFailed"))
+  })
+
+  // Initialize once per mount. A language change must not reload and overwrite form edits.
   useEffect(() => {
     trpc.settings.get
       .query()
@@ -317,6 +327,7 @@ function SettingsPage() {
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
         setMomsRegistered(nextSettings.momsRegistered ?? null)
+        setSellerVatChoice(nextSettings.momsRegistered ?? null)
         setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
@@ -347,11 +358,9 @@ function SettingsPage() {
           void loadAiModels()
         }
       })
-      .catch(() =>
-        setError(t("settings.error.loadFailed"))
-      )
+      .catch(() => reportSettingsLoadError())
       .finally(() => setLoading(false))
-  }, [t])
+  }, [])
 
   useEffect(() => {
     setCapabilitiesFailed(false)
@@ -462,6 +471,7 @@ function SettingsPage() {
 
   function clearSellerVatReview() {
     setSellerVatChoice(null)
+    setSellerVatChoiceReviewed(false)
     setWithdrawSellerVatEvidence(false)
   }
 
@@ -532,9 +542,19 @@ function SettingsPage() {
     const momsRegisteredUpdate = !showVatStatus && settings?.momsRegistered != null
       ? null
       : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null) ? momsRegistered : undefined
+    const sellerVatChoiceShown = sellerVatConfirmationEnabled === true && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
+    // Settings pre-selects the stored choice, and re-checking a checked radio fires no change. Saving
+    // with the choice displayed therefore confirms it, so a stored choice without hosted evidence
+    // needs no toggle. Unchanged evidence is kept as is. Only a choice the seller can see is sent, and an
+    // unreviewed one only with a complete Danish identity (CVR in the exact form
+    // prepareSellerVatConfirmation accepts), so unrelated saves are not blocked by it.
+    const displayedSellerVatChoice = sellerVatChoice === false && !(isSelfHostDistribution || nonVatEnabled) ? null : sellerVatChoice
+    const sellerIdentityComplete = Boolean(companyNameInput && companyAddressInput) && /^(DK)?\d{8}$/u.test(primaryTaxId.trim())
+    const confirmedSellerVatChoice = !sellerVatChoiceShown || withdrawSellerVatEvidence ? null
+      : sellerVatChoiceReviewed ? sellerVatChoice : sellerIdentityComplete ? displayedSellerVatChoice : null
     try {
-      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoice !== null || withdrawSellerVatEvidence)
-        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : sellerVatChoice })).token
+      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (confirmedSellerVatChoice !== null || withdrawSellerVatEvidence)
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : confirmedSellerVatChoice })).token
         : undefined
       const savedSettings = await trpc.settings.update.mutate({
         countryCode,
@@ -548,7 +568,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegisteredUpdate,
+        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : confirmedSellerVatChoice ?? undefined : momsRegisteredUpdate,
         sellerVatConfirmationToken,
         paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
@@ -577,7 +597,8 @@ function SettingsPage() {
       })
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
-      setSellerVatChoice(null)
+      setSellerVatChoice(savedSettings.momsRegistered ?? null)
+      setSellerVatChoiceReviewed(false)
       setWithdrawSellerVatEvidence(false)
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
@@ -604,6 +625,11 @@ function SettingsPage() {
       setAiApiKeyDraft("")
       setClearStripeSecretKey(false)
       setClearStripeWebhookSecret(false)
+      // Refresh from the accepted mutation, keeping this tab's organization and usable layout.
+      // Refetching the session here could select another tab's organization or fail after saving.
+      invalidateAppLayoutSession()
+      seedAppLayoutSession({ ...layoutContext, locale: savedSettings.locale })
+      await router.invalidate({ sync: true })
       setSuccess(true)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
       successHideTimeout.current = setTimeout(() => {
@@ -923,7 +949,7 @@ function SettingsPage() {
             </div>
 
             {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
               </div>
             ) : null}
@@ -1193,7 +1219,7 @@ function SettingsPage() {
                   id="invoicePrefix"
                   name="invoicePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("settings.prefix.title")}
                   placeholder="INV"
                   defaultValue={settings.invoicePrefix}
@@ -1214,7 +1240,7 @@ function SettingsPage() {
                   id="quotePrefix"
                   name="quotePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("settings.prefix.title")}
                   placeholder="QTE"
                   defaultValue={settings.quotePrefix}
@@ -1235,7 +1261,7 @@ function SettingsPage() {
                   id="creditNotePrefix"
                   name="creditNotePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("creditNotes.validation.invalidPrefix")}
                   placeholder="CN"
                   defaultValue={settings.creditNotePrefix}

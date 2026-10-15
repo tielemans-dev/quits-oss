@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const stripeApi = vi.hoisted(() => {
   class StripeInvalidRequestError extends Error {
-    constructor(readonly code?: string) {
+    readonly type = "StripeInvalidRequestError"
+    readonly rawType = "invalid_request_error"
+    readonly code?: string
+    constructor(code?: string) {
       super(code ?? "invalid request")
+      this.code = code
     }
   }
   return {
