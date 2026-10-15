@@ -1,4 +1,5 @@
 import type { CatalogItemOption } from "./catalog"
+import { quantityDecimalSchema, unitPriceDecimalSchema } from "@quits/contracts/invoices"
 
 export type RequestCustomer = { id: string; name: string; cvr?: string | null }
 export type RequestContext = {
@@ -6,7 +7,8 @@ export type RequestContext = {
   catalogItems: readonly CatalogItemOption[]
 }
 export type CustomerMatch = {
-  status: "matched" | "ambiguous" | "unknown" | "missing"
+  /** Fuzzy matches are suggestions that require customer confirmation. */
+  status: "matched" | "suggested" | "ambiguous" | "unknown" | "missing"
   query: string
   candidates: RequestCustomer[]
 }
@@ -26,12 +28,12 @@ export type RequestDraft = {
   remainder: string
 }
 
-const number = String.raw`(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,6})?`
-const boundary = String.raw`(?![\p{L}\p{N},]|\.\d)`
-const quantityPattern = new RegExp(String.raw`(?<![\p{L}\p{N}.,+\-])(${number})\s*(?:(timer|time|t|stk\.?)(?!\p{L})|(?=[àax]\s*\d))`, "iu")
-const pricePattern = new RegExp(String.raw`(?<![\p{L}\p{N}.,+\-])(${number})\s*kr\.?${boundary}`, "iu")
+const number = String.raw`(?:\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d{1,6})?`
+const boundary = String.raw`(?![\p{L}\p{N},]|\.\d|\s+\d)`
+const quantityPattern = new RegExp(String.raw`^(${number})\s*(?:(timer|time|t|stk\.?)(?![\p{L}\p{N}])|(?=[àax]\s*\d))`, "iu")
+const pricePattern = new RegExp(String.raw`^(${number})\s*kr\.?${boundary}`, "iu")
 const separatedPrice = new RegExp(String.raw`^\s*[àax]\s*(${number})(?:\s*kr\.?)?${boundary}`, "iu")
-const canonical = (value: string) => value.replaceAll(".", "").replace(",", ".")
+const canonical = (value: string) => value.replace(/[.\s]/g, "").replace(",", ".")
 const tidy = (value: string) => value.trim().replace(/\s+/g, " ")
 const normalize = (value: string) => tidy(value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " "))
 const cvrDigits = (value: string) => value.replace(/^dk\s*/i, "").replace(/\s/g, "")
@@ -62,7 +64,8 @@ function matchCustomer(query: string, customers: readonly RequestCustomer[]): Cu
   })
   // Stable ordering keeps ambiguity independent of the caller's list order.
   candidates.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-  return { query, candidates, status: !key ? "missing" : candidates.length === 1 ? "matched" : candidates.length ? "ambiguous" : "unknown" }
+  const fuzzy = candidates.length === 1 && !exact.length && !normalize(candidates[0]!.name).startsWith(key + " ")
+  return { query, candidates, status: !key ? "missing" : candidates.length === 1 ? fuzzy ? "suggested" : "matched" : candidates.length ? "ambiguous" : "unknown" }
 }
 
 /** Pure Danish command parser. Supply only the current org's customers/catalogue.
@@ -72,27 +75,33 @@ function matchCustomer(query: string, customers: readonly RequestCustomer[]): Cu
  */
 export function parseRequest(input: string, context: RequestContext): RequestDraft | null {
   const overdue = /^\s*(?:vis\s+forfaldne(?:\s+fakturaer)?|hvem\s+har\s+ikke\s+betalt)(?!\p{L})[?!.]?/iu.exec(input)
-  if (overdue) return { intent: "overdue", items: [], confidence: 1, remainder: input.slice(overdue[0].length).trim() }
-  const invoice = /^\s*(?:faktura\s+til|fakturer)(?!\p{L})\s*/iu.exec(input)
+  if (overdue) {
+    const remainder = input.slice(overdue[0].length).trim()
+    return { intent: "overdue", items: [], confidence: remainder ? 0.8 : 1, remainder }
+  }
+  const invoice = /^\s*(?:faktura\s+til|fakturer)(?:\s+|$)/iu.exec(input)
   if (!invoice) return null
   const body = input.slice(invoice[0].length).trim()
   const cvr = /^(?:cvr\s*:?\s*)?(?:dk\s*)?\d{8}(?![\p{L}\p{N}])/iu.exec(body)
-  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)[+-]?\d/u)
+  // Only a numeric expression with a unit, currency or price separator starts a
+  // line. Digits in names such as Studio 54 ApS and 3Shape A/S remain names.
+  const lineStart = cvr ? cvr[0].length : body.search(/(?<!\S)(?:[+-]\s*)?\d[\d.,\s]*(?:e[+-]?\d+)?\s*(?:timer|time|t|stk\.?|kr\.?|[àax])(?=$|[\s.,]|\d)/iu)
   const customer = matchCustomer((lineStart < 0 ? body : body.slice(0, lineStart)).trim(), context.customers)
   let rest = lineStart < 0 ? "" : body.slice(lineStart).trim()
   const line: RequestLine = { description: "" }
   const quantity = quantityPattern.exec(rest)
-  if (quantity && Number(canonical(quantity[1]!)) > 0 && Number(canonical(quantity[1]!)) <= 1_000_000) {
+  if (quantity && quantityDecimalSchema.safeParse(canonical(quantity[1]!)).success) {
     line.quantity = canonical(quantity[1]!)
     if (quantity[2]) line.unit = /^stk/i.test(quantity[2]) ? "piece" : "hour"
     const end = quantity.index + quantity[0].length
     const price = separatedPrice.exec(rest.slice(end))
-    if (price) line.unitPrice = canonical(price[1]!)
-    rest = rest.slice(0, quantity.index) + rest.slice(end + (price?.[0].length ?? 0))
+    const validPrice = price && unitPriceDecimalSchema.safeParse(canonical(price[1]!)).success
+    if (validPrice) line.unitPrice = canonical(price[1]!)
+    rest = rest.slice(end + (validPrice ? price[0].length : 0))
   }
   if (!quantity) {
     const price = pricePattern.exec(rest)
-    if (price) {
+    if (price && unitPriceDecimalSchema.safeParse(canonical(price[1]!)).success) {
       line.unitPrice = canonical(price[1]!)
       rest = rest.slice(0, price.index) + rest.slice(price.index + price[0].length)
     }
@@ -103,13 +112,14 @@ export function parseRequest(input: string, context: RequestContext): RequestDra
     const item = catalogMatches[0]!
     line.catalogItemId = item.id
     line.description = item.description?.trim() || item.name
-    line.unitPrice ??= String(item.defaultUnitPrice)
+    if (!line.unitPrice && unitPriceDecimalSchema.safeParse(String(item.defaultUnitPrice)).success) line.unitPrice = String(item.defaultUnitPrice)
     rest = ""
   }
   const items = line.quantity || line.unitPrice || line.catalogItemId ? [line] : []
+  if (!items.length && !cvr && !/\p{L}/u.test(customer.query)) return null
   return {
     intent: "invoice", customer, items,
-    confidence: customer.status === "matched" ? rest ? 0.8 : 1 : 0.5,
+    confidence: customer.status === "matched" ? rest ? 0.8 : 1 : customer.status === "suggested" ? 0.6 : 0.5,
     remainder: rest,
   }
 }

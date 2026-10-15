@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { previewDraft } from "@quits/shared/pricing"
+import { quantityDecimalSchema, unitPriceDecimalSchema } from "@quits/contracts/invoices"
 import { normalizeInvoiceQuantity } from "../invoice-quantity"
 import { parseRequest, type RequestContext } from "../request-parser"
 
@@ -15,6 +16,7 @@ describe("request parser", () => {
   })
   it("preserves unsupported overdue filters", () => {
     expect(parse("vis forfaldne fra sidste måned")?.remainder).toBe("fra sidste måned")
+    expect(parse("vis forfaldne fra sidste måned")?.confidence).toBeLessThan(1)
   })
   it("parses the invoice phrase and a partial customer name", () => {
     expect(parse("faktura til Nordlys 12 timer à 850 kr.")).toEqual({
@@ -43,9 +45,24 @@ describe("request parser", () => {
   })
   it("prefers an exact name and accepts a single typo in a longer name", () => {
     expect(parse("fakturer nordlys aps 10t")?.customer?.status).toBe("matched")
-    expect(parse("fakturer Nordls 10t")?.customer?.status).toBe("matched")
+    expect(parse("fakturer Nordls 10t")?.customer?.status).toBe("suggested")
     const customers = [...context.customers, { id: "other", name: "Nordlys ApS Design" }]
     expect(parse("fakturer Nordlys ApS 10t", { ...context, customers })?.customer?.candidates).toEqual(context.customers)
+  })
+  it("distinguishes a fuzzy customer suggestion from an exact match", () => {
+    const customers = [{ id: "p", name: "Peter Jansen" }]
+    const suggested = parse("fakturer Peter Hansen 2 timer à 850 kr.", { ...context, customers })
+    expect(suggested?.customer?.status).toBe("suggested")
+    expect(suggested?.confidence).toBeLessThan(1)
+    expect(parse("fakturer Peter Jansen 2 timer à 850 kr.", { ...context, customers })?.customer?.status).toBe("matched")
+  })
+  it.each(["Studio 54 ApS", "3Shape A/S"])("keeps digits in customer names: %s", name => {
+    const customers = [{ id: "studio", name: "Studio" }, { id: "digits", name }]
+    for (const suffix of ["", " 2 timer à 850 kr."]) {
+      expect(parse(`fakturer ${name}${suffix}`, { ...context, customers })?.customer).toMatchObject({
+        status: "matched", query: name, candidates: [{ id: "digits", name }],
+      })
+    }
   })
   it("returns ambiguous customers in stable order, including fuzzy matches", () => {
     const customers = [...context.customers, { id: "a", name: "Nordlys Studio" }]
@@ -82,7 +99,8 @@ describe("request parser", () => {
     expect(draft?.items).toEqual([{ description: "", quantity: "10", unit: "hour" }])
     expect(draft?.remainder).toBe("konsulent + 2t à 900 kr.")
   })
-  it.each(["", "Nordlys", "find faktura til Nordlys", "vis forfaldnes", "faktureringsadresse", "lav en kaffe"])("leaves ordinary search unchanged: %s", input => {
+  it.each(["", "Nordlys", "find faktura til Nordlys", "vis forfaldnes", "faktureringsadresse", "lav en kaffe",
+    "fakturer", "faktura til", "fakturer 2024", "fakturer-liste"])("leaves ordinary search unchanged: %s", input => {
     expect(parse(input)).toBeNull()
   })
   it.each(["-2 timer", "1,2345678 timer", "1.25 kr.", "1e3 kr."])("preserves unsupported numbers: %s", text => {
@@ -90,14 +108,46 @@ describe("request parser", () => {
     expect(draft?.items).toEqual([])
     expect(draft?.remainder).toBe(text)
   })
-  it.each([false, true])("matches invoice form line amounts, tax inclusive=%s", pricesIncludeTax => {
-    const draft = parse("fakturer Nordlys 1,5 timer à 1.250,50 kr. konsulent")!
-    const options = { currency: "DKK", taxRate: "25", pricesIncludeTax }
-    const parsed = previewDraft({ ...options, items: draft.items.map(item => ({ ...item, quantity: item.quantity!, unitPrice: item.unitPrice! })) })
-    const form = previewDraft({ ...options, items: [normalizeInvoiceQuantity({ description: "Konsulentarbejde", quantity: "1,5", unitPrice: "1250.50" }, "da-DK")] })
-    expect(parsed.result).not.toBeNull()
-    expect(parsed).toEqual(form)
-    expect(parsed.result?.gross).toBe(pricesIncludeTax ? "1875.75" : "2344.69")
+  it.each(["1 250", "1\u00a0250", "1\u202f250"])("reads a whole space-grouped amount: %s", amount => {
+    for (const text of [`${amount} kr.`, `12 timer à ${amount} kr.`]) {
+      const draft = parse(`fakturer Nordlys ${text}`)
+      expect(draft?.items[0]?.unitPrice).toBe("1250")
+      expect(draft?.remainder).toBe("")
+    }
+  })
+  it.each(["- 850 kr.", "- 2 timer à 850 kr.", "1 25 kr.", "12 timer à 1 25 kr.", "12 timer à - 850 kr.",
+    "850,12345 kr.", "12 timer à 850,12345 kr.", "1.000.000.001 kr.", "12 timer à 1.000.000.001 kr."])("does not emit a price from unsupported input: %s", text => {
+    const draft = parse(`fakturer Nordlys ${text}`)
+    expect(draft?.customer?.query).toBe("Nordlys")
+    expect(draft?.items[0]?.unitPrice).toBeUndefined()
+    expect(draft?.remainder).toBe(text.startsWith("12 timer") ? text.slice(9) : text)
+  })
+  it.each([
+    ["1,5 timer à 1.250,50", "1.5", "1250.50"], ["2 timer à 1.250", "2", "1250"],
+    ["2 timer à 1 250", "2", "1250"], ["2 timer à 0,1234", "2", "0.1234"],
+    ["1 timer à 1.000.000.000", "1", "1000000000"], ["1.000.000 timer à 0,0001", "1000000", "0.0001"],
+  ])("matches invoice form line amounts for %s", (text, quantity, unitPrice) => {
+    const draft = parse(`fakturer Nordlys ${text} kr. konsulent`)!
+    expect(draft.items[0]).toMatchObject({ quantity, unitPrice })
+    expect(quantityDecimalSchema.safeParse(draft.items[0]?.quantity).success).toBe(true)
+    expect(unitPriceDecimalSchema.safeParse(draft.items[0]?.unitPrice).success).toBe(true)
+    for (const pricesIncludeTax of [false, true]) {
+      const options = { currency: "DKK", taxRate: "25", pricesIncludeTax }
+      const parsed = previewDraft({ ...options, items: draft.items.map(item => ({ ...item, quantity: item.quantity!, unitPrice: item.unitPrice! })) })
+      const form = previewDraft({ ...options, items: [normalizeInvoiceQuantity({ description: "Konsulentarbejde", quantity: quantity.replace(".", ","), unitPrice }, "da-DK")] })
+      expect(parsed.result).not.toBeNull()
+      expect(parsed).toEqual(form)
+    }
+  })
+  it.each([["1.000.001 timer à 850 kr.", "1000001", "850"], ["2 timer à 0,12345 kr.", "2", "0.12345"],
+    ["2 timer à 1.000.000.001 kr.", "2", "1000000001"]])("refuses values beyond the invoice contract: %s", (text, quantity, unitPrice) => {
+    expect(quantityDecimalSchema.safeParse(quantity).success && unitPriceDecimalSchema.safeParse(unitPrice).success).toBe(false)
+    const line = parse(`fakturer Nordlys ${text}`)?.items[0]
+    expect(line?.quantity && line.unitPrice).toBeFalsy()
+  })
+  it.each([0.12345, 1_000_000_001])("validates catalogue prices against the same contract: %s", defaultUnitPrice => {
+    const catalogItems = [{ ...context.catalogItems[0]!, defaultUnitPrice }]
+    expect(parse("fakturer Nordlys 10t konsulent", { ...context, catalogItems })?.items[0]?.unitPrice).toBeUndefined()
   })
   it("is deterministic and does not mutate caller input", () => {
     const snapshot = structuredClone(context)
