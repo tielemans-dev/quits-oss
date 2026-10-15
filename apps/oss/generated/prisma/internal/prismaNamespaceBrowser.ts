@@ -90,7 +90,8 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate'
+  IssuanceCandidate: 'IssuanceCandidate',
+  RecipientReminderPreference: 'RecipientReminderPreference'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1043,6 +1044,18 @@ export const IssuanceCandidateScalarFieldEnum = {
 } as const
 
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
+
+
+export const RecipientReminderPreferenceScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  recipient: 'recipient',
+  locale: 'locale',
+  unsubscribedAt: 'unsubscribedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RecipientReminderPreferenceScalarFieldEnum = (typeof RecipientReminderPreferenceScalarFieldEnum)[keyof typeof RecipientReminderPreferenceScalarFieldEnum]
 
 
 export const SortOrder = {

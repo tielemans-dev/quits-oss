@@ -55,11 +55,11 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     expect(await issue(context, draft.result.id)).toMatchObject({ status: "completed" })
     const candidate = await prisma.issuanceCandidate.findFirstOrThrow({ where: { documentId: draft.result.id } })
     const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "invoice" }>
-    expect(render.pdf.invoice).toMatchObject({ subtotal: 0.01, taxAmount: 0, total: 0.01 })
-    expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01" }])
+    expect(render.pdf.invoice).toMatchObject({ subtotal: 0.01, taxAmount: 0, total: 0.01, taxRate: 25, items: [{ taxRate: 25 }] })
+    expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "0.01", tax: "0.00", gross: "0.01", treatment: "standard", treatments: ["standard"] }])
     for (const locale of ["da-DK", "en-US"]) {
       expect(buildTotals({ ...render.pdf.invoice, basis: "net", locale }).lines.filter(row => row.kind === "tax"))
-        .toEqual([{ kind: "tax", label: locale === "da-DK" ? "Moms (25 %)" : "Tax (25%)", amount: "0.00" }])
+        .toMatchObject([{ kind: "tax", label: locale === "da-DK" ? "Moms 25 %" : "Tax 25%", amount: "0.00" }])
     }
   })
   it.each([false, true])("uses net PDF lines and freezes legal identity in policy mode %s", async restricted => {
@@ -71,7 +71,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const render = candidate.renderInput as unknown as Extract<RenderInput, { kind: "invoice" }>
     expect(render.pdf.org).toMatchObject({ companyName: "Synthetic Seller ApS", companyAddress: "Testvej 1, 1000 København", taxIds: [{ scheme: "cvr", value: "12345678" }] })
     expect(render.pdf.invoice).toMatchObject({ number: row.number, supplyDate: "2026-10-08", pricesIncludeTax: false, subtotal: 1000, taxAmount: 250, total: 1250, items: [{ quantity: 2, unitPrice: 500, total: 1000 }] })
-    expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "1000.00", tax: "250.00", gross: "1250.00" }])
+    expect(render.pdf.invoice.vatRows).toEqual([{ ratePercent: "25", net: "1000.00", tax: "250.00", gross: "1250.00", treatment: "standard", treatments: ["standard"] }])
     expect(issuedInvoiceSnapshot(row.issuanceSnapshot)).not.toBeNull()
     await prisma.orgSettings.update({ where: { organizationId: context.org.organizationId }, data: { companyName: "Changed Seller", companyAddress: "Changed address" } })
     await prisma.contact.update({ where: { id: context.contact.id }, data: { name: "Changed Buyer", address: "Changed buyer address" } })
@@ -81,7 +81,7 @@ const issue = (context: Awaited<ReturnType<typeof setup>>, id = context.invoice.
     const email = composeInvoiceEmail({ invoice: { ...changed, number: changed.number! }, settings, to: "buyer@example.test", publicPaymentUrl: null }).message.html
     expect(email).toContain("Synthetic Seller ApS")
     expect(email).toContain("Synthetic Buyer")
-    expect(email).toContain("CVR-nr.: 12345678")
+    expect(email).toContain("CVR-nr. 12345678")
     expect(email).not.toMatch(/Changed Seller|Changed Buyer|Changed address/)
     const session = serializePublicInvoiceSession({ invoice: changed, stripeEnabled: false, paymentState: "unpaid" }, "synthetic")
     expect(session.seller.name).toBe("Synthetic Seller ApS")

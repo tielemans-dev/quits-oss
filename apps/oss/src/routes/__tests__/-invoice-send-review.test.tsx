@@ -69,7 +69,61 @@ function fillDraft() {
   fireEvent.change(document.getElementById("dueDate")!, { target: { value: "2099-01-01" } })
   fireEvent.change(screen.getByLabelText("docForm.column.description"), { target: { value: "Synthetic work" } })
 }
+const deliveryDraft = { ...invoice, status: "draft", number: null, supplyDate: "2026-10-05", currency: "DKK", items: [] }
 describe("new invoice send review", () => {
+  it("opens a draft without a delivery date with an empty field", async () => {
+    api.get.mockResolvedValue(deliveryDraft)
+    api.get.mockResolvedValue({ ...await api.get(), supplyDate: null })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit" }))
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe("")
+  })
+  it.each(["2026-10-07", null])("saves the draft delivery date as %s", async (supplyDate) => {
+    api.get.mockResolvedValue(deliveryDraft)
+    const stored = { ...await api.get(), currency: "DKK" }
+    api.get.mockResolvedValue(stored)
+    api.update.mockResolvedValue({ ...stored, supplyDate })
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit" }))
+    const field = screen.getByLabelText("invoices.issuance.supplyDate")
+    expect((field as HTMLInputElement).value).toBe("2026-10-05")
+    fireEvent.change(field, { target: { value: supplyDate ?? "" } })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
+    await waitFor(() => expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate })))
+    await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    const sendSupplyDate = supplyDate ?? new Date().toISOString().slice(0, 10)
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(sendSupplyDate)
+    api.send.mockResolvedValue({})
+    api.get.mockResolvedValue({ ...stored, supplyDate })
+    fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" }))
+    const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
+    await act(async () => { fireEvent.click(confirm) })
+    await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate: sendSupplyDate })))
+    await waitFor(() => expect(screen.getByRole("button", { name: "invoices.detail.action.send" }).hasAttribute("disabled")).toBe(false))
+    fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.edit" }))
+    expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(supplyDate ?? "")
+  })
+
+  it.each(["2026-10-09", null])("keeps a delivery-date edit to %s made during an earlier save", async (supplyDate) => {
+    api.get.mockResolvedValue(deliveryDraft)
+    const stored = await api.get()
+    let finish!: (invoice: unknown) => void
+    api.update.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.edit" }))
+    const field = screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement
+    fireEvent.change(field, { target: { value: "2026-10-07" } })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
+    fireEvent.change(field, { target: { value: supplyDate ?? "" } })
+    await act(async () => { finish({ ...stored, supplyDate: "2026-10-07" }) })
+    expect(screen.getByLabelText("invoices.issuance.supplyDate")).toBe(field)
+    expect(field.value).toBe(supplyDate ?? "")
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ supplyDate: "2026-10-07" }))
+    api.update.mockResolvedValue({ ...stored, supplyDate })
+    fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
+    await screen.findByRole("button", { name: "invoices.detail.action.edit" })
+    expect(api.update).toHaveBeenLastCalledWith(expect.objectContaining({ supplyDate }))
+  })
   it("rejects exponent quantities before saving and permits one comma-normalized retry", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })

@@ -21,6 +21,23 @@ const zones = ["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"]
     vi.unstubAllEnvs()
   })
 
+  it("changes, clears and preserves an omitted draft delivery date through updateV2", async () => {
+    const org = await createTestOrganization()
+    cleanups.push(org.cleanup)
+    const caller = appRouter.createCaller({ session: {
+      user: { id: org.actors.admin.userId, email: "admin@example.test", name: "Admin" },
+      session: { activeOrganizationId: org.organizationId },
+    } } as never)
+    const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Customer" } })
+    const draft = await caller.invoices.createV2({ contactId: contact.id, dueDate: "2026-11-09", supplyDate: "2026-10-05", taxRate: "0", items: [{ description: "Work", quantity: "1", unitPrice: "100" }] })
+    for (const supplyDate of ["2026-10-07", null]) {
+      await caller.invoices.updateV2({ id: draft.id, supplyDate })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id } })).supplyDate?.toISOString() ?? null).toBe(supplyDate ? `${supplyDate}T00:00:00.000Z` : null)
+      await caller.invoices.updateV2({ id: draft.id, notes: "Keep the date" })
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: draft.id } })).supplyDate?.toISOString() ?? null).toBe(supplyDate ? `${supplyDate}T00:00:00.000Z` : null)
+    }
+  })
+
   it.each(zones.flatMap(timezone => dates.map(date => ({ timezone, date }))))(
     "keeps $date in $timezone in the issued view, snapshot, PDF input and UBL input",
     async ({ timezone, date }) => {
