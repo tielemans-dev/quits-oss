@@ -73,6 +73,25 @@ describe("reminder unsubscribe state and POST", () => {
     expect((await postReminderUnsubscribe(form, db, false)).status).toBe(303)
   })
 
+  it("accepts RFC 8058 multipart POSTs and rejects malformed, duplicate or file fields", async () => {
+    const { db, row } = fixture()
+    const token = signReminderUnsubscribeToken(row, secret)
+    const url = `https://app.example.test/api/reminders/unsubscribe?token=${token}`
+    const malformed = new Request(url, { method: "POST", headers: { "Content-Type": "multipart/form-data" }, body: "broken" })
+    expect((await postReminderUnsubscribe(malformed, db, true)).status).toBe(400)
+    for (const value of ["One-Click", new Blob(["One-Click"])]) {
+      const invalid = new FormData()
+      invalid.append("List-Unsubscribe", "One-Click")
+      invalid.append("List-Unsubscribe", value)
+      expect((await postReminderUnsubscribe(new Request(url, { method: "POST", body: invalid }), db, true)).status).toBe(400)
+    }
+    expect(row.unsubscribedAt).toBeNull()
+    const form = new FormData()
+    form.set("List-Unsubscribe", "One-Click")
+    expect((await postReminderUnsubscribe(new Request(url, { method: "POST", body: form }), db, true)).status).toBe(204)
+    expect(row.unsubscribedAt).not.toBeNull()
+  })
+
   it("rejects unsupported, oversized and invalid POST requests without changing preferences", async () => {
     const { db, row, updateMany } = fixture()
     const url = "https://app.example.test/api/reminders/unsubscribe?token=bad"

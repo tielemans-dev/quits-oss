@@ -99,7 +99,7 @@ export async function postReminderUnsubscribe(request: Request, db: ReminderPref
   const headers = new Headers(unsubscribeResponseHeaders)
   if (request.method !== "POST") return new Response(null, { status: 405, headers: { ...unsubscribeResponseHeaders, Allow: "POST" } })
   const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()
-  if (contentType !== "application/x-www-form-urlencoded") return new Response(null, { status: 415, headers })
+  if (contentType !== "application/x-www-form-urlencoded" && contentType !== "multipart/form-data") return new Response(null, { status: 415, headers })
   // Small capability requests only. Do not log tokens or recipient addresses.
   const reader = request.body?.getReader()
   const chunks: Uint8Array[] = []
@@ -116,8 +116,22 @@ export async function postReminderUnsubscribe(request: Request, db: ReminderPref
       chunks.push(value)
     }
   }
-  const body = new TextDecoder().decode(Buffer.concat(chunks))
-  const form = new URLSearchParams(body)
+  const bytes = new Uint8Array(Buffer.concat(chunks))
+  let form: URLSearchParams
+  try {
+    if (contentType === "multipart/form-data") {
+      const multipart = await new Response(bytes, { headers: request.headers }).formData()
+      form = new URLSearchParams()
+      for (const [name, value] of multipart) {
+        if (typeof value !== "string") return new Response(null, { status: 400, headers })
+        form.append(name, value)
+      }
+    } else {
+      form = new URLSearchParams(new TextDecoder().decode(bytes))
+    }
+  } catch {
+    return new Response(null, { status: 400, headers })
+  }
   if (oneClick && (form.get("List-Unsubscribe") !== "One-Click" || form.getAll("List-Unsubscribe").length !== 1)) return new Response(null, { status: 400, headers })
   const token = oneClick ? new URL(request.url).searchParams.get("token") ?? "" : form.get("token") ?? ""
   if (!oneClick && form.getAll("token").length !== 1) return new Response(null, { status: 400, headers })
