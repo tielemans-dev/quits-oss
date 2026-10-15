@@ -88,7 +88,7 @@ describeIfDatabase("setup router integration", () => {
     const seed = randomUUID()
     const setupInput = {
       instanceProfile: "smb" as const,
-      organization: { cvr: "24256790",
+      organization: {
         name: `Setup Org ${seed.slice(0, 8)}`,
         slug: `${TEST_SLUG_PREFIX}${seed.slice(0, 12)}`,
       },
@@ -170,7 +170,7 @@ describeIfDatabase("setup router integration", () => {
     const seed = randomUUID()
     const initialized = await caller.setup.initialize({
       instanceProfile: "smb",
-      organization: { cvr: "24256790", name: "Defaults test", slug: `${TEST_SLUG_PREFIX}${seed}` },
+      organization: { name: "Defaults test", slug: `${TEST_SLUG_PREFIX}${seed}` },
       admin: { name: "Test Admin", email: `${TEST_EMAIL_PREFIX}${seed}@example.test`, password: "Passw0rd!234" },
       auth: { mode: "local_only" },
       locale,

@@ -10,7 +10,7 @@ test.beforeEach(async () => { await resetDatabase(); await mkdir(artifacts, { re
 test("issues successive amount credits, downloads stored invoice UBL and refuses a missing legacy artifact", async ({ page }) => {
   const { organizationId } = await seedCompletedSetup()
   await prisma.orgSettings.update({ where: { organizationId }, data: { countryCode: "DK", baseCurrency: "DKK", companyName: "Frozen Seller", companyAddress: "Seller Road 1\n9000 Aalborg" } })
-  await prisma.organizationTaxId.updateMany({ where: { organizationId, scheme: "cvr" }, data: { value: "12345678", isPrimary: true } })
+  await prisma.organizationTaxId.create({ data: { organizationId, scheme: "cvr", value: "12345678", isPrimary: true } })
   const contact = await prisma.contact.create({ data: { organizationId, name: "Credit Customer", email: "credit@example.test", country: "DK", address: "Buyer Road 2", city: "Aalborg", taxId: "DK87654321" } })
   const priced = priceDocumentV2({ currency: "DKK", pricesIncludeTax: false, taxRate: "25",
     items: Array.from({ length: 3 }, () => ({ description: "Tiny frozen line", quantity: "1", unitPrice: "0.02" })),
