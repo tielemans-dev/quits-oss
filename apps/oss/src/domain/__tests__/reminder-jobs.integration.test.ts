@@ -4,10 +4,11 @@ import { prisma } from "../../lib/db"
 import { translate } from "../../lib/i18n/translate"
 import { deliver, EmailSendError } from "../../lib/email"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
+import { ensureTestMembership } from "../../test-utils/membership"
 import { jobsRouter } from "../../trpc/routers/jobs"
 import { sendReminderNow } from "../commands/reminders"
 import { executeCommand } from "../execute"
-import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, registerJobHandler, runDueJobs } from "../jobs"
+import { MAX_JOB_ATTEMPTS, reclaimStaleJobs, registerJobHandler, runDueJobs, runJobsNow } from "../jobs"
 import { handleReminderBatch, REMINDER_BATCH_JOB } from "../reminder-jobs"
 
 vi.mock("../../lib/email", async () => ({
@@ -62,6 +63,41 @@ describe.skipIf(!hasTestDatabase)("persistent reminder jobs", () => {
     }
     return { org, api, caller, jobId, invoiceIds, sweep, finish }
   }
+
+  it("isolates a caller's colliding request id from the runner's send receipt", async () => {
+    const ctx = await setup(1)
+    const step = (await ctx.api.get({ jobId: ctx.jobId })).steps[0]
+    const clientRequestId = `job-step:${step.id}:1`
+    const request = { invoiceIds: ctx.invoiceIds, clientRequestId }
+    const other = await ctx.api.sendReminders(request)
+    expect(other.jobId).not.toBe(ctx.jobId)
+    expect(await ctx.api.sendReminders(request)).toEqual(other)
+    await runJobsNow([ctx.jobId])
+    expect(await prisma.commandReceipt.findMany({ where: {
+      organizationId: ctx.org.organizationId, clientRequestId: { in: [clientRequestId, `reminder.queue_batch:${clientRequestId}`] },
+    }, select: { commandType: true } })).toEqual(expect.arrayContaining([
+      { commandType: "reminder.queue_batch" }, { commandType: "reminder.send_now" },
+    ]))
+    expect(await ctx.finish()).toMatchObject({ status: "done", successfulReminderInvoiceIds: ctx.invoiceIds })
+    expect(deliver).toHaveBeenCalledTimes(1)
+  })
+
+  it("scopes duplicate request ids to both organization and actor", async () => {
+    const a = await setup(1), b = await setup(1), clientRequestId = randomUUID()
+    await ensureTestMembership(b.org.organizationId, a.org.actors.admin.userId)
+    await prisma.member.updateMany({ where: { organizationId: a.org.organizationId,
+      userId: a.org.actors.accountant.userId }, data: { role: "admin" } })
+    const submissions = [
+      { api: a.api, invoiceIds: a.invoiceIds },
+      { api: b.caller(a.org.actors.admin.userId), invoiceIds: b.invoiceIds },
+      { api: a.caller(a.org.actors.accountant.userId), invoiceIds: a.invoiceIds },
+    ]
+    const jobs = await Promise.all(submissions.map(({ api, invoiceIds }) => api.sendReminders({ invoiceIds, clientRequestId })))
+    expect(new Set(jobs.map(job => job.jobId)).size).toBe(3)
+    for (const [i, { api, invoiceIds }] of submissions.entries()) {
+      expect(await api.sendReminders({ invoiceIds, clientRequestId })).toEqual(jobs[i])
+    }
+  })
 
   it("recovers a crash after sending but before storing the delivery key, without repeating completed steps", async () => {
     const ctx = await setup()

@@ -28,7 +28,7 @@ export const jobsRouter = router({
   sendReminders: authorizedProcedure("invoice:send")
     .input(queueReminderJob.input)
     .mutation(async ({ ctx, input }) =>
-      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor, clientRequestId: input.clientRequestId }))),
+      unwrapOutcome(await executeCommand(queueReminderJob, input, { actor: ctx.actor, clientRequestId: `reminder.queue_batch:${input.clientRequestId}` }))),
 
   list: authorizedProcedure("invoice:read").query(async ({ ctx }) =>
     (await prisma.job.findMany({
