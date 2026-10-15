@@ -23,7 +23,8 @@ for (const locale of ["da-DK", "en-US"]) {
       bankRegNumber: "0040", bankAccountNumber: "0440116243",
     } })
     // MOCK: synthetic seller tax identifier for the Danish compliance profile.
-    await prisma.organizationTaxId.updateMany({ where: { organizationId: setup.organizationId, scheme: "cvr" }, data: { value: "12345674", countryCode: "DK" } })
+    await prisma.organizationTaxId.deleteMany({ where: { organizationId: setup.organizationId } })
+    await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
     const contact = await prisma.contact.create({ data: { organizationId: setup.organizationId, name: "Synthetic Buyer", email: "buyer@example.test", country: "DK" } })
     const member = await prisma.member.findFirstOrThrow({ where: { organizationId: setup.organizationId, role: "admin" } })
     const actor = await resolveUserActor({ organizationId: setup.organizationId, userId: member.userId })
