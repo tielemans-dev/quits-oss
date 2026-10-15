@@ -4,6 +4,7 @@ import { I18nProvider } from "../../src/lib/i18n/react"
 import { OnboardingV2 } from "../../src/components/onboarding-v2/onboarding-v2"
 import type { OnboardingV2Client } from "../../src/components/onboarding-v2/client"
 import type { CvrCompany } from "@quits/contracts/cvr"
+import { companyStarters } from "../../src/lib/onboarding/company-starters"
 import "./fixture.css"
 
 const params = new URLSearchParams(location.search)
@@ -17,6 +18,7 @@ const company: CvrCompany = {
   address: "Nørrebrogade 12, 2. tv.\n2200 København N",
   companyForm: "ApS",
   industry: "Designarbejde",
+  industryCode: scenario?.startsWith("industry") ? "620100" : undefined,
   status: scenario === "ceased" ? "ceased" : scenario === "warning" ? "liquidation" : "active",
   statusClass: scenario === "ceased" ? "blocked" : scenario === "warning" ? "warn" : "active",
   statusDate: "2026-10-01",
@@ -48,8 +50,9 @@ const client: OnboardingV2Client = {
     return company
   },
   suggestions: async (_, signal) => {
-    await wait(scenario === "slow" ? 6000 : 300, signal)
-    if (scenario === "agent-fail") throw new Error("Suggestions unavailable")
+    await wait(scenario === "slow" || scenario === "industry-slow" ? 6000 : 300, signal)
+    if (scenario === "agent-fail" || scenario === "industry-fail") throw new Error("Suggestions unavailable")
+    if (scenario?.startsWith("industry")) return companyStarters(company)
     return {
       customers: [{ id: "customer", label: "Små og mellemstore virksomheder" }],
       lines: [{ id: "line", description: "Designarbejde", unitPrice: 850, unit: "hour" }],

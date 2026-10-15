@@ -72,6 +72,8 @@ export type CvrLookupProvider = {
   search(query: string, context: CvrLookupContext): Promise<CvrCompany[]>
   get(cvr: string, context: CvrLookupContext): Promise<CvrCompany | null>
   suggestions?(cvr: string, context: CvrLookupContext): Promise<OnboardingSuggestions>
+  /** Optional public company text, collected by a trusted adapter. Never fetch user-supplied URLs. */
+  researchSources?(cvr: string, context: CvrLookupContext): Promise<Array<{ url: string; text: string }>>
 }
 export type CvrLookupContext = { userId: string; organizationId?: string; signal: AbortSignal }
 

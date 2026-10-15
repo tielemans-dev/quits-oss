@@ -116,11 +116,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [connectFailed, setConnectFailed] = useState(false)
   const request = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
-  const suggestionPromise = useRef<{
-    cvr: string
-    result: Promise<OnboardingSuggestions | null>
-    controller: AbortController
-  } | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
@@ -152,7 +147,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     epoch.current++
     request.current?.abort()
     suggestionRequest.current?.abort()
-    suggestionPromise.current = null
     setRevealed(null)
     setSlow(false)
     setValidationErrors([])
@@ -275,9 +269,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const pendingCvr = draft?.suggestionsState === "pending" ? draft.company?.cvr : undefined
   useEffect(() => {
     if (!pendingCvr || !client.suggestions) return
-    const existing =
-      suggestionPromise.current?.cvr === pendingCvr ? suggestionPromise.current : null
-    const controller = existing?.controller ?? new AbortController()
+    const controller = new AbortController()
     suggestionRequest.current = controller
     const timeout = setTimeout(() => controller.abort(), 10_000)
     function apply(suggestions: OnboardingSuggestions | null) {
@@ -286,16 +278,17 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         current && current.company?.cvr === pendingCvr && current.suggestionsState === "pending"
           ? {
               ...current,
-              suggestions,
+              suggestions: suggestions ?? current.suggestions,
               suggestionsState:
-                suggestions && (suggestions.customers.length || suggestions.lines.length)
+                (suggestions ?? current.suggestions)?.lines.length || (suggestions ?? current.suggestions)?.customers.length
                   ? "ready"
                   : "hidden",
             }
           : current,
       )
     }
-    const result = existing?.result ?? client.suggestions(pendingCvr, controller.signal)
+    const suggest = client.suggestions
+    const result = Promise.resolve().then(() => suggest(pendingCvr, controller.signal))
     result
       .then((result) => {
         if (!controller.signal.aborted) apply(result)
@@ -316,15 +309,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setSelected(company)
     setScreen("working")
     const run = epoch.current
-    if (client.suggestions) {
-      const controller = new AbortController()
-      suggestionRequest.current = controller
-      suggestionPromise.current = {
-        cvr: company.cvr,
-        controller,
-        result: client.suggestions(company.cvr, controller.signal).catch(() => null),
-      }
-    }
     const controller = new AbortController()
     request.current = controller
     const started = Date.now()
@@ -381,12 +365,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    if (field === "cvr") suggestionRequest.current?.abort()
     if (field === "cvr") setCvrError(null)
     setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
     setDraft((current) =>
       current
         ? {
             ...current,
+            ...(field === "cvr" ? { suggestions: null, suggestionsState: "hidden" as const, acceptedLineIds: [] } : {}),
             ...(field === "momsRegistered" ? { vatChoiceConfirmed: value !== null } : {}),
             values: {
               ...current.values,
@@ -430,10 +416,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setBusy(true)
     setSaveFailed(false)
     suggestionRequest.current?.abort()
-    const confirmed =
-      draft.suggestionsState === "pending"
-        ? { ...draft, suggestionsState: "hidden" as const, suggestions: null }
-        : draft
+    const confirmed = draft
     setDraft(confirmed)
     storeDraft(storageKey, confirmed)
     try {
@@ -467,10 +450,12 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     }
   }
   function remove(group: "customers" | "lines", id: string) {
+    suggestionRequest.current?.abort()
     setDraft((current) =>
       current?.suggestions
         ? {
             ...current,
+            suggestionsState: "ready",
             suggestions: {
               ...current.suggestions,
               [group]: current.suggestions[group].filter((row) => row.id !== id),
@@ -887,14 +872,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           </SummaryCard>
           {draft.source === "cvr" && client.suggestions ? (
             <div className="ob-suggestion-slot" data-testid="suggestion-slot">
-              {draft.suggestionsState === "pending" ? (
+              {draft.suggestionsState === "pending" && !draft.suggestions?.lines.length ? (
                 <SummaryCard title={TT("suggestions.title")} className="ob-suggestions">
                   <p role="status">
                     <LoaderCircle size={16} className="ob-spin" />
                     {TT("suggestions.loading")}
                   </p>
                 </SummaryCard>
-              ) : draft.suggestionsState === "ready" && draft.suggestions ? (
+              ) : draft.suggestionsState !== "hidden" && draft.suggestions ? (
                 <SummaryCard
                   title={TT("suggestions.title")}
                   tag={TT("suggestions.tag")}
@@ -919,14 +904,22 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                     <h3>{TT("suggestions.lines")}</h3>
                     {draft.suggestions.lines.map((row) => (
                       <div className="ob-suggestion-row" key={row.id}>
-                        <span>
+                        <label>
+                          <input type="checkbox" disabled={busy}
+                            checked={draft.acceptedLineIds.includes(row.id)}
+                            onChange={event => {
+                              const accepted = event.target.checked
+                              setDraft(current => current ? { ...current, acceptedLineIds: accepted
+                                ? [...current.acceptedLineIds, row.id]
+                                : current.acceptedLineIds.filter(id => id !== row.id) } : current)
+                            }} />
                           {row.description} ·{" "}
                           {new Intl.NumberFormat(locale, {
                             style: "currency",
                             currency: draft.values.defaultCurrency,
                           }).format(row.unitPrice)}{" "}
                           {TT(row.unit)}
-                        </span>
+                        </label>
                         <button
                           type="button"
                           disabled={busy}
