@@ -12,10 +12,10 @@ const standard = { ratePercent: "25", net: "200", tax: "50", gross: "250", treat
 const totals = (vatRows: readonly VatRow[], locale = "da-DK") => buildTotals({ basis: "net", subtotal: "300", taxAmount: "50", total: "350", currency: "DKK", locale, vatRows })
 describe("QUI-9 frozen legal presentation", () => {
   it.each([["da-DK", "CVR-nr. 12345678", "Momsnr. DK12345678"], ["en-US", "CVR no. 12345678", "VAT no. DK12345678"]])("labels seller IDs by buyer country in %s", (locale, domestic, foreign) => {
-    expect(formatTaxIds(ids, locale, "DK")).toEqual([domestic])
-    expect(formatTaxIds(ids, locale, "SE")).toEqual([foreign])
+    expect(formatTaxIds(ids, locale, "DK", true)).toEqual([domestic])
+    expect(formatTaxIds(ids, locale, "SE", true)).toEqual([foreign])
     expect(formatTaxIds([{ scheme: "cvr", value: "12345678" }], locale, "SE", false)).toEqual([domestic])
-    expect(formatTaxIds([{ scheme: "cvr", value: "12345678" }], locale, "US")).toEqual([foreign])
+    expect(formatTaxIds([{ scheme: "cvr", value: "12345678" }], locale, "US", true)).toEqual([foreign])
   })
   it("prints a company once and keeps Danish postal order", () => {
     expect(distinctCompany({ name: "Buyer", company: " Buyer " })).toBeNull()
@@ -41,11 +41,13 @@ describe("QUI-9 frozen legal presentation", () => {
     expect(totals([{ ...zero, treatment: "exempt" }]).lines[1]?.reason).toBe("Momsfritaget")
     expect(totals([{ ...zero, treatment: "exempt" }]).note).toBeUndefined()
   })
-  it("retains all treatment reasons when frozen groups share a rate", () => {
+  it("keeps taxable amounts separate for unlike treatments at one rate", () => {
     const rows = vatRowsByRate(["out_of_scope", "exempt"].map(treatment => ({ rate: "0", net: "10", tax: "0", gross: "10", treatment })), "DKK")
-    expect(rows[0]).toMatchObject({ net: "20.00", tax: "0.00", treatments: ["out_of_scope", "exempt"] })
+    expect(rows).toHaveLength(2)
+    expect(rows.map(row => row.net)).toEqual(["10.00", "10.00"])
     expect(totals(rows).note).toBeUndefined()
-    expect(totals(rows).lines[1]?.reason).toBe("Uden for momsens anvendelsesområde · Momsfritaget")
+    expect(totals(rows).lines[1]?.reason).toBe("Uden for momsens anvendelsesområde")
+    expect(totals(rows).lines[2]?.reason).toBe("Momsfritaget")
   })
   it.each(["export", "zero_rated"])("retains a lone %s zero row with its classification", treatment => {
     const result = totals([{ ...zero, treatment }], "en-US")
@@ -56,8 +58,8 @@ describe("QUI-9 frozen legal presentation", () => {
     expect(totals([{ ...zero, treatment: "unclassified_zero" }], "en-US").lines.map(row => row.label)).toEqual(["Subtotal"])
   })
   it("treats Danish country names as domestic when labelling seller IDs", () => {
-    for (const country of ["DK", "dk", "Danmark", "Denmark", " Denmark "]) expect(formatTaxIds(ids, "da-DK", country)).toEqual(["CVR-nr. 12345678"])
-    expect(formatTaxIds(ids, "da-DK", "Sverige")).toEqual(["Momsnr. DK12345678"])
+    for (const country of ["DK", "dk", "Danmark", "Denmark", " Denmark "]) expect(formatTaxIds(ids, "da-DK", country, true)).toEqual(["CVR-nr. 12345678"])
+    expect(formatTaxIds(ids, "da-DK", "Sverige", true)).toEqual(["Momsnr. DK12345678"])
   })
   it("localizes a fractional line VAT rate", () => {
     const snapshot = { offerFormatVersion: 2, locale: "da-DK", currency: "DKK", taxRate: "25", taxRegime: "eu_vat", sellerSnapshot: { momsRegistered: true }, vatGroups: [], serviceTotal: { net: "0", tax: "0", gross: "0", payableRounding: "0" } }

@@ -1,3 +1,4 @@
+import { pdfBuyerAddress } from "./documents/invoice-identity"
 import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
 import { formatCurrency } from "./i18n/format"
 import { agreementVatPresentation } from "./agreements/vat-presentation"
@@ -51,6 +52,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           <Text>
             Customer: {snapshot.buyerSnapshot?.name} {distinctCompany(snapshot.buyerSnapshot)}
           </Text>
+          {pdfBuyerAddress(snapshot.buyerSnapshot ?? {}, snapshot.locale).map((line, index) => <Text key={index}>{line}</Text>)}
           {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <Text key={id}>{id}</Text>)}
           <Text>{snapshot.buyerSnapshot?.email}</Text>
           {issueDate && <Text>Issued: {issueDate.slice(0, 10)}</Text>}
@@ -75,9 +77,9 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
           </View>
         ))}
         <View style={styles.section}>
-          {vat.totals ? <>
+          {vat.totals && vat.status !== false ? <>
             {vat.totals.lines.map((row, i) => <Text key={i}>{row.label}: {formatCurrency(Number(row.amount), snapshot.currency, snapshot.locale)}{row.reason ? ` · ${row.reason}` : ""}</Text>)}
-            <Text>{vat.totals.total.label}: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
+            <Text>Service total: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
             {vat.totals.note && <Text>{vat.totals.note}</Text>}
           </> : <>
           <Text>
