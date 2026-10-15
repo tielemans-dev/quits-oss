@@ -873,6 +873,7 @@ model JobStep {
   job         Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
   position    Int
   label       String
+  labelParams Json?
   invoiceId   String?
   status      JobStepStatus @default(pending)
   error       String?
