@@ -180,27 +180,62 @@ async function openCheckoutSession(token: string) {
 }
 
 /**
- * A tracked session may have been opened with BYOK before Connect became active.
- * Expire that session with the BYOK key that created it before opening one on the
- * connected account. `resource_missing` from the other account is not expiry: the
- * session can still be payable where it was created.
+ * A tracked session may belong to BYOK or to Connect, whichever opened it. Expire it on
+ * both before opening a replacement. `resource_missing` from one account is not expiry:
+ * the session can still be payable on the other. A new session is opened only when every
+ * account we can reach reports that it no longer has this session open.
  */
 async function expirePreviousCheckoutSession(
   target: StripeCheckoutTarget,
   sessionId: string,
   organizationId: string,
 ) {
-  if (target.kind === "connect") {
+  for (const candidate of await previousSessionExpiryTargets(organizationId, target)) {
+    const outcome = await expireTrackedCheckoutSession(candidate, sessionId)
+    if (outcome !== "missing") return outcome
+  }
+  return "missing" as const
+}
+
+/**
+ * BYOK first, then the Connect account even when it is not the account that will take
+ * the new charge. `connectReady` is left unset for that lookup so an inactive Connect
+ * account can still expire a session it opened.
+ */
+async function previousSessionExpiryTargets(
+  organizationId: string,
+  chargeTarget: StripeCheckoutTarget,
+) {
+  const targets: StripeCheckoutTarget[] = []
+  if (chargeTarget.kind === "byok") targets.push(chargeTarget)
+  try {
     const byok = await resolveStripeCheckoutTarget(
       { organizationId },
       { connectReady: false },
     )
-    if (byok?.kind === "byok") {
-      const outcome = await expireOpenStripeCheckoutSession({ secretKey: byok.secretKey, sessionId })
-      if (outcome !== "missing") return outcome
+    if (byok?.kind === "byok" && !targets.some(candidate =>
+      candidate.kind === "byok" && candidate.secretKey === byok.secretKey)) {
+      targets.push(byok)
     }
+  } catch (error) {
+    // Leftover ciphertext that can no longer be decrypted is not a Connect outage.
+    paymentsLogger.error("invoice.checkout.byok_expiry_unavailable", {
+      organizationId,
+      error,
+    })
   }
-  return expireTrackedCheckoutSession(target, sessionId)
+
+  const connect = chargeTarget.kind === "connect"
+    ? chargeTarget
+    : await connectExpiryTarget(organizationId)
+  if (connect) targets.push(connect)
+  if (targets.length === 0) targets.push(chargeTarget)
+  return targets
+}
+
+async function connectExpiryTarget(organizationId: string) {
+  const resolved = await resolveStripeCheckoutTarget({ organizationId })
+  return resolved?.kind === "connect" ? resolved : null
 }
 
 /** BYOK sessions were opened with the org secret key; connect sessions belong to that account. */
