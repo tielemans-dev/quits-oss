@@ -119,7 +119,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
           await writeFile(path, pdf)
           await info.attach(name, { path, contentType: 'application/pdf' })
           execFileSync('pdftoppm', ['-png', '-r', '96', path, info.outputPath(name)])
-          for (const file of (await readdir(info.outputDir)).filter(file => file.startsWith(`${name}-`) && file.endsWith('.png')).sort()) {
+          for (const file of (await readdir(info.outputDir)).filter(file => new RegExp(`^${name}-\\d+\\.png$`).test(file)).sort()) {
             const png = await readFile(info.outputPath(file))
             await info.attach(file, { body: png, contentType: 'image/png' })
             expect.soft(png).toMatchSnapshot(file, { maxDiffPixelRatio: 0.001 })
