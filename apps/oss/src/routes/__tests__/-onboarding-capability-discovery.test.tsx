@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
 
 const { useSessionMock, isCloudDistributionMock, onboardingStatusQuery, runtimeCapabilitiesQuery, availableQuery, setupAvailableQuery, listOrganizations } = vi.hoisted(() => ({
@@ -42,7 +42,9 @@ vi.mock("../../lib/auth-client", () => ({
 vi.mock("../../components/onboarding-v2/onboarding-v2", () => ({
   OnboardingV2: (props: { confirmationEnabled: boolean }) => <div data-testid="v2" data-confirmation={String(props.confirmationEnabled)} />,
 }))
-vi.mock("../../components/onboarding/company-setup", () => ({ CompanySetup: () => <div data-testid="company-setup" /> }))
+vi.mock("../../components/onboarding/company-setup", () => ({
+  CompanySetup: () => <input data-testid="company-setup" aria-label="Setup company" />,
+}))
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
@@ -156,6 +158,28 @@ describe("onboarding capability discovery", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     expect(await screen.findByTestId("v2")).toBeTruthy()
     expect(availableQuery).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ["v2 company setup", { enabled: false, suggestions: false }, "company-setup"],
+    ["v2", { enabled: true, suggestions: false }, "v2"],
+  ])("mounts no flow from a mix of old and new results while a retry is in flight (%s)", async (_name, availability, flowId) => {
+    hostedWithOrganization()
+    const retryAvailability = deferred<unknown>()
+    availableQuery.mockResolvedValueOnce(availability).mockReturnValueOnce(retryAvailability.promise).mockResolvedValue(availability)
+    runtimeCapabilitiesQuery.mockRejectedValueOnce(new Error("network")).mockResolvedValue(v2Capabilities)
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    // The retried capabilities land while the retried availability read is still pending.
+    await waitFor(() => expect(runtimeCapabilitiesQuery.mock.calls.length).toBeGreaterThanOrEqual(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(screen.getByRole("status")).toBeTruthy()
+    noFlow()
+    retryAvailability.reject(new Error("timeout"))
+    expect(await screen.findByRole("alert")).toBeTruthy()
+    noFlow()
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    expect(await screen.findByTestId(flowId)).toBeTruthy()
   })
 
   it("recovers when both reads fail and the retry succeeds", async () => {

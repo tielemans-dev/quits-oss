@@ -155,13 +155,15 @@ function OnboardingPageContent() {
   // Hosted onboarding picks its flow (v2, v2 company setup, legacy manual) from two reads: CVR
   // availability and runtime capabilities. Neither may decide alone, so both start unknown and the
   // flow only mounts once both are known. A failed read stays unknown (with a retry): reading it as
-  // "disabled" would mount a flow without seller-VAT confirmation. A retry keeps results already known.
+  // "disabled" would mount a flow without seller-VAT confirmation. A retry starts both reads over, so
+  // no flow can mount from a mix of old and new results and then be replaced when the other read lands.
   const [v2Availability, setV2Availability] = useState<{ enabled: boolean; suggestions: boolean } | null>(null)
   const [v2AvailabilityFailed, setV2AvailabilityFailed] = useState(false)
   const [discoveryAttempt, setDiscoveryAttempt] = useState(0)
   useEffect(() => {
     if (!isCloud || !hasActiveOrg) return
     let cancelled = false
+    setV2Availability(null)
     setV2AvailabilityFailed(false)
     withTimeout(trpc.cvr.available.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
       .then(result => { if (!cancelled) setV2Availability(result) })
@@ -393,6 +395,7 @@ function OnboardingPageContent() {
     }
 
     let cancelled = false
+    setRuntimeCapabilities(null)
     setRuntimeCapabilitiesFailed(false)
 
     withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
