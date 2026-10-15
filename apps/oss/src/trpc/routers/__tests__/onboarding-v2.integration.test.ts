@@ -40,6 +40,46 @@ async function caller(id: string, requestedOrganizationId?: string) {
     setRuntimeExtensions([])
     for (const id of ids.splice(0)) await cleanupTestOrganizations({ where: { id } })
   })
+  it.each(["active", "ceased", "missing", "duplicate", "replacement"])("finishes manual setup during an outage and records later %s results idempotently", async outcome => {
+    const id = await organization()
+    const api = await caller(id)
+    const services = await import("../../../lib/runtime/services")
+    const get = vi.fn().mockRejectedValue(new Error("synthetic outage"))
+    services.setRuntimeServices({ cvrLookupProvider: { get, search: async () => [] } })
+    const startTrial = vi.fn()
+    services.setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", priceId: null }), assertInvoiceCreationAllowed: async () => {}, startTrial } })
+    const input = { ...summary(), source: "manual" as const }
+    const result = await api.onboarding.confirmV2(input)
+    expect(result.status).toBe("complete")
+    expect(await prisma.organizationCvrVerification.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ cvr: activeCompany.cvr, status: "pending", checkedAt: null })
+    expect(await api.onboarding.confirmV2(input)).toEqual(result)
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(startTrial).not.toHaveBeenCalled()
+    expect(await api.onboarding.getCvrVerification()).toMatchObject({ cvr: activeCompany.cvr, status: "pending" })
+    // The shared helper is used by auth's login hook. No registry recovery should block login.
+    const rootServices = await import("../../../lib/onboarding/cvr-verification")
+    await rootServices.retryPendingCvrVerifications(prisma, `qui56-${id}`)
+    expect(await prisma.organizationCvrVerification.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ status: "pending" })
+    await prisma.organizationCvrVerification.update({ where: { organizationId: id }, data: { nextAttemptAt: new Date(0) } })
+    get.mockImplementation(async cvr => outcome === "missing" ? null : { ...activeCompany, cvr, status: outcome === "ceased" ? "ceased" : "active", statusClass: outcome === "ceased" ? "blocked" : "active" })
+    if (outcome === "replacement") await api.settings.update({ primaryTaxId: "45676102", primaryTaxIdScheme: "cvr" })
+    if (outcome === "duplicate") {
+      const other = await organization()
+      await prisma.organizationTaxId.create({ data: { organizationId: other, scheme: "cvr", value: activeCompany.cvr, countryCode: "DK", isPrimary: true } })
+      const extensions = await import("../../../lib/runtime/extensions")
+      extensions.setRuntimeExtensions([{ id: "unique", enforceCvrUniqueness: true }])
+    }
+    const { buildQuitsAuthOptions } = await import("../../../lib/runtime/auth-config")
+    const tasks: Promise<void>[] = []
+    const options = buildQuitsAuthOptions({ prisma, env: { getEnv: name => name === "QUITS_DISTRIBUTION" ? "cloud" : undefined },
+      hooks: { runInBackground: task => { tasks.push(task) } } })
+    await Promise.all([1, 2].map(() => options.databaseHooks!.session.create.after({ userId: `qui56-${id}` } as never)))
+    await Promise.all(tasks)
+    await Promise.all([rootServices.retryPendingCvrVerifications(prisma, `qui56-${id}`), rootServices.retryPendingCvrVerifications(prisma, `qui56-${id}`)])
+    expect(await prisma.organizationCvrVerification.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ status: ["active", "replacement"].includes(outcome) ? "verified" : outcome === "duplicate" ? "pending" : "inactive", checkedAt: expect.any(Date), lastError: outcome === "duplicate" ? "cvr.alreadyRegistered" : null })
+    expect(startTrial).toHaveBeenCalledTimes(["active", "replacement"].includes(outcome) ? 1 : 0)
+    expect(get).toHaveBeenCalledTimes(3)
+  })
   it("reads Danish defaults without persisting anything and saves the complete summary", async () => {
     const id = await organization()
     const api = await caller(id)
@@ -191,24 +231,33 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await prisma.organization.findUniqueOrThrow({ where: { id } })).toMatchObject({ name: "Before confirm" })
     expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(1)
   })
-  it("injects a read-only CVR provider and hides it without a provider", async () => {
+  it("hides CVR without a lookup provider and serves read-only industry starters without AI", async () => {
     const id = await organization()
     const api = await caller(id)
     const services = await import("../../../lib/runtime/services")
     services.resetRuntimeServices()
     expect(await api.cvr.available()).toEqual({ enabled: false, suggestions: false })
     expect(await api.cvr.setupAvailable()).toEqual({ enabled: false })
-    const company = { cvr: "24256790", name: "Test ApS", address: "Testvej 1\n1000 København", companyForm: "ApS", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
+    await expect(api.cvr.suggestions({ cvr: "24256790" })).rejects.toMatchObject({ code: "FORBIDDEN" })
+    const company = { cvr: "24256790", name: "Test ApS", address: "Testvej 1\n1000 København", companyForm: "ApS", industryCode: "620100", momsRegistered: true, status: "active" as const, statusClass: "active" as const }
     const search = vi.fn(async () => [company])
     services.setRuntimeServices({ cvrLookupProvider: { search, get: async () => company } })
     try {
-      expect(await api.cvr.available()).toEqual({ enabled: true, suggestions: false })
+      expect(await api.cvr.available()).toEqual({ enabled: true, suggestions: true })
       expect(await api.cvr.setupAvailable()).toEqual({ enabled: true })
       expect(await api.cvr.search({ q: "Test" })).toEqual([company])
       expect(await api.cvr.get({ cvr: "24256790" })).toEqual(company)
       expect(search.mock.calls[0]).toMatchObject(["Test", { userId: `qui56-${id}`, organizationId: id }])
+      expect(await api.cvr.suggestions({ cvr: company.cvr })).toEqual({
+        customers: [{ id: "industry-customer-0", label: "Virksomheder" }],
+        lines: [
+          { id: "industry-line-0", description: "Softwareudvikling", unit: "hour", unitPrice: 0 },
+          { id: "industry-line-1", description: "IT-rådgivning", unit: "hour", unitPrice: 0 },
+        ],
+      })
       expect(await prisma.orgSettings.count({ where: { organizationId: id } })).toBe(0)
       expect(await prisma.organizationTaxId.count({ where: { organizationId: id } })).toBe(0)
+      expect(await prisma.catalogItem.count({ where: { organizationId: id } })).toBe(0)
     } finally { services.resetRuntimeServices() }
   })
   it("replaces mixed-case and duplicate registration IDs while preserving unrelated schemes", async () => {

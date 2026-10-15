@@ -20,7 +20,7 @@ import { cleanupExpiredVerifications } from "../auth/verification-cleanup"
 import { selectedEmailProvider, readSmtpConfiguration, requireSmtpFromEmail } from "../email-provider-config"
 import { buildDkSettingsDefaults } from "../onboarding/dk-presets"
 import { assertOrganizationCvrAvailable } from "./cvr-admission"
-import { requireOnboardingCvr } from "../onboarding/require-cvr"
+import { admitOnboardingCvr, recordCvrVerification, retryPendingCvrVerifications } from "../onboarding/cvr-verification"
 import { ac, accountant, admin, member } from "../permissions"
 
 export type AuthHooks = SignupAdmission & {
@@ -108,13 +108,13 @@ export function buildQuitsAuthOptions(input: {
     organizationHooks: {
       async beforeCreateOrganization({ organization, user }) {
         try {
-          const company = await requireOnboardingCvr({
+          const company = await admitOnboardingCvr({
             cvr: organization.metadata?.cvr, cloud: cloudDistribution, userId: user.id,
           })
           return { data: {
             ...organization,
             ...(company ? { name: company.name } : {}),
-            metadata: { ...organization.metadata, onboardingCompany: company
+            metadata: { ...organization.metadata, onboardingCvrStatus: cloudDistribution ? (company ? "verified" : "pending") : undefined, onboardingCompany: company
               ? { cvr: company.cvr, name: company.name, address: company.address } : undefined },
           } }
         } catch (error) {
@@ -128,11 +128,13 @@ export function buildQuitsAuthOptions(input: {
         const facts = organization.metadata?.onboardingCompany
         try {
           await input.prisma.$transaction(async tx => {
-            if (facts?.cvr) await assertOrganizationCvrAvailable(tx, { cvr: facts.cvr, organizationId: organization.id, cloud: cloudDistribution })
+            if (organization.metadata?.cvr) await assertOrganizationCvrAvailable(tx, { cvr: organization.metadata.cvr, organizationId: organization.id, cloud: cloudDistribution })
             await tx.orgSettings.create({ data: {
               organizationId: organization.id, ...buildDkSettingsDefaults(),
               companyName: organization.name, companyAddress: facts?.address ?? null,
             } })
+            if (cloudDistribution) await recordCvrVerification(tx, organization.id, organization.metadata!.cvr,
+              organization.metadata?.onboardingCvrStatus === "verified")
             if (organization.metadata?.cvr) await tx.organizationTaxId.create({ data: {
               organizationId: organization.id, scheme: "cvr", value: organization.metadata!.cvr,
               countryCode: "DK", isPrimary: true,
@@ -314,6 +316,9 @@ export function buildQuitsAuthOptions(input: {
         return ctx.json(result, Response.json(result))
       }),
     },
+    databaseHooks: cloudDistribution ? { session: { create: { after: async (session: { userId: string }) => {
+      runInBackground(retryPendingCvrVerifications(input.prisma, session.userId))
+    } } } } : undefined,
     emailAndPassword: {
       enabled: true,
       minPasswordLength: PASSWORD_MIN_LENGTH,

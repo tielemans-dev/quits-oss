@@ -55,12 +55,12 @@ describe("B2B organization admission", () => {
     await expect(hook({ organization: { id: "org", name: company.name, metadata: { cvr: company.cvr } } } as never)).rejects.toMatchObject({ body: { code: "cvr.unavailable" } })
     expect(prisma.organization.delete).toHaveBeenCalledExactlyOnceWith({ where: { id: "org" } })
   })
-  it("fails closed when hosted lookup is absent or unavailable", async () => {
+  it("keeps strict validation closed but admits onboarding during an outage", async () => {
     await expect(requireOnboardingCvr(input)).rejects.toMatchObject({ message: "cvr.unavailable" })
     setRuntimeServices({ cvrLookupProvider: { get, search: vi.fn() } })
     get.mockRejectedValue(new Error("synthetic outage"))
     await expect(requireOnboardingCvr(input)).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "cvr.unavailable" })
-    await expect(creation(true)({ organization: { name: "Test", slug: "test", metadata: { cvr: company.cvr } }, user: { id: "user" } } as never)).rejects.toMatchObject({ body: { code: "cvr.unavailable" } })
+    await expect(creation(true)({ organization: { name: "Test", slug: "test", metadata: { cvr: company.cvr } }, user: { id: "user" } } as never)).resolves.toMatchObject({ data: { name: "Test", metadata: { onboardingCvrStatus: "pending" } } })
   })
   it.each([null, { ...company, cvr: "45676102" }, { ...company, status: "ceased", statusClass: "blocked" }, { ...company, status: "liquidation", statusClass: "warn" }])("refuses unknown, mismatched or inactive businesses", async result => {
     get.mockResolvedValue(result)

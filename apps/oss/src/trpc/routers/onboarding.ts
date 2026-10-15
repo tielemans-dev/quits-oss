@@ -21,7 +21,7 @@ import { evaluateOnboardingReadiness } from "../../lib/onboarding/readiness"
 import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { localeSchema } from "../../lib/compliance/countries"
 import { isCountryCode } from "../../lib/compliance/registry"
-import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
+import { admitOnboardingCvr } from "../../lib/onboarding/cvr-verification"
 import { searchOwnCvr } from "../../lib/onboarding/search-cvr"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
 import { authorizedProcedure, protectedProcedure, router } from "../init"
@@ -234,6 +234,9 @@ async function legacyOnboardingWrite(organizationId: string, write: (tx: Prisma.
 }
 
 export const onboardingRouter = router({
+  getCvrVerification: authorizedProcedure("settings:read").query(({ ctx }) =>
+    prisma.organizationCvrVerification.findUnique({ where: { organizationId: ctx.organizationId },
+      select: { cvr: true, status: true, checkedAt: true, lastError: true } })),
   // Reading v2 defaults never creates settings or saves a draft.
   getDefaultsV2: authorizedProcedure("settings:read").query(() => {
     assertOnboardingV2Enabled()
@@ -324,7 +327,7 @@ export const onboardingRouter = router({
           settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
         }
         if (isCloudDistribution && input.primaryTaxId !== undefined) {
-          await requireOnboardingCvr({ cvr: input.primaryTaxId?.trim().replace(/^DK/, ""),
+          await admitOnboardingCvr({ cvr: input.primaryTaxId?.trim().replace(/^DK/, ""),
             scheme: input.primaryTaxIdScheme, cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId, tx })
         }
         settingsUpdateData.baseCurrency = await resolveBaseCurrency(tx, ctx.organizationId, { countryCode: settingsUpdateData.countryCode as string | undefined })
@@ -392,12 +395,12 @@ export const onboardingRouter = router({
             message: `Onboarding is incomplete. Missing: ${snapshot.readiness.missing.join(", ")}`,
           })
         }
-        const company = await requireOnboardingCvr({
+        const company = await admitOnboardingCvr({
           cvr: snapshot.values.primaryTaxId?.replace(/^DK/, ""), cloud: true,
           userId: ctx.user.id, organizationId: ctx.organizationId, tx,
         })
         // The provider owns durable eligibility and retries across transaction rollback.
-        await billingProvider.startTrial?.(ctx.organizationId, company ? { cvr: company.cvr, tx } : undefined)
+        if (company) await billingProvider.startTrial?.(ctx.organizationId, { cvr: company.cvr, tx })
         await tx.orgSettings.update({
           where: { organizationId: ctx.organizationId },
           data: {
