@@ -7,6 +7,7 @@ import { formatCurrency } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
 import { Button } from "../../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card"
+import { onRequestDone } from "../../command-bar/request-events"
 import { CreateCreditNoteDialog } from "../../credit-notes/create-credit-note-dialog"
 import { CreditNotesTable } from "../../credit-notes/credit-notes-table"
 import type { CreditNoteListItem } from "../../credit-notes/types"
@@ -47,9 +48,11 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
     void load()
   }, [load, organizationId])
 
+  useEffect(() => onRequestDone(done => { if (done.kind === "creditNote" && done.invoiceId === invoice.id) void load() }), [invoice.id, load])
+
   if (!creditNotes) return null
 
-  const creditedCents = creditNotes.reduce((sum, creditNote) => sum + Math.round(creditNote.total * 100), 0)
+  const creditedCents = creditNotes.filter(note => note.status === "issued").reduce((sum, creditNote) => sum + Math.round(creditNote.total * 100), 0)
   const credited = creditedCents / 100
   const fullyCredited = creditedCents >= Math.round(invoice.total * 100) && invoice.total > 0
   // Only offer credit notes to people the server lets issue them (not accountants).

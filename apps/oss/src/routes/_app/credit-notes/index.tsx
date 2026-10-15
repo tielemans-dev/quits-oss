@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import { onRequestDone } from "../../../components/command-bar/request-events"
 import { trpc } from "../../../trpc/client"
 import { useI18n } from "../../../lib/i18n/react"
 import { CreditNotesList } from "../../../components/credit-notes/credit-notes-list"
@@ -19,13 +20,16 @@ function CreditNotesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    trpc.creditNotes.list
+    let latest = 0
+    const load = () => { const request = ++latest; return trpc.creditNotes.list
       .query()
-      .then(setCreditNotes)
+      .then(notes => { if (request === latest) setCreditNotes(notes) })
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : t("creditNotes.error.generic"))
       )
-      .finally(() => setLoading(false))
+      .finally(() => setLoading(false)) }
+    void load()
+    return onRequestDone(done => { if (done.kind === "creditNote") void load() })
   }, [t])
 
   return (

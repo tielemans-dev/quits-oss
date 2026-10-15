@@ -57,6 +57,11 @@ export async function reserveDocument(input: {
       const doc = await tx.agreement.findFirst({ where: { id: documentId, organizationId }, select: { number: true } })
       number = doc?.number ?? null
     }
+    if (input.kind === "creditNote") {
+      const doc = await tx.creditNote.findFirst({ where: { id: documentId, organizationId, status: "draft" }, select: { number: true } })
+      if ((input.commandInput as { id?: string }).id && !doc) throw new InvalidState({ code: "not_draft", message: "Credit note is no longer a draft" })
+      number = doc?.number ?? null
+    }
     // Validate agreements even when the request already owns a prepared reservation. The render
     // reader locks the current draft before inspecting deposit flags.
     if (input.kind === "agreement") await runArtifactRead(prospectiveRenderInput({ ...input,

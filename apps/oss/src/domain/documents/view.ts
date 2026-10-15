@@ -186,6 +186,10 @@ export async function loadDocumentView(actor: Actor, kind: DocumentKind, id: str
     if (kind === "creditNote" && historical && corrected?.number && "reason" in document) {
       view.correction = { invoiceNumber: corrected.number, invoiceIssueDate: correctionDate, reason: document.reason }
     }
+    if (kind === "creditNote" && document.status === "draft") {
+      view = { ...view, state: "draft" }
+      historical = false
+    }
     const emailSending = document.lastEmailAttemptOutcome === "sending"
     return {
       view, historical,

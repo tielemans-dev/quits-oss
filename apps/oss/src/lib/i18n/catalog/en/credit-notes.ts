@@ -78,4 +78,12 @@ export const enCreditNotesMessages = {
   "creditNotes.email.greeting": "Hi {name}, here is a credit note for invoice {invoiceNumber}.",
   "creditNotes.email.reference": "Credits invoice",
   "creditNotes.email.reason": "Reason",
+  "shell.request.title.creditNote": "Credit note",
+  "creditNotes.request.reason.quantity": "Incorrect quantity",
+  "creditNotes.request.reason.discount": "Discount",
+  "creditNotes.request.reason.cancelled": "Cancelled",
+  "creditNotes.request.optionalReason": "Reason text (optional)",
+  "creditNotes.request.created": "Credit note {number} saved as draft",
+  "creditNotes.request.undo": "Undo",
+  "creditNotes.request.draftHint": "Saved as a draft. Nothing is sent.",
 } as const
