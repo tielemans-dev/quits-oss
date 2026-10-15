@@ -39,10 +39,13 @@ async function read() {
   if (active) timer = setTimeout(() => listeners.size && void refreshReminderJobs(), POLL_MS)
 }
 
-/** The mutation returns once the batch has run, so the job is read while it does. */
-export async function sendReminderBatch(invoiceIds: string[]) {
+/**
+ * The mutation returns once the batch has run, so the job is read while it does. A caller that may
+ * try again passes the same `clientRequestId`, and the server queues the job once.
+ */
+export async function sendReminderBatch(invoiceIds: string[], clientRequestId: string = crypto.randomUUID()) {
   queueing += 1
-  const queued = trpc.jobs.sendReminders.mutate({ invoiceIds, clientRequestId: crypto.randomUUID() })
+  const queued = trpc.jobs.sendReminders.mutate({ invoiceIds, clientRequestId })
   void refreshReminderJobs()
   try {
     return await queued

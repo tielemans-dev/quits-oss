@@ -67,3 +67,9 @@ export function invoiceAmountRule(invoice: {
   }
   return { rule: "single" }
 }
+
+/** Whole calendar days an invoice is past its due date, as the dashboard counts them. */
+export function invoiceDaysOverdue(dueDate: string | Date, timezone?: string | null, now: Date = new Date()): number {
+  const due = new Date(dueDate).toISOString().slice(0, 10)
+  return Math.max(0, Math.round((Date.parse(formatIsoDate(now, timezone)) - Date.parse(due)) / 86_400_000))
+}

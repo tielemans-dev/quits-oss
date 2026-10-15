@@ -16,14 +16,17 @@ export const recognizeRequest: RequestRecognizer = (input) => {
   return draft ? { kind: draft.intent, input: input.trim() } : null
 }
 
-/** An invoice request is offered to those who may create invoices; the card would create one. */
+/** The permission a card's confirming click needs: creating an invoice, or sending the rykkere. */
+const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send" } as const
+
+/** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(
   recognize: RequestRecognizer,
-  can: (action: "invoice:create") => boolean
+  can: (action: (typeof REQUIRED)[RequestIntent["kind"]]) => boolean
 ): RequestRecognizer {
   return (input) => {
     const intent = recognize(input)
-    return intent && (intent.kind !== "invoice" || can("invoice:create")) ? intent : null
+    return intent && can(REQUIRED[intent.kind]) ? intent : null
   }
 }
 

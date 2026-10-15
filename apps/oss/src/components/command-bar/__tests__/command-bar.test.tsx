@@ -9,7 +9,7 @@ import { permittedRequest, recognizeRequest } from "../request-intent"
 
 afterEach(cleanup)
 
-function renderBar(can: (action: "invoice:create") => boolean = () => true) {
+function renderBar(can: Parameters<typeof permittedRequest>[1] = () => true) {
   render(
     <I18nProvider locale="da-DK">
       <CommandBar recognize={permittedRequest(recognizeRequest, can)} />
@@ -59,12 +59,17 @@ describe("command bar", () => {
     expect(document.activeElement).toBe(input)
   })
 
-  it("offers an invoice request only to those who may create invoices", () => {
-    const { input, submit } = renderBar(() => false)
+  it("offers a request only to those who may do what its card does", () => {
+    const { input, submit } = renderBar(action => action === "invoice:send")
     fireEvent.change(input, { target: { value: "faktura til Nordlys 5 timer à 850" } })
     expect(submit.disabled).toBe(true)
     fireEvent.change(input, { target: { value: "vis forfaldne" } })
     expect(submit.disabled).toBe(false)
+
+    cleanup()
+    const { input: other, submit: otherSubmit } = renderBar(action => action === "invoice:create")
+    fireEvent.change(other, { target: { value: "vis forfaldne" } })
+    expect(otherSubmit.disabled).toBe(true)
   })
 
   it("never animates every property, not even through the shadcn button default", () => {
