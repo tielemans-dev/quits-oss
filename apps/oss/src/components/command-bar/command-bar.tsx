@@ -1,11 +1,12 @@
 import { ArrowUp, Sparkles } from "lucide-react"
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
 import { DURATION } from "../../lib/motion"
 import { readHandoff } from "../../lib/request-handoff"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
+import { onRequestOpen } from "./request-events"
 import { RequestCardSlot } from "./request-card-slot"
 import type { RequestIntent, RequestRecognizer } from "./request-intent"
 import { useMorph } from "./use-morph"
@@ -24,6 +25,21 @@ export function CommandBar({ recognize, className }: { recognize: RequestRecogni
   const inputRef = useRef<HTMLInputElement>(null)
   const morph = useMorph<HTMLFormElement>(DURATION.base)
   const recognized = recognize(value)
+  const open = useRef(intent !== null)
+  open.current = intent !== null
+
+  // A summary row can ask for a card; it never replaces one the person is working in.
+  useEffect(
+    () =>
+      onRequestOpen((request) => {
+        if (open.current) return
+        morph.run(() => {
+          setValue(request.input)
+          setIntent(request)
+        })
+      }),
+    [morph.run]
+  )
 
   function submit(event: FormEvent) {
     event.preventDefault()

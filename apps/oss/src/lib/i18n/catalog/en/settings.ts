@@ -193,6 +193,12 @@ export const enSettingsMessages = {
   "settings.section.ai.title": "AI Invoice Drafting",
   "settings.section.ai.description":
     "Choose how AI invoice drafts are generated and configure the connection.",
+  "settings.vatPeriod.title": "Moms period",
+  "settings.vatPeriod.help": "How often you report moms to Skat. Overblik uses it to count down to the next deadline.",
+  "settings.vatPeriod.option.none": "Not set",
+  "settings.vatPeriod.option.quarterly": "Quarterly",
+  "settings.vatPeriod.option.half_yearly": "Half-yearly",
+  "settings.vatPeriod.saved": "Moms period saved.",
   "settings.ai.drafts.label": "AI drafts",
   "settings.ai.drafts.help": "Suggests fields from your description. Nothing is sent without your click.",
   "settings.ai.drafts.saved.on": "AI drafts turned on.",

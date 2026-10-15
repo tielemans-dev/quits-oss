@@ -6,12 +6,18 @@ import { resolve, join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { FPS, frameCount, parseOptions, sampleBudget, sampleTime, sheetIndices } from "./record-motion-options.mjs"
 
+import { checkRecording } from "./record-motion-checks.mjs"
+
 const help = `Usage: node scripts/record-motion.mjs /route [options]
 --base-url URL       Running app (default http://localhost:3000)
 --before-url URL     Baseline app; defaults to the after app
 --after-url URL      Candidate app; defaults to --base-url
 --duration SECONDS  App time, rounded up to a 60fps frame (default 3, max 30)
 --out DIRECTORY     New output directory (default artifacts/motion)
+--check-blank N     Minimum grayscale deviation (default 2, 0 disables)
+--check-jump N      Changed pixel fraction for pop-in (default 0.35)
+--check-layout N    Layout shift score per entry (default 0.05)
+--check-flicker MS  Return-to-baseline window (default 100)
 --keep-frames       Retain raw PNG sequences for inspection
 --width N --height N  Even viewport dimensions (default 1280 x 720)
 --wait-for SELECTOR Wait for a hydrated page element before capture
@@ -52,7 +58,13 @@ async function capture(browser, options, baseURL, reducedMotion, directory, scen
     await page.evaluate(() => { const tick = () => requestAnimationFrame(tick); requestAnimationFrame(tick) })
     const fps = reducedMotion === "reduce" ? FPS : FPS * 4
     const count = frameCount(options.duration) * (fps / FPS)
+    await page.evaluate(() => {
+      window.__motionShifts = []
+      window.__motionObserver = new PerformanceObserver(list => window.__motionShifts.push(...list.getEntries().map(e => ({ value: e.value, startTime: e.startTime }))))
+      window.__motionObserver.observe({ type: "layout-shift" })
+    })
     let origin
+    const shifts = []
     for (let index = 0; index < count; index++) {
       const timeMs = sampleTime(index, fps)
       if (index) {
@@ -67,7 +79,9 @@ async function capture(browser, options, baseURL, reducedMotion, directory, scen
         screenshot: { format: "png" },
       })
       if (!screenshotData) throw new Error(`Chromium did not capture frame ${index}`)
-      const clocks = await page.evaluate(() => [performance.now(), document.timeline.currentTime])
+      const { clocks, entries } = await page.evaluate(() => ({ clocks: [performance.now(), document.timeline.currentTime],
+        entries: [...window.__motionShifts.splice(0), ...window.__motionObserver.takeRecords().map(e => ({ value: e.value, startTime: e.startTime }))] }))
+      shifts.push(entries)
       origin ??= clocks
       // Chromium rounds timestamps for privacy. Allow 0.25ms, well below one sample.
       if (clocks.some((now, i) => now === null || Math.abs(now - origin[i] - timeMs) > 0.25)) {
@@ -75,7 +89,7 @@ async function capture(browser, options, baseURL, reducedMotion, directory, scen
       }
       await writeFile(join(directory, `${String(index).padStart(6, "0")}.png`), Buffer.from(screenshotData, "base64"))
     }
-    return { directory, count, fps }
+    return { directory, count, fps, shifts }
   } finally { await context.close() }
 }
 
@@ -135,12 +149,17 @@ async function main() {
       samples: { after: after.count, before: before.count, reduced: reduced.count }, outputs,
       sheetTimesMs: indices.map((i) => sampleTime(i, FPS * 4)),
     }, null, 2) + "\n")
+    let passed = true
+    for (const source of new Set([after, before, reduced])) {
+      if (!await checkRecording(source, out, options.thresholds)) passed = false
+    }
     if (!options["keep-frames"]) for (const name of ["after", "before", "reduced"]) {
       await rm(join(out, `${name}-frames`), { recursive: true, force: true })
     }
     await browser.close()
     await rename(out, target)
-    console.log(`Verified 60fps MP4s, frame sheet, and manifest: ${target}`)
+    console.log(`Verified 60fps MP4s, frame sheet, manifest, and frame reports: ${target}`)
+    if (!passed) { console.error("Frame checks failed; inspect *-checks.md and *-checks.json"); process.exitCode = 1 }
   } finally {
     try { await browser?.close() }
     finally { await rm(out, { recursive: true, force: true }) }

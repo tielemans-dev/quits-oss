@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
+import { MorningCard } from "../../components/dashboard/morning-card"
 import { CommandBar } from "../../components/command-bar/command-bar"
 import { onRequestDone } from "../../components/command-bar/request-events"
 import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
@@ -70,6 +71,7 @@ function DashboardPage() {
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
       commandBar={<CommandBar recognize={permittedRequest(recognizeRequest, can)} />}
+      morningCard={<MorningCard canSendReminders={can("invoice:send")} />}
     />
   )
 }

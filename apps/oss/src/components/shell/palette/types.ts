@@ -44,7 +44,7 @@ export type PaletteContext = {
 }
 
 /** The create actions the shell knows permissions for. */
-export type PaletteCapability = 'invoice:create' | 'invoice:send' | 'payment:create' | 'payment:void' | 'quote:create' | 'contact:create' | 'agreement:create'
+export type PaletteCapability = 'invoice:create' | 'invoice:send' | 'payment:create' | 'payment:void' | 'quote:create' | 'contact:create' | 'contact:read' | 'agreement:create'
 
 export type PaletteItem = {
   /** Unique across all sections; also the DOM id of the option. */

@@ -4,7 +4,7 @@ import { parsePaymentRequest } from "../../lib/payments/payment-match"
 import { parseRequest, type RequestContext } from "../../lib/request-parser"
 
 /** A request the person typed that a card can answer. The card reads `input` for the details. */
-export type RequestIntent = { kind: "invoice" | "overdue" | "payment"; input: string }
+export type RequestIntent = { kind: "invoice" | "overdue" | "customer" | "payment"; input: string }
 
 /** Says whether `input` reads as a request. Ordinary search is null and stays search. */
 export type RequestRecognizer = (input: string) => RequestIntent | null
@@ -13,22 +13,23 @@ export type RequestRecognizer = (input: string) => RequestIntent | null
 const noContext: RequestContext = { customers: [], catalogItems: [] }
 
 export const recognizeRequest: RequestRecognizer = (input) => {
+  if (/^\s*(?:\d{8}|(?:ny\s+kunde|cvr)\b.*)\s*$/iu.test(input)) return { kind: "customer", input: input.trim() }
   const draft = parseRequest(input, noContext)
   if (draft) return { kind: draft.intent, input: input.trim() }
   return parsePaymentRequest(input) ? { kind: "payment", input: input.trim() } : null
 }
 
-/** The permission a card's confirming click needs: creating an invoice, sending the rykkere, or recording a payment. */
-const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send", payment: "payment:create" } as const
+/** The permission a card's confirming click needs: creating an invoice or a customer, sending the rykkere, or recording a payment. */
+const REQUIRED = { invoice: "invoice:create", overdue: "invoice:send", customer: "contact:create", payment: "payment:create" } as const
 
 /** A request is offered to those who may do what its card would do on the click. */
 export function permittedRequest(
   recognize: RequestRecognizer,
-  can: (action: (typeof REQUIRED)[RequestIntent["kind"]]) => boolean
+  can: (action: (typeof REQUIRED)[RequestIntent["kind"]] | "contact:read") => boolean
 ): RequestRecognizer {
   return (input) => {
     const intent = recognize(input)
-    return intent && can(REQUIRED[intent.kind]) ? intent : null
+    return intent && can(REQUIRED[intent.kind]) && (intent.kind !== "customer" || (can("invoice:create") && can("contact:read"))) ? intent : null
   }
 }
 

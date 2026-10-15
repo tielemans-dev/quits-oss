@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
+import { InvoiceListSummary } from "../../../components/invoices/list-summary"
 import { useState, useEffect } from "react"
 import { useCalendarDate } from "../../../hooks/use-calendar-date"
 import { trpc } from "../../../trpc/client"
@@ -71,6 +72,7 @@ function formatDate(dateStr: string, locale?: string) {
 function InvoicesListPage() {
   const { t, locale } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof trpc.dashboard.summary.query>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
   const today = useCalendarDate(timezone)
@@ -100,6 +102,7 @@ function InvoicesListPage() {
 
   useEffect(() => {
     loadInvoices()
+    void trpc.dashboard.summary.query().then(setSummary).catch(() => {})
   }, [])
 
   async function handleDelete(id: string) {
@@ -134,8 +137,9 @@ function InvoicesListPage() {
 
   return (
     <div className="p-6">
-      <PageHeader title={t("invoices.title")} actions={newInvoice(t("invoices.action.new"))} />
+      <PageHeader title={t("invoices.title")} actions={invoices.length ? newInvoice(t("invoices.action.new")) : null} />
 
+      {summary ? <InvoiceListSummary summary={summary} /> : null}
       {invoices.length === 0 ? (
         <ListEmpty
           title={t("invoices.empty.title")}

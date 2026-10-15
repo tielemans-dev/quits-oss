@@ -90,8 +90,8 @@ export function Amount({
               key={index}
               className="tabular-nums lining-nums relative"
               style={{
-                fontSize: `${spec.fraction}em`,
-                top: `${(-(1 - spec.fraction) * 0.72) / spec.fraction}em`,
+                fontSize: `var(--dec-fs, ${spec.fraction}em)`,
+                top: `var(--dec-top, ${(-(1 - spec.fraction) * 0.72) / spec.fraction}em)`,
                 lineHeight: 1,
               }}
             >
@@ -137,7 +137,7 @@ export function Amount({
             strokeWidth={spec.stroke}
             strokeDasharray={`${drawn} 1`}
             strokeDashoffset={hidden ? drawn : 0}
-            className="transition-[stroke-dashoffset,stroke-dasharray] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+            className="transition-[stroke-dashoffset,stroke-dasharray] duration-(--duration-base) ease-enter motion-reduce:transition-none"
           />
         </svg>
       )}

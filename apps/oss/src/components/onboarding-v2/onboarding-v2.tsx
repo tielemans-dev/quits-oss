@@ -19,6 +19,7 @@ import {
   type ReviewValues,
 } from "./draft"
 import type { OnboardingV2Client } from "./client"
+import { LookupPreview, SKELETON_MIN_MS, settleMs } from "./lookup-preview"
 import { readSelectedCompany, clearSelectedCompany } from "../../lib/onboarding/selected-company"
 import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
@@ -33,6 +34,7 @@ type Props = {
   client: OnboardingV2Client
   onComplete: () => void
 }
+const SLOW_LOOKUP_MS = 3000
 const key = (suffix: string) => `onboardingV2.${suffix}` as TranslationKey
 
 function SummaryCard({
@@ -105,6 +107,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [searching, setSearching] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const [selected, setSelected] = useState<CvrCompany | null>(null)
+  /** The active company CVR answered with, shown filling in before the review form replaces the lookup. */
+  const [revealed, setRevealed] = useState<CvrCompany | null>(null)
+  const [slow, setSlow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const [bankErrors, setBankErrors] = useState(false)
@@ -117,6 +122,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     controller: AbortController
   } | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [cvrError, setCvrError] = useState<"cvr.inactive" | "cvr.unavailable" | null>(null)
   const reviewForm = useRef<HTMLFormElement | null>(null)
   const focusInvalid = useRef(false)
   // Long review page: after a rejected submit, take the user to the first field that needs fixing.
@@ -147,7 +153,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     request.current?.abort()
     suggestionRequest.current?.abort()
     suggestionPromise.current = null
+    setRevealed(null)
+    setSlow(false)
     setValidationErrors([])
+    setCvrError(null)
     clearDraft(storageKey)
     setDraft(null)
     setRestored(false)
@@ -318,14 +327,21 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     }
     const controller = new AbortController()
     request.current = controller
+    const started = Date.now()
     const timer = setTimeout(() => {
       controller.abort()
       suggestionRequest.current?.abort()
       if (epoch.current === run) setScreen("timeout")
     }, 10_000)
+    const slowTimer = setTimeout(() => {
+      if (epoch.current === run) setSlow(true)
+    }, SLOW_LOOKUP_MS)
+    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
     try {
       const facts = await client.get(company.cvr, controller.signal)
       if (controller.signal.aborted || run !== epoch.current) return
+      // The answer is in: the request timeout no longer applies to the reveal below.
+      clearTimeout(timer)
       if (!facts) {
         setMatches([])
         setQuery(company.cvr)
@@ -338,6 +354,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         setSelected(facts)
         setScreen("ceased")
       } else {
+        await wait(Math.max(0, SKELETON_MIN_MS - (Date.now() - started)))
+        if (run !== epoch.current) return
+        setRevealed(facts)
+        await wait(settleMs())
+        if (run !== epoch.current) return
         setDraft(newDraft(facts, signupEmail, Boolean(client.suggestions)))
         setScreen("review")
       }
@@ -345,6 +366,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       if (!controller.signal.aborted && run === epoch.current) setScreen("failed")
     } finally {
       clearTimeout(timer)
+      clearTimeout(slowTimer)
     }
   }
 
@@ -359,6 +381,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     setScreen("search")
   }
   function update<K extends keyof ReviewValues>(field: K, value: ReviewValues[K]) {
+    if (field === "cvr") setCvrError(null)
     setValidationErrors((current) => (current.includes(field) ? current.filter((name) => name !== field) : current))
     setDraft((current) =>
       current
@@ -402,6 +425,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     setValidationErrors([])
+    setCvrError(null)
     saving.current = true
     setBusy(true)
     setSaveFailed(false)
@@ -431,6 +455,11 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       // A rejected CVR or email is the user's to fix: point at the field instead of a generic save failure.
       // The router answers with a plain key ("cvr.invalid"); a local schema failure carries a JSON issue list.
       const message = error instanceof Error ? error.message : ""
+      if (message === "cvr.inactive" || message === "cvr.unavailable") {
+        setCvrError(message)
+        reject(["cvr"])
+        return
+      }
       const issues = message === "cvr.invalid" ? [{ field: "cvr" }] : message === "email.invalid" ? [{ field: "email" }] : readableIssues(error) ?? []
       const fields = [...new Set(issues.flatMap((issue) => issue.field === "cvr" ? ["cvr"] : issue.field === "email" ? ["companyEmail"] : []))]
       if (fields.length) reject(fields)
@@ -478,7 +507,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     if (!validationErrors.includes(name)) return null
     const value = String(draft!.values[name] ?? "").trim()
     const message: TranslationKey =
-      name === "cvr" ? (value ? "validation.cvr.invalid" : "validation.required")
+      name === "cvr" ? (cvrError ?? (value ? "validation.cvr.invalid" : "validation.required"))
       : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
       : value ? "validation.unknown" : "validation.required"
     return <span id={`ob-${name}-error`} className="ob-error" role="alert">{t(message)}</span>
@@ -609,22 +638,15 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <section className="ob-working">
           <h1>{TT("working.heading", { company: selected?.name ?? "" })}</h1>
           <p>{TT("working.sub")}</p>
-          <ul className="ob-tasks">
-            {["facts", "address", "vat", "defaults"].map((task, i) => (
-              <li key={task}>
-                <span className="ob-marker" aria-hidden="true">
-                  {i < 3 ? <LoaderCircle size={14} className="ob-spin" /> : null}
-                </span>
-                {TT(`working.${task}`)}
-                <span>{TT(i < 3 ? "working.fetching" : "working.waiting")}</span>
-              </li>
-            ))}
-          </ul>
-          {client.suggestions ? <p>{TT("suggestions.loading")}</p> : null}
-          <p className="ob-source">{TT("working.honesty")}</p>
-          <Button variant="outline" onClick={searchAgain}>
-            {TT("cancel")}
-          </Button>
+          <LookupPreview company={revealed} slow={slow} />
+          <div className="ob-actions">
+            <Button variant="outline" onClick={searchAgain}>
+              {TT("cancel")}
+            </Button>
+            <Button variant="link" onClick={manual}>
+              {TT("manual")}
+            </Button>
+          </div>
         </section>
       ) : null}
       {screen === "failed" || screen === "timeout" || screen === "ceased" ? (
@@ -760,6 +782,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               { type: "email", required: true },
             )}
             {field("companyPhone", "field.phone", factsTag)}
+            {draft.source === "cvr" ? <p className="ob-notice" role="note">{TT("review.contacts", { email: signupEmail })}</p> : null}
           </SummaryCard>
           <SummaryCard title={TT("vatCurrency")}>
             <SourceField label={TT("field.country")} tag={factsTag}>

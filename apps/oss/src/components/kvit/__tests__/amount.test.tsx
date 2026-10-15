@@ -37,7 +37,7 @@ describe("Amount", () => {
     const tabular = Array.from(container.querySelectorAll(".tabular-nums")).map((el) => el.textContent)
     expect(tabular).toEqual(["5", "600", "00"])
     const fraction = container.querySelector<HTMLElement>(".relative.tabular-nums")!
-    expect(fraction.style.fontSize).toBe("0.68em")
+    expect(fraction.style.fontSize).toBe("var(--dec-fs, 0.68em)")
   })
 
   it("draws no rule for none, one visible rule for single and two for double", () => {
@@ -68,7 +68,7 @@ describe("Amount", () => {
     const { container } = render(<Amount value="10.00" currency="DKK" locale="da-DK" rule="double" />)
     const className = lines(container)[1].getAttribute("class")!
     expect(className).toContain("transition-[stroke-dashoffset,stroke-dasharray]")
-    expect(className).toContain("duration-300")
+    expect(className).toContain("duration-(--duration-base)")
     expect(className).toContain("motion-reduce:transition-none")
   })
 

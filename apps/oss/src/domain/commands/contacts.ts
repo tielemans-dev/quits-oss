@@ -14,6 +14,7 @@ import {
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 import { defineCommand } from "../command"
+import { actorId } from "../actor"
 import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
 import { InvalidState, NotFound, ValidationFailed } from "../errors"
@@ -83,12 +84,19 @@ export const createContact = defineCommand({
   type: "contact.create",
   permission: "contact:create",
   outwardFacing: false,
-  input: contactCreateInputSchema,
+  input: contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional() })),
   summarize: (input) => `Create contact ${input.name}`,
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
+      // Commands already hold the organization lock, so concurrent CVR requests reuse one customer.
+      const { reuseCvr, ...fields } = input
+      if (reuseCvr && input.country === "DK" && /^\d{8}$/.test(input.taxId ?? "")) {
+        const contacts = yield* Effect.promise(() => db.contact.findMany({ where: { organizationId: command.organizationId, taxId: { not: null } } }))
+        const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === input.taxId)
+        if (existing) return { ...existing, reused: true }
+      }
       const orgCountry = yield* loadOrgCountry
 
       yield* validateLocalized(
@@ -105,7 +113,7 @@ export const createContact = defineCommand({
       const contact = yield* Effect.promise(() =>
         db.contact.create({
           data: {
-            ...input,
+            ...fields,
             email: input.email || null,
             country: normalizeCountry(input.country),
             organizationId: command.organizationId,
@@ -119,7 +127,7 @@ export const createContact = defineCommand({
         type: "contact.created",
         payload: { name: contact.name },
       })
-      return contact
+      return { ...contact, reused: false }
     }),
 })
 
@@ -273,4 +281,24 @@ export const resumeContactReminders = defineCommand({
   }),
 })
 
-export const contactCommands = [createContact, updateContact, deleteContact, resumeContactReminders] as const
+export const undoCreateContact = defineCommand({
+  type: "contact.undo_create",
+  permission: "contact:create",
+  outwardFacing: false,
+  input: contactDeleteInputSchema,
+  summarize: input => `Undo contact creation ${input.id}`,
+  handle: input => Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    const latest = yield* Effect.promise(() => db.domainEvent.findFirst({
+      where: { organizationId: command.organizationId, aggregateType: "contact", aggregateId: input.id },
+      orderBy: { sequence: "desc" },
+    }))
+    if (command.actor.kind !== "user" || latest?.type !== "contact.created" || latest.actorKind !== "user" || latest.actorId !== actorId(command.actor) || latest.occurredAt.getTime() < command.now.getTime() - 8000) {
+      return yield* new InvalidState({ code: "undo_unavailable", message: "Only your unchanged customer creation can be undone within eight seconds" })
+    }
+    return yield* deleteContact.handle(input)
+  }),
+})
+
+export const contactCommands = [createContact, updateContact, deleteContact, resumeContactReminders, undoCreateContact] as const

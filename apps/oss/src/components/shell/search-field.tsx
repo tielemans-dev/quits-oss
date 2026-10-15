@@ -19,7 +19,7 @@ export function SearchField({ onOpen, className }: { onOpen: () => void; classNa
       aria-keyshortcuts="Control+K Meta+K /"
       className={cn(
         'group flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border border-hairline bg-panel px-3 text-left text-sm text-muted-foreground outline-hidden',
-        'transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand/50 hover:shadow-[0_0_0_4px_var(--brand-soft)]',
+        'transition-[border-color,box-shadow] duration-(--duration-fade) ease-enter hover:border-brand/50 hover:shadow-[0_0_0_4px_var(--brand-soft)]',
         'focus-visible:border-brand/60 focus-visible:shadow-[0_0_0_4px_var(--brand-soft)]',
         className
       )}

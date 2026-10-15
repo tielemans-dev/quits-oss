@@ -56,7 +56,7 @@ describe('installation administrator admission', () => {
     transaction.mockImplementation(async work => work(tx))
     await expect(applySetupInitialization({ ...input, organization: { ...input.organization, cvr },
       locale: { countryCode: 'GB', locale: 'en-GB', currency: 'GBP', timezone: 'Europe/London' } })).resolves.toMatchObject({ organizationId: 'org' })
-    if (cvr) expect(taxIdCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ value: cvr, countryCode: 'GB' }) })
+    if (cvr) expect(taxIdCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ value: cvr, countryCode: 'DK' }) })
     else expect(taxIdCreate).not.toHaveBeenCalled()
   })
 

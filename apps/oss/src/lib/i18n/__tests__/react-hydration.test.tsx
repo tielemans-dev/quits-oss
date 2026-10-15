@@ -69,6 +69,15 @@ describe("I18nProvider hydration", () => {
 
 
 describe("nested editable organization locale", () => {
+  it("returns to browser language when the onboarding override is removed", () => {
+    browserLanguage("en-GB")
+    const shell = (locale?: string) => <I18nProvider initialLocale={locale}><Probe /></I18nProvider>
+    const view = render(shell("da"))
+    expect(view.container.textContent).toBe("Fakturaer")
+    view.rerender(shell())
+    expect(view.container.textContent).toBe("Invoices")
+    expect(document.documentElement.lang).toBe("en")
+  })
   it("uses the browser language before organization selection", () => {
     browserLanguage("da-DK")
     const view = render(<I18nProvider><I18nProvider initialLocale={undefined}><Probe /></I18nProvider></I18nProvider>)

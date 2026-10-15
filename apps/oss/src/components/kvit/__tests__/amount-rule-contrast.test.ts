@@ -26,12 +26,24 @@ function contrast(first: string, second: string) {
 describe("paid amount rule contrast", () => {
   it.each(["canvas", "panel", "panel-raised"])("keeps the paid rule above 3:1 on light --%s", (surface) => {
     const light = themeTokens(":root")
-    expect(token(light, "settled-rule")).toBe("#21a15a")
+    expect(token(light, "settled-rule")).toBe("#1f9d5c")
     expect(contrast(token(light, "settled-rule"), token(light, surface))).toBeGreaterThanOrEqual(3)
   })
 
   it.each(["canvas", "panel", "panel-raised"])("keeps the paid rule visible on dark --%s", (surface) => {
     const dark = themeTokens(".dark")
     expect(contrast(token(dark, "settled-rule"), token(dark, surface))).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe("Papir and Blæk text contrast", () => {
+  it.each([":root", ".dark"])("keeps text AA on %s surfaces", selector => {
+    const theme = themeTokens(selector)
+    for (const surface of ["canvas", "panel", "panel-raised", "secondary", "main-bg"]) {
+      for (const text of ["foreground", "muted-foreground", "brand-text", "settled-text", "tone-warning"]) {
+        expect(contrast(token(theme, text), token(theme, surface)), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+    expect(contrast(token(theme, "brand-foreground"), token(theme, "brand"))).toBeGreaterThanOrEqual(4.5)
   })
 })
