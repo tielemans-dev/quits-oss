@@ -144,6 +144,17 @@ describe.each([
     expect(screen.queryByText(copy.unknown)).toBeNull()
   })
 
+  it("keeps earlier server issues when a retry stops at the local quantity check", async () => {
+    api.update.mockRejectedValue(new Error(JSON.stringify([{ origin: "string", code: "too_big", maximum: 5000, path: ["notes"] }])))
+    const save = await openEditor()
+    fireEvent.click(save)
+    await screen.findByText(copy.notes5000)
+    fireEvent.change(document.getElementById("invoice-edit-quantity-0")!, { target: { value: "1e3" } })
+    fireEvent.click(save)
+    expect(screen.getByText(copy.notes5000)).toBeTruthy()
+    expect(api.update).toHaveBeenCalledTimes(1)
+  })
+
   it("shows one message when a value fails several checks", async () => {
     api.update.mockRejectedValue(new Error(JSON.stringify([
       { code: "invalid_format", path: ["items", 0, "quantity"] },

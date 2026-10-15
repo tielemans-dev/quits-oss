@@ -398,11 +398,12 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
-    setEditIssues([])
+    // A local quantity error stops the retry before the server can re-report other issues, so keep them until the request runs.
     if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
       return
     }
+    setEditIssues([])
     setActing(true)
     const isCurrent = beginRequest(invoice.id)
     const submitted = editSnapshot.current
