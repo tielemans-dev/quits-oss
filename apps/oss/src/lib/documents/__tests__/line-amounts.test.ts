@@ -190,14 +190,15 @@ describe("frozenVatRows", () => {
     expect(sum(rows.map((row) => new D(row.net))).toFixed(2)).toBe(document.subtotalNet.toFixed(2))
   })
 
-  it("merges groups that differ only in treatment into the rate they share", () => {
+  it("keeps each treatment at a shared rate on its own taxable base", () => {
     const rows = vatRowsByRate([
       { rate: "0", net: "100.00", tax: "0.00", gross: "100.00", treatment: "exempt", reasonCode: "other" },
       { rate: "0", net: "50.00", tax: "0.00", gross: "50.00", treatment: "out_of_scope" },
       { rate: "0.25", net: "80.00", tax: "20.00", gross: "100.00", treatment: "standard" },
     ], "DKK")
     expect(rows).toEqual([
-      { ratePercent: "0", net: "150.00", tax: "0.00", gross: "150.00", treatment: undefined, treatments: ["exempt", "out_of_scope"], reasonCodes: ["other"] },
+      { ratePercent: "0", net: "100.00", tax: "0.00", gross: "100.00", treatment: "exempt", treatments: ["exempt"], reasonCodes: ["other"] },
+      { ratePercent: "0", net: "50.00", tax: "0.00", gross: "50.00", treatment: "out_of_scope", treatments: ["out_of_scope"] },
       { ratePercent: "25", net: "80.00", tax: "20.00", gross: "100.00", treatment: "standard", treatments: ["standard"] },
     ])
   })
