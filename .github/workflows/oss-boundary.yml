@@ -13,15 +13,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every PR job, including always() gates, rejects fork code before runner allocation.
 jobs:
   paths:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, x86_64, quits-pool]
     permissions:
       contents: read
     outputs:
       run-expensive: ${{ steps.classify.outputs.run-expensive }}
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -55,8 +59,8 @@ jobs:
     name: OSS boundary execution
     needs: paths
     # Run on classification failure unless cancelled; only successful docs-only results may skip.
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     services:
       postgres:
         # Docker Official Image mirror; provenance/update procedure: docs/qa/ci-postgres-image.md
@@ -79,6 +83,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -123,9 +130,12 @@ jobs:
   verify-oss-boundary:
     name: verify-oss-boundary
     needs: [paths, boundary-worker]
-    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - name: Require successful work or confirmed documentation-only PR
         env:

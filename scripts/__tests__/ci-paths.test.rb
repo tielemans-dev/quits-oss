@@ -37,7 +37,7 @@ class CiPathsTest
     [File.basename(file, File.extname(file)), YAML.load_file(file)]
   end
   WORKFLOWS = ALL_WORKFLOWS.slice('ci', 'oss-boundary')
-  DRAFT_GUARD = "github.event_name != 'pull_request' || !github.event.pull_request.draft"
+  PR_GUARD = "github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)"
   JOBS = { 'ci' => %w[lint typecheck unit runtime shared-browser-worker], 'oss-boundary' => %w[boundary-worker] }
 
   # Evaluate the workflow's actual expressions in a bounded context. Explicitly
@@ -62,6 +62,8 @@ class CiPathsTest
             actual = expression(condition, {
               'cancelled()' => cancelled,
               'github.event_name' => 'pull_request',
+              'github.repository' => 'owner/quits',
+              'github.event.pull_request.head.repo.full_name' => 'owner/quits',
               'github.event.pull_request.draft' => draft,
               'needs.paths.result' => result,
               'needs.paths.outputs.run-expensive' => output,
@@ -126,14 +128,40 @@ class CiPathsTest
   def test_pr_jobs_skip_drafts
     ALL_WORKFLOWS.each do |name, workflow|
       workflow.fetch('jobs').each do |id, job|
-        assert_equal 'ubuntu-latest', job.fetch('runs-on')
+        assert_equal %w[self-hosted x86_64 quits-pool], job.fetch('runs-on')
         next unless workflow.fetch(true).key?('pull_request')
         condition = job.fetch('if')
-        assert_includes condition, DRAFT_GUARD
+        assert_includes condition, PR_GUARD
         context = condition.scan(/(?:github|needs)\.[\w.-]+/).to_h { |key| [key, nil] }
-        context.merge!('github.event_name' => 'pull_request', 'github.event.pull_request.draft' => true,
+        context.merge!('github.repository' => 'owner/quits',
+                       'github.event.pull_request.head.repo.full_name' => 'owner/quits',
+                       'github.event_name' => 'pull_request', 'github.event.pull_request.draft' => true,
                        'always()' => true, 'cancelled()' => false)
         refute expression(condition, context)
+      end
+    end
+  end
+
+  def test_fork_prs_never_allocate_runners
+    ALL_WORKFLOWS.each do |name, workflow|
+      refute workflow.fetch(true).key?('pull_request_target')
+      next unless workflow.fetch(true).key?('pull_request')
+      workflow.fetch('jobs').each do |id, job|
+        condition = job.fetch('if')
+        %w[success failure skipped cancelled].product([false, true], ['fork/quits', nil], [121, 122, 130]).each do |result, draft, head_repo, number|
+          context = condition.scan(/(?:github|needs)\.[\w.-]+/).to_h { |key| [key, nil] }
+          context.merge!(
+            'github.event_name' => 'pull_request', 'github.repository' => 'owner/quits',
+            'github.event.pull_request.head.repo.full_name' => head_repo,
+            'github.event.pull_request.draft' => draft,
+            'github.event.pull_request.number' => number,
+            'github.event.pull_request.head.ref' => 'qui-56-screens',
+            'always()' => true, 'cancelled()' => result == 'cancelled',
+            'needs.paths.result' => result, 'needs.paths.outputs.run-expensive' => 'true',
+            'needs.paths.outputs.run-browser' => 'true', 'needs.qui56-scope.outputs.changed' => 'true'
+          )
+          refute expression(condition, context)
+        end
       end
     end
   end
@@ -150,6 +178,8 @@ class CiPathsTest
         assert_includes condition, 'always()'
         %w[pull_request push merge_group].product([false, true]).each do |event, draft|
           actual = expression(condition, { 'always()' => true, 'github.event_name' => event,
+                                           'github.repository' => 'owner/quits',
+                                           'github.event.pull_request.head.repo.full_name' => 'owner/quits',
                                            'github.event.pull_request.draft' => draft })
           assert_equal(event != 'pull_request' || !draft, actual, "#{name}/#{id}: #{event}, draft=#{draft}")
         end

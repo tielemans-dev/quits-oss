@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   capture:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 20
     services:
       # MOCK: dedicated synthetic email sink. No external email provider.

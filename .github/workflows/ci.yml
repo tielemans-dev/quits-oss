@@ -13,22 +13,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every PR job, including always() gates, rejects fork code before runner allocation.
 jobs:
   paths:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, x86_64, quits-pool]
     permissions:
       contents: read
     outputs:
       run-expensive: ${{ steps.classify.outputs.run-expensive }}
       run-browser: ${{ steps.classify.outputs.run-browser }}
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Validate required-check failure propagation
         run: node --test .github/scripts/ci-gate.test.mjs
+      - name: Install workflow fixture runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ruby
       - name: Validate workflow triggers and path classification
         run: ruby scripts/__tests__/ci-paths.test.rb
       # Cheap and dependency-free, so it also covers PRs that only change COPY.md or the copy rules.
@@ -76,14 +84,17 @@ jobs:
 
   lint:
     needs: paths
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
@@ -93,14 +104,17 @@ jobs:
 
   typecheck:
     needs: paths
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/yaip?schema=public
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
@@ -111,8 +125,8 @@ jobs:
 
   unit:
     needs: paths
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     services:
       postgres:
         # Docker Official Image mirror; provenance/update procedure: docs/qa/ci-postgres-image.md
@@ -135,6 +149,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
@@ -148,8 +165,8 @@ jobs:
   runtime:
     needs: paths
     # Run on classification failure unless cancelled; only successful docs-only results may skip.
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-expensive != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     services:
       mailpit:
         image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
@@ -177,6 +194,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-example-secret-that-is-over-32-characters
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -295,8 +315,8 @@ jobs:
   shared-browser-worker:
     name: Shared product browser execution
     needs: paths
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-browser != 'false')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (!cancelled() && (needs.paths.result != 'success' || needs.paths.outputs.run-browser != 'false')) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -348,9 +368,12 @@ jobs:
   shared-browser:
     name: Shared product browser scenarios
     needs: [paths, shared-browser-worker]
-    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - name: Require successful work or confirmed documentation-only PR
         env:
@@ -361,9 +384,12 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [paths, lint, typecheck, unit, runtime, shared-browser-worker]
-    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
       - name: Require successful work or confirmed documentation-only PR
         env:
@@ -373,8 +399,8 @@ jobs:
 
   verify:
     needs: ci-ok
-    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     steps:
       - name: Preserve the required verify check
         env:
@@ -383,8 +409,8 @@ jobs:
 
   quote-evidence:
     name: Quote evidence (${{ matrix.phase }})
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 130) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (github.event_name == 'pull_request' && github.event.pull_request.number == 130) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -412,6 +438,9 @@ jobs:
       QUI65_SCREENSHOTS: ${{ matrix.phase }}
       QUI65_CAPTURE_DIR: ${{ github.workspace }}/evidence/${{ matrix.phase }}
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Checkout exact PR head and capture harness
         uses: actions/checkout@v4
         with:
@@ -482,10 +511,10 @@ jobs:
 
   qui56-scope:
     name: Select PR122 evidence revisions
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens') }}
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (github.event_name == 'pull_request' && github.event.pull_request.number == 122 && github.event.pull_request.head.ref == 'qui-56-screens') }}
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x86_64, quits-pool]
     outputs:
       changed: ${{ steps.revisions.outputs.changed }}
       baseline: ${{ steps.revisions.outputs.baseline }}
@@ -515,10 +544,10 @@ jobs:
   qui56-evidence:
     name: Authenticated QUI-56 current-main before and PR122 after
     needs: qui56-scope
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (needs.qui56-scope.outputs.changed == 'true') }}
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (needs.qui56-scope.outputs.changed == 'true') }}
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 25
     services:
       postgres:
@@ -626,8 +655,8 @@ jobs:
 
   onboarding-pr121-evidence:
     name: PR 121 onboarding evidence
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name == 'pull_request' && github.event.pull_request.number == 121) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)) && (github.event_name == 'pull_request' && github.event.pull_request.number == 121) }}
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 20
     services:
       postgres:
@@ -654,6 +683,9 @@ jobs:
       ONB121_HEAD: ${{ github.event.pull_request.head.sha }}
       ONB121_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}

@@ -7,13 +7,16 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x86_64, quits-pool]
     permissions:
       contents: write
     env:
       DISPATCH_TOKEN: ${{ secrets.QUITS_CLOUD_DISPATCH_TOKEN || secrets.YAIP_CLOUD_DISPATCH_TOKEN }}
 
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Checkout
         uses: actions/checkout@v4
 

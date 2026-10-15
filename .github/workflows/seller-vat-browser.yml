@@ -20,11 +20,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Every PR job, including always() gates, rejects fork code before runner allocation.
 jobs:
   seller-vat-browser:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    if: github.event_name != 'pull_request' || (!github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository)
     name: Seller VAT browser (${{ matrix.revision }}, ${{ matrix.distribution }})
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, x86_64, quits-pool]
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -70,6 +71,9 @@ jobs:
       PW_TEST_SOURCE_TRANSFORM: ${{ github.workspace }}/apps/oss/tests/e2e/react-jsx-transform.cjs
       PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.revision == 'baseline' && (github.event.pull_request.base.sha || github.sha) || github.event.pull_request.head.sha || github.sha }}
