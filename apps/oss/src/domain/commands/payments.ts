@@ -9,6 +9,7 @@ import {
 import { Prisma } from "../../../generated/prisma/client"
 import { formatIsoDate, startOfDayInTimeZone } from "../../lib/exports/format"
 import { appLogger } from "../../lib/observability"
+import { UNDO_WINDOW_MS } from "../../lib/undo-window"
 import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
 import type { Actor } from "../actor"
 import { defineCommand } from "../command"
@@ -277,6 +278,18 @@ export const recordPayment = defineCommand({
         note: input.note,
       })
     }),
+})
+
+/** UI payment entry points hold their notice so Fortryd can withdraw it before delivery. */
+export const recordPaymentWithUndo = defineCommand({
+  ...recordPayment,
+  handle: input => Effect.gen(function* () {
+    const command = yield* Command
+    const holdUntil = new Date(command.now.getTime() + UNDO_WINDOW_MS)
+    return yield* recordPayment.handle(input).pipe(Effect.provideService(Command, {
+      ...command, enqueue: job => command.enqueue({ ...job, runAfter: job.runAfter ?? holdUntil }),
+    }))
+  }),
 })
 
 export const stripeCheckoutPaymentInputSchema = z.object({

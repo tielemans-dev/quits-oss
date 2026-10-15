@@ -34,7 +34,7 @@ describe.skipIf(!hasTestDatabase)("held sends and Fortryd", () => {
     const org = await createTestOrganization({ roles: ["admin", "accountant"],
       settings: { currency: "DKK", timezone: "Europe/Copenhagen", companyName: "Acme ApS", companyEmail: "seller@acme.test" } })
     cleanups.push(org.cleanup)
-    const api = jobsRouter.createCaller({ session: {
+    const caller = () => jobsRouter.createCaller({ session: {
       user: { id: org.actors.admin.userId }, session: { activeOrganizationId: org.organizationId },
     } } as never)
     /** The undo window closes: what is held becomes due. */
@@ -43,7 +43,7 @@ describe.skipIf(!hasTestDatabase)("held sends and Fortryd", () => {
       data: { runAfter: new Date(0) },
     })
     const sweep = () => runDueJobs({ organizationIds: [org.organizationId] })
-    return { org, api, closeWindow, sweep }
+    return { org, api: caller(), caller, closeWindow, sweep }
   }
 
   async function overdueInvoice(organizationId: string) {
@@ -135,20 +135,21 @@ describe.skipIf(!hasTestDatabase)("held sends and Fortryd", () => {
   })
 
   describe("invoice send", () => {
-    it("waits out the window, then sends through the ordinary send", async () => {
+    it("survives a reload, waits out the window, then the scheduler sends without a client timer", async () => {
       const ctx = await setup()
       const id = await draftInvoice(ctx)
       const { jobId } = await ctx.api.sendInvoiceLater({ id })
       expect(await ctx.api.sendInvoiceLater({ id })).toEqual({ jobId }) // a second click queues nothing more
 
-      expect(await ctx.api.held()).toMatchObject([{ id: jobId, type: DELAYED_INVOICE_SEND_JOB, invoiceId: id }])
+      expect(await ctx.caller().held()).toMatchObject([{ id: jobId, type: DELAYED_INVOICE_SEND_JOB, invoiceId: id }])
       await ctx.sweep()
       await ctx.api.release({ jobId })
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe("draft")
       expect(deliver).not.toHaveBeenCalled()
 
       await ctx.closeWindow()
-      expect(await ctx.api.release({ jobId })).toEqual({ status: "done", error: null })
+      await ctx.sweep()
+      expect((await prisma.job.findUniqueOrThrow({ where: { id: jobId } })).status).toBe("done")
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toMatch(/sent|sending/)
       expect(deliver).toHaveBeenCalledTimes(1)
       expect(vi.mocked(deliver).mock.calls[0]![0]).toMatchObject({ to: "customer@kunde.test" })
@@ -160,7 +161,8 @@ describe.skipIf(!hasTestDatabase)("held sends and Fortryd", () => {
       const id = await draftInvoice(ctx)
       const { jobId } = await ctx.api.sendInvoiceLater({ id })
 
-      await ctx.api.cancelHeld({ jobId })
+      // A freshly loaded tab can still cancel the persisted send and its draft.
+      await ctx.caller().cancelHeld({ jobId })
 
       expect(await prisma.invoice.findUnique({ where: { id } })).toBeNull()
       expect(await prisma.job.findUnique({ where: { id: jobId } })).toBeNull()

@@ -27,8 +27,6 @@ import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { syncHeldJobs } from "../undo/undo-store"
-import { holdSend } from "./held-send"
-import { announceRequestDone } from "./request-events"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 import { useMorph } from "./use-morph"
@@ -160,26 +158,11 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       const reviewedRecipient = state.recipientVersion
       const submit = () => submitInvoice(
         { contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence: back?.vatEvidence ?? {}, notes: back?.notes, issuance, currency, baseCurrency: state.baseCurrency, items: lines },
-        // "Som sidst" waits in the held-send toast before anything is made; the other sends are held by the server.
-        { sendImmediately: true, holdSend: !repeat, reviewedRecipient, t }
+        { sendImmediately: true, holdSend: true, reviewedRecipient, t }
       )
       // The draft exists; the invoice page tells what went wrong, as it does after the form.
       const showFailure = (target: Awaited<ReturnType<typeof submit>>) => {
         void navigate({ to: "/invoices/$invoiceId", params: { invoiceId: target.id }, search: { emailWarning: target.emailWarning, sendError: target.sendError } })
-      }
-      if (repeat) {
-        // Fortryd needs time before anything is made: the click starts the wait, and the card is done.
-        holdSend({
-          customer: customerName ?? "",
-          amount: total,
-          run: async () => {
-            const target = await submit()
-            if (target.sendError || target.emailWarning) return showFailure(target)
-            announceRequestDone({ kind: "invoice", invoiceId: target.id })
-          },
-        })
-        onDismiss()
-        return
       }
       const target = await submit()
       if (target.sendError || target.emailWarning) {
