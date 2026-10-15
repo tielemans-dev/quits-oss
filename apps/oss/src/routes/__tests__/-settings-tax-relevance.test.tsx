@@ -57,7 +57,7 @@ vi.mock("../../lib/i18n/react", async () => {
   const { translate } = await import("../../lib/i18n/translate")
   const i18n = {
     get locale() { return displayLanguage.locale },
-    t: (key: string) => key === "auth.onboarding.primary.dkLabel"
+    t: (key: string) => key === "auth.onboarding.primary.dkLabel" || key === "auth.onboarding.primary.dkHelp"
       ? translate(key, displayLanguage.locale)
       :
       (
@@ -257,6 +257,10 @@ describe("Settings tax relevance", () => {
     expect(input.placeholder).toBe(label)
     expect(input.value).toBe("24256790")
     expect(screen.queryByLabelText(otherLabel)).toBeNull()
+    const help = displayLocale === "da-DK"
+      ? "Påkrævet for danske registrerede virksomheder med moms."
+      : "Required for Danish registered businesses using EU VAT."
+    expect(screen.getByText(help)).toBeTruthy()
 
     displayLanguage.locale = savedLocale
     rerender(<RouteComponent />)
@@ -461,7 +465,8 @@ describe("Settings tax relevance", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("CVR-nr.")).toBeTruthy()
     })
-    expect(screen.getByText("Required for Danish registered businesses using EU VAT.")).toBeTruthy()
+    expect(screen.getByText("Påkrævet for danske registrerede virksomheder med moms.")).toBeTruthy()
+    expect(screen.queryByText("Required for Danish registered businesses using EU VAT.")).toBeNull()
   })
 
   it("clears the saved banner timer before the page unmounts", async () => {
