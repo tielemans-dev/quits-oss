@@ -83,5 +83,12 @@ export const enNavMessages = {
   "shell.request.undo.failed": "The invoice to {customer} was not sent.",
   "shell.request.undo.action": "Undo",
   "shell.request.undo.close": "Close",
+  "shell.request.invoice.asLast.one": "as last time · {count} day",
+  "shell.request.invoice.asLast.other": "as last time · {count} days",
+  "shell.request.invoice.asLastWhy": "Same due date on the customer's last {count} invoices",
+  "shell.request.invoice.asLastClear": "Clear the learned due date",
+  "shell.request.invoice.asLastCleared": "The learned due date was cleared.",
+  "shell.request.invoice.asLastUndo": "Undo",
+  "shell.request.invoice.asLastError": "The learned due date could not be changed. Try again.",
   "shell.org.switch": "Switch organization",
 } as const

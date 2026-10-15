@@ -83,5 +83,12 @@ export const daNavMessages = {
   "shell.request.undo.failed": "Fakturaen til {customer} blev ikke sendt.",
   "shell.request.undo.action": "Fortryd",
   "shell.request.undo.close": "Luk",
+  "shell.request.invoice.asLast.one": "som sidst · {count} dag",
+  "shell.request.invoice.asLast.other": "som sidst · {count} dage",
+  "shell.request.invoice.asLastWhy": "Samme forfald på de seneste {count} fakturaer til kunden",
+  "shell.request.invoice.asLastClear": "Fjern det lærte forfald",
+  "shell.request.invoice.asLastCleared": "Det lærte forfald er fjernet.",
+  "shell.request.invoice.asLastUndo": "Fortryd",
+  "shell.request.invoice.asLastError": "Det lærte forfald kunne ikke ændres. Prøv igen.",
   "shell.org.switch": "Skift organisation",
 } as const
