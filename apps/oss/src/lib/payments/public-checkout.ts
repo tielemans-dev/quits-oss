@@ -2,13 +2,12 @@ import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
 import { appLogger } from "../observability"
-import { loadPublicInvoiceByToken } from "./public-access"
+import { loadPublicInvoiceByToken, resolvePublicInvoiceCheckoutTarget } from "./public-access"
 import { getPublicInvoicePaymentSecret } from "./public"
 import {
   assessCardCheckout,
   createStripeInvoiceCheckoutSession,
   expireOpenStripeCheckoutSession,
-  resolveStripeCheckoutTarget,
   type StripeCheckoutTarget,
 } from "./stripe"
 import { currencyFractionDigits } from "./stripe-amounts"
@@ -90,10 +89,7 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "unavailable" } as const
   }
 
-  const target = await resolveStripeCheckoutTarget(
-    { organizationId: session.invoice.organizationId },
-    { connectReady: session.invoice.organization?.settings?.stripeAccountStatus === "active" },
-  )
+  const target = await resolvePublicInvoiceCheckoutTarget(session)
 
   if (!target) {
     paymentsLogger.warn("invoice.checkout.unavailable", {

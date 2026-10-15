@@ -4,7 +4,10 @@ import fixture from "../../domain/events/__tests__/fixtures/invoice.issued.v1.js
 
 // MOCK: synthetic invoice row, Stripe and database seams, confined to this test.
 const mocks = vi.hoisted(() => ({ invoice: null as Record<string, unknown> | null, create: vi.fn() }))
-vi.mock("../payments/public-access", () => ({ loadPublicInvoiceByToken: async () => ({ invoice: mocks.invoice, paymentState: "unpaid" }) }))
+vi.mock("../payments/public-access", async importOriginal => ({
+  ...(await importOriginal<typeof import("../payments/public-access")>()),
+  loadPublicInvoiceByToken: async () => ({ invoice: mocks.invoice, paymentState: "unpaid", stripeEnabled: true }),
+}))
 vi.mock("../payments/public", () => ({ getPublicInvoicePaymentSecret: () => "secret" }))
 vi.mock("../db", () => ({
   prisma: {
