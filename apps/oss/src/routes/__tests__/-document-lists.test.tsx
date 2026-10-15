@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const state = vi.hoisted(() => ({
   locale: "en-US",
   invoices: vi.fn(),
+  settings: vi.fn(),
   quotes: vi.fn(),
   creditNotes: vi.fn(),
 }))
@@ -24,6 +25,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../../trpc/client", () => ({
   trpc: {
     invoices: { list: { query: state.invoices }, markOverdue: { mutate: vi.fn() } },
+    settings: { get: { query: state.settings } },
     quotes: { list: { query: state.quotes } },
     creditNotes: { list: { query: state.creditNotes } },
   },
@@ -53,6 +55,7 @@ const common = { currency: "DKK", contact: { name: "Acme" }, issueDate: "2026-10
 
 beforeEach(() => {
   state.locale = "en-US"
+  state.settings.mockReset().mockResolvedValue({ timezone: "Europe/Copenhagen" })
   state.invoices.mockResolvedValue([
     { ...common, id: "i1", number: "1042", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-31", balanceDue: 100 },
     { ...common, id: "i2", number: "1043", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-31", balanceDue: 100 },
@@ -68,7 +71,10 @@ beforeEach(() => {
   ])
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 /** Every row has as many cells as the header has column headers, so the table is valid ARIA. */
 function expectConsistentTable(table: HTMLElement) {
@@ -81,6 +87,53 @@ function expectConsistentTable(table: HTMLElement) {
 }
 
 describe("invoice list", () => {
+  it.each([
+    ["en-US", false, "Overdue", "Overdue"],
+    ["da-DK", false, "Forfalden", "Forfalden"],
+    ["en-US", true, "Sent", "Overdue"],
+    ["da-DK", true, "Sendt", "Forfalden"],
+  ])("renders invoices in %s with settings failure=%s at the due-day boundary", async (locale, settingsFail, dueTodayLabel, pastDueLabel) => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-11T23:00:00Z"))
+    state.locale = locale
+    if (settingsFail) state.settings.mockRejectedValue(new Error("Settings unavailable"))
+    state.invoices.mockResolvedValue([
+      { ...common, id: "i1", number: "1042", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 100 },
+      { ...common, id: "i2", number: "1043", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-10", balanceDue: 100 },
+    ])
+
+    show(InvoicesRoute)
+    const table = await screen.findByRole("table", { name: locale === "da-DK" ? "Fakturaer" : "Invoices" })
+    const rows = within(table).getAllByRole("row").slice(1)
+    expect(rows).toHaveLength(2)
+    expect(within(rows[0]).getByRole("link", { name: locale === "da-DK" ? "Faktura 1042, Acme" : "Invoice 1042, Acme" })).toBeTruthy()
+    expect(within(rows[0]).getByText(dueTodayLabel).dataset.tone).toBe(settingsFail ? "info" : "danger")
+    expect(within(rows[1]).getByText(pastDueLabel).dataset.tone).toBe("danger")
+    expect(state.settings).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([["en-US", "Sent", "Overdue"], ["da-DK", "Sendt", "Forfalden"]])(
+    "uses the balance to distinguish past-due invoice labels in %s",
+    async (locale, sentLabel, overdueLabel) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date("2026-10-12T10:00:00Z"))
+      state.locale = locale
+      state.invoices.mockResolvedValue([
+        { ...common, id: "zero", number: "1042", total: 0, status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0 },
+        { ...common, id: "positive", number: "1043", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0.01 },
+        { ...common, id: "credited", number: "1044", status: "sent", paymentStatus: "unpaid", dueDate: "2026-10-11", balanceDue: 0 },
+      ])
+
+      show(InvoicesRoute)
+      const table = await screen.findByRole("table", { name: locale === "da-DK" ? "Fakturaer" : "Invoices" })
+      const rows = within(table).getAllByRole("row").slice(1)
+      expect(rows).toHaveLength(3)
+      expect(within(rows[0]).getByText(sentLabel).dataset.tone).toBe("info")
+      expect(within(rows[1]).getByText(overdueLabel).dataset.tone).toBe("danger")
+      expect(within(rows[2]).getByText(sentLabel).dataset.tone).toBe("info")
+    }
+  )
+
   it("names each row link with the document, so one customer's invoices differ", async () => {
     show(InvoicesRoute)
     await screen.findByRole("link", { name: "Invoice 1042, Acme" })
