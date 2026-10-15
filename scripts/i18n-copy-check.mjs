@@ -10,17 +10,103 @@ const repoRoot = path.resolve(scriptDir, "..")
 const defaultCatalogRoot = path.join(repoRoot, "apps/oss/src/lib/i18n/catalog")
 const defaultRulesPath = path.join(scriptDir, "i18n/copy-rules.json")
 
-const entryRegex = /"((?:[^"\\]|\\.)*)"\s*:\s*("(?:[^"\\]|\\.)*"|`(?:[^`\\$]|\\.)*`)/g
-const optOutRegex = /copy-check:\s*allow\s+([a-z0-9-]+)(?:\s+(\S.*?))?\s*(?:\*\/|-->)?\s*$/
+const optOutRegex = /^\s*copy-check:\s*allow\s+([a-z0-9-]+)\s*(.*?)\s*$/s
+const escapes = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", v: "\v", 0: "\0" }
 
-/** Entries of one catalog file with their 1-based line, for opt-out lookups. */
-export function parseCatalogSource(source) {
+function unescapeString(body) {
+  return body.replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|(\r?\n)|(.))/gs, (_m, cp, u, x, newline, char) => {
+    if (cp || u || x) return String.fromCodePoint(parseInt(cp ?? u ?? x, 16))
+    if (newline !== undefined) return ""
+    return escapes[char] ?? char
+  })
+}
+
+/** Comment body without its delimiters, for markers. */
+function commentBody(text) {
+  return text.startsWith("//") ? text.slice(2) : text.slice(2, -2)
+}
+
+/** Splits TypeScript source into strings, comments, punctuation and words. Unterminated input throws. */
+function tokenize(source, file) {
+  const tokens = []
+  let i = 0
+  const lineAt = (offset) => source.slice(0, offset).split("\n").length
+  while (i < source.length) {
+    const char = source[i]
+    if (/\s/.test(char)) {
+      i += 1
+    } else if (source.startsWith("//", i)) {
+      const end = source.indexOf("\n", i)
+      const stop = end === -1 ? source.length : end
+      tokens.push({ type: "comment", start: i, end: stop, text: source.slice(i, stop) })
+      i = stop
+    } else if (source.startsWith("/*", i)) {
+      const end = source.indexOf("*/", i + 2)
+      if (end === -1) throw new Error(`${file}:${lineAt(i)}: unterminated comment`)
+      tokens.push({ type: "comment", start: i, end: end + 2, text: source.slice(i, end + 2) })
+      i = end + 2
+    } else if (char === '"' || char === "'" || char === "`") {
+      let j = i + 1
+      while (j < source.length && source[j] !== char) {
+        if (source[j] === "\\") j += 1
+        else if (char === "`" && source.startsWith("${", j)) throw new Error(`${file}:${lineAt(j)}: template with \${} is not supported in catalogs`)
+        else if (char !== "`" && source[j] === "\n") break
+        j += 1
+      }
+      if (source[j] !== char) throw new Error(`${file}:${lineAt(i)}: unterminated string`)
+      tokens.push({ type: "string", start: i, end: j + 1, value: unescapeString(source.slice(i + 1, j)) })
+      i = j + 1
+    } else if (/[\p{L}\p{N}_$]/u.test(char)) {
+      let j = i + 1
+      while (j < source.length && /[\p{L}\p{N}_$]/u.test(source[j])) j += 1
+      tokens.push({ type: "word", start: i, end: j, value: source.slice(i, j) })
+      i = j
+    } else {
+      tokens.push({ type: "punct", start: i, end: i + 1, value: char })
+      i += 1
+    }
+  }
+  return tokens
+}
+
+/**
+ * Entries of one catalog file: the first object literal after `=`. Every entry must be
+ * `key: "string",` in any string form (", ' or static backtick); anything else throws.
+ * Each entry carries the opt-outs attached to it alone.
+ */
+export function parseCatalogSource(source, file = "catalog") {
+  const tokens = tokenize(source, file)
+  const lineAt = (offset) => source.slice(0, offset).split("\n").length
+  const code = tokens.filter((token) => token.type !== "comment")
+  const open = code.findIndex((token, index) => token.value === "{" && code[index - 1]?.value === "=")
+  if (open === -1) throw new Error(`${file}: no catalog object literal found`)
+
   const entries = []
-  for (const match of source.matchAll(entryRegex)) {
-    const raw = match[2]
-    const value = raw.startsWith("`") ? raw.slice(1, -1) : JSON.parse(raw)
-    const line = source.slice(0, match.index).split("\n").length
-    entries.push({ key: match[1], value, line })
+  let i = open + 1
+  while (code[i] && code[i].value !== "}") {
+    const [key, colon, value, after] = code.slice(i, i + 4)
+    const fail = (token) => new Error(`${file}:${lineAt((token ?? key).start)}: unsupported catalog entry, expected "key": "string",`)
+    if (!key || !["string", "word"].includes(key.type) || colon?.value !== ":") throw fail(key)
+    if (value?.type !== "string") throw fail(value)
+    if (after && after.value !== "," && after.value !== "}") throw fail(after)
+    const end = after?.value === "," ? after.end : value.end
+    entries.push({ key: key.value, value: value.value, line: lineAt(key.start), startLine: lineAt(key.start), endLine: lineAt(value.end), start: key.start, end, optOuts: [] })
+    i += after?.value === "," ? 4 : 3
+  }
+  if (!code[i]) throw new Error(`${file}: catalog object literal is not closed`)
+
+  const lineStart = (offset) => source.lastIndexOf("\n", offset - 1) + 1
+  for (const comment of tokens.filter((token) => token.type === "comment")) {
+    const marker = commentBody(comment.text).match(optOutRegex)
+    if (!marker) continue
+    const standalone = source.slice(lineStart(comment.start), comment.start).trim() === ""
+    const startLine = lineAt(comment.start)
+    const endLine = lineAt(comment.end)
+    const owner = standalone
+      ? entries.find((entry) => entry.startLine === endLine + 1)
+      : entries.find((entry) => entry.start < comment.start && comment.start < entry.end) ??
+        entries.filter((entry) => entry.end <= comment.start && entry.endLine === startLine).at(-1)
+    owner?.optOuts.push({ ruleId: marker[1], reason: marker[2] })
   }
   return entries
 }
@@ -31,22 +117,11 @@ export function loadCatalog(catalogRoot, language) {
   for (const name of fs.readdirSync(dir).sort()) {
     if (!name.endsWith(".ts") || name === "index.ts") continue
     const file = path.join(dir, name)
-    const source = fs.readFileSync(file, "utf8")
-    const lines = source.split("\n")
-    for (const entry of parseCatalogSource(source)) {
-      entries.set(entry.key, { ...entry, file, lines })
+    for (const entry of parseCatalogSource(fs.readFileSync(file, "utf8"), path.relative(repoRoot, file))) {
+      entries.set(entry.key, { ...entry, file })
     }
   }
   return entries
-}
-
-/** Opt-out marker on the entry's line or the one above. Returns { ruleId, reason } or null. */
-function findOptOut(lines, line, ruleId) {
-  for (const text of [lines[line - 1], lines[line - 2]]) {
-    const match = text?.match(optOutRegex)
-    if (match && match[1] === ruleId) return { ruleId, reason: match[2]?.trim() ?? "" }
-  }
-  return null
 }
 
 function stripNonWords(value) {
@@ -94,9 +169,13 @@ export function checkMarkdownFiles(root, config) {
       const file = path.join(root, name)
       if (!fs.existsSync(file)) continue
       const lines = fs.readFileSync(file, "utf8").split("\n")
+      const marker = (text) => text?.match(/<!--(.*?)-->/)?.[1].match(optOutRegex)
       lines.forEach((text, index) => {
         if (!regex.test(text)) return
-        const entry = { file, line: index + 1, lines, value: text.trim() }
+        // A marker applies to its own line, or to a line holding only the marker directly above.
+        const above = lines[index - 1]?.trim().startsWith("<!--") && lines[index - 1].trim().endsWith("-->") ? marker(lines[index - 1]) : null
+        const optOuts = [marker(text), above].filter(Boolean).map((found) => ({ ruleId: found[1], reason: found[2] }))
+        const entry = { file, line: index + 1, value: text.trim(), optOuts }
         findings.push({ ruleId: rule.id, key: name, entry, message: `${rule.message} (${JSON.stringify(entry.value)})` })
       })
     }
@@ -104,13 +183,15 @@ export function checkMarkdownFiles(root, config) {
   return findings
 }
 
-/** Drops findings with a valid inline opt-out. A marker without a reason is itself reported. */
+/** Drops findings with a valid inline opt-out. A marker without real reason text is itself reported. */
 export function applyOptOuts(findings) {
   const reported = []
   for (const finding of findings) {
-    const optOut = findOptOut(finding.entry.lines, finding.entry.line, finding.ruleId)
+    const optOut = finding.entry.optOuts.find((item) => item.ruleId === finding.ruleId)
     if (!optOut) reported.push(finding)
-    else if (!optOut.reason) reported.push({ ...finding, message: `copy-check: allow ${finding.ruleId} needs a reason. ${finding.message}` })
+    else if (optOut.reason.replace(/[^\p{L}\p{N}]/gu, "").length < 3) {
+      reported.push({ ...finding, message: `copy-check: allow ${finding.ruleId} needs a reason. ${finding.message}` })
+    }
   }
   return reported
 }

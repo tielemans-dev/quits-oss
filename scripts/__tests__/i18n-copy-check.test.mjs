@@ -68,11 +68,62 @@ test("flags VAT and CVR number in Danish only", (t) => {
   assert.deepEqual(findings(root).sort(), ["da-cvr-english:a.cvr", "da-vat:a.vat"])
 })
 
-test("inline opt-out needs a reason and applies to the line or the line above", (t) => {
+test("parses single-quoted, template and escaped values", (t) => {
   const root = fixture(
     t,
-    `  "a.one": "Open source dependencies", // copy-check: allow open-source names third-party licences\n  // copy-check: allow open-source quoted from the FSL text\n  "a.two": "Open source",\n  "a.three": "Open source", // copy-check: allow open-source`,
+    `  'a.one': 'Quits is open source',\n  "a.two": `+"`Open source`"+`,\n  "a.three": "It\\u0027s open-source"`,
     `  "a.one": "x1",\n  "a.two": "x2",\n  "a.three": "x3"`
   )
-  assert.deepEqual(findings(root), ["open-source:a.three"])
+  assert.deepEqual(findings(root), ["open-source:a.one", "open-source:a.two", "open-source:a.three"])
+})
+
+test("fails explicitly on entries it cannot read", (t) => {
+  const root = fixture(t, `  "a.one": "A" + "B"`, `  "a.one": "x"`)
+  assert.throws(() => findings(root), /unsupported catalog entry/)
+})
+
+test("an opt-out applies to its own entry only", (t) => {
+  const root = fixture(
+    t,
+    [
+      `  "a.one": "Open source dependencies", // copy-check: allow open-source names third-party licences`,
+      `  "a.next": "Open source",`,
+      `  // copy-check: allow open-source quoted from the FSL text`,
+      `  "a.two": "Open source",`,
+      `  "a.three": "Open source",`,
+      `  "a.multi":`,
+      `    "Open source", // copy-check: allow open-source quoted from the FSL text`,
+      `  "a.after": "Open source",`,
+    ].join("\n"),
+    [`  "a.one": "x1",`, `  "a.next": "x2",`, `  "a.two": "x3",`, `  "a.three": "x4",`, `  "a.multi": "x5",`, `  "a.after": "x6"`].join("\n")
+  )
+  assert.deepEqual(findings(root), ["open-source:a.next", "open-source:a.three", "open-source:a.after"])
+})
+
+test("a marker needs real reason text, not comment delimiters", (t) => {
+  const root = fixture(
+    t,
+    [
+      `  "a.one": "Open source", /* copy-check: allow open-source */`,
+      `  "a.two": "Open source", // copy-check: allow open-source`,
+      `  "a.three": "Open source", /* copy-check: allow open-source licence text */`,
+    ].join("\n"),
+    [`  "a.one": "x1",`, `  "a.two": "x2",`, `  "a.three": "x3"`].join("\n")
+  )
+  assert.deepEqual(findings(root), ["open-source:a.one", "open-source:a.two"])
+})
+
+test("scans markdown files with the same opt-out rule", (t) => {
+  const root = fixture(t, `  "a.one": "x"`, `  "a.one": "y"`)
+  writeFileSync(
+    join(root, "COPY.md"),
+    [
+      "Quits is open source.",
+      "<!-- copy-check: allow open-source quoting the old claim -->",
+      "Quits is open source.",
+      "Quits is open source. <!-- copy-check: allow open-source -->",
+    ].join("\n")
+  )
+  const result = runCopyCheck({ catalogRoot: root, rulesPath, root }).findings.map((f) => `${f.ruleId}:${f.entry.line}`)
+  assert.deepEqual(result, ["open-source:1", "open-source:4"])
 })
