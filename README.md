@@ -201,10 +201,13 @@ invoices.
 
 ## Local commit hook
 
-After `bun install`, run `bun run hooks:install` from the repository root to
-install or refresh Lefthook's pre-commit hook. This explicit step also works when
-package lifecycle scripts were skipped during installation. Check for an existing
-hook manager or custom `core.hooksPath` before installing. Use one hook manager.
+`bun install` leaves Git hooks untouched. The root `trustedDependencies` allowlist
+permits Prisma's runtime checks and engine download and esbuild's binary setup;
+it excludes Lefthook's automatic hook installation.
+
+To opt in after installing dependencies, first check for an existing hook manager
+or custom `core.hooksPath`. Use one hook manager. Then run `bun run hooks:install`
+from the repository root to install or refresh Lefthook's pre-commit hook.
 
 The hook runs `bun run lint:staged`, which checks added, copied, modified, and
 renamed JavaScript and TypeScript files with the repository's Oxlint settings.

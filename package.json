@@ -40,5 +40,10 @@
     "oxlint": "^1.50.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"
-  }
+  },
+  "trustedDependencies": [
+    "@prisma/engines",
+    "esbuild",
+    "prisma"
+  ]
 }
