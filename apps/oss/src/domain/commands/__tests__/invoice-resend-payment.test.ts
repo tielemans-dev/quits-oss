@@ -25,10 +25,11 @@ vi.mock("../../documents/invoice-email", async importOriginal => ({
   composeInvoiceEmail: vi.fn(() => ({ message: {}, usingBrandedDomain: false })),
 }))
 
-function harness({ bank = false, stripe = false } = {}) {
+function harness({ bank = false, stripe = false, frozenBank = false } = {}) {
   const invoice = {
     id: "synthetic-invoice", status: "sent", number: "LEGACY-1", agreementId: null,
-    publicPaymentIssuedAt: null, sellerSnapshot: { companyName: "Original seller" },
+    publicPaymentIssuedAt: null,
+    sellerSnapshot: { companyName: "Original seller", ...(frozenBank ? { bankAccount: { regNumber: "0040", accountNumber: "0440116243" } } : {}) },
     contact: { email: "buyer@example.test" },
   }
   const settings = {
@@ -67,6 +68,13 @@ describe("resend payment readiness", () => {
     ] } })
     expect(composeInvoiceEmail).not.toHaveBeenCalled()
     expect(queueDocumentEmail).not.toHaveBeenCalled()
+    expect(h.update).not.toHaveBeenCalled()
+  })
+  it("resends on the bank account frozen on the invoice after Settings were cleared, even when an adopter requires payment details", async () => {
+    requirePaymentDetails()
+    const h = harness({ frozenBank: true })
+    expect(await h.run()).toMatchObject({ _tag: "Right" })
+    expect(queueDocumentEmail).toHaveBeenCalledTimes(1)
     expect(h.update).not.toHaveBeenCalled()
   })
   it.each([{ bank: true }, { stripe: true }])("allows current payment Settings %j without rewriting issued evidence", async options => {
