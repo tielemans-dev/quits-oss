@@ -1,9 +1,10 @@
+import { deviationVatLabel } from "./documents/line-amounts"
 import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer"
-import { formatCurrency, formatDate } from "./i18n/format"
+import { formatCurrency, formatDate, formatNumber } from "./i18n/format"
 import { translate } from "./i18n/translate"
 import type { OrgSettingsForPdf } from "./invoice-pdf"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
@@ -13,6 +14,7 @@ import { documentColors as C } from "./brand/document-colors"
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: C.ink },
+  footer: { position: "absolute", bottom: 20, left: 40, right: 40, fontSize: 9, color: C.muted, flexDirection: "row", justifyContent: "space-between" },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 30 },
   title: { fontSize: 24, fontFamily: "Helvetica-Bold" },
   logoContainer: { width: 140, height: 56, marginBottom: 8 },
@@ -91,6 +93,7 @@ export type CreditNoteForPdf = {
    */
   pricesIncludeTax?: boolean
   /** The credited VAT by rate. Absent on inputs frozen before they carried it. */
+  taxRate?: number
   vatRows?: VatRow[]
   /** The stored total minus the stored subtotal and tax, as a decimal string; printed when non-zero. */
   rounding?: string
@@ -189,7 +192,7 @@ export function CreditNotePdfDocument({
           </View>
           {creditNote.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <View style={styles.colDescription}><Text>{item.description}</Text>{sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
+              <View style={styles.colDescription}><Text>{item.description}</Text>{deviationVatLabel(item.taxRate, creditNote.vatRows, creditNote.taxRate, momsRegistered) && <Text style={[styles.label, { backgroundColor: "#f4f4f4", padding: 3 }]}>{translate("pdf.lineVatRate", locale, { rate: formatNumber(Number(item.taxRate), locale) })}</Text>}{!deviationVatLabel(item.taxRate, creditNote.vatRows, creditNote.taxRate, momsRegistered) && sellerVatLineText(momsRegistered, item.taxRate, locale) && <Text style={styles.label}>{sellerVatLineText(momsRegistered, item.taxRate, locale)}</Text>}</View>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{money(item.unitPrice)}</Text>
               <Text style={styles.colTotal}>{money(item.total)}</Text>
@@ -216,6 +219,10 @@ export function CreditNotePdfDocument({
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
           <Text style={styles.reasonText}>{reason}</Text>
+        </View>
+        <View style={styles.footer} fixed>
+          <Text style={{ flex: 1, paddingRight: 12 }}>{[seller.name, seller.address, ...seller.taxIds, seller.email].filter(Boolean).join(" · ")}</Text>
+          <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
         </View>
       </Page>
     </Document>

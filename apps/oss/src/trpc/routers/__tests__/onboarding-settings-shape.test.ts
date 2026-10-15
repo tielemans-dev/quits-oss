@@ -250,7 +250,7 @@ describe("atomic Settings Danish VAT repairs", () => {
     mocks.taxIds = [{ id: "primary", scheme, value: "24256790", countryCode: null, isPrimary: true }, { id: "foreign", scheme: "vat", value: "DE123456789", countryCode: "DE", isPrimary: false }]
     await settingsCaller().update({ momsRegistered: false, taxRate: 0 })
     expect(mocks.taxIds[0]).toMatchObject({ scheme: "cvr", value: "24256790", countryCode: "DK", isPrimary: true })
-    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR: 24256790"])
+    expect(invoiceTaxIds(mocks.taxIds)).toEqual(["CVR-nr. 24256790"])
     expect(mocks.taxIds[1]).toMatchObject({ scheme: "vat", value: "DE123456789", countryCode: "DE" })
   })
   it("leaves an explicitly foreign primary ID unchanged", async () => {

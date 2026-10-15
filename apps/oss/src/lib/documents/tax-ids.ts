@@ -9,7 +9,7 @@ export function formatTaxIds(ids: readonly DocumentTaxId[] | undefined, locale?:
   const country = buyerCountry == null ? null : buyerCountry.trim() || "DK"
   ids = country ? sellerPresentationTaxIds(ids, momsRegistered) : ids
   const cvr = sellerCvr(ids)
-  const national = cvr && country ? [toCountryCode(country) === "DK" || momsRegistered === false
+  const national = cvr && country ? [toCountryCode(country) === "DK" || momsRegistered !== true
     ? `${cvrLabel ?? translate("pdf.cvrNumber", locale)} ${cvr}`
     : `${translate("pdf.vatNumber", locale)} DK${cvr}`] : []
   return [...national, ...(ids ?? []).filter(id => id.value.trim() && !(national.length && sellerCvr([id]) === cvr)).map(id => {
