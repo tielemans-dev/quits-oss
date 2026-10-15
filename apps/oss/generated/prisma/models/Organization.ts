@@ -232,7 +232,6 @@ export type OrganizationWhereInput = {
   subscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
   members?: Prisma.MemberListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceListRelationFilter
   contacts?: Prisma.ContactListRelationFilter
   catalogItems?: Prisma.CatalogItemListRelationFilter
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
@@ -269,7 +268,6 @@ export type OrganizationOrderByWithRelationInput = {
   subscriptionStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   members?: Prisma.MemberOrderByRelationAggregateInput
   invitations?: Prisma.InvitationOrderByRelationAggregateInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceOrderByRelationAggregateInput
   contacts?: Prisma.ContactOrderByRelationAggregateInput
   catalogItems?: Prisma.CatalogItemOrderByRelationAggregateInput
   taxIds?: Prisma.OrganizationTaxIdOrderByRelationAggregateInput
@@ -309,7 +307,6 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   subscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
   members?: Prisma.MemberListRelationFilter
   invitations?: Prisma.InvitationListRelationFilter
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceListRelationFilter
   contacts?: Prisma.ContactListRelationFilter
   catalogItems?: Prisma.CatalogItemListRelationFilter
   taxIds?: Prisma.OrganizationTaxIdListRelationFilter
@@ -380,7 +377,6 @@ export type OrganizationCreateInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -417,7 +413,6 @@ export type OrganizationUncheckedCreateInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -454,7 +449,6 @@ export type OrganizationUpdateInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -491,7 +485,6 @@ export type OrganizationUncheckedUpdateInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -911,20 +904,6 @@ export type OrganizationUpdateOneRequiredWithoutIssuanceCandidatesNestedInput = 
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutIssuanceCandidatesInput, Prisma.OrganizationUpdateWithoutIssuanceCandidatesInput>, Prisma.OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput>
 }
 
-export type OrganizationCreateNestedOneWithoutRecipientReminderPreferencesInput = {
-  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedCreateWithoutRecipientReminderPreferencesInput>
-  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutRecipientReminderPreferencesInput
-  connect?: Prisma.OrganizationWhereUniqueInput
-}
-
-export type OrganizationUpdateOneRequiredWithoutRecipientReminderPreferencesNestedInput = {
-  create?: Prisma.XOR<Prisma.OrganizationCreateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedCreateWithoutRecipientReminderPreferencesInput>
-  connectOrCreate?: Prisma.OrganizationCreateOrConnectWithoutRecipientReminderPreferencesInput
-  upsert?: Prisma.OrganizationUpsertWithoutRecipientReminderPreferencesInput
-  connect?: Prisma.OrganizationWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.OrganizationUpdateToOneWithWhereWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUpdateWithoutRecipientReminderPreferencesInput>, Prisma.OrganizationUncheckedUpdateWithoutRecipientReminderPreferencesInput>
-}
-
 export type OrganizationCreateWithoutMembersInput = {
   agreementTemplatesSeeded?: boolean
   id: string
@@ -938,7 +917,6 @@ export type OrganizationCreateWithoutMembersInput = {
   stripePriceId?: string | null
   subscriptionStatus?: string | null
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -974,7 +952,6 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   stripePriceId?: string | null
   subscriptionStatus?: string | null
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1026,7 +1003,6 @@ export type OrganizationUpdateWithoutMembersInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -1062,7 +1038,6 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1098,7 +1073,6 @@ export type OrganizationCreateWithoutInvitationsInput = {
   stripePriceId?: string | null
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -1134,7 +1108,6 @@ export type OrganizationUncheckedCreateWithoutInvitationsInput = {
   stripePriceId?: string | null
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1186,7 +1159,6 @@ export type OrganizationUpdateWithoutInvitationsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -1222,7 +1194,6 @@ export type OrganizationUncheckedUpdateWithoutInvitationsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1259,7 +1230,6 @@ export type OrganizationCreateWithoutSettingsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -1295,7 +1265,6 @@ export type OrganizationUncheckedCreateWithoutSettingsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1347,7 +1316,6 @@ export type OrganizationUpdateWithoutSettingsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -1383,7 +1351,6 @@ export type OrganizationUncheckedUpdateWithoutSettingsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1419,7 +1386,6 @@ export type OrganizationCreateWithoutContactsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
@@ -1455,7 +1421,6 @@ export type OrganizationUncheckedCreateWithoutContactsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1507,7 +1472,6 @@ export type OrganizationUpdateWithoutContactsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1543,7 +1507,6 @@ export type OrganizationUncheckedUpdateWithoutContactsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1579,7 +1542,6 @@ export type OrganizationCreateWithoutCatalogItemsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
@@ -1615,7 +1577,6 @@ export type OrganizationUncheckedCreateWithoutCatalogItemsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1667,7 +1628,6 @@ export type OrganizationUpdateWithoutCatalogItemsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1703,7 +1663,6 @@ export type OrganizationUncheckedUpdateWithoutCatalogItemsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1739,7 +1698,6 @@ export type OrganizationCreateWithoutTaxIdsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
@@ -1775,7 +1733,6 @@ export type OrganizationUncheckedCreateWithoutTaxIdsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1827,7 +1784,6 @@ export type OrganizationUpdateWithoutTaxIdsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
@@ -1863,7 +1819,6 @@ export type OrganizationUncheckedUpdateWithoutTaxIdsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -1899,7 +1854,6 @@ export type OrganizationCreateWithoutInvoicesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -1935,7 +1889,6 @@ export type OrganizationUncheckedCreateWithoutInvoicesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -1987,7 +1940,6 @@ export type OrganizationUpdateWithoutInvoicesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2023,7 +1975,6 @@ export type OrganizationUncheckedUpdateWithoutInvoicesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2059,7 +2010,6 @@ export type OrganizationCreateWithoutQuotesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2095,7 +2045,6 @@ export type OrganizationUncheckedCreateWithoutQuotesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2147,7 +2096,6 @@ export type OrganizationUpdateWithoutQuotesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2183,7 +2131,6 @@ export type OrganizationUncheckedUpdateWithoutQuotesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2219,7 +2166,6 @@ export type OrganizationCreateWithoutCreditNotesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2255,7 +2201,6 @@ export type OrganizationUncheckedCreateWithoutCreditNotesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2307,7 +2252,6 @@ export type OrganizationUpdateWithoutCreditNotesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2343,7 +2287,6 @@ export type OrganizationUncheckedUpdateWithoutCreditNotesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2379,7 +2322,6 @@ export type OrganizationCreateWithoutSettlementReceiptsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2415,7 +2357,6 @@ export type OrganizationUncheckedCreateWithoutSettlementReceiptsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2467,7 +2408,6 @@ export type OrganizationUpdateWithoutSettlementReceiptsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2503,7 +2443,6 @@ export type OrganizationUncheckedUpdateWithoutSettlementReceiptsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2539,7 +2478,6 @@ export type OrganizationCreateWithoutPaymentsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2575,7 +2513,6 @@ export type OrganizationUncheckedCreateWithoutPaymentsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2627,7 +2564,6 @@ export type OrganizationUpdateWithoutPaymentsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2663,7 +2599,6 @@ export type OrganizationUncheckedUpdateWithoutPaymentsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2699,7 +2634,6 @@ export type OrganizationCreateWithoutRecurringInvoicesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2735,7 +2669,6 @@ export type OrganizationUncheckedCreateWithoutRecurringInvoicesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2787,7 +2720,6 @@ export type OrganizationUpdateWithoutRecurringInvoicesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2823,7 +2755,6 @@ export type OrganizationUncheckedUpdateWithoutRecurringInvoicesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -2859,7 +2790,6 @@ export type OrganizationCreateWithoutDomainEventsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -2895,7 +2825,6 @@ export type OrganizationUncheckedCreateWithoutDomainEventsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -2947,7 +2876,6 @@ export type OrganizationUpdateWithoutDomainEventsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -2983,7 +2911,6 @@ export type OrganizationUncheckedUpdateWithoutDomainEventsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3019,7 +2946,6 @@ export type OrganizationCreateWithoutApprovalRequestsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3055,7 +2981,6 @@ export type OrganizationUncheckedCreateWithoutApprovalRequestsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3107,7 +3032,6 @@ export type OrganizationUpdateWithoutApprovalRequestsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3143,7 +3067,6 @@ export type OrganizationUncheckedUpdateWithoutApprovalRequestsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3179,7 +3102,6 @@ export type OrganizationCreateWithoutAgentKeysInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3215,7 +3137,6 @@ export type OrganizationUncheckedCreateWithoutAgentKeysInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3267,7 +3188,6 @@ export type OrganizationUpdateWithoutAgentKeysInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3303,7 +3223,6 @@ export type OrganizationUncheckedUpdateWithoutAgentKeysInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3339,7 +3258,6 @@ export type OrganizationCreateWithoutSchedulerScansInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3375,7 +3293,6 @@ export type OrganizationUncheckedCreateWithoutSchedulerScansInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3427,7 +3344,6 @@ export type OrganizationUpdateWithoutSchedulerScansInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3463,7 +3379,6 @@ export type OrganizationUncheckedUpdateWithoutSchedulerScansInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3499,7 +3414,6 @@ export type OrganizationCreateWithoutAgreementsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3535,7 +3449,6 @@ export type OrganizationUncheckedCreateWithoutAgreementsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3587,7 +3500,6 @@ export type OrganizationUpdateWithoutAgreementsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3623,7 +3535,6 @@ export type OrganizationUncheckedUpdateWithoutAgreementsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3659,7 +3570,6 @@ export type OrganizationCreateWithoutAgreementTemplatesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3695,7 +3605,6 @@ export type OrganizationUncheckedCreateWithoutAgreementTemplatesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3747,7 +3656,6 @@ export type OrganizationUpdateWithoutAgreementTemplatesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3783,7 +3691,6 @@ export type OrganizationUncheckedUpdateWithoutAgreementTemplatesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3819,7 +3726,6 @@ export type OrganizationCreateWithoutEventConsumerCursorsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -3855,7 +3761,6 @@ export type OrganizationUncheckedCreateWithoutEventConsumerCursorsInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -3907,7 +3812,6 @@ export type OrganizationUpdateWithoutEventConsumerCursorsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -3943,7 +3847,6 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerCursorsInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -3979,7 +3882,6 @@ export type OrganizationCreateWithoutEventConsumerDeliveriesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -4015,7 +3917,6 @@ export type OrganizationUncheckedCreateWithoutEventConsumerDeliveriesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4067,7 +3968,6 @@ export type OrganizationUpdateWithoutEventConsumerDeliveriesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -4103,7 +4003,6 @@ export type OrganizationUncheckedUpdateWithoutEventConsumerDeliveriesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4139,7 +4038,6 @@ export type OrganizationCreateWithoutArtifactStagingInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -4175,7 +4073,6 @@ export type OrganizationUncheckedCreateWithoutArtifactStagingInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4227,7 +4124,6 @@ export type OrganizationUpdateWithoutArtifactStagingInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -4263,7 +4159,6 @@ export type OrganizationUncheckedUpdateWithoutArtifactStagingInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4299,7 +4194,6 @@ export type OrganizationCreateWithoutIssuanceCandidatesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
@@ -4335,7 +4229,6 @@ export type OrganizationUncheckedCreateWithoutIssuanceCandidatesInput = {
   subscriptionStatus?: string | null
   members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
   invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedCreateNestedManyWithoutOrganizationInput
   contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
   catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
@@ -4387,7 +4280,6 @@ export type OrganizationUpdateWithoutIssuanceCandidatesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
@@ -4423,7 +4315,6 @@ export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
   subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
   invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  recipientReminderPreferences?: Prisma.RecipientReminderPreferenceUncheckedUpdateManyWithoutOrganizationNestedInput
   contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
   catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
   taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
@@ -4442,166 +4333,6 @@ export type OrganizationUncheckedUpdateWithoutIssuanceCandidatesInput = {
   approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
   schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
   artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
-  settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
-}
-
-export type OrganizationCreateWithoutRecipientReminderPreferencesInput = {
-  agreementTemplatesSeeded?: boolean
-  id: string
-  name: string
-  slug: string
-  logo?: string | null
-  metadata?: string | null
-  createdAt: Date | string
-  stripeCustomerId?: string | null
-  stripeSubscriptionId?: string | null
-  stripePriceId?: string | null
-  subscriptionStatus?: string | null
-  members?: Prisma.MemberCreateNestedManyWithoutOrganizationInput
-  invitations?: Prisma.InvitationCreateNestedManyWithoutOrganizationInput
-  contacts?: Prisma.ContactCreateNestedManyWithoutOrganizationInput
-  catalogItems?: Prisma.CatalogItemCreateNestedManyWithoutOrganizationInput
-  taxIds?: Prisma.OrganizationTaxIdCreateNestedManyWithoutOrganizationInput
-  invoices?: Prisma.InvoiceCreateNestedManyWithoutOrganizationInput
-  agreements?: Prisma.AgreementCreateNestedManyWithoutOrganizationInput
-  agreementTemplates?: Prisma.AgreementTemplateCreateNestedManyWithoutOrganizationInput
-  quotes?: Prisma.QuoteCreateNestedManyWithoutOrganizationInput
-  creditNotes?: Prisma.CreditNoteCreateNestedManyWithoutOrganizationInput
-  settlementReceipts?: Prisma.SettlementReceiptCreateNestedManyWithoutOrganizationInput
-  payments?: Prisma.PaymentCreateNestedManyWithoutOrganizationInput
-  recurringInvoices?: Prisma.RecurringInvoiceCreateNestedManyWithoutOrganizationInput
-  domainEvents?: Prisma.DomainEventCreateNestedManyWithoutOrganizationInput
-  eventConsumerCursors?: Prisma.EventConsumerCursorCreateNestedManyWithoutOrganizationInput
-  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryCreateNestedManyWithoutOrganizationInput
-  agentKeys?: Prisma.AgentKeyCreateNestedManyWithoutOrganizationInput
-  approvalRequests?: Prisma.ApprovalRequestCreateNestedManyWithoutOrganizationInput
-  schedulerScans?: Prisma.SchedulerScanCreateNestedManyWithoutOrganizationInput
-  artifactStaging?: Prisma.ArtifactStagingCreateNestedManyWithoutOrganizationInput
-  issuanceCandidates?: Prisma.IssuanceCandidateCreateNestedManyWithoutOrganizationInput
-  settings?: Prisma.OrgSettingsCreateNestedOneWithoutOrganizationInput
-}
-
-export type OrganizationUncheckedCreateWithoutRecipientReminderPreferencesInput = {
-  agreementTemplatesSeeded?: boolean
-  id: string
-  name: string
-  slug: string
-  logo?: string | null
-  metadata?: string | null
-  createdAt: Date | string
-  stripeCustomerId?: string | null
-  stripeSubscriptionId?: string | null
-  stripePriceId?: string | null
-  subscriptionStatus?: string | null
-  members?: Prisma.MemberUncheckedCreateNestedManyWithoutOrganizationInput
-  invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutOrganizationInput
-  contacts?: Prisma.ContactUncheckedCreateNestedManyWithoutOrganizationInput
-  catalogItems?: Prisma.CatalogItemUncheckedCreateNestedManyWithoutOrganizationInput
-  taxIds?: Prisma.OrganizationTaxIdUncheckedCreateNestedManyWithoutOrganizationInput
-  invoices?: Prisma.InvoiceUncheckedCreateNestedManyWithoutOrganizationInput
-  agreements?: Prisma.AgreementUncheckedCreateNestedManyWithoutOrganizationInput
-  agreementTemplates?: Prisma.AgreementTemplateUncheckedCreateNestedManyWithoutOrganizationInput
-  quotes?: Prisma.QuoteUncheckedCreateNestedManyWithoutOrganizationInput
-  creditNotes?: Prisma.CreditNoteUncheckedCreateNestedManyWithoutOrganizationInput
-  settlementReceipts?: Prisma.SettlementReceiptUncheckedCreateNestedManyWithoutOrganizationInput
-  payments?: Prisma.PaymentUncheckedCreateNestedManyWithoutOrganizationInput
-  recurringInvoices?: Prisma.RecurringInvoiceUncheckedCreateNestedManyWithoutOrganizationInput
-  domainEvents?: Prisma.DomainEventUncheckedCreateNestedManyWithoutOrganizationInput
-  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedCreateNestedManyWithoutOrganizationInput
-  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedCreateNestedManyWithoutOrganizationInput
-  agentKeys?: Prisma.AgentKeyUncheckedCreateNestedManyWithoutOrganizationInput
-  approvalRequests?: Prisma.ApprovalRequestUncheckedCreateNestedManyWithoutOrganizationInput
-  schedulerScans?: Prisma.SchedulerScanUncheckedCreateNestedManyWithoutOrganizationInput
-  artifactStaging?: Prisma.ArtifactStagingUncheckedCreateNestedManyWithoutOrganizationInput
-  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedCreateNestedManyWithoutOrganizationInput
-  settings?: Prisma.OrgSettingsUncheckedCreateNestedOneWithoutOrganizationInput
-}
-
-export type OrganizationCreateOrConnectWithoutRecipientReminderPreferencesInput = {
-  where: Prisma.OrganizationWhereUniqueInput
-  create: Prisma.XOR<Prisma.OrganizationCreateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedCreateWithoutRecipientReminderPreferencesInput>
-}
-
-export type OrganizationUpsertWithoutRecipientReminderPreferencesInput = {
-  update: Prisma.XOR<Prisma.OrganizationUpdateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedUpdateWithoutRecipientReminderPreferencesInput>
-  create: Prisma.XOR<Prisma.OrganizationCreateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedCreateWithoutRecipientReminderPreferencesInput>
-  where?: Prisma.OrganizationWhereInput
-}
-
-export type OrganizationUpdateToOneWithWhereWithoutRecipientReminderPreferencesInput = {
-  where?: Prisma.OrganizationWhereInput
-  data: Prisma.XOR<Prisma.OrganizationUpdateWithoutRecipientReminderPreferencesInput, Prisma.OrganizationUncheckedUpdateWithoutRecipientReminderPreferencesInput>
-}
-
-export type OrganizationUpdateWithoutRecipientReminderPreferencesInput = {
-  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  slug?: Prisma.StringFieldUpdateOperationsInput | string
-  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  members?: Prisma.MemberUpdateManyWithoutOrganizationNestedInput
-  invitations?: Prisma.InvitationUpdateManyWithoutOrganizationNestedInput
-  contacts?: Prisma.ContactUpdateManyWithoutOrganizationNestedInput
-  catalogItems?: Prisma.CatalogItemUpdateManyWithoutOrganizationNestedInput
-  taxIds?: Prisma.OrganizationTaxIdUpdateManyWithoutOrganizationNestedInput
-  invoices?: Prisma.InvoiceUpdateManyWithoutOrganizationNestedInput
-  agreements?: Prisma.AgreementUpdateManyWithoutOrganizationNestedInput
-  agreementTemplates?: Prisma.AgreementTemplateUpdateManyWithoutOrganizationNestedInput
-  quotes?: Prisma.QuoteUpdateManyWithoutOrganizationNestedInput
-  creditNotes?: Prisma.CreditNoteUpdateManyWithoutOrganizationNestedInput
-  settlementReceipts?: Prisma.SettlementReceiptUpdateManyWithoutOrganizationNestedInput
-  payments?: Prisma.PaymentUpdateManyWithoutOrganizationNestedInput
-  recurringInvoices?: Prisma.RecurringInvoiceUpdateManyWithoutOrganizationNestedInput
-  domainEvents?: Prisma.DomainEventUpdateManyWithoutOrganizationNestedInput
-  eventConsumerCursors?: Prisma.EventConsumerCursorUpdateManyWithoutOrganizationNestedInput
-  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUpdateManyWithoutOrganizationNestedInput
-  agentKeys?: Prisma.AgentKeyUpdateManyWithoutOrganizationNestedInput
-  approvalRequests?: Prisma.ApprovalRequestUpdateManyWithoutOrganizationNestedInput
-  schedulerScans?: Prisma.SchedulerScanUpdateManyWithoutOrganizationNestedInput
-  artifactStaging?: Prisma.ArtifactStagingUpdateManyWithoutOrganizationNestedInput
-  issuanceCandidates?: Prisma.IssuanceCandidateUpdateManyWithoutOrganizationNestedInput
-  settings?: Prisma.OrgSettingsUpdateOneWithoutOrganizationNestedInput
-}
-
-export type OrganizationUncheckedUpdateWithoutRecipientReminderPreferencesInput = {
-  agreementTemplatesSeeded?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  name?: Prisma.StringFieldUpdateOperationsInput | string
-  slug?: Prisma.StringFieldUpdateOperationsInput | string
-  logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  metadata?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  subscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  members?: Prisma.MemberUncheckedUpdateManyWithoutOrganizationNestedInput
-  invitations?: Prisma.InvitationUncheckedUpdateManyWithoutOrganizationNestedInput
-  contacts?: Prisma.ContactUncheckedUpdateManyWithoutOrganizationNestedInput
-  catalogItems?: Prisma.CatalogItemUncheckedUpdateManyWithoutOrganizationNestedInput
-  taxIds?: Prisma.OrganizationTaxIdUncheckedUpdateManyWithoutOrganizationNestedInput
-  invoices?: Prisma.InvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
-  agreements?: Prisma.AgreementUncheckedUpdateManyWithoutOrganizationNestedInput
-  agreementTemplates?: Prisma.AgreementTemplateUncheckedUpdateManyWithoutOrganizationNestedInput
-  quotes?: Prisma.QuoteUncheckedUpdateManyWithoutOrganizationNestedInput
-  creditNotes?: Prisma.CreditNoteUncheckedUpdateManyWithoutOrganizationNestedInput
-  settlementReceipts?: Prisma.SettlementReceiptUncheckedUpdateManyWithoutOrganizationNestedInput
-  payments?: Prisma.PaymentUncheckedUpdateManyWithoutOrganizationNestedInput
-  recurringInvoices?: Prisma.RecurringInvoiceUncheckedUpdateManyWithoutOrganizationNestedInput
-  domainEvents?: Prisma.DomainEventUncheckedUpdateManyWithoutOrganizationNestedInput
-  eventConsumerCursors?: Prisma.EventConsumerCursorUncheckedUpdateManyWithoutOrganizationNestedInput
-  eventConsumerDeliveries?: Prisma.EventConsumerDeliveryUncheckedUpdateManyWithoutOrganizationNestedInput
-  agentKeys?: Prisma.AgentKeyUncheckedUpdateManyWithoutOrganizationNestedInput
-  approvalRequests?: Prisma.ApprovalRequestUncheckedUpdateManyWithoutOrganizationNestedInput
-  schedulerScans?: Prisma.SchedulerScanUncheckedUpdateManyWithoutOrganizationNestedInput
-  artifactStaging?: Prisma.ArtifactStagingUncheckedUpdateManyWithoutOrganizationNestedInput
-  issuanceCandidates?: Prisma.IssuanceCandidateUncheckedUpdateManyWithoutOrganizationNestedInput
   settings?: Prisma.OrgSettingsUncheckedUpdateOneWithoutOrganizationNestedInput
 }
 
@@ -4613,7 +4344,6 @@ export type OrganizationUncheckedUpdateWithoutRecipientReminderPreferencesInput 
 export type OrganizationCountOutputType = {
   members: number
   invitations: number
-  recipientReminderPreferences: number
   contacts: number
   catalogItems: number
   taxIds: number
@@ -4638,7 +4368,6 @@ export type OrganizationCountOutputType = {
 export type OrganizationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | OrganizationCountOutputTypeCountMembersArgs
   invitations?: boolean | OrganizationCountOutputTypeCountInvitationsArgs
-  recipientReminderPreferences?: boolean | OrganizationCountOutputTypeCountRecipientReminderPreferencesArgs
   contacts?: boolean | OrganizationCountOutputTypeCountContactsArgs
   catalogItems?: boolean | OrganizationCountOutputTypeCountCatalogItemsArgs
   taxIds?: boolean | OrganizationCountOutputTypeCountTaxIdsArgs
@@ -4682,13 +4411,6 @@ export type OrganizationCountOutputTypeCountMembersArgs<ExtArgs extends runtime.
  */
 export type OrganizationCountOutputTypeCountInvitationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InvitationWhereInput
-}
-
-/**
- * OrganizationCountOutputType without action
- */
-export type OrganizationCountOutputTypeCountRecipientReminderPreferencesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.RecipientReminderPreferenceWhereInput
 }
 
 /**
@@ -4839,7 +4561,6 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   subscriptionStatus?: boolean
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
   invitations?: boolean | Prisma.Organization$invitationsArgs<ExtArgs>
-  recipientReminderPreferences?: boolean | Prisma.Organization$recipientReminderPreferencesArgs<ExtArgs>
   contacts?: boolean | Prisma.Organization$contactsArgs<ExtArgs>
   catalogItems?: boolean | Prisma.Organization$catalogItemsArgs<ExtArgs>
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
@@ -4909,7 +4630,6 @@ export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
   invitations?: boolean | Prisma.Organization$invitationsArgs<ExtArgs>
-  recipientReminderPreferences?: boolean | Prisma.Organization$recipientReminderPreferencesArgs<ExtArgs>
   contacts?: boolean | Prisma.Organization$contactsArgs<ExtArgs>
   catalogItems?: boolean | Prisma.Organization$catalogItemsArgs<ExtArgs>
   taxIds?: boolean | Prisma.Organization$taxIdsArgs<ExtArgs>
@@ -4940,7 +4660,6 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
   objects: {
     members: Prisma.$MemberPayload<ExtArgs>[]
     invitations: Prisma.$InvitationPayload<ExtArgs>[]
-    recipientReminderPreferences: Prisma.$RecipientReminderPreferencePayload<ExtArgs>[]
     contacts: Prisma.$ContactPayload<ExtArgs>[]
     catalogItems: Prisma.$CatalogItemPayload<ExtArgs>[]
     taxIds: Prisma.$OrganizationTaxIdPayload<ExtArgs>[]
@@ -5370,7 +5089,6 @@ export interface Prisma__OrganizationClient<T, Null = never, ExtArgs extends run
   readonly [Symbol.toStringTag]: "PrismaPromise"
   members<T extends Prisma.Organization$membersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$membersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitations<T extends Prisma.Organization$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  recipientReminderPreferences<T extends Prisma.Organization$recipientReminderPreferencesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$recipientReminderPreferencesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RecipientReminderPreferencePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   contacts<T extends Prisma.Organization$contactsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$contactsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ContactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   catalogItems<T extends Prisma.Organization$catalogItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$catalogItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CatalogItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   taxIds<T extends Prisma.Organization$taxIdsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Organization$taxIdsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrganizationTaxIdPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5864,30 +5582,6 @@ export type Organization$invitationsArgs<ExtArgs extends runtime.Types.Extension
   take?: number
   skip?: number
   distinct?: Prisma.InvitationScalarFieldEnum | Prisma.InvitationScalarFieldEnum[]
-}
-
-/**
- * Organization.recipientReminderPreferences
- */
-export type Organization$recipientReminderPreferencesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the RecipientReminderPreference
-   */
-  select?: Prisma.RecipientReminderPreferenceSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the RecipientReminderPreference
-   */
-  omit?: Prisma.RecipientReminderPreferenceOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.RecipientReminderPreferenceInclude<ExtArgs> | null
-  where?: Prisma.RecipientReminderPreferenceWhereInput
-  orderBy?: Prisma.RecipientReminderPreferenceOrderByWithRelationInput | Prisma.RecipientReminderPreferenceOrderByWithRelationInput[]
-  cursor?: Prisma.RecipientReminderPreferenceWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.RecipientReminderPreferenceScalarFieldEnum | Prisma.RecipientReminderPreferenceScalarFieldEnum[]
 }
 
 /**

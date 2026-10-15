@@ -423,8 +423,7 @@ export const ModelName = {
   EventConsumerCursor: 'EventConsumerCursor',
   EventConsumerDelivery: 'EventConsumerDelivery',
   ArtifactStaging: 'ArtifactStaging',
-  IssuanceCandidate: 'IssuanceCandidate',
-  RecipientReminderPreference: 'RecipientReminderPreference'
+  IssuanceCandidate: 'IssuanceCandidate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -440,7 +439,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate" | "recipientReminderPreference"
+    modelProps: "user" | "session" | "account" | "verification" | "authRecoveryRateLimit" | "organization" | "member" | "invitation" | "installationState" | "orgSettings" | "contact" | "catalogItem" | "organizationTaxId" | "contactTaxId" | "invoice" | "invoiceItem" | "quote" | "quoteItem" | "creditNote" | "creditNoteItem" | "settlementReceipt" | "settlementRefund" | "payment" | "invoiceReminder" | "recurringInvoice" | "domainEvent" | "commandReceipt" | "approvalRequest" | "agentKey" | "job" | "schedulerScan" | "agreement" | "deliverable" | "deliverableRebill" | "agreementTemplate" | "publicLinkAttempt" | "eventConsumerCursor" | "eventConsumerDelivery" | "artifactStaging" | "issuanceCandidate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3404,80 +3403,6 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    RecipientReminderPreference: {
-      payload: Prisma.$RecipientReminderPreferencePayload<ExtArgs>
-      fields: Prisma.RecipientReminderPreferenceFieldRefs
-      operations: {
-        findUnique: {
-          args: Prisma.RecipientReminderPreferenceFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload> | null
-        }
-        findUniqueOrThrow: {
-          args: Prisma.RecipientReminderPreferenceFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        findFirst: {
-          args: Prisma.RecipientReminderPreferenceFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload> | null
-        }
-        findFirstOrThrow: {
-          args: Prisma.RecipientReminderPreferenceFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        findMany: {
-          args: Prisma.RecipientReminderPreferenceFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
-        }
-        create: {
-          args: Prisma.RecipientReminderPreferenceCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        createMany: {
-          args: Prisma.RecipientReminderPreferenceCreateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        createManyAndReturn: {
-          args: Prisma.RecipientReminderPreferenceCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
-        }
-        delete: {
-          args: Prisma.RecipientReminderPreferenceDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        update: {
-          args: Prisma.RecipientReminderPreferenceUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        deleteMany: {
-          args: Prisma.RecipientReminderPreferenceDeleteManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateMany: {
-          args: Prisma.RecipientReminderPreferenceUpdateManyArgs<ExtArgs>
-          result: BatchPayload
-        }
-        updateManyAndReturn: {
-          args: Prisma.RecipientReminderPreferenceUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>[]
-        }
-        upsert: {
-          args: Prisma.RecipientReminderPreferenceUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecipientReminderPreferencePayload>
-        }
-        aggregate: {
-          args: Prisma.RecipientReminderPreferenceAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateRecipientReminderPreference>
-        }
-        groupBy: {
-          args: Prisma.RecipientReminderPreferenceGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.RecipientReminderPreferenceGroupByOutputType>[]
-        }
-        count: {
-          args: Prisma.RecipientReminderPreferenceCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.RecipientReminderPreferenceCountAggregateOutputType> | number
-        }
-      }
-    }
   }
 } & {
   other: {
@@ -4453,18 +4378,6 @@ export const IssuanceCandidateScalarFieldEnum = {
 export type IssuanceCandidateScalarFieldEnum = (typeof IssuanceCandidateScalarFieldEnum)[keyof typeof IssuanceCandidateScalarFieldEnum]
 
 
-export const RecipientReminderPreferenceScalarFieldEnum = {
-  id: 'id',
-  organizationId: 'organizationId',
-  recipient: 'recipient',
-  locale: 'locale',
-  unsubscribedAt: 'unsubscribedAt',
-  createdAt: 'createdAt'
-} as const
-
-export type RecipientReminderPreferenceScalarFieldEnum = (typeof RecipientReminderPreferenceScalarFieldEnum)[keyof typeof RecipientReminderPreferenceScalarFieldEnum]
-
-
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -4786,7 +4699,6 @@ export type GlobalOmitConfig = {
   eventConsumerDelivery?: Prisma.EventConsumerDeliveryOmit
   artifactStaging?: Prisma.ArtifactStagingOmit
   issuanceCandidate?: Prisma.IssuanceCandidateOmit
-  recipientReminderPreference?: Prisma.RecipientReminderPreferenceOmit
 }
 
 /* Types for Logging */
