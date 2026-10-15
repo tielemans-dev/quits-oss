@@ -293,6 +293,7 @@ function NewQuotePage() {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
+                    aria-label={t("invoiceLines.remove", { number: index + 1 })}
                     onClick={() => removeItem(index)}
                     disabled={items.length <= 1}
                   >

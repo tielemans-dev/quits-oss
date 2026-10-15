@@ -895,6 +895,7 @@ function InvoiceDetailPage() {
                       type="button"
                       variant="ghost"
                       size="icon-sm"
+                      aria-label={t("invoiceLines.remove", { number: index + 1 })}
                       onClick={() => removeEditItem(index)}
                       disabled={editItems.length <= 1}
                     >
