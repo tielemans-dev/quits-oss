@@ -165,7 +165,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     if (staged?.cvr) {
       const controller = new AbortController()
       request.current = controller
-      setQuery(staged.cvr)
       const run = epoch.current
       const timeout = setTimeout(() => controller.abort(), 10_000)
       client.get(staged.cvr, controller.signal).then(company => {
@@ -173,7 +172,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         setDraft(newDraft(company, signupEmail, Boolean(client.suggestions)))
         setScreen("review")
         clearSelectedCompany(userId, organizationId)
-      }).catch(() => { /* Keep the lookup available for retry. */ }).finally(() => clearTimeout(timeout))
+      }).catch(() => { /* Keep the lookup available for retry. */ }).finally(() => {
+        clearTimeout(timeout)
+        if (mounted.current && run === epoch.current) setQuery(staged.cvr)
+      })
     }
     const startingPath = window.location.pathname
     function clearOnLeave() {
