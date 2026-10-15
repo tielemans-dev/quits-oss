@@ -435,10 +435,10 @@ async function caller(id: string, requestedOrganizationId?: string) {
     await api.onboarding.confirmV2({ ...summary(), reklamebeskyttet, companyEmail: "protected@example.test", companyPhone: "12345678" })
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "signup@example.test", companyPhone: null })
   })
-  it.each([false, true])("moves a name-derived slug to the confirmed company name when that slug is taken: %s (QUI-56)", async taken => {
+  it.each([[false, ""], [true, ""], [false, "-13"]] as const)("moves a name-derived slug to the confirmed company name when that slug is taken: %s, placeholder suffix %j (QUI-56)", async (taken, suffix) => {
     const id = await organization()
     const tag = id.slice(0, 8)
-    await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}` } })
+    await prisma.organization.update({ where: { id }, data: { name: `Placeholder ${tag}`, slug: `placeholder-${tag}${suffix}` } })
     const otherId = taken ? randomUUID() : null
     if (otherId) {
       ids.push(otherId)

@@ -8,18 +8,26 @@ import { prisma } from "../db"
 import { getCvrLookupProvider } from "../runtime/services"
 import { buildDkPresets } from "./dk-presets"
 import { hasIssuedDocuments } from "../../domain/documents/base-currency"
-import { organizationSlugCandidates } from "../organization-slug"
+import { organizationSlugCandidates, organizationSlugFromName } from "../organization-slug"
 
 /**
  * Onboarding creates the organization from a typed name before the CVR review. A slug still
- * derived from that name follows the confirmed company name; a chosen slug stays. Best effort:
- * nothing links to the slug before onboarding completes, and a taken slug keeps the old one.
+ * derived from that name (`base` or `base-N`, as organization creation picks them) follows the
+ * confirmed company name; a chosen slug stays. Best effort: nothing links to the slug before
+ * onboarding completes, and failing to rename keeps the old slug.
  */
 async function followConfirmedNameSlug(organizationId: string, previous: { name: string; slug: string }, companyName: string) {
-  const candidates = organizationSlugCandidates(companyName)
-  if (!organizationSlugCandidates(previous.name).includes(previous.slug) || candidates.includes(previous.slug)) return
-  const taken = new Set((await prisma.organization.findMany({ where: { slug: { in: candidates } }, select: { slug: true } })).map(org => org.slug))
-  for (const slug of candidates.filter(candidate => !taken.has(candidate))) {
+  const derivedFrom = (name: string, slug: string) => {
+    const base = organizationSlugFromName(name)
+    const suffix = /-(\d+)$/.exec(slug)
+    return slug === base || (suffix !== null && Number(suffix[1]) >= 2 && Number(suffix[1]) <= 1000 && organizationSlugCandidates(name, Number(suffix[1])).at(-1) === slug)
+  }
+  if (!derivedFrom(previous.name, previous.slug) || derivedFrom(companyName, previous.slug)) return
+  const base = organizationSlugFromName(companyName)
+  const head = base.slice(0, 36).replace(/-+$/g, "") || "organization"
+  const taken = new Set((await prisma.organization.findMany({ where: { slug: { startsWith: head } }, select: { slug: true } })).map(org => org.slug))
+  // Same order as organization creation, beyond any number of taken suffixes.
+  for (const slug of organizationSlugCandidates(companyName, taken.size + 2).filter(candidate => !taken.has(candidate))) {
     try {
       await prisma.organization.updateMany({ where: { id: organizationId, slug: previous.slug }, data: { slug } })
       return
