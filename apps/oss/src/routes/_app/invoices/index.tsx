@@ -69,14 +69,19 @@ function InvoicesListPage() {
   const { t, locale } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
+  const [timezone, setTimezone] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
 
   async function loadInvoices() {
     try {
-      const data = await loadInvoicesListData({
-        list: () => trpc.invoices.list.query(),
-        markOverdue: () => trpc.invoices.markOverdue.mutate(),
-      })
+      const [data, settings] = await Promise.all([
+        loadInvoicesListData({
+          list: () => trpc.invoices.list.query(),
+          markOverdue: () => trpc.invoices.markOverdue.mutate(),
+        }),
+        trpc.settings.get.query().catch(() => ({ timezone: null })),
+      ])
+      setTimezone(settings.timezone)
       setInvoices(data as unknown as Invoice[])
     } catch {
       // Auth or org errors handled by layout
@@ -222,7 +227,7 @@ function InvoicesListPage() {
                     </div>
                   </ListCell>
                   <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
-                    <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice)} />
+                    <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice, timezone)} />
                   </ListCell>
                   <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {invoice.status === "draft" && (
