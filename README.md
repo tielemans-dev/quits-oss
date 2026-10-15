@@ -283,6 +283,9 @@ Package manifest exports remain public entrypoints. App routes, tests, config
 files, and standalone automation scripts are additional entrypoints. Generated
 Prisma code is outside the project globs. Vendored UI component exports and types
 are omitted from unused-member findings; their dependency imports are still checked.
+Dependencies imported only by unused files can still appear unused in the report.
+The app package ships all of `src`, including the vendored form and chart components.
+Keep `react-hook-form` and `recharts` while those published files import them.
 The two `qui56-baseline-*` capture imports are local Vite aliases and are excluded
 from dependency findings.
 
