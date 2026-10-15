@@ -195,6 +195,7 @@ export function totalsBlock(
     priceBasis?: PriceBasis
     vatRows?: readonly VatRow[] | null
     rounding?: string | null
+    taxRegime?: string | null
   },
   locale?: string | null
 ) {

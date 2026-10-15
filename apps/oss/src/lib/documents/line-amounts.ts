@@ -1,4 +1,3 @@
-import { vatReasonCodeSchema } from "@quits/contracts/vat"
 import type { TranslationKey } from "../i18n/messages"
 
 /**
@@ -59,24 +58,46 @@ export function printableVatRows(rows: readonly VatRow[]): VatRow[] {
 }
 
 /** VAT-bearing documents state the side of VAT regardless of their line price basis. */
-export function totalsLabelKeys(basis: PriceBasis | undefined, hasVat = basis === "gross"): { subtotal: TranslationKey; total: TranslationKey } {
+export function totalsLabelKeys(basis: PriceBasis | undefined, hasVat = basis === "gross", euVat = false): { subtotal: TranslationKey; total: TranslationKey } {
   return hasVat
-    ? { subtotal: "pdf.subtotalExclTax", total: "pdf.totalInclTax" }
+    ? euVat ? { subtotal: "pdf.subtotalExclVat", total: "pdf.totalInclVat" } : { subtotal: "pdf.subtotalExclTax", total: "pdf.totalInclTax" }
     : { subtotal: "pdf.subtotal", total: "pdf.total" }
 }
 
+/**
+ * The statement a document prints for a zero-VAT treatment, from the closed list of treatments and
+ * reason codes. Exemptions cite the momsloven provision (Directive Art. 226(11)); reverse charge
+ * says so (momsbekendtgørelsen §§ 60 and 62, stk. 1; Art. 226(11a)); intra-community goods cite the
+ * exemption (§ 62, stk. 2). A treatment with no entry here prints nothing legal of its own.
+ */
+const vatStatementKeys: Record<string, TranslationKey> = {
+  exempt: "pdf.vatStatement.exempt",
+  zero_rated: "pdf.vatStatement.exempt",
+  "exempt:health": "pdf.vatStatement.exempt.health",
+  "exempt:education": "pdf.vatStatement.exempt.education",
+  // "financial" may be insurance (nr. 10) or finance (nr. 11) and "other" names no provision, so cite the section only.
+  "exempt:financial": "pdf.vatStatement.exempt.statute",
+  "exempt:other": "pdf.vatStatement.exempt.statute",
+  "intra_community:goods": "pdf.vatStatement.intra_community.goods",
+  "intra_community:services_b2b": "pdf.vatStatement.intra_community.services_b2b",
+  "export:goods_outside_eu": "pdf.vatStatement.export.goods_outside_eu",
+  export: "pdf.vatStatement.export.goods_outside_eu",
+  // Only drafts reach here without a reason; the issuing checks require one.
+  intra_community: "vat.treatment.intra_community",
+  // Denmark has no construction reverse charge in momsloven § 46, stk. 1, so no provision is cited for any reason.
+  reverse_charge_domestic: "pdf.vatStatement.reverse_charge_domestic",
+}
+
 export function vatReasonKeys(row: VatRow): TranslationKey[] {
-  const treatments = [...new Set(row.treatments ?? (row.treatment ? [row.treatment] : []))].flatMap<TranslationKey>(treatment => {
+  const treatments = row.treatments ?? (row.treatment ? [row.treatment] : [])
+  const reasons = [...new Set(row.reasonCodes ?? (row.reasonCode ? [row.reasonCode] : []))]
+  const keys = treatments.flatMap<TranslationKey>(treatment => {
     if (treatment === "out_of_scope") return ["pdf.vatOutOfScope"]
-    if (["exempt", "reverse_charge_domestic", "intra_community", "export", "zero_rated"].includes(treatment)) return [`vat.treatment.${treatment}` as TranslationKey]
-    return []
+    const specific = reasons.flatMap(reason => vatStatementKeys[`${treatment}:${reason}`] ?? [])
+    const fallback = vatStatementKeys[treatment]
+    return specific.length ? specific : fallback ? [fallback] : []
   })
-  const reasons = [...new Set(row.reasonCodes ?? (row.reasonCode ? [row.reasonCode] : []))].flatMap<TranslationKey>(code => {
-    const parsed = vatReasonCodeSchema.safeParse(code)
-    // "other" is the catch-all and names nothing the treatment does not already say.
-    return parsed.success && parsed.data !== "other" ? [`vat.reason.${parsed.data}` as TranslationKey] : []
-  })
-  return [...treatments, ...reasons]
+  return [...new Set(keys)]
 }
 
 /** The document's nominal rate from its lines in order: the first positive one, else the first. */

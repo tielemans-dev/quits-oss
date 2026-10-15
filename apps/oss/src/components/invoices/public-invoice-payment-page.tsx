@@ -134,7 +134,7 @@ function PublicInvoiceDocument({
   const money = (amount: number) => format.money(amount, invoice.currency)
   const total = toNumber(invoice.totalGross)
   const totals = buildTotals({ basis: "net", subtotal: toNumber(invoice.subtotalNet), taxAmount: toNumber(invoice.totalTax), total,
-    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale })
+    vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale, taxRegime: invoice.taxRegime })
   const amountPaid = invoice.amountPaid ?? 0
   const amountCredited = invoice.amountCredited ?? 0
   const balanceDue = paymentState === "paid" ? 0 : (invoice.balanceDue ?? total)

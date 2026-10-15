@@ -267,6 +267,7 @@ function PublicQuoteDocument({
                   vatRows={quote.vatRows}
                   rounding={quote.rounding}
                   currency={quote.currency}
+                  taxRegime={quote.taxRegime}
                   renderAmount={(amount) => (
                     <Amount value={amount} currency={quote.currency} locale={locale} />
                   )}

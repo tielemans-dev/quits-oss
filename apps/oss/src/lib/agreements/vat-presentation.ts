@@ -14,7 +14,7 @@ export function agreementVatPresentation(snapshot: AgreementOfferSnapshot, local
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   const rows = v2 ? vatRowsByRate(v2.vatGroups, snapshot.currency) : undefined
   return {
-    totals: v2 ? buildTotals({ basis: "net", subtotal: v2.serviceTotal.net, taxAmount: v2.serviceTotal.tax, total: v2.serviceTotal.gross, rounding: v2.serviceTotal.payableRounding, vatRows: rows, currency: snapshot.currency, locale }) : null,
+    totals: v2 ? buildTotals({ basis: "net", subtotal: v2.serviceTotal.net, taxAmount: v2.serviceTotal.tax, total: v2.serviceTotal.gross, rounding: v2.serviceTotal.payableRounding, vatRows: rows, currency: snapshot.currency, locale, taxRegime: snapshot.taxRegime }) : null,
     status,
     taxLabel: translate(status === false ? "line.noVat" : "agreements.tax", locale),
     statement: statement && !`${snapshot.summary ?? ""} ${snapshot.termsHtml}`.includes(statement) ? statement : null,

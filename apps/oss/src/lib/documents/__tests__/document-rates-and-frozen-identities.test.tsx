@@ -25,8 +25,8 @@ describe("Document rates and frozen identities", () => {
     const rows = vatRowsByRate(["health", "education"].map(reasonCode => ({ rate: "0", net: "10", tax: "0", gross: "10", treatment: "exempt", reasonCode })), "DKK")
     expect(rows.map(row => row.reasonCodes)).toEqual([["health"], ["education"]])
     const result = buildTotals({ basis: "net", subtotal: "20", taxAmount: "0", total: "20", currency: "DKK", locale: "en-US", vatRows: rows })
-    expect(result.lines[1]?.reason).toBe("Exempt · Health")
-    expect(result.lines[2]?.reason).toBe("Exempt · Education")
+    expect(result.lines[1]?.reason).toBe("Exempt from VAT under section 13(1)(1) of the Danish VAT Act (momsloven)")
+    expect(result.lines[2]?.reason).toBe("Exempt from VAT under section 13(1)(3) of the Danish VAT Act (momsloven)")
   })
 
   it("derives the nominal document rate from line order, not from totals", () => {

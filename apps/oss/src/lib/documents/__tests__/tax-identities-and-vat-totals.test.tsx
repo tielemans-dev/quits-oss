@@ -52,7 +52,7 @@ describe("Tax identities and VAT totals", () => {
   it.each(["export", "zero_rated"])("retains a lone %s zero row with its classification", treatment => {
     const result = totals([{ ...zero, treatment }], "en-US")
     expect(result.lines.map(row => row.label)).toEqual(["Subtotal", "Tax 0%"])
-    expect(result.lines[1]?.reason).toBe(treatment === "export" ? "Export" : "Zero-rated")
+    expect(result.lines[1]?.reason).toBe(treatment === "export" ? "VAT-exempt export under section 34(1)(5) of the Danish VAT Act (momsloven)" : "Exempt from VAT")
   })
   it("still drops a lone unclassified zero row", () => {
     expect(totals([{ ...zero, treatment: "unclassified_zero" }], "en-US").lines.map(row => row.label)).toEqual(["Subtotal"])
@@ -70,6 +70,6 @@ describe("Tax identities and VAT totals", () => {
     for (const country of ["", "  "]) expect(formatTaxIds(paired, "da-DK", country)).toEqual(["CVR-nr. 12345678"])
   })
   it("keeps the out-of-scope note free of any one country's VAT", () => {
-    expect(totals([zero], "da-DK").note).toBe("Der er ikke beregnet moms. Ydelsen er uden for momsens anvendelsesområde.")
+    expect(totals([zero], "da-DK").note).toBe("Der er ikke beregnet moms. Leverancen er uden for momsens anvendelsesområde.")
   })
 })

@@ -13,8 +13,8 @@ describe("VAT statements and email line labels", () => {
       { ...group, evidence: { statementText: "Section <13> health" } },
       { ...group, reasonCode: "education", evidence: { statementText: "Section 13 education" } },
     ])
-    expect(result.lines[1]?.reason).toBe("Exempt · Health · Section <13> health")
-    expect(result.lines[2]?.reason).toBe("Exempt · Education · Section 13 education")
+    expect(result.lines[1]?.reason).toBe("Exempt from VAT under section 13(1)(1) of the Danish VAT Act (momsloven) · Section <13> health")
+    expect(result.lines[2]?.reason).toBe("Exempt from VAT under section 13(1)(3) of the Danish VAT Act (momsloven) · Section 13 education")
     expect(result.lines[1]?.amount).toBe("0.00")
   })
 

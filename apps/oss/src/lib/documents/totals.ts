@@ -23,9 +23,12 @@ export function buildTotals(input: {
   rounding?: string | null
   currency: string
   locale?: string | null
+  /** Under the EU VAT regime English documents say "VAT"; other regimes, and callers that do not know, keep "Tax". */
+  taxRegime?: string | null
 }): { lines: TotalsRow[]; total: TotalsRow; note?: string } {
   const { currency, locale } = input
-  const keys = totalsLabelKeys(input.basis, input.vatRows?.length ? input.vatRows.some(row => Number(row.ratePercent) > 0) : Number(input.taxAmount) !== 0)
+  const euVat = input.taxRegime === "eu_vat"
+  const keys = totalsLabelKeys(input.basis, input.vatRows?.length ? input.vatRows.some(row => Number(row.ratePercent) > 0) : Number(input.taxAmount) !== 0, euVat)
   const money = (amount: string) => formatCurrency(Number(amount), currency, locale)
   const rate = (row: VatRow) => formatNumber(Number(row.ratePercent), locale)
   const lines: TotalsRow[] = [{ kind: "subtotal", label: translate(keys.subtotal, locale), amount: String(input.subtotal) }]
@@ -35,14 +38,14 @@ export function buildTotals(input: {
       lines.push({
         kind: "tax",
         label: rows.length > 1
-          ? translate("pdf.taxRateOf", locale, { rate: rate(row), base: money(row.net) })
-          : translate("pdf.taxRate", locale, { rate: rate(row) }),
+          ? translate(euVat ? "pdf.vatRateOf" : "pdf.taxRateOf", locale, { rate: rate(row), base: money(row.net) })
+          : translate(euVat ? "pdf.vatRate" : "pdf.taxRate", locale, { rate: rate(row) }),
         amount: row.tax,
         reason: [...vatReasonKeys(row).map(key => translate(key, locale)), ...(row.statements ?? [])].join(" · ") || undefined,
       })
     }
   } else if (Number(input.taxAmount) > 0) {
-    lines.push({ kind: "tax", label: translate("pdf.tax", locale), amount: String(input.taxAmount) })
+    lines.push({ kind: "tax", label: translate(euVat ? "pdf.vat" : "pdf.tax", locale), amount: String(input.taxAmount) })
   }
   if (input.rounding && /[1-9]/.test(input.rounding)) {
     lines.push({ kind: "rounding", label: translate("pdf.rounding", locale), amount: input.rounding })
