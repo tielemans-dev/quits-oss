@@ -184,6 +184,15 @@ const editLine = (line: Awaited<ReturnType<typeof invoice>>["items"][number]) =>
     expect(await prisma.domainEvent.count({ where: { organizationId: ctx.org.organizationId, type: "deliverable.reserved" } })).toBe(0)
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: ctx.org.organizationId } })).invoiceNextNum).toBe(settings.invoiceNextNum)
   })
+  it("changes and clears delivery dates on linked draft invoices", async () => {
+    const ctx = await setup("on_acceptance", false, "25", true)
+    await ctx.ready()
+    const { saleInvoiceId: id } = await ctx.reserve([ctx.item().id])
+    for (const supplyDate of ["2026-10-07", null]) {
+      completed(await executeIssuanceCommand(updateInvoiceDraft, { id: id!, supplyDate }, { actor: ctx.actor }))
+      expect((await invoice(id!)).supplyDate?.toISOString() ?? null).toBe(supplyDate ? `${supplyDate}T00:00:00.000Z` : null)
+    }
+  })
   it("preserves contact and linked values, uses frozen VAT for expenses, releases omissions and deletions", async () => {
     // Retain one Danish legal seller while changing its trading name/address below.
     const ctx = await setup("on_acceptance", false, "25", true); await ctx.ready(); await ctx.ready(1)
