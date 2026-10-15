@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
+import { lineAmounts, nominalLineTaxRate, priceBasis } from "../../lib/documents/line-amounts"
 import { documentVatSummary } from "../documents/vat-summary"
 import { creditNoteIssueInputSchema, creditNoteSendInputSchema } from "@quits/contracts/credit-notes"
 import { Prisma } from "../../../generated/prisma/client"
@@ -175,6 +175,9 @@ export const sendCreditNote = defineCommand({
           issueDate: creditNote.issueDate,
           reason: creditNote.reason,
           sellerSnapshot: creditNote.sellerSnapshot,
+          buyerSnapshot: creditNote.buyerSnapshot,
+          contact: creditNote.contact,
+          taxRate: (creditNote.issuanceSnapshot as { taxRate?: number } | null)?.taxRate ?? nominalLineTaxRate(creditNote.items.map(item => num(item.taxRate))),
           subtotal: num(creditNote.subtotalNet),
           taxAmount: num(creditNote.totalTax),
           total: num(creditNote.totalGross),
@@ -197,6 +200,7 @@ export const sendCreditNote = defineCommand({
         org: {
           companyName: settings.companyName,
           companyEmail: settings.companyEmail,
+          companyAddress: settings.companyAddress,
           locale: creditNote.locale,
           timezone: creditNote.timezone,
         },

@@ -14,6 +14,7 @@ import { documentColors as C } from "./brand/document-colors"
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: C.ink },
+  footer: { position: "absolute", bottom: 20, left: 40, right: 40, fontSize: 9, color: C.muted, flexDirection: "row", justifyContent: "space-between" },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 30 },
   title: { fontSize: 24, fontFamily: "Helvetica-Bold" },
   logoContainer: { width: 140, height: 56, marginBottom: 8 },
@@ -218,6 +219,10 @@ export function CreditNotePdfDocument({
         <View style={styles.reason}>
           <Text style={styles.sectionTitle}>{translate("creditNotes.pdf.reason", locale)}</Text>
           <Text style={styles.reasonText}>{reason}</Text>
+        </View>
+        <View style={styles.footer} fixed>
+          <Text style={{ flex: 1, paddingRight: 12 }}>{[seller.name, seller.address, ...seller.taxIds, seller.email].filter(Boolean).join(" · ")}</Text>
+          <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
         </View>
       </Page>
     </Document>

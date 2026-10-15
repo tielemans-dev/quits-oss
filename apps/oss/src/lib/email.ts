@@ -157,9 +157,10 @@ export function itemsTable(
   mobileCards = false,
   momsRegistered?: boolean | null,
   vatRows?: readonly VatRow[] | null,
+  taxRate?: number,
 ) {
   const columns = lineColumnKeys(basis)
-  const mainRate = nominalLineTaxRate(items.map(item => item.taxRate))
+  const mainRate = taxRate ?? nominalLineTaxRate(items.map(item => item.taxRate))
   const deviation = (item: { taxRate?: number }) => deviationVatLabel(item.taxRate, vatRows, mainRate, momsRegistered)
     ? `<div style="font-size:12px;color:${C.muted};">${escapeHtml(translate("pdf.lineVatRate", locale, { rate: formatNumber(item.taxRate!, locale) }))}</div>` : ""
   const rows = items.map((item) => `
