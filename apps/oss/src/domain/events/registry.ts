@@ -43,6 +43,7 @@ const artifact = z.object({ ref: s.min(1), hash: s.regex(/^[a-f0-9]{64}$/), size
 
 /** Serialized v1 shapes, inventoried from the writers. Change a payload only with a version bump. */
 export const eventRegistry = {
+  "accounting.action_recorded": { version: 1, schema: z.object({ action: z.enum(["disconnect", "retry", "skip"]), provider: z.enum(["economic", "dinero"]), generation: s, deliveryId: nullableString, reason: nullableString }).strict() },
   "document.artifact_stored": { version: 1, schema: z.object({ ...artifactIdentity,
     artifacts: z.object({ pdf: artifact, ubl: artifact.optional() }).strict(), rendererVersion: s }).strict() },
   "document.artifact_missing": { version: 1, schema: z.object({ ...artifactIdentity, reason: s }).strict() },

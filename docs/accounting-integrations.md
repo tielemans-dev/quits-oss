@@ -1,7 +1,7 @@
 # Accounting integrations
 
 QUI-77 includes pure e-conomic and Dinero payload preparation, persisted encrypted
-connections, scheduled delivery through injectable adapters and a read-only Settings
+connections, scheduled delivery through injectable adapters and an audited Settings
 section. There is no live transport or connect flow yet. It is available to the
 self-hostable runtime without hosted gates. Billy follows e-conomic and Dinero.
 
@@ -141,8 +141,10 @@ resending. Lease tokens fence persistence and completion.
 Delivered means the single prepared draft/payment request was accepted, not that
 sales were booked. Draft total validation, booking, remote relationship validation
 and provider-specific reconciliation are required before enabling a live worker.
-Legacy payments without immutable evidence remain refused. Failed rows have no
-automatic requeue or skip policy in this slice.
+Legacy payments without immutable evidence remain refused. Admins can retry failed
+deliveries with a fresh send budget and cleared backoff, retaining pinned requests
+and reconciliation. Skip requires an audit reason and advances the contiguous cursor
+so later documents can continue. Both actions target the current connection generation.
 
 ## Per-organization connections
 
@@ -156,7 +158,9 @@ returns metadata without reading credentials. Remote revocation remains OAuth wo
 Settings shows each provider as not connected, connected or error. Error is derived: a
 connected organization whose current generation has a failed delivery. It also shows
 the last delivery, the failed count and the last stored error code in plain language.
-Disconnect needs `settings:update`; connect stays disabled until OAuth ships.
+Disconnect, retry and skip need `settings:update` and run through `executeCommand`.
+State changes emit actor-attributed audit events atomically; repeated disconnect is
+a no-op. The card targets the earliest failure. Connect stays disabled until OAuth ships.
 
 `RuntimeServices.accountingDelivery` supplies the transport factory and immutable
 event-specific settings resolver. Settings include customer links, layout, dueDate
@@ -196,7 +200,7 @@ stays inside the app.
 - Richer frozen payment events with date, base valuation and settlement evidence.
 - OAuth/agreement-grant authorization and remote revocation.
 - Live transport/reconciliation, remote total checks, booking operation records,
-  invoice dependency resolution, sync start positions and audited requeue/skip.
+  invoice dependency resolution and sync start positions.
 - Persisted settings resolution and live delivery safeguards before enabling transport.
 - Settings UI for account/VAT mapping, a connect button that starts authorization,
-  audit entries for disconnect, and requeue or skip for failed deliveries.
+  and delivery history beyond the earliest failed delivery.

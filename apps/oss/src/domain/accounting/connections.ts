@@ -33,7 +33,7 @@ export async function connectAccounting(input: {
 }
 
 /** Pauses delivery and removes local authorization. Remote revocation belongs to the future OAuth flow. */
-export async function disconnectAccounting(organizationId: string, db: PrismaClient = prisma): Promise<void> {
+export async function disconnectAccounting(organizationId: string, db: PrismaClient | Prisma.TransactionClient = prisma): Promise<void> {
   await db.accountingConnection.updateMany({ where: { organizationId }, data: { status: "disconnected", credentialEnc: null } })
 }
 

@@ -11,6 +11,7 @@ import {
 import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { Input } from "../ui/input"
 
 type Translate = ReturnType<typeof useI18n>["t"]
 type State = { providers: AccountingProviderStatus[]; canDisconnect: boolean }
@@ -36,6 +37,7 @@ export function AccountingIntegrationsCard() {
   const [state, setState] = useState<State | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [skipReason, setSkipReason] = useState("")
   // Applied only while it is the latest request, so a slow response never overwrites a newer one
   // or another organization's state.
   const latest = useRef(0)
@@ -45,6 +47,7 @@ export function AccountingIntegrationsCard() {
     setState(null)
     setError(null)
     setDisconnecting(false)
+    setSkipReason("")
     if (organizationId === undefined) return
     // Start inside a promise chain so any client failure lands in the error state.
     Promise.resolve()
@@ -59,15 +62,15 @@ export function AccountingIntegrationsCard() {
 
   const canDisconnect = state?.canDisconnect === true
 
-  async function disconnect() {
+  async function runAction(action: () => Promise<State>, failureMessage: string) {
     const token = ++latest.current
     setDisconnecting(true)
     setError(null)
     try {
-      const result = await trpc.accounting.disconnect.mutate()
+      const result = await action()
       if (latest.current === token) setState(result)
     } catch {
-      if (latest.current === token) setError(t("accounting.disconnect.error"))
+      if (latest.current === token) setError(failureMessage)
     } finally {
       if (latest.current === token) setDisconnecting(false)
     }
@@ -112,7 +115,7 @@ export function AccountingIntegrationsCard() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => void disconnect()}>{t("accounting.disconnect.confirm")}</AlertDialogAction>
+                          <AlertDialogAction onClick={() => void runAction(() => trpc.accounting.disconnect.mutate(), t("accounting.disconnect.error"))}>{t("accounting.disconnect.confirm")}</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -128,6 +131,27 @@ export function AccountingIntegrationsCard() {
                     <span className="text-destructive">
                       {t("accounting.lastError", { message: describeAccountingError(delivery.lastErrorCode, name, t) })} {t("accounting.blocked")}
                     </span>
+                  ) : null}
+                  {canDisconnect && delivery.failedDeliveryId ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId! }), t("accounting.action.error"))}>{t("accounting.retry")}</Button>
+                      <AlertDialog onOpenChange={() => setSkipReason("")}>
+                        <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.skip")}</Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t("accounting.skip.title")}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("accounting.skip.description")}</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <label className="grid gap-2 text-sm">{t("accounting.skip.reason")}
+                            <Input value={skipReason} maxLength={500} onChange={event => setSkipReason(event.target.value)} />
+                          </label>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction disabled={disconnecting || !skipReason.trim()} onClick={() => void runAction(() => trpc.accounting.skip.mutate({ deliveryId: delivery.failedDeliveryId!, reason: skipReason }), t("accounting.action.error"))}>{t("accounting.skip")}</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   ) : null}
                 </div>
               ) : null}

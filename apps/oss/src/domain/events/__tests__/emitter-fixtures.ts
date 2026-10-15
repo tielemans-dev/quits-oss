@@ -7,6 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
+  "commands/accounting.ts",
   ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "paid-moment", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
@@ -62,6 +63,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    connection: { provider: "dinero", generation: "generation-1" }, row: { id: "delivery-1" }, action: variant === "decline" ? "skip" : "retry",
     receipt: { ...record, id: "receipt-1", method: "bank_transfer", reference: "BANK-1" },
     gross: { toFixed: () => "200.00" }, net: money, fee: money, paidAt: instant,
     allocation: { number: "DOC-0001", receiptAmount: "100.00", currency: "USD", invoiceAmount: "100.00", after: "0.00", exchangeEvidence: { reason: "Agreed conversion", evidence: "https://evidence.example.test/fx/1" } },
@@ -84,7 +86,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     payment: { id: "payment-1", invoiceId: "invoice-1", amount: money, currency: "USD" },
     amount: money, refreshed: { settlement: { balanceDue: money, amountPaid: money, paymentStatus: "paid" }, invoice: record },
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",
-    reason: "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",
+    reason: expression.source === "commands/accounting.ts" ? variant === "decline" ? "Already entered manually" : null : "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",
     name: "Customer", method: manual ? "manual" : "email", unchanged: variant === "unchanged_retry", hash: "hash-1", policy: { enabled: true, offsetsDays: [-1, 0, 7] },
     data: expression.source === "commands/agreement-templates.ts" ? { name: "Updated" } : { name: "Updated", email: "customer@example.test" }, id: "deliverable-1", url: "https://example.test/read",
     runDate: instant, formatCalendarDate: () => "2026-01-15", balanceDue: money, paused: optional,

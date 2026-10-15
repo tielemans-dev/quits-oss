@@ -64,6 +64,18 @@ describeDb("accounting delivery", () => {
     expect(vi.mocked(f.transport.send).mock.calls[0][0]).toEqual(vi.mocked(f.transport.send).mock.calls[1][0])
     expect(f.transport.reconcile).toHaveBeenCalledTimes(1)
   })
+  it("reconciles pinned requests even after an admin resets the attempt budget", async () => {
+    const f = await setup()
+    vi.mocked(f.transport.send).mockResolvedValueOnce({ status: 400 })
+    expect(await f.run()).toBe("failed")
+    const row = await f.row()
+    await prisma.eventConsumerDelivery.update({ where: { id: row.id }, data: { status: "pending", attempts: 0 } })
+    vi.mocked(f.transport.reconcile).mockResolvedValueOnce({ status: "unknown" })
+    expect(await f.run()).toBe("failed")
+    expect(f.transport.send).toHaveBeenCalledTimes(1)
+    expect(f.transport.reconcile).toHaveBeenCalledWith(row.prepared, expect.any(AbortSignal))
+    expect(await f.row()).toMatchObject({ error: { code: "reconciliation_required" } })
+  })
   it("stops a permanent failure and blocks later events", async () => {
     const f = await setup()
     await prisma.domainEvent.create({ data: { organizationId: f.organizationId, sequence: 2, aggregateType: "invoice",

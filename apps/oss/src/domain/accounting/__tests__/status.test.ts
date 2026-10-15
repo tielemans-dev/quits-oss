@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "../../../../generated/prisma/client"
 import { readAccountingStatus } from "../status"
 
-function fakeDb(connection: object | null, done?: Date, failed: Array<{ updatedAt: Date; error: unknown }> = []) {
+function fakeDb(connection: object | null, done?: Date, failed: Array<{ id?: string; updatedAt: Date; error: unknown }> = []) {
   return {
     accountingConnection: { findFirst: vi.fn(async () => connection) },
     eventConsumerDelivery: {
@@ -26,7 +26,7 @@ describe("readAccountingStatus", () => {
     const done = new Date("2026-10-14T09:30:00Z")
     const db = fakeDb(dinero, done)
     expect((await readAccountingStatus("org", db))[1]).toEqual({ provider: "dinero", status: "connected", remoteAccountId: "1234",
-      delivery: { lastDeliveredAt: done, failedCount: 0, lastErrorCode: null } })
+      delivery: { lastDeliveredAt: done, failedCount: 0, lastErrorCode: null, failedDeliveryId: null } })
     expect(db.eventConsumerDelivery.count).toHaveBeenCalledWith({ where: { organizationId: "org", consumerKey: "accounting:dinero:gen-2", status: "failed" } })
     expect(db.accountingConnection.findFirst.mock.calls[0]![0].select).not.toHaveProperty("credentialEnc")
   })
@@ -36,5 +36,10 @@ describe("readAccountingStatus", () => {
     const read = async (error: unknown) => (await readAccountingStatus("org", fakeDb(economic, undefined, [{ updatedAt: new Date(), error }])))[0]
     expect(await read({ code: "http_401" })).toMatchObject({ status: "error", delivery: { failedCount: 1, lastErrorCode: "http_401" } })
     expect(await read("boom")).toMatchObject({ status: "error", delivery: { lastErrorCode: null } })
+  })
+  it("returns the earliest failure as the action target", async () => {
+    const db = fakeDb(dinero, undefined, [{ id: "delivery-1", updatedAt: new Date(), error: { code: "http_400" } }])
+    expect((await readAccountingStatus("org", db))[1]?.delivery).toMatchObject({ failedDeliveryId: "delivery-1", lastErrorCode: "http_400" })
+    expect(db.eventConsumerDelivery.findFirst).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { sequence: "asc" }, select: { id: true, error: true } }))
   })
 })

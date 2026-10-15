@@ -120,7 +120,8 @@ export async function deliverAccounting<S, P>(input: {
     return failure("preparation_failed")
   }
   try {
-    if (row.attempts > 1) {
+    // Manual retry resets the send budget, but a pinned request still needs reconciliation.
+    if (row.attempts > 1 || row.prepared) {
       const previous = await bounded(signal => input.transport.reconcile(request, signal))
       if (previous.status === "delivered") return delivered(previous.externalRef)
       if (previous.status !== "absent") return failure("reconciliation_required")

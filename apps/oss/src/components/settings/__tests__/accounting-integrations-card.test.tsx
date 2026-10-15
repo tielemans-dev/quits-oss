@@ -3,10 +3,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 
-const api = vi.hoisted(() => ({ status: vi.fn(), disconnect: vi.fn() }))
+const api = vi.hoisted(() => ({ status: vi.fn(), disconnect: vi.fn(), retry: vi.fn(), skip: vi.fn() }))
 
 vi.mock("../../../trpc/client", () => ({
-  trpc: { accounting: { status: { query: api.status }, disconnect: { mutate: api.disconnect } } },
+  trpc: { accounting: { status: { query: api.status }, disconnect: { mutate: api.disconnect }, retry: { mutate: api.retry }, skip: { mutate: api.skip } } },
 }))
 vi.mock("../../../lib/auth-client", () => ({
   useSession: () => ({ data: { session: { activeOrganizationId: "org_a" } }, isPending: false }),
@@ -37,6 +37,35 @@ afterEach(() => {
 })
 
 describe("AccountingIntegrationsCard", () => {
+  const failed = { ...clean, failedCount: 1, failedDeliveryId: "delivery-1", lastErrorCode: "http_400" }
+  it("retries the earliest failure and refreshes the card", async () => {
+    load(dinero(failed, "error"))
+    api.retry.mockResolvedValue({ providers: dinero(clean), canDisconnect: true })
+    render(<AccountingIntegrationsCard />)
+    fireEvent.click(await screen.findByRole("button", { name: "Retry delivery" }))
+    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1" }))
+    expect(await screen.findByText("Connected")).toBeTruthy()
+  })
+  it("requires a reason to skip and preserves the failure when the action fails", async () => {
+    load(dinero(failed, "error"))
+    api.skip.mockRejectedValue(new Error("unavailable"))
+    render(<AccountingIntegrationsCard />)
+    fireEvent.click(await screen.findByRole("button", { name: "Skip delivery" }))
+    const dialog = within(await screen.findByRole("alertdialog")), confirm = dialog.getByRole("button", { name: "Skip delivery" }) as HTMLButtonElement
+    expect(confirm.disabled).toBe(true)
+    fireEvent.change(dialog.getByLabelText("Reason for skipping"), { target: { value: "Already entered" } })
+    fireEvent.click(confirm)
+    await waitFor(() => expect(api.skip).toHaveBeenCalledWith({ deliveryId: "delivery-1", reason: "Already entered" }))
+    expect((await screen.findByRole("alert")).textContent).toBe("Could not update the delivery. Try again.")
+    expect(screen.getByText("Failed deliveries: 1")).toBeTruthy()
+  })
+  it("hides failed delivery actions for non-admins", async () => {
+    load(dinero(failed, "error"), false)
+    render(<AccountingIntegrationsCard />)
+    await screen.findByText("Failed deliveries: 1")
+    expect(screen.queryByRole("button", { name: "Retry delivery" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Skip delivery" })).toBeNull()
+  })
   it("shows both providers as not connected with a disabled coming-soon connect button", async () => {
     load(idle)
     render(<AccountingIntegrationsCard />)

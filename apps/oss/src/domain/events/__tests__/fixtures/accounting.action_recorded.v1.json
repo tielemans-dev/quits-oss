@@ -1,0 +1,45 @@
+{
+  "type": "accounting.action_recorded",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/accounting.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action: \"disconnect\", provider: connection.provider, generation: connection.generation, deliveryId: null, reason: null }",
+      "variant": "default",
+      "payload": {
+        "action": "disconnect",
+        "provider": "dinero",
+        "generation": "generation-1",
+        "deliveryId": null,
+        "reason": null
+      }
+    },
+    {
+      "source": "commands/accounting.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action, provider: connection.provider, generation: connection.generation, deliveryId: row.id, reason }",
+      "variant": "default",
+      "payload": {
+        "action": "retry",
+        "provider": "dinero",
+        "generation": "generation-1",
+        "deliveryId": "delivery-1",
+        "reason": null
+      }
+    },
+    {
+      "source": "commands/accounting.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action, provider: connection.provider, generation: connection.generation, deliveryId: row.id, reason }",
+      "variant": "decline",
+      "payload": {
+        "action": "skip",
+        "provider": "dinero",
+        "generation": "generation-1",
+        "deliveryId": "delivery-1",
+        "reason": "Already entered manually"
+      }
+    }
+  ]
+}
