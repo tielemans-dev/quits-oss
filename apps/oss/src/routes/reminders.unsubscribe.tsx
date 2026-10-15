@@ -56,12 +56,13 @@ function ReminderUnsubscribePage() {
             {t(`email.reminderUnsubscribe.${state.kind}.body`, { organization: state.kind === "invalid" ? "" : state.organizationName })}
           </p>
         </CardHeader>
-        {state.kind === "confirm" && (
+        {state.kind !== "invalid" && (
           <CardContent>
             <form method="post" action="/reminders/unsubscribe" onSubmit={() => setSubmitting(true)} aria-busy={submitting}>
               <input type="hidden" name="token" value={token} />
+              <input type="hidden" name="intent" value={state.kind === "done" ? "resume" : "unsubscribe"} />
               <Button type="submit" disabled={submitting} className="h-10 w-full">
-                {t(submitting ? "email.reminderUnsubscribe.submitting" : "email.reminderUnsubscribe.button")}
+                {t(submitting ? "email.reminderUnsubscribe.submitting" : state.kind === "done" ? "email.reminderUnsubscribe.resume" : "email.reminderUnsubscribe.button")}
               </Button>
             </form>
           </CardContent>

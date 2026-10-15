@@ -3,7 +3,9 @@ import {
   contactCreateInputSchema,
   contactUpdateInputSchema,
 } from "@quits/contracts/contacts"
-import { createContact, deleteContact, updateContact } from "../../domain/commands/contacts"
+import { createContact, deleteContact, resumeContactReminders, updateContact } from "../../domain/commands/contacts"
+import { actorCan } from "../../domain/actor"
+import { normalizeReminderRecipient } from "../../lib/reminders/unsubscribe-token"
 import { executeCommand } from "../../domain/execute"
 import { prisma } from "../../lib/db"
 import { router, authorizedProcedure } from "../init"
@@ -20,10 +22,21 @@ export const contactsRouter = router({
   get: authorizedProcedure("contact:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return prisma.contact.findFirstOrThrow({
+      const contact = await prisma.contact.findFirstOrThrow({
         where: { id: input.id, organizationId: ctx.organizationId },
       })
+      const preference = contact.email ? await prisma.recipientReminderPreference.findUnique({
+        where: { organizationId_recipient: { organizationId: ctx.organizationId, recipient: normalizeReminderRecipient(contact.email) } },
+        select: { unsubscribedAt: true },
+      }) : null
+      return { ...contact, reminderUnsubscribedAt: preference?.unsubscribedAt ?? null, canResumeReminders: actorCan(ctx.actor, "invoice:send") }
     }),
+
+  resumeReminders: authorizedProcedure("invoice:send")
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      unwrapOutcome(await executeCommand(resumeContactReminders, input, { actor: ctx.actor }))
+    ),
 
   create: authorizedProcedure("contact:create")
     .input(contactCreateInputSchema)

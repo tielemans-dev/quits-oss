@@ -207,6 +207,22 @@ describeIfDatabase("overdue and reminders", () => {
     expect(sendsTo(context.email)).toBe(2)
   })
 
+  it("resumes automatic reminders for newly eligible invoices without replaying skipped mail", async () => {
+    const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
+    const skipped = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+    await unsubscribe(context)
+    await remindersTick(context)
+    expect(sendsTo(context.email)).toBe(0)
+    const preference = await prisma.recipientReminderPreference.findUniqueOrThrow({ where: { organizationId_recipient: { organizationId: context.org.organizationId, recipient: context.email } } })
+    const token = signReminderUnsubscribeToken(preference, process.env.BETTER_AUTH_SECRET!)
+    expect(await reminderUnsubscribeState(prisma, token, "RESUBSCRIBE")).toMatchObject({ kind: "confirm" })
+    const eligible = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
+    await remindersTick(context)
+    expect(sendsTo(context.email)).toBe(1)
+    expect(await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: skipped.id } })).toMatchObject({ outcome: "skipped" })
+    expect(await prisma.invoiceReminder.findFirstOrThrow({ where: { invoiceId: eligible.id } })).toMatchObject({ outcome: "sent" })
+  })
+
   it("stops further automatic reminder attempts after an uncertain delivery and unsubscribe", async () => {
     const context = await setup({ policy: { enabled: true, offsetsDays: [7] } })
     const invoice = await createInvoice(context, { issuedDaysAgo: 30, dueInDays: -10 })
