@@ -88,7 +88,7 @@ describeIfDatabase("settings/tax-id/localization integration", () => {
         where: { organizationId: orgId },
       })
       expect(orgTaxIds).toHaveLength(1)
-      expect(orgTaxIds[0]?.value).toBe("87654321")
+      expect(orgTaxIds[0]).toMatchObject({ value: "87654321", scheme: "VAT", countryCode: "DK", isPrimary: true })
     } finally {
       await cleanupTestOrganizations({ where: { id: orgId } })
     }
@@ -285,6 +285,25 @@ describeIfDatabase("Danish VAT Settings invariants", () => {
       await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true })
       await caller.settings.update(departure)
       expect((await caller.settings.get()).momsRegistered).toBeNull()
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
+  it("preserves the explicitly selected Danish tax-ID scheme and refuses a malformed CVR with a field issue", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", primaryTaxId: "87654321", primaryTaxIdScheme: "vat" })
+      expect(await prisma.organizationTaxId.findFirst({ where: { organizationId: orgId, isPrimary: true } })).toMatchObject({ value: "87654321", scheme: "vat", countryCode: "DK", isPrimary: true })
+      await expect(caller.settings.update({ primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
+      // The VAT-exemption path validates the same number and answers with the same structured refusal, not a plain message.
+      await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject({ cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } })
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
+  it("answers the structured CVR refusal in the organization's language", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", locale: "da" })
+      const refusal = { message: "Indtast et gyldigt CVR-nummer.", cause: { fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] } }
+      await expect(caller.settings.update({ primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject(refusal)
+      await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject(refusal)
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
 })

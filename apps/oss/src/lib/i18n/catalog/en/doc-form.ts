@@ -27,6 +27,22 @@ export const enDocFormMessages = {
   "docForm.validation.contactRequired": "Please select a customer",
   "docForm.validation.itemDescriptionRequired":
     "All line items must have a description",
+  "invoiceValidation.required": "Fill in this field",
+  "invoiceValidation.changedSinceReview": "The invoice changed after you reviewed it. Review the current details and confirm sending again.",
+  "invoiceValidation.customer.required": "Choose a customer",
+  "invoiceValidation.cvr.invalid": "A CVR number has 8 digits",
+  "invoiceValidation.unknown": "Check this field and try again",
+  "invoiceValidation.customer.businessName.required": "Enter the customer's business name",
+  "invoiceValidation.customer.country.unsupported": "For now you can only invoice customers in: {countries}",
+  "invoiceValidation.seller.country.unsupported": "Choose a supported country for your company",
+  "invoiceValidation.seller.vatRegistration.required": "Confirm whether you're VAT-registered",
+  "invoiceValidation.seller.bank.required": "Add bank details",
+  "invoiceValidation.currency.unsupported": "Choose a supported currency: {currencies}",
+  "invoiceValidation.vat.unsupported": "Use {rate} % VAT on each line",
+  "invoiceValidation.description.tooLong": "Use at most 500 characters",
+  "invoiceValidation.unitPrice.invalid": "Enter a price as a plain number, like 1200 or 99.95",
+  "invoiceValidation.policyUnavailable": "Invoice rules could not be checked right now. You can save a draft and send it later.",
+  "settings.cvr.label": "CVR number",
   "docForm.validation.quantityInvalid":
     "Enter a quantity greater than 0 and at most 1000000, using a decimal point and up to 6 decimal places. Exponent notation is not allowed.",
 } as const

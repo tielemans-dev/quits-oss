@@ -4,6 +4,7 @@ import { computeSettlement } from "./settlement"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { Effect } from "effect"
 import { z } from "zod"
+import type { FieldIssue } from "@quits/contracts/agent"
 import {
   readDocumentSendingDomainState,
   resolveDocumentEmailEnvelope,
@@ -119,11 +120,18 @@ export function resolveInvoiceEmailContext(settings: OrgEmailSettings) {
   }
 }
 
+export function recipientEmailIssue(contact: { email: string | null }): FieldIssue | undefined {
+  return z.string().email().safeParse(contact.email?.trim() ?? "").success
+    ? undefined
+    : { code: "missing_recipient", field: "customer.email", params: {} }
+}
+
 export function requireRecipientEmail(contact: { email: string | null }) {
   const email = contact.email?.trim() ?? ""
-  return z.string().email().safeParse(email).success
-    ? Effect.succeed(email)
-    : Effect.fail(new InvalidState({ message: "Contact has no email address", code: "missing_recipient" }))
+  const issue = recipientEmailIssue(contact)
+  return issue
+    ? Effect.fail(new InvalidState({ message: "Contact has no email address", code: "missing_recipient", fieldIssues: [issue] }))
+    : Effect.succeed(email)
 }
 
 /** The invoice email exactly as it will be delivered. */

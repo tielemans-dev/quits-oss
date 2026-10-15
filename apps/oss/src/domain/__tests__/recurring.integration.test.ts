@@ -261,7 +261,7 @@ describeIfDatabase("recurring invoices", () => {
     expect(invoice).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
     expect(deliver).toHaveBeenCalledWith(expect.objectContaining({ to: "billing@acme.test" }), {
       provider: "resend",
-      idempotencyKey: expect.stringMatching(new RegExp(`^invoice-send:${invoice?.id}:`)),
+      idempotencyKey: expect.stringMatching(/^invoice-send:cmd_/),
     })
   })
 
@@ -308,6 +308,10 @@ describeIfDatabase("recurring invoices", () => {
     })
     const activity = await readActivity({ organizationId: org.organizationId, aggregateType: "recurring" })
     expect(activity.events.map((event) => event.type)).toContain("recurring.auto_send_failed")
+    // The failure keeps its structured field issue: the draft names the field and the audit event stores the issue.
+    expect(invoice?.lastEmailAttemptMessage).toContain("customer.email")
+    const failure = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: org.organizationId, type: "recurring.auto_send_failed" } })
+    expect(failure.payload).toMatchObject({ error: { code: "missing_recipient", fieldIssues: [{ code: "missing_recipient", field: "customer.email", params: {} }], issues: [{ path: "customer.email", message: "missing_recipient" }] } })
     // The schedule keeps running; only the one invoice needs attention.
     const after = await prisma.recurringInvoice.findUniqueOrThrow({ where: { id: schedule.id } })
     expect(after.status).toBe("active")

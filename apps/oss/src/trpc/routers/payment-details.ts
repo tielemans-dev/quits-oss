@@ -7,6 +7,7 @@ import { prisma } from "../../lib/db"
 import { paymentDetailsFromColumns, paymentDetailsSelect } from "../../lib/payment-details"
 import { authorizedProcedure, router } from "../init"
 import { unwrapOutcome } from "../outcome"
+import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
 
 /**
  * The bank account and payment note printed on invoices. Reading needs the same right as reading
@@ -22,7 +23,7 @@ export const paymentDetailsRouter = router({
     const issued = await prisma.invoice.count({ where: { organizationId: ctx.organizationId, number: { not: null } } })
     return { bankMissing: issued === 0 }
   }),
-  get: authorizedProcedure("settings:read").query(async ({ ctx }): Promise<PaymentDetailsState> => {
+  get: authorizedProcedure("settings:read").query(async ({ ctx }): Promise<PaymentDetailsState & { nextInvoiceNumber: string }> => {
     const settings = await prisma.orgSettings.findUnique({
       where: { organizationId: ctx.organizationId },
       select: paymentDetailsSelect,
@@ -30,6 +31,7 @@ export const paymentDetailsRouter = router({
     return {
       ...paymentDetailsFromColumns(settings),
       canUpdate: actorCan(ctx.actor, "settings:update"),
+      nextInvoiceNumber: await previewNextDocumentNumber(ctx.organizationId, "invoice"),
     }
   }),
 

@@ -215,6 +215,12 @@ export async function issueDocument(input: IssuanceArgs & { kind: ArtifactDocume
     const outcome = await executeCommand(definition as CommandDefinition<any, any>, input.commandInput, {
       ...input.options, actor: input.actor, clientRequestId,
       prepareIssuance: async (parsedInput, now) => {
+        // An aggregate send is a single issuance even if callers use different request IDs.
+        // Skip preparation while its delivery is in flight; the handler reuses the committed delivery.
+        if (input.kind === "invoice") {
+          const invoice = await prisma.invoice.findFirst({ where: { id: (parsedInput as { id: string }).id, organizationId: input.actor.organizationId }, select: { lastEmailAttemptOutcome: true } })
+          if (invoice?.lastEmailAttemptOutcome === "sending") return undefined
+        }
         if (!getDocumentRenderer() || !getDocumentArtifactStore()) throw new InvalidState({ code: "renderer_unavailable", message: "Document renderer and artifact store required" })
         const staging = await reserveDocument({ ...input, commandInput: parsedInput, clientRequestId,
           now, method: input.options?.method })

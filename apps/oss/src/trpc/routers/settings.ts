@@ -3,6 +3,7 @@ import { isCloudDistribution } from "../../lib/distribution"
 import { translate } from "../../lib/i18n/translate"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
+import { toTrpcError } from "../outcome"
 import { confirmSellerVatStatus } from "../../lib/runtime/seller-vat-confirmation"
 import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/base-currency"
 import { InvalidState } from "../../domain/errors"
@@ -233,6 +234,9 @@ async function createDefaultOrgSettings(organizationId: string) {
   }
 }
 
+/** Every malformed Danish CVR refusal is the same structured field issue, wherever it is detected. */
+const invalidCvr = (locale: string | null | undefined) => toTrpcError({ tag: "InvalidState", code: "invalid_cvr", message: translate("cvr.invalid", locale), fieldIssues: [{ code: "cvr.invalid", field: "primaryTaxId", params: {} }] })
+
 export const settingsRouter = router({
   get: authorizedProcedure("settings:read").query(async ({ ctx }) => {
     // Three independent reads run concurrently: each is a database round trip on hosted
@@ -417,7 +421,7 @@ export const settingsRouter = router({
           if (!primary || (primary.countryCode && primary.countryCode !== "DK") ||
               !(isNationalRegistrationScheme(primary.scheme, "DK") || scheme === "vat" || scheme === "dk_vat") ||
               !value || !isValidDanishCvr(value)) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: translate("cvr.invalid", settingsInput.locale ?? current?.locale) })
+            throw invalidCvr(settingsInput.locale ?? current?.locale)
           }
         }
         const effectiveRegistration = settingsInput.momsRegistered === undefined
@@ -431,6 +435,7 @@ export const settingsRouter = router({
           phone: settingsInput.companyPhone,
           taxId: primaryTaxId,
         })
+        if (resolvedCountry === "DK" && localizedIssues.taxId) throw invalidCvr(settingsInput.locale ?? current?.locale)
         if (Object.values(localizedIssues).some(Boolean)) {
           throw new TRPCError({
             code: "BAD_REQUEST",
