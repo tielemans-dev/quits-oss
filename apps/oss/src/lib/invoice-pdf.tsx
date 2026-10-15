@@ -277,9 +277,12 @@ export type InvoiceForPdf = {
 export function InvoicePdfDocument({
   invoice,
   org = {},
+  quote,
 }: {
   invoice: InvoiceForPdf
   org?: OrgSettingsForPdf
+  /** Quote presentation reuses the document layout without invoice or payment labels. */
+  quote?: { expiryDate: string }
 }) {
   const momsRegistered = sellerVatPresentationStatus(invoice.momsRegistered, invoice.taxRegime)
   const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
@@ -294,7 +297,7 @@ export function InvoicePdfDocument({
     subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total,
     vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale,
   })
-  const paymentDetails = buildPaymentDetailsBlock(
+  const paymentDetails = quote ? null : buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
     invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
     locale
@@ -313,17 +316,19 @@ export function InvoicePdfDocument({
               </View>
             )}
             <Text style={styles.title}>
-              {translate("pdf.invoice", locale)} {invoice.number}
+              {quote
+                ? translate(invoice.status === "draft" ? "quotes.number.draftHeading" : "quotes.detail.title", locale)
+                : translate("pdf.invoice", locale)} {invoice.number}
             </Text>
           </View>
           <View style={styles.headerRight}>
-            <Text style={styles.label}>{translate("pdf.issueDate", locale)}</Text>
+            <Text style={styles.label}>{translate(quote ? "quotes.table.issueDate" : "pdf.issueDate", locale)}</Text>
             <Text>{formatDate(invoice.issueDate, locale, timezone, { month: "long" })}</Text>
             <Text style={[styles.label, { marginTop: 6 }]}>
-              {translate("pdf.dueDate", locale)}
+              {translate(quote ? "quotes.table.expiryDate" : "pdf.dueDate", locale)}
             </Text>
-            <Text>{formatDate(invoice.dueDate, locale, "UTC", { month: "long" })}</Text>
-            {invoice.supplyDate && (
+            <Text>{formatDate(quote?.expiryDate ?? invoice.dueDate, locale, "UTC", { month: "long" })}</Text>
+            {!quote && invoice.supplyDate && (
               <>
                 <Text style={[styles.label, { marginTop: 6 }]}>
                   {translate("pdf.supplyDate", locale)}
@@ -348,7 +353,7 @@ export function InvoicePdfDocument({
 
           {/* Bill To */}
           <View style={styles.buyer}>
-            <Text style={styles.sectionTitle}>{translate("pdf.billTo", locale)}</Text>
+            <Text style={styles.sectionTitle}>{translate(quote ? "quotes.detail.quoteTo" : "pdf.billTo", locale)}</Text>
             <Text style={styles.contactName}>{contact.name}</Text>
             {distinctCompany(contact) && <Text style={styles.contactLine}>{distinctCompany(contact)}</Text>}
             {formatTaxIds(contact.taxIds, locale).map(id => <Text key={id} style={styles.contactLine}>{id}</Text>)}
