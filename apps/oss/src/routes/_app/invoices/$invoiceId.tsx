@@ -1,4 +1,4 @@
-import { invoiceQuantityInputSchema, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
+import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
@@ -370,7 +370,7 @@ function InvoiceDetailPage() {
   async function handleSaveEdit() {
     if (!invoice) return
     setError(null)
-    if (editItems.some((item) => !invoiceQuantityInputSchema.safeParse(item.quantity).success)) {
+    if (editItems.some((item) => !invoiceQuantityInput(locale).safeParse(item.quantity).success)) {
       setError(t("docForm.validation.quantityInvalid"))
       return
     }
@@ -384,7 +384,7 @@ function InvoiceDetailPage() {
         notes: editNotes,
         ...(invoice.agreementId ? {} : { taxRate: editTaxRate }),
         vatEvidence: editVatEvidence,
-        items: editItems.map(normalizeInvoiceQuantity).map((item) => ({
+        items: editItems.map(item => normalizeInvoiceQuantity(item, locale)).map((item) => ({
           id: item.id, deliverableId: item.deliverableId,
           description: item.description,
           quantity: item.quantity,
@@ -544,7 +544,7 @@ function InvoiceDetailPage() {
   // Edit mode
   if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
   if (editing) {
-    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(normalizeInvoiceQuantity), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
+    const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: invoice.pricesIncludeTax ?? false, currency: invoice.currency })
     const editSubtotal = Number(preview.result?.net ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenNet ?? 0), 0)
     const editTaxAmount = Number(preview.result?.tax ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenTax ?? 0), 0)
     const editTotal = Number(preview.result?.gross ?? "0") + editItems.reduce((sum, item) => sum + (item.frozenGross ?? 0), 0)
@@ -648,7 +648,7 @@ function InvoiceDetailPage() {
                         type="text"
                         inputMode="decimal"
                         aria-label={t("docForm.column.qty")}
-                        aria-invalid={!invoiceQuantityInputSchema.safeParse(item.quantity).success}
+                        aria-invalid={!invoiceQuantityInput(locale).safeParse(item.quantity).success}
                         disabled={!!item.deliverableId}
                         value={item.quantity || ""}
                         onChange={(e) =>
