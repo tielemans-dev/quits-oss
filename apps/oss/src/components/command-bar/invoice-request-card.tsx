@@ -39,7 +39,7 @@ type Readiness = Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>>
  * fills in what was said; moms, totals and the dates come from the same code the form uses. Nothing
  * is created until Send faktura is pressed, and that goes through the form's own create-and-send.
  */
-export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
+export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: RequestCardProps & { initialContactId?: string }) {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const currency = useOrgCurrency()
@@ -50,7 +50,7 @@ export function InvoiceRequestCard({ intent, onDismiss }: RequestCardProps) {
   const dueDate = back?.dueDate || ownDueDate
   const [issuance] = useState(() => back?.issuance ?? initialIssuanceValues())
   const [known, setKnown] = useState<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] } | null>(null)
-  const [picked, setPicked] = useState("")
+  const [picked, setPicked] = useState(initialContactId ?? "")
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
