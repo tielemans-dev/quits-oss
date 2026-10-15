@@ -4,9 +4,9 @@ import { test } from "node:test"
 
 const gate = new URL("ci-gate.mjs", import.meta.url)
 const workers = ["lint", "typecheck", "unit", "runtime", "shared-browser-worker"]
-function accepts(event, run, results, classification = "success") {
+function accepts(event, run, results, classification = "success", browser) {
   const needs = {
-    paths: { result: classification, outputs: { "run-expensive": run } },
+    paths: { result: classification, outputs: { "run-expensive": run, "run-browser": browser } },
     ...Object.fromEntries(Object.entries(results).map(([name, result]) => [name, { result }])),
   }
   return spawnSync(process.execPath, [gate.pathname], {
@@ -15,8 +15,8 @@ function accepts(event, run, results, classification = "success") {
 }
 const results = (status) => Object.fromEntries(workers.map((name) => [name, status]))
 
-test("PR code, branch push and tag push require all jobs to succeed", () => {
-  for (const event of ["pull_request", "push"]) {
+test("PR code, main push, tag push and merge group require all jobs to succeed", () => {
+  for (const event of ["pull_request", "push", "merge_group"]) {
     assert.equal(accepts(event, "true", results("success")), true)
     for (const worker of workers) {
       for (const status of ["failure", "cancelled", "skipped", "unknown"]) {
@@ -27,7 +27,7 @@ test("PR code, branch push and tag push require all jobs to succeed", () => {
 })
 test("only confirmed docs-only PRs accept intentionally skipped workers", () => {
   assert.equal(accepts("pull_request", "false", results("skipped")), true)
-  for (const event of ["push", "workflow_dispatch", "release"]) {
+  for (const event of ["push", "merge_group", "workflow_dispatch", "release"]) {
     assert.equal(accepts(event, "false", results("skipped")), false)
   }
   for (const worker of workers) {
@@ -48,4 +48,16 @@ test("classification errors and missing work fail closed", () => {
     assert.equal(accepts("pull_request", "false", { [worker]: "skipped" }), true)
     assert.equal(accepts("push", "true", { [worker]: "failure" }), false)
   }
+})
+
+test("prose and workflow PRs skip browsers while other jobs must succeed", () => {
+  const mixed = { ...results("success"), "shared-browser-worker": "skipped" }
+  assert.equal(accepts("pull_request", "true", mixed, "success", "false"), true)
+  for (const event of ["push", "merge_group"]) {
+    assert.equal(accepts(event, "true", mixed, "success", "false"), false)
+  }
+  for (const worker of workers) {
+    assert.equal(accepts("pull_request", "true", { ...mixed, [worker]: "failure" }, "success", "false"), false)
+  }
+  assert.equal(accepts("pull_request", "true", mixed, "success", "unknown"), false)
 })
