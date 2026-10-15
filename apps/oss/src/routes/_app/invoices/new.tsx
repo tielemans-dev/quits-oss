@@ -153,10 +153,11 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   function changeItems(value: LineItem[]) {
     setItems(value)
     setFieldIssues(issues => issues.filter(issue => {
-      const match = /^items\.(\d+)\.(description|quantity|unitPrice)/.exec(issue.field)
+      const match = /^items\.(\d+)\.(description|quantity|unitPrice|vat)/.exec(issue.field)
       if (!match) return true
       const item = value[Number(match[1])]
       if (!item) return false
+      if (match[2] === "vat") return item.vat === items[Number(match[1])]?.vat
       if (match[2] === "description") return !item.description.trim() || !documentLineV2InputSchema.shape.description.safeParse(item.description).success
       if (match[2] === "quantity") return !invoiceQuantityInput(locale).safeParse(item.quantity).success
       return !documentLineV2InputSchema.shape.unitPrice.safeParse(item.unitPrice).success
