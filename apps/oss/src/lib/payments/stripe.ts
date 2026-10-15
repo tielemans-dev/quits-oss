@@ -3,7 +3,7 @@ import Stripe from "stripe"
 import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv } from "../runtime/platform"
 import { prisma } from "../db"
-import { getRuntimeExtensions } from "../runtime/extensions"
+import { getRuntimeCapabilities, getRuntimeExtensions } from "../runtime/extensions"
 import type {
   StripeCheckoutTarget,
   StripeCheckoutTargetContext,
@@ -22,7 +22,7 @@ export type StripePaymentConfigurationSnapshot = {
   stripeAccountStatus?: StripeAccountStatus | null
 }
 
-function stripeByokConfigured(snapshot: StripePaymentConfigurationSnapshot) {
+export function stripeByokConfigured(snapshot: StripePaymentConfigurationSnapshot) {
   return Boolean(
     snapshot.stripePublishableKey &&
       snapshot.stripeSecretKeyEnc &&
@@ -30,12 +30,14 @@ function stripeByokConfigured(snapshot: StripePaymentConfigurationSnapshot) {
   )
 }
 
-/** Card payments are configured when BYOK keys are complete or the Connect account is active. */
+/** Hosted card payments require active Connect. Self-hosted BYOK keeps its existing configuration gate. */
 export function getStripePaymentConfigurationState(
   snapshot: StripePaymentConfigurationSnapshot
 ) {
   return {
-    configured: stripeByokConfigured(snapshot) || snapshot.stripeAccountStatus === "active",
+    configured: usesStripeConnectCheckout()
+      ? snapshot.stripeAccountStatus === "active"
+      : stripeByokConfigured(snapshot) || snapshot.stripeAccountStatus === "active",
   }
 }
 
@@ -80,7 +82,8 @@ const _sdkFitsConnectClient: _SdkFitsConnectClient = true
 void _sdkFitsConnectClient
 
 export function usesStripeConnectCheckout() {
-  return readProductEnv(getRuntimeEnv(), "DISTRIBUTION")?.trim().toLowerCase() === "cloud"
+  return getRuntimeCapabilities().payments.managed
+    || readProductEnv(getRuntimeEnv(), "DISTRIBUTION")?.trim().toLowerCase() === "cloud"
     || getRuntimeExtensions().some(extension => extension.resolveStripeCheckoutTarget)
 }
 

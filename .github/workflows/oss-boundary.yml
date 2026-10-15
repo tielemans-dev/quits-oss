@@ -2,7 +2,10 @@ name: OSS Boundary
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
+  merge_group:
 
 concurrency:
   # Unique non-PR groups also prevent replacement of pending push/tag runs.
