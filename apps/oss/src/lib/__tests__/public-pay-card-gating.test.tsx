@@ -151,6 +151,19 @@ describe("public pay card gating", () => {
     await expectUnavailable()
   })
 
+  it("shows bank transfer only on hosted when the Connect extension is absent", async () => {
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    setRuntimeExtensions([])
+    await expectUnavailable()
+  })
+
+  it.each([null, undefined, { kind: "byok", secretKey: "sk_other", webhookSecret: "whsec_other" }])("never falls back to BYOK when the hosted extension returns %s", async target => {
+    Object.assign(state.settings, configuredByok, { stripeAccountStatus: "active" })
+    state.resolveTarget.mockReturnValue(target)
+    await expectUnavailable()
+  })
+
   it("shows card and transfer details and opens checkout for active Connect", async () => {
     state.settings.stripeAccountStatus = "active"
     const html = await publicPayPage()
@@ -224,6 +237,21 @@ describe("public pay card gating", () => {
     expect((await publicPayPage()).includes("Pay now")).toBe(enabled)
     expect(await resolvePublicInvoiceCheckout(token)).toMatchObject({ status: enabled ? "redirect" : "unavailable" })
     expect(state.createCheckout).toHaveBeenCalledTimes(enabled ? 1 : 0)
+  })
+
+  it("hides the card action for a zero balance even if payment status has not caught up", async () => {
+    state.settings.stripeAccountStatus = "active"
+    state.invoice.amountPaid = 1250
+    const session = await publicSession()
+    expect(session).toMatchObject({ stripeEnabled: false })
+    expect(await publicPayPage()).not.toContain("Pay now")
+    // A stale client flag must not offer a zero-balance payment either.
+    if (!session) throw new Error("Expected a readable settled invoice")
+    expect(renderToStaticMarkup(<LocalizedDocument locale={session.locale}>
+      <PublicInvoicePaymentPage token={token} state={{ kind: "ready", ...session, stripeEnabled: true }} />
+    </LocalizedDocument>)).not.toContain("Pay now")
+    expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "paid", url: null })
+    expect(state.createCheckout).not.toHaveBeenCalled()
   })
 
   it.each(["pending", "active"] as const)("renders the %s card gate and transfer details in Danish", async status => {
