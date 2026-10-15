@@ -13,8 +13,10 @@ import { z } from "zod"
 import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
 import {
+  getInvoicePaymentState,
   getPublicInvoicePaymentUrl,
 } from "../../lib/payments/public"
+import { resolveCardCheckoutTarget } from "../../lib/payments/public-access"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
 import {
   invoiceCreateDraftInputSchema,
@@ -160,6 +162,25 @@ export const invoicesRouter = router({
         },
       })
 
+      // Whether `/pay` offers card for this invoice, so the share-link copy matches the page.
+      const paymentState = getInvoicePaymentState(invoice)
+      const cardSettings = paymentState === "unpaid" ? await prisma.orgSettings.findUnique({
+        where: { organizationId: ctx.organizationId },
+        select: {
+          stripePublishableKey: true,
+          stripeSecretKeyEnc: true,
+          stripeWebhookSecretEnc: true,
+          stripeAccountStatus: true,
+        },
+      }) : null
+      const publicPaymentCardEnabled = Boolean(await resolveCardCheckoutTarget({
+        organizationId: ctx.organizationId,
+        settings: cardSettings,
+        paymentState,
+        balanceDue: computeSettlement(invoice).balanceDue,
+        currency: invoice.currency,
+      }))
+
       const momsRegistered = invoice.status === "draft"
         ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
         : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
@@ -177,6 +198,7 @@ export const invoicesRouter = router({
         total: invoice.totalGross.toNumber(),
         ...settlementForUi(invoice),
         publicPaymentUrl: getPublicInvoicePaymentUrl(invoice),
+        publicPaymentCardEnabled,
         ...documentDisplayForUi(invoice),
         items: invoice.items.map((item) => ({
           ...item,

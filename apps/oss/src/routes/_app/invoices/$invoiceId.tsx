@@ -151,6 +151,8 @@ type Invoice = {
   currency: string
   notes: string | null
   publicPaymentUrl: string | null
+  /** Whether the hosted pay page offers card. Otherwise it offers bank transfer only. */
+  publicPaymentCardEnabled?: boolean
   lastEmailAttemptAt: string | Date | null
   lastEmailAttemptOutcome: "sent" | "skipped" | "failed" | "sending" | "unconfirmed" | null
   lastEmailAttemptCode: string | null
@@ -241,9 +243,12 @@ function InvoiceDetailPage() {
     locale?: string | null
     timezone?: string | null
     baseCurrency?: string
-    stripeByokConfigured?: boolean
+    stripePaymentsEnabled?: boolean
   }>({})
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
+  const paymentLinkDescriptionKey = invoice?.publicPaymentCardEnabled
+    ? "invoices.detail.paymentLink.description.card"
+    : "invoices.detail.paymentLink.description.bankTransfer"
 
   useEffect(() => {
     let cancelled = false
@@ -304,7 +309,7 @@ function InvoiceDetailPage() {
           companyLogo: settings.companyLogo,
           locale: settings.locale,
           timezone: settings.timezone,
-          stripeByokConfigured: settings.stripeByokConfigured,
+          stripePaymentsEnabled: settings.stripePaymentsEnabled,
           baseCurrency: settings.baseCurrency,
         })
         setEmailDelivery(settings.emailDelivery)
@@ -1060,7 +1065,7 @@ function InvoiceDetailPage() {
           )}
           {(invoice.status === "sent" || invoice.status === "overdue") && (
             <div className="flex flex-wrap items-center gap-2">
-              {orgSettings.stripeByokConfigured && invoice.paymentStatus !== "paid" && (
+              {orgSettings.stripePaymentsEnabled && invoice.paymentStatus !== "paid" && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleCreatePaymentLink}>
                   {acting
                     ? t("invoices.detail.action.generatingPaymentLink")
@@ -1145,7 +1150,7 @@ function InvoiceDetailPage() {
             paymentLinkUrl && invoice.paymentStatus !== "paid"
               ? {
                   title: t("invoices.detail.paymentLink.title"),
-                  description: t("invoices.detail.paymentLink.description"),
+                  description: t(paymentLinkDescriptionKey),
                   url: paymentLinkUrl,
                   copyLabel: t("invoices.detail.paymentLink.copy"),
                   onCopy: () => {
