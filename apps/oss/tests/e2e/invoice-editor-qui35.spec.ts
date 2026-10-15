@@ -89,7 +89,8 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       expect(mutations).toHaveLength(1)
       await page.reload()
       await page.getByRole("button", { name: da ? "Rediger" : "Edit", exact: true }).click()
-      await expect(quantity).toHaveValue("0.123456")
+      // The stored value is canonical ("0.123456"); the editor shows it with the locale separator.
+      await expect(quantity).toHaveValue(da ? "0,123456" : "0.123456")
       await expect(descriptionInput).toHaveValue(description)
 
       // The create path must also retain the raw notation and refuse to create a draft.
