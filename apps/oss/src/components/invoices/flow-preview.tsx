@@ -30,7 +30,7 @@ export function FlowPreview({ customer, company, dueDate, currency, items, total
       {tab === "email" && <p>{customer?.email}</p>}
       {dueDate && <p className="mt-2">{t("invoices.table.dueDate")} {formatDate(dueDate, locale)}</p>}
       {tab === "invoice" && <table className="my-8 w-full text-left text-xs"><thead><tr><th>{t("docForm.column.description")}</th><th className="text-right">{t("docForm.column.qty")}</th><th className="text-right">{t("docForm.column.unitPrice")}</th></tr></thead><tbody>{items.map((item, i) => <tr key={i} className="border-b"><td className="py-3 break-words">{item.description}</td><td className="text-right">{item.quantity}</td><td className="text-right">{formatCurrency(Number(item.unitPrice) || 0, currency, locale)}</td></tr>)}</tbody></table>}
-      <div className="mt-8 border-t pt-4"><span>{t("invoices.flow.paidVia")}</span><p className="mt-1">{paymentMethods.map(method => t(method === "bank_transfer" ? "invoices.flow.bank" : "invoices.flow.card")).join(" · ") || "—"}</p></div>
+      <div className="mt-8 border-t pt-4"><span>{t("invoices.flow.paidVia")}</span><p className="mt-1">{paymentMethods.map(method => t(method === "bank_transfer" ? "payments.method.bank_transfer" : "payments.method.card")).join(" · ") || "—"}</p></div>
       <p className="mt-8 flex justify-between font-semibold"><span>{t("docForm.summary.total")}</span><span>{amount}</span></p>
     </article>
   </div>

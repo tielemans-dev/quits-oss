@@ -1,3 +1,4 @@
+import { EMAIL_SEND_FAILED_PARAM } from "../../../lib/email-send-failure"
 import { InvoiceFlow, InvoiceDetailPanel, useInvoiceMorph } from "../../../components/invoices/flow"
 import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -150,13 +151,17 @@ function InvoicesListPage() {
     </Button>
   )
 
+  const noticeInvoice = invoices.find(invoice => invoice.id === notice?.id)
+  const noticeText = notice?.sendError === EMAIL_SEND_FAILED_PARAM
+    ? `${t("invoices.detail.email.sendFailed.title")} ${t("invoices.detail.email.sendFailed.body")}`
+    : notice?.sendError ?? (notice?.emailWarning ? t("invoices.detail.warning.emailSkipped", { reason: notice.emailWarning }) : t(notice?.kind === "recurring" ? "invoices.flow.scheduleSaved" : notice?.kind === "draft" ? "invoices.flow.created" : "shell.request.invoice.sent"))
   return (
     <div className="p-6">
       {flowOpen && <InvoiceFlow open origin={origin.current} onClose={() => setFlowOpen(false)} onComplete={target => { void completed(target) }} />}
       {selected && <InvoiceDetailPanel key={selected} id={selected} origin={origin.current} onClose={() => setSelected(null)} onChanged={() => { void loadInvoices() }} />}
       {notice && <div ref={toast} role="status" className="invoice-toast fixed bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)] rounded-lg border bg-panel p-4 shadow-lg">
-        <p>{notice.sendError ?? (notice.emailWarning ? t("invoices.detail.warning.emailSkipped", { reason: notice.emailWarning }) : t(notice.kind === "recurring" ? "invoices.flow.scheduleSaved" : notice.kind === "draft" ? "invoices.flow.created" : "invoices.flow.sent"))}</p>
-        {invoices.find(invoice => invoice.id === notice.id) && <Amount value={decimalFromNumber(invoices.find(invoice => invoice.id === notice.id)!.total, invoices.find(invoice => invoice.id === notice.id)!.currency)} currency={invoices.find(invoice => invoice.id === notice.id)!.currency} locale={locale} />}
+        <p>{noticeText}</p>
+        {noticeInvoice && <Amount value={decimalFromNumber(noticeInvoice.total, noticeInvoice.currency)} currency={noticeInvoice.currency} locale={locale} />}
         {notice.paymentUrl && <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(notice.paymentUrl!).catch(() => {}) }}>{t("invoices.flow.copyLink")}</Button>}
         <Button variant="ghost" onClick={() => setNotice(null)}>{t("ui.close")}</Button>
       </div>}
