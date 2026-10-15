@@ -1,0 +1,146 @@
+# Accounting integrations
+
+QUI-77 starts with pure e-conomic and Dinero payload preparation. There are no
+requests, credentials, connection records or UI yet. It is available to the
+self-hostable runtime without hosted gates. Billy follows e-conomic and Dinero.
+
+## Provider boundary
+
+`AccountingProvider<Settings, Payload>` in `domain/accounting/provider.ts` accepts
+a versioned money event, its stable outbox delivery ID and resolved settings.
+It returns a prepared payload with expected decimal totals, or an explicit refusal.
+The adapter never reads current document rows, recalculates historical prices or
+owns transport. A later worker handles connections, remote IDs and delivery state.
+
+Use `invoice.issued` v1 and postable `credit_note.issued` v2, not email or cumulative
+paid notifications. `postingsFor` validates frozen evidence, equations and base
+valuation first. Credits reverse historical amounts; sparse legacy credits and
+unsupported applications remain refused. Payment receipts currently use
+`payment.recorded` v1. Their payload lacks frozen payment date, base valuation and
+settlement detail, so delivery needs a richer money event before it can be safe.
+Dinero's pure payment mapper requires that missing evidence as explicit resolved
+input; it does not authorize delivery of legacy receipts by themselves.
+
+## Entry mapping
+
+Accounts and VAT codes come from each organization's chart, never fixed account
+numbers. Resolve by the complete frozen VAT group key, including treatment,
+reason, rate and country. Zero tax alone does not select a VAT code.
+
+| Quits event | e-conomic | Dinero | Accounting effect |
+| --- | --- | --- | --- |
+| Invoice issued | Create `/invoices/drafts`, then book `/invoices/booked` | Create `/invoices`, then `/{guid}/book` | Debit customer receivable; credit sales net and output VAT |
+| Credit note | Negative-quantity draft, then book; retain corrected invoice link in local delivery metadata | `/sales/creditnotes`, with `CreditNoteFor`, then book | Debit original sales/VAT; credit receivable |
+| Payment received | Journal `customerPayments`, customer/invoice reference and bank/clearing contra account | Invoice `/{guid}/payments`, `DepositAccountNumber` | Debit bank/clearing; credit customer receivable; no new sales VAT |
+
+For e-conomic, the mapped product's product group selects the sales account for
+the recipient VAT zone; that account's `vatAccount.vatCode` determines tax. The
+customer group supplies the receivable contra account. Validate these remote
+relationships before enabling delivery. No sales-account or VAT-code fields are
+invented on invoice lines. In Dinero, select each product line's `AccountNumber`
+from the entry accounts and their VAT types. Resolve deposit accounts separately.
+
+25% Danish moms maps to a domestic sales account with 25% output VAT. EU B2B
+services map to an EU services sales account with the corresponding zero-tax
+reporting treatment and VAT zone, backed by frozen VAT-ID/VIES evidence. EU goods
+need their own mapping. Domestic reverse charge and other zero-tax classifications
+remain subject to the ledger's existing refusals. Credits retain the original
+mapping revision. Fees, refunds, overpayments and FX need separate posting policy;
+never treat a net settlement as a gross customer payment.
+
+Slice 1 accepts same-currency DKK v2 sales/credits with 25% or intra-community VAT.
+Each line uses quantity 1 and its frozen net as unit price, with negative quantity
+for credits. Line order and descriptions survive. Refuse mixed VAT zones,
+unrepresentable JSON money, rounding differences or missing mappings. Shared
+Decimal pricing helpers check money before conversion to API numbers. The worker
+must compare remote draft net, VAT and gross with `expectedTotals` before booking.
+`economicBookingPayload` wraps the persisted draft number with `sendBy: none`.
+Creation and booking are separate requests; mapping cannot produce a booked ID.
+Keep Quits' document number in `references.other`; e-conomic assigns its own number.
+
+### Dinero differences
+
+`dineroProvider` returns a relative `path` and request `body`. It accepts the same
+DKK v2 invoice/credit subset and uses the shared Decimal money boundary. Each
+frozen VAT group resolves to an entry `AccountNumber`, whose remote VAT type must
+match the treatment before delivery. Unlike e-conomic's recipient-wide VAT zone,
+Dinero selects tax through each line's account. Lines use frozen net as
+`BaseAmountValue`, `Quantity: 1`, `Discount: 0` and `ShowLinesInclVat: false`.
+The dedicated `/sales/creditnotes` endpoint reverses positive lines; do not send
+negative quantities too. `CreditNoteFor` requires the corrected invoice's booked
+GUID from `invoiceLinks`, keyed by Quits invoice ID. Compare credit draft totals
+by magnitude against the negative accounting `expectedTotals` before booking.
+
+Invoice terms use `PaymentConditionType: Netto` and the UTC calendar-day difference
+between frozen issue/due dates. Refuse earlier due dates. Credits omit payment
+terms. Persist the caller-supplied stable document `Guid` before creation, use the
+delivery ID as `ExternalReference`, and retain the Quits number in `Comment`.
+`dineroBookingPayload` returns the server's version `Timestamp`; it is not a date.
+Dinero may assign its own voucher number. Booking stays a separate operation.
+
+Payment preparation accepts `payment.recorded` v1 only with matching payment ID
+and invoice number in immutable `settings.payment` evidence. Require a frozen
+`paymentDate`, equal DKK `baseAmount`, explicit `gross_no_fees` settlement, booked
+invoice GUID, current server version timestamp and resolved deposit account.
+Never fill missing evidence from today's date or mutable document rows. Refuse
+missing evidence, FX, fees, refunds and overpayments. The request uses the gross
+event amount, `RemainderIsFee: false`, and no foreign-currency amount. Payment
+`expectedTotals` has zero net revenue/tax and the received amount as gross cash.
+A partial receipt leaves the invoice remainder open. Delivery still needs a
+richer frozen payment event and reconciliation; no event schema changes here.
+
+## Outbox, idempotency and retries
+
+Reuse `events/consumers.ts` and `EventConsumerDelivery`, scoped by organization and
+a connection-specific consumer key. Use delivery ID plus a stable operation suffix
+for each remote effect, such as `:draft` and `:book`. Persist the exact prepared
+payload, mapping revision and remote draft/booked references before advancing.
+These operation records are follow-up schema work, not fields the outbox has today.
+
+e-conomic's `Idempotency-Key` cache lasts one hour. After an uncertain response,
+reconcile the stable remote reference before retrying, especially beyond that
+window. Dinero allows a supplied document `Guid` and `ExternalReference`; persist
+and look up those identities, without assuming uniqueness of free-text references.
+Do not blindly repeat payment creation after an uncertain response.
+
+Claim with leases and fence completion with `claimToken`. Retry transient network,
+429 and server failures with bounded exponential backoff and jitter, respecting
+Retry-After. Stop for authorization, mapping or validation failures. Existing failed
+rows require an explicit requeue policy. Keep invoice-before-credit/payment
+dependencies; claiming by sequence alone does not enforce them. Only done/skipped
+deliveries advance the contiguous acknowledgement cursor. A refusal stays visible
+as failed until corrected or explicitly skipped with an audit reason.
+
+## Per-organization connections
+
+Later persist provider, remote agreement/organization ID, connection generation,
+status, mapping revision, sync start position and last safe error per organization.
+Store token material encrypted server-side, separately from mapping settings.
+Settings hold customer links, layout, dueDate payment term, product/VAT mappings,
+receivable and bank/clearing accounts. Pin them for retries. Disconnect pauses
+delivery and revokes authorization; reconnect to another agreement creates a new
+generation and requires reconciliation rather than replaying history automatically.
+Use e-conomic's agreement-grant redirect and Dinero's Visma Connect authorization
+code flow, with no pasted keys. Authenticated configuration stays inside the app.
+
+## Official references
+
+- [e-conomic REST](https://restdocs.e-conomic.com/#post-invoices-drafts),
+  [booking](https://restdocs.e-conomic.com/#post-invoices-booked),
+  [product-group sales accounts](https://restdocs.e-conomic.com/#get-product-groups-productgroupnumber-sales-accounts),
+  [idempotency](https://restdocs.e-conomic.com/#idempotency-tokens).
+- [Dinero API reference](https://api.dinero.dk/openapi/index.html) and its
+  [OpenAPI schema](https://api.dinero.dk/openapi/v1/swagger.json), including invoices,
+  sales credit notes, entry/VAT/deposit accounts and payments. Slice 2 follows
+  `InvoiceCreateModel`, `InvoiceLinesCreateModel`, `SalesCreditNoteCreateModel`,
+  `PaymentCreateModel` and `BookModel` for the `/v1/{organizationId}/invoices`,
+  `/sales/creditnotes`, `/invoices/{guid}/payments` and `/{guid}/book` operations.
+- [Dinero authorization](https://developer.dinero.dk/documentation/authorization/)
+  and [e-conomic connection flow](https://www.e-conomic.com/developer/connect).
+
+## Follow-ups
+
+- Richer frozen payment events with date, base valuation and settlement evidence.
+- OAuth/agreement-grant connection flow and per-org credential storage.
+- Outbox delivery worker with operation persistence, reconciliation and retries.
+- Settings UI for connection status, account/VAT mapping, failures and disconnect.

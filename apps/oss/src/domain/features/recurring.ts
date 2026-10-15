@@ -56,17 +56,19 @@ async function processSchedule(id: string, organizationId: string, now: Date) {
     if (outcome.status === "awaiting_approval") {
       break
     }
-    // Another tick handled this run, or a provider outage that the next tick retries.
-    if (outcome.error.code === "run_not_due" || outcome.error.code === "operation_not_allowed" || outcome.error.tag === "ExternalFailure") {
+    // Another tick handled this run, or the runtime deliberately deferred it.
+    if (outcome.error.code === "run_not_due" || outcome.error.code === "operation_not_allowed") {
       break
     }
 
-    recurringLogger.warn("recurring.run_failed", {
+    recurringLogger.error("recurring.run_failed", {
       organizationId,
       recurringInvoiceId: id,
       runDate: runDate.toISOString(),
-      error: outcome.error,
+      errorTag: outcome.error.tag, code: outcome.error.code ?? null,
     })
+    // Provider outages remain retryable and must not pause the schedule.
+    if (outcome.error.tag === "ExternalFailure") return { generated, failed: 1 }
     await executeCommand(
       recordRecurringRunFailure,
       { id, runDate: runDate.toISOString(), error: outcome.error },

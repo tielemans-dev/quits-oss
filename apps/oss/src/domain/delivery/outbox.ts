@@ -287,6 +287,12 @@ async function settleDecision(
   failure = safeFailure(failure)
   if (!payload.decision) {
     await recordOnJob(job, { ...payload, decision: failure })
+    if (failure.reason !== "withdrawn" || failure.message === NOT_CONFIGURED_MESSAGE) {
+      deliveryLogger.error("email.delivery_failed", {
+        organizationId: job.organizationId, jobId: job.id, kind: payload.completion.kind,
+        outcome: failure.reason, code: failure.code ?? null, provider: payload.provider ?? null,
+      })
+    }
   }
   await settle(job, payload, completion, { delivered: false, failure })
   if (failure.reason !== "withdrawn") {
@@ -408,7 +414,6 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
     )
   } catch (error) {
     if (isDefiniteRejection(error)) {
-      deliveryLogger.warn("email.rejected", { kind: payload.completion.kind, providerCode: error.providerCode })
       // Only this SMTP classification proves the connection failed before submission.
       // Timeouts and lost responses remain uncertain, never a definite refusal.
       const code = error.providerCode === "smtp_unavailable" ? "email_provider_unreachable" : "email_provider_refused"
@@ -423,7 +428,6 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
       )
     }
     if (provider === "smtp" || job.attempts >= EMAIL_DELIVERY_ATTEMPTS) {
-      deliveryLogger.error("email.unconfirmed", { kind: payload.completion.kind, error })
       return settleDecision(job, requested, completion, { reason: "unconfirmed", message: UNCONFIRMED_MESSAGE })
     }
     // Retried with backoff by the job runner, replaying the same message and key.

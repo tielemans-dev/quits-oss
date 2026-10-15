@@ -7,10 +7,10 @@ import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { removeUndo, syncHeldJobs, useUndoItems, type UndoItem } from "./undo-store"
 
-const TICK_MS = DURATION.tick
+const TICK_MS = DURATION.undoTick
 /** A paused countdown renews its hold this often; the lease outlasts a missed beat. */
 const BEAT_MS = 2000
-const FADE_MS = DURATION.squareShrink
+const FADE_MS = DURATION.undoFade
 const NOTE_MS = 3000
 
 const TITLE = { invoice: "undo.title.invoice", reminders: "undo.title.reminders", paid: "undo.title.paid" } as const
@@ -86,7 +86,7 @@ function UndoToast({ item }: { item: UndoItem }) {
       onFocus={pause(true)}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}
       className={cn(
-        "bg-popover text-popover-foreground border-hairline overflow-hidden rounded-2xl border opacity-0 transition-opacity duration-(--duration-square-shrink) [filter:drop-shadow(0_8px_24px_rgb(11_11_12/0.18))]",
+        "bg-popover text-popover-foreground border-hairline overflow-hidden rounded-2xl border opacity-0 transition-[opacity] duration-(--duration-undo-fade) ease-enter [filter:drop-shadow(0_8px_24px_rgb(11_11_12/0.18))]",
         shown && "opacity-100"
       )}
     >
@@ -105,7 +105,7 @@ function UndoToast({ item }: { item: UndoItem }) {
       </div>
       {!note && (
         <div aria-hidden className="bg-foreground/10 h-0.5 motion-reduce:hidden">
-          <div className="bg-tone-progress h-full transition-[width] duration-(--duration-tick) ease-(--ease-linear)" style={{ width: `${(left / UNDO_WINDOW_MS) * 100}%` }} />
+          <div className="bg-tone-progress h-full transition-[width] duration-(--duration-undo-tick) ease-(--ease-linear)" style={{ width: `${(left / UNDO_WINDOW_MS) * 100}%` }} />
         </div>
       )}
     </div>
