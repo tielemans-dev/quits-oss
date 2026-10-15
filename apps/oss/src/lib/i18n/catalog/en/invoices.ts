@@ -1,4 +1,9 @@
 export const enInvoicesMessages = {
+  "invoices.summary.outstanding": "Outstanding",
+  "invoices.summary.overdue": "Overdue",
+  "invoices.summary.paidThisMonth": "Paid this month",
+  "invoices.summary.count": "{count} invoices",
+
   "invoices.issuance.supplyDate": "Supply date",
   "invoices.issuance.confirmDates": "Confirm the supply date before issuing. A supply before the issue date requires accountant review for posting.",
   "invoices.issuance.rate": "Base exchange rate: {baseCurrency} per 1 {currency}",

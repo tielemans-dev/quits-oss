@@ -16,9 +16,9 @@
 
 /*
  * Kvit, in the Full Stop brand. Ink on paper (light) or paper on ink (dark): the brand colour is
- * ink, so the primary action, links and the active item are ink. One green, Settled (the full stop
+ * indigo, so the primary action, links and the focus ring use the accent. One green, Settled (the full stop
  * in the logo), means one thing: money that has arrived. It marks the paid rule under an amount,
- * the paid chip, money received this month and the active page; never anything else. The other
+ * paid text and money received this month; never anything else. The other
  * colours carry meaning only (the status tones below) or come from the user's own data (a
  * customer's mark, a document's seller brand).
  *
@@ -36,7 +36,7 @@
     monospace;
 
   /* One strong weight: headings and emphasised text share it. */
-  --font-weight-heading: 700;
+  --font-weight-heading: 600;
   --font-weight-bold: 700;
   --tracking-heading: -0.025em;
 
@@ -60,21 +60,17 @@ code {
   color-scheme: light;
 
   /* Surfaces: paper canvas, white panels. */
-  --canvas: #fafaf9;
+  --canvas: #faf9f6;
   --panel: #ffffff;
   --panel-raised: #ffffff;
-  --hairline: rgb(11 11 12 / 8%);
+  --hairline: rgb(120 114 100/13%);
 
   /* Brand: ink. --brand-text is the brand colour as text on a surface. */
-  --brand: #0b0b0c;
-  --brand-foreground: #fafaf9;
-  --brand-text: #0b0b0c;
-  --brand-soft: rgb(11 11 12 / 6%);
-  --brand-glow: radial-gradient(
-    ellipse 70% 60% at 0% 0%,
-    rgb(11 11 12 / 4%),
-    transparent 70%
-  );
+  --brand: #5b5fde;
+  --brand-foreground: #ffffff;
+  --brand-text: #4b50cc;
+  --brand-soft: rgb(91 95 222/10%);
+  --brand-glow: linear-gradient(0deg,rgb(91 95 222/6%),rgb(91 95 222/1%) 45%,transparent 60%);
 
   /*
    * Settled: the green full stop, for money that has arrived and nothing else. --settled is a fill
@@ -82,47 +78,47 @@ code {
    * (3.33:1 on white, 3.19:1 on paper); --settled-text is the green as
    * text (4.89:1 on white); --settled-soft is the paid chip, under --tone-success text (6.24:1).
    */
-  --settled: #1fc16b;
-  --settled-rule: #21a15a;
-  --settled-text: #1e8149;
-  --settled-soft: #d1fbdc;
+  --settled: #1f9d5c;
+  --settled-rule: #1f9d5c;
+  --settled-text: #0f6e41;
+  --settled-soft: transparent;
 
   /* The Outstanding card on the dashboard: an ink surface in both themes. */
-  --hero: #0b0b0c;
-  --hero-foreground: #fafaf9;
+  --hero: #ffffff;
+  --hero-foreground: #2a2925;
 
   --shadow-ink: 0 1px 2px 0 rgb(11 11 12 / 6%);
 
   --background: var(--canvas);
-  --foreground: #0b0b0c;
+  --foreground: #2a2925;
   --card: var(--panel);
-  --card-foreground: #0b0b0c;
+  --card-foreground: var(--foreground);
   --popover: var(--panel-raised);
-  --popover-foreground: #0b0b0c;
+  --popover-foreground: var(--foreground);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: #eeeff2;
-  --secondary-foreground: #0b0b0c;
-  --muted: #eeeff2;
+  --secondary: #efeee9;
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
   /* Graphite: 5.05:1 on white, 4.83:1 on the paper canvas. */
-  --muted-foreground: #6b6f76;
-  --accent: #eeeff2;
-  --accent-foreground: #0b0b0c;
+  --muted-foreground: #6f6c64;
+  --accent: var(--secondary);
+  --accent-foreground: var(--foreground);
   --destructive: #b42029;
   --destructive-foreground: #b42029;
   --border: var(--hairline);
-  --input: rgb(11 11 12 / 18%);
+  --input: rgb(120 114 100/20%);
   /* Green-600: 3.33:1 on white, enough for a focus ring. */
-  --ring: #21a15a;
+  --ring: #4b50cc;
   --radius: 0.625rem;
-  --sidebar: var(--canvas);
-  --sidebar-foreground: #0b0b0c;
+  --sidebar: #faf9f6;
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: rgb(11 11 12 / 5%);
-  --sidebar-accent-foreground: #0b0b0c;
+  --sidebar-accent: rgb(120 114 100/11%);
+  --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--hairline);
-  --sidebar-ring: var(--ring);
+  --sidebar-ring: #4b50cc;
 
   /*
    * Status tones: each is a text colour. A badge fills with the tone mixed into transparent at
@@ -130,83 +126,168 @@ code {
    * tint on a white panel. Mapping to the design: success is settled, danger is overdue, info is
    * sent, progress is viewed, neutral is draft. Success sits on --settled-soft instead.
    */
-  --tone-neutral: #515458;
-  --tone-info: #3451c4;
-  --tone-progress: #09677d;
-  --tone-success: #1c653a;
-  --tone-warning: #8a5100;
+  --tone-neutral: #6f6c64;
+  --tone-info: #3a3934;
+  --tone-progress: #4b50cc;
+  --tone-success: var(--brand-text);
+  --tone-warning: #9a4400;
   --tone-danger: #b42029;
-  --tone-muted: #5e6168;
+  --tone-muted: #6f6c64;
 
   /* Charts use the tone hues so they match the rest of the interface; the first is settled. */
-  --chart-1: #1fc16b;
-  --chart-2: #3d4044;
-  --chart-3: #f5a524;
-  --chart-4: #3e63dd;
+  --chart-1: #1f9d5c;
+  --chart-2: #6f6c64;
+  --chart-3: #9a4400;
+  --chart-4: #5b5fde;
   --chart-5: #e5484d;
+  --main-bg: #ffffff;
+  --glow-main: none;
+  --glow-sb: none;
+  --sheet: #ffffff;
+  --sheet-tx: #2a2925;
+  --sheet-mu: #6f6c64;
+  --sheet-hl: rgb(120 114 100/13%);
+  --sheet-ring: rgb(120 114 100/16%);
+  --sheet-shadow: rgb(40 34 60/14%);
+  --tk-ul: rgb(91 95 222/45%);
+  --caret: #5b5fde;
+  --mic-bg: rgb(120 114 100/10%);
+  --paper: #ffffff;
+  --paper-tx: #2a2925;
+  --paper-mu: #6f6c64;
+  --paper-hl: rgb(120 114 100/13%);
+  --paper-focus: rgb(91 95 222/5%);
+  --paper-tint: rgb(91 95 222/10%);
+  --paper-caret: #5b5fde;
+  --paper-shadow: rgb(40 34 60/16%);
+  --glow-paper: none;
+  --toast: #ffffff;
+  --toast-tx: #2a2925;
+  --toast-mu: #6f6c64;
+  --toast-track: rgb(120 114 100/16%);
+  --toast-ring: rgb(120 114 100/16%);
+  --toast-shadow: rgb(40 34 60/14%);
+  --fresh: #f6f6fd;
+  --fresh-0: rgb(246 246 253/0%);
+  --dim: rgb(112 108 98/22%);
+  --fg-title: #1d1c19;
+  --fg-2: #4f4d47;
+  --st-sent-bg: transparent;
+  --st-seen-bg: rgb(91 95 222/10%);
+  --st-over-bg: rgb(204 96 20/11%);
+  --st-paid-bg: transparent;
+  --pill-pad: 0 8px;
+  --pill-fs: 12px;
+  --dot: none;
+  --dec-fs: .74em;
+  --dec-top: -.3em;
+  --w-total: 600;
+  --w-h1: 600;
 }
 
 .dark {
   color-scheme: dark;
 
-  --canvas: #0b0b0c;
-  --panel: #131416;
-  --panel-raised: #1b1c1f;
-  --hairline: rgb(255 255 255 / 7%);
+  --canvas: #0e1018;
+  --panel: #1c1f2b;
+  --panel-raised: #252937;
+  --hairline: rgb(180 188 216/12%);
 
-  --brand: #fafaf9;
-  --brand-foreground: #0b0b0c;
-  --brand-text: #fafaf9;
-  --brand-soft: rgb(250 250 249 / 8%);
-  --brand-glow: radial-gradient(
-    ellipse 70% 60% at 0% 0%,
-    rgb(250 250 249 / 5%),
-    transparent 70%
-  );
+  --brand: #5b5fde;
+  --brand-foreground: #ffffff;
+  --brand-text: #a0a7f8;
+  --brand-soft: rgb(160 167 248/20%);
+  --brand-glow: linear-gradient(0deg,rgb(160 167 248/10%),rgb(160 167 248/2%) 45%,transparent 60%);
 
   /* Keep the paid rule bright on dark surfaces. */
-  --settled-rule: #1fc16b;
+  --settled-rule: #3cc47f;
 
   /* Green-400 as text on ink: 10.68:1. */
-  --settled-text: #46d881;
-  --settled-soft: rgb(31 193 107 / 14%);
+  --settled-text: #7ad3a2;
+  --settled-soft: transparent;
 
-  --hero: #1b1c1f;
-  --hero-foreground: #fafaf9;
+  --hero: #1c1f2b;
+  --hero-foreground: #e9ebf3;
 
   /* No shadows in dark mode: depth is the surface step and the hairline. */
   --shadow-ink: 0 0 #0000;
 
-  --foreground: #fafaf9;
-  --card-foreground: #fafaf9;
-  --popover-foreground: #fafaf9;
-  --secondary: #222428;
-  --secondary-foreground: #fafaf9;
-  --muted: #171a1d;
-  --muted-foreground: #a6a9ae;
-  --accent: #26282c;
-  --accent-foreground: #fafaf9;
+  --foreground: #e9ebf3;
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --secondary: #2c3141;
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
+  --muted-foreground: #9da1b3;
+  --accent: var(--secondary);
+  --accent-foreground: var(--foreground);
   --destructive: #ff7a6b;
   --destructive-foreground: #ff7a6b;
-  --input: rgb(255 255 255 / 13%);
-  --ring: #46d881;
-  --sidebar-foreground: #fafaf9;
-  --sidebar-accent: rgb(255 255 255 / 5%);
-  --sidebar-accent-foreground: #fafaf9;
+  --input: rgb(180 188 216/20%);
+  --ring: #a0a7f8;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: rgb(180 188 216/12%);
+  --sidebar-accent-foreground: var(--foreground);
 
-  --tone-neutral: #c9ccd6;
-  --tone-info: #8da4ef;
-  --tone-progress: #5ccbe6;
-  --tone-success: #46d881;
-  --tone-warning: #f2b550;
+  --tone-neutral: #9da1b3;
+  --tone-info: #dcdee8;
+  --tone-progress: #a0a7f8;
+  --tone-success: var(--brand-text);
+  --tone-warning: #f5a56b;
   --tone-danger: #ff8a7c;
-  --tone-muted: #a6a9ae;
+  --tone-muted: #9da1b3;
 
-  --chart-1: #1fc16b;
-  --chart-2: #a6a9ae;
-  --chart-3: #f2b550;
-  --chart-4: #8da4ef;
+  --chart-1: #3cc47f;
+  --chart-2: #9da1b3;
+  --chart-3: #f5a56b;
+  --chart-4: #5b5fde;
   --chart-5: #ff8a7c;
+  --settled: #3cc47f;
+  --sidebar: #0e1018;
+  --sidebar-ring: #a0a7f8;
+  --main-bg: #151821;
+  --glow-main: none;
+  --glow-sb: none;
+  --sheet: #1c1f2b;
+  --sheet-tx: #e9ebf3;
+  --sheet-mu: #9da1b3;
+  --sheet-hl: rgb(180 188 216/12%);
+  --sheet-ring: rgb(180 188 216/14%);
+  --sheet-shadow: rgb(4 5 14/60%);
+  --tk-ul: rgb(160 167 248/60%);
+  --caret: #a0a7f8;
+  --mic-bg: rgb(180 188 216/12%);
+  --paper: #fdfdfc;
+  --paper-tx: #1d1e27;
+  --paper-mu: #666876;
+  --paper-hl: rgb(112 115 140/14%);
+  --paper-focus: rgb(91 95 222/5%);
+  --paper-tint: rgb(91 95 222/12%);
+  --paper-caret: #5b5fde;
+  --paper-shadow: rgb(4 5 14/70%);
+  --glow-paper: none;
+  --toast: #252937;
+  --toast-tx: #e9ebf3;
+  --toast-mu: #9da1b3;
+  --toast-track: rgb(180 188 216/20%);
+  --toast-ring: rgb(180 188 216/14%);
+  --toast-shadow: rgb(4 5 14/55%);
+  --fresh: #1d2130;
+  --fresh-0: rgb(29 33 48/0%);
+  --dim: rgb(6 7 14/50%);
+  --fg-title: #f7f8fb;
+  --fg-2: #c3c6d3;
+  --st-sent-bg: transparent;
+  --st-seen-bg: rgb(160 167 248/20%);
+  --st-over-bg: rgb(245 165 107/20%);
+  --st-paid-bg: transparent;
+  --pill-pad: 0 8px;
+  --pill-fs: 12px;
+  --dot: none;
+  --dec-fs: .74em;
+  --dec-top: -.3em;
+  --w-total: 600;
+  --w-h1: 600;
 }
 
 /*
@@ -215,6 +296,9 @@ code {
  * this drops the glow, keeps the focus ring ink and turns the "sent" tone to a plain steel blue.
  */
 html[data-document] {
+  --brand: #0b0b0c;
+  --brand-foreground: #ffffff;
+  --brand-text: #0b0b0c;
   --brand-glow: none;
   --ring: #0b0b0c;
   --sidebar-ring: #0b0b0c;
@@ -447,6 +531,18 @@ html[data-document] {
     display: none;
   }
 }
+
+/* Invoice statuses use tint only for viewed and overdue. */
+.invoice-status { border-radius: 4px; background: transparent; color: var(--muted-foreground); font-weight: 500; }
+.invoice-status > [aria-hidden] { display: none; }
+.invoice-status-paid { color: var(--settled-text); }
+.invoice-status-viewed { background: var(--st-seen-bg); color: var(--tone-info); }
+.invoice-status-overdue { background: var(--st-over-bg); color: var(--tone-warning); }
+[data-slot='app-content'] { background: var(--main-bg); }
+body { caret-color: var(--caret); }
+
+[data-slot='amount'] { font-weight: var(--w-total); }
+[data-slot='button'][data-variant='default']:hover { background: color-mix(in srgb, var(--brand), #000 8%); }
 
 /* Third-party entry/exit utilities and controls share the app timing defaults. */
 @utility animate-in {
