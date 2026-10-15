@@ -32,7 +32,7 @@ page. With no component configured, Settings renders no additional UI. The slot 
 rules or business logic.
 
 ```tsx
-import { getRouter } from "@quits/oss"
+import { getRouter as getOssRouter } from "@quits/oss"
 import type { SettingsCompanyDetailsProps } from "@quits/oss/runtime/ui"
 
 function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps) {
@@ -40,10 +40,13 @@ function CompanyDetails({ organizationId, locale }: SettingsCompanyDetailsProps)
   return <OrganizationDetails organizationId={organizationId} locale={locale} />
 }
 
-export function createAppRouter() {
-  return getRouter({ runtimeUi: { settingsCompanyDetails: CompanyDetails } })
+export function getRouter() {
+  return getOssRouter({ runtimeUi: { settingsCompanyDetails: CompanyDetails } })
 }
 ```
+
+Place this wrapper in the adopter's `src/router.tsx`. TanStack Start requires that
+entry to export `getRouter`.
 
 The component receives the organization ID pinned by the authenticated layout and the current
 display locale. It renders immediately after the company card, outside the OSS save form, and

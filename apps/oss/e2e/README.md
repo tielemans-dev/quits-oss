@@ -54,3 +54,16 @@ To inspect a local artifact before publishing:
 
 An integrating application can explicitly consume that tarball locally. Its CI
 should use the scenarios from its installed, published application version.
+
+## Historical payment captures
+
+The opt-in QUI-52 workflows use `qui52-capture.mjs` for the pinned baseline and
+`qui52-current-capture.mjs` for the current head. Both delegate setup, build,
+serve, capture and cleanup to `qui52-runner.mjs`. They use synthetic data,
+disposable PostgreSQL and a local Mailpit email sink.
+
+The baseline produces eight dark invoice/email images. The current-head fixture
+issues invoices, changes live seller/payment settings, and captures the issued
+invoice and delivered payment emails in Danish and English, at desktop and
+mobile sizes, in light and dark themes. Its workflow requires 16 images and
+records their hashes in `current-manifest.json`; it does not use draft-only mode.
