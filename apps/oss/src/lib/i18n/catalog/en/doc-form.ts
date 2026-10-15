@@ -33,7 +33,7 @@ export const enDocFormMessages = {
   "invoiceValidation.cvr.invalid": "A CVR number has 8 digits",
   "invoiceValidation.unknown": "Check this field and try again",
   "invoiceValidation.customer.businessName.required": "Enter the customer's business name",
-  "invoiceValidation.customer.country.unsupported": "For now you can only invoice customers in Denmark",
+  "invoiceValidation.customer.country.unsupported": "For now you can only invoice customers in: {countries}",
   "invoiceValidation.seller.country.unsupported": "Choose a supported country for your company",
   "invoiceValidation.seller.vatRegistration.required": "Confirm whether you're VAT-registered",
   "invoiceValidation.seller.bank.required": "Add bank details",
