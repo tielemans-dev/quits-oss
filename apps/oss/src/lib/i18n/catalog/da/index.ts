@@ -28,6 +28,7 @@ import { daSetupMessages } from "./setup"
 import { daStatusMessages } from "./status"
 import { daUiMessages } from "./ui"
 import { daUserMessages } from "./user"
+import { daValidationMessages } from "./validation"
 
 export const daCatalog = {
   ...daSellerVatMessages,
@@ -60,4 +61,5 @@ export const daCatalog = {
   ...daStatusMessages,
   ...daUiMessages,
   ...daUserMessages,
+  ...daValidationMessages,
 } as const

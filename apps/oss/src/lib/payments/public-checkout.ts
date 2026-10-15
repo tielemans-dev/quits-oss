@@ -7,7 +7,8 @@ import { getPublicInvoicePaymentSecret } from "./public"
 import {
   createStripeInvoiceCheckoutSession,
   expireOpenStripeCheckoutSession,
-  getStripePaymentCredentials,
+  resolveStripeCheckoutTarget,
+  type StripeCheckoutTarget,
 } from "./stripe"
 import { currencyFractionDigits, isExactInCurrency } from "./stripe-amounts"
 import { readProductEnv } from "@quits/shared/runtimeEnv"
@@ -74,22 +75,11 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "unavailable" } as const
   }
 
-  const settings = await prisma.orgSettings.findUnique({
-    where: { organizationId: session.invoice.organizationId },
-    select: {
-      stripePublishableKey: true,
-      stripeSecretKeyEnc: true,
-      stripeWebhookSecretEnc: true,
-    },
+  const target = await resolveStripeCheckoutTarget({
+    organizationId: session.invoice.organizationId,
   })
 
-  const credentials = getStripePaymentCredentials({
-    stripePublishableKey: settings?.stripePublishableKey ?? null,
-    stripeSecretKeyEnc: settings?.stripeSecretKeyEnc ?? null,
-    stripeWebhookSecretEnc: settings?.stripeWebhookSecretEnc ?? null,
-  })
-
-  if (!credentials) {
+  if (!target) {
     paymentsLogger.warn("invoice.checkout.unavailable", {
       invoiceId: session.invoice.id,
       organizationId: session.invoice.organizationId,
@@ -107,7 +97,7 @@ async function openCheckoutSession(token: string) {
   const previousSessionId = session.invoice.stripeCheckoutSessionId
   if (previousSessionId && !(await paymentCameFrom(previousSessionId))) {
     try {
-      await expireOpenStripeCheckoutSession({ secretKey: credentials.secretKey, sessionId: previousSessionId })
+      await expireTrackedCheckoutSession(target, previousSessionId)
     } catch (error) {
       paymentsLogger.error("invoice.checkout.unavailable", {
         ...logContext,
@@ -132,7 +122,7 @@ async function openCheckoutSession(token: string) {
   )
 
   const checkoutSession = await createStripeInvoiceCheckoutSession({
-    credentials,
+    target,
     invoice: asIssued(session.invoice),
     amountDue: balanceDue.toNumber(),
     successUrl: publicUrl,
@@ -163,7 +153,7 @@ async function openCheckoutSession(token: string) {
 
   // The session charges a stale balance, or is not the one the invoice tracks: never hand it out.
   try {
-    await expireOpenStripeCheckoutSession({ secretKey: credentials.secretKey, sessionId: checkoutSession.id })
+    await expireTrackedCheckoutSession(target, checkoutSession.id)
   } catch (error) {
     paymentsLogger.error("invoice.checkout.unavailable", {
       ...logContext,
@@ -174,6 +164,14 @@ async function openCheckoutSession(token: string) {
     return { url: null, status: "unavailable" } as const
   }
   return { url: null, status: "retry" } as const
+}
+
+/** BYOK sessions were opened with the org secret key; connect sessions belong to that account. */
+function expireTrackedCheckoutSession(target: StripeCheckoutTarget, sessionId: string) {
+  if (target.kind === "byok") {
+    return expireOpenStripeCheckoutSession({ secretKey: target.secretKey, sessionId })
+  }
+  return expireOpenStripeCheckoutSession({ target, sessionId })
 }
 
 async function paymentCameFrom(checkoutSessionId: string) {

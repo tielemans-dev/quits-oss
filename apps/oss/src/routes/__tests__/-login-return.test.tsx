@@ -26,7 +26,7 @@ vi.mock('../../lib/auth-client', () => ({
 }))
 vi.mock('../../trpc/client', () => ({ trpc: {
   onboarding: { getStatus: { query: state.status }, saveDraft: { mutate: state.draft }, completeManual: { mutate: state.complete }, searchCvr: { query: state.searchCvr } },
-  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) } },
+  cvr: { available: { query: async () => ({ enabled: false, suggestions: false }) }, setupAvailable: { query: async () => ({ enabled: false }) } },
   runtime: { capabilities: { query: async () => ({ onboardingAi: { enabled: false } }) } },
 } }))
 import { Route as LoginRoute } from '../login'
@@ -131,6 +131,55 @@ describe('login return contract', () => {
     state.signIn.mockResolvedValue({ data: {} }); state.list.mockRejectedValue(new Error('Unavailable'))
     renderPage(Login); submitLogin()
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?lang=en'))
+  })
+})
+
+describe('first login after sign-out (QUI-76)', () => {
+  it('does not navigate into a bounce while the server cannot see the new session', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ error: { status: 401 } })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain("couldn't confirm the session"), { timeout: 4000 })
+    expect(state.load).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Log in' })).toHaveProperty('disabled', false)
+  })
+
+  it('continues once the session becomes visible on a retry', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    state.list.mockResolvedValueOnce({ error: { status: 401 } }).mockResolvedValue({ data: [orgs[0]] })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalledWith('/'), { timeout: 4000 })
+  })
+
+  it('does nothing more after the page is left while the session is still settling', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.setActive.mockResolvedValue({ data: {} })
+    let release!: () => void
+    state.list.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ data: [orgs[0]] }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.list).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.setActive).not.toHaveBeenCalled()
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
+  it('does not load a page after leaving during the organization switch', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] })
+    let release!: () => void
+    state.setActive.mockImplementation(() => new Promise((resolve) => { release = () => resolve({ error: { message: 'no' } }) }))
+    const view = renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.setActive).toHaveBeenCalled())
+    view.unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(state.load).not.toHaveBeenCalled()
+  })
+
+  it('keeps the form locked while the page load is on its way', async () => {
+    state.signIn.mockResolvedValue({ data: {} }); state.list.mockResolvedValue({ data: [orgs[0]] }); state.setActive.mockResolvedValue({ data: {} })
+    renderPage(Login); submitLogin()
+    await waitFor(() => expect(state.load).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Logging in…' })).toHaveProperty('disabled', true)
   })
 })
 

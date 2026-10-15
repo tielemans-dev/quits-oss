@@ -59,7 +59,7 @@ vi.mock("../../lib/auth-client", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
-    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) } },
+    cvr: { available: { query: vi.fn(async () => ({ enabled: false, suggestions: false })) }, setupAvailable: { query: vi.fn(async () => ({ enabled: false })) } },
     onboarding: {
       getStatus: {
         query: onboardingStatusQuery,
@@ -108,7 +108,7 @@ describe("OnboardingPage cloud flow", () => {
     let resolveStatus!: (value: unknown) => void
     onboardingStatusQuery.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
     render(<RouteComponent />)
-    const companyName = screen.getByLabelText("Company name") as HTMLInputElement
+    const companyName = await screen.findByLabelText("Company name") as HTMLInputElement
     expect(companyName.matches(":disabled")).toBe(true)
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).matches(":disabled")).toBe(true)
     resolveStatus({ isComplete: false, missing: [], values: { companyName: "Saved company", locale: "en-US" } })
@@ -116,6 +116,71 @@ describe("OnboardingPage cloud flow", () => {
     expect(companyName.value).toBe("Saved company")
     fireEvent.change(companyName, { target: { value: "Reviewed company" } })
     expect(companyName.value).toBe("Reviewed company")
+  })
+
+  it("shows neither the legacy setup form nor v2 until v2 availability resolves", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    let resolveAvailability!: (value: unknown) => void
+    vi.mocked(trpc.cvr.available.query).mockImplementationOnce(() => new Promise((resolve) => { resolveAvailability = resolve }) as never)
+    render(<RouteComponent />)
+    expect(await screen.findByRole("status")).toBeTruthy()
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    resolveAvailability({ enabled: false, suggestions: false })
+    await waitFor(() => expect(screen.queryByRole("status")?.textContent).not.toBe("Loading onboarding state…"))
+  })
+
+  it("offers a retry instead of the legacy form when v2 availability fails", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: false, suggestions: false } as never)
+    render(<RouteComponent />)
+    const retry = await screen.findByRole("button", { name: "Try again" })
+    const callsBeforeRetry = vi.mocked(trpc.cvr.available.query).mock.calls.length
+    expect(screen.queryByText("Finish organization setup")).toBeNull()
+    expect(screen.queryByText("Business basics")).toBeNull()
+    fireEvent.click(retry)
+    await waitFor(() => expect(trpc.cvr.available.query).toHaveBeenCalledTimes(callsBeforeRetry + 1))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
+  it("retries runtime capabilities with v2 availability before mounting v2", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("network"))
+    vi.mocked(trpc.cvr.available.query)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    // Availability recovered but capabilities did not: keep offering the retry, not v2.
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy()
+    const capabilityCalls = runtimeCapabilitiesQuery.mock.calls.length
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(runtimeCapabilitiesQuery.mock.calls.length).toBeGreaterThan(capabilityCalls))
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Try again" })).toBeNull())
+  })
+
+  it("does not mount v2 from a stale availability result when the retry's availability read fails", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "o@example.com" }, session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: {}, missing: [] })
+    runtimeCapabilitiesQuery.mockRejectedValueOnce(new Error("network"))
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    vi.mocked(trpc.cvr.available.query)
+      .mockResolvedValueOnce({ enabled: true, suggestions: false } as never)
+      .mockRejectedValueOnce(new Error("network"))
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
+    await waitFor(() => expect(vi.mocked(trpc.cvr.available.query).mock.calls.length).toBeGreaterThanOrEqual(2))
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy()
+    expect(screen.queryByText("Business basics")).toBeNull()
   })
 
   it("persists the selected CVR company after loading the newly selected organization", async () => {
@@ -155,6 +220,26 @@ describe("OnboardingPage cloud flow", () => {
     await waitFor(() => expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US"))
     expect(screen.getByText("Finish organization setup")).toBeTruthy()
     await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ locale: "en-US", primaryTaxId: null }))
+  })
+
+  it("does not store a legacy locale draft when onboarding v2 is active", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
+  })
+
+  it("does not store a legacy locale draft when capabilities are unavailable", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    runtimeCapabilitiesQuery.mockRejectedValue(new Error("unavailable"))
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: "", locale: "da-DK", countryCode: "DK" }, missing: ["companyName"] })
+    render(<RouteComponent />)
+    await waitFor(() => expect(runtimeCapabilitiesQuery).toHaveBeenCalledTimes(2))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
   })
 
   it("prefills localized defaults and hides irrelevant tax fields", async () => {
@@ -282,8 +367,8 @@ describe("OnboardingPage cloud flow", () => {
 })
 
 describe.each([
-  ["da-DK", "Udfyld virksomhedsnavn, adresse og e-mail for at fortsætte."],
-  ["en-US", "Fill in company name, address and email to continue."],
+  ["da-DK", "Udfyld de markerede felter for at gøre din profil klar til fakturering."],
+  ["en-US", "Fill in the marked fields to get your profile ready for invoicing."],
 ])("onboarding defaults and submit validation in %s", (locale, message) => {
   const label = (english: string) => locale === "da-DK" ? ({ "Locale": "Sprog", "Country": "Land", "Default currency": "Valuta", "Tax setup": "Moms", "Company name": "Virksomhedsnavn", "Company address": "Adresse", "Billing email": "E-mail", "VAT/CVR number": "CVR-nr.", "Finish onboarding": "Afslut opsætning" }[english] ?? english) : english
   it("starts Danish, waits for submit, and completes after correction", async () => {
@@ -332,5 +417,66 @@ describe.each([
     expect((screen.getByLabelText(label("Default currency")) as HTMLSelectElement).value).toBe("GBP")
     expect((screen.getByLabelText(label("Tax setup")) as HTMLSelectElement).value).toBe("custom")
     expect((screen.getByLabelText(label("Country")) as HTMLSelectElement).value).toBe("DK")
+  })
+})
+
+describe.each([
+  ["da-DK", "Udfyld de markerede felter for at gøre din profil klar til fakturering.", "Indtast en gyldig e-mail, fx navn@firma.dk", "Indtast en e-mail", "Udfyld feltet", { name: "Virksomhedsnavn", address: "Adresse", email: "E-mail", finish: "Afslut opsætning" }],
+  ["en-US", "Fill in the marked fields to get your profile ready for invoicing.", "Enter a valid email, like name@company.com", "Enter an email", "Fill in this field", { name: "Company name", address: "Company address", email: "Billing email", finish: "Finish onboarding" }],
+])("onboarding inline validation messages in %s", (locale, banner, invalidEmail, requiredEmail, required, label) => {
+  async function renderIncomplete() {
+    uiLocale.value = locale
+    useSessionMock.mockReturnValue({ data: { session: { activeOrganizationId: "org_1" } } })
+    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale }, missing: [] })
+    runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
+    render(<RouteComponent />)
+    await waitFor(() => expect((screen.getByLabelText(label.name) as HTMLInputElement)).toBeTruthy())
+  }
+  const submit = () => fireEvent.submit(screen.getByRole("button", { name: label.finish }).closest("form")!)
+
+  it("explains an invalid email inline and clears the message and banner once it is fixed", async () => {
+    await renderIncomplete()
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "not-an-email" } })
+    submit()
+    expect(screen.getByRole("alert").textContent).toBe(banner)
+    expect(screen.getByText(invalidEmail)).toBeTruthy()
+    expect(screen.getByLabelText(label.email).getAttribute("aria-describedby")).toBe("companyEmail-error")
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    expect(screen.queryByText(invalidEmail)).toBeNull()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("asks for a missing email and required fields inline, and clears each as it is filled", async () => {
+    await renderIncomplete()
+    submit()
+    expect(screen.getByText(requiredEmail)).toBeTruthy()
+    for (const [input, id] of [[label.name, "companyName-error"], [label.address, "companyAddress-error"]]) {
+      expect(screen.getByLabelText(input).getAttribute("aria-invalid")).toBe("true")
+      expect(screen.getByLabelText(input).getAttribute("aria-describedby")).toBe(id)
+      expect(document.getElementById(id)?.textContent).toBe(required)
+    }
+    expect(screen.getAllByText(required)).toHaveLength(2)
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    expect(screen.getAllByText(required)).toHaveLength(1)
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    expect(screen.queryByText(required)).toBeNull()
+    expect(screen.queryByText(requiredEmail)).toBeNull()
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("clears the banner for a server-reported missing field once it is filled", async () => {
+    await renderIncomplete()
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: ["primaryTaxId"] } as never)
+    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    submit()
+    expect((await screen.findByRole("alert")).textContent).toBe(banner)
+    fireEvent.change(document.getElementById("primaryTaxId")!, { target: { value: "12345678" } })
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 })

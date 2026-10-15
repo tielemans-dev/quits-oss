@@ -57,6 +57,27 @@ function fillDraft() {
   fireEvent.change(screen.getByPlaceholderText("docForm.column.description"), { target: { value: "Synthetic work" } })
 }
 describe("invoice review regressions", () => {
+  it("rejects exponent quantities before saving and permits one comma-normalized retry", async () => {
+    render(<NewPage />)
+    await screen.findByRole("option", { name: contact.name })
+    fillDraft()
+    const quantity = screen.getByLabelText("docForm.column.qty")
+    fireEvent.change(quantity, { target: { value: "1e3" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
+    await screen.findByText("docForm.validation.quantityInvalid")
+    expect(api.create).not.toHaveBeenCalled()
+    expect(api.bankReadiness).not.toHaveBeenCalled()
+    expect(api.send).not.toHaveBeenCalled()
+    let persist!: (value: { id: string }) => void
+    api.create.mockReturnValue(new Promise(resolve => { persist = resolve }))
+    fireEvent.change(quantity, { target: { value: "1,5" } })
+    const save = screen.getByRole("button", { name: "docForm.action.saveSend" })
+    await act(async () => { fireEvent.click(save); fireEvent.click(save) })
+    expect(api.create).toHaveBeenCalledTimes(1)
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ quantity: "1.5" })] }))
+    await act(async () => { persist(invoice) })
+    expect(api.send).toHaveBeenCalledTimes(1)
+  })
   it("persists the complete draft before bank Settings navigation without sending", async () => {
     let persist!: (value: { id: string }) => void
     api.create.mockReturnValue(new Promise(resolve => { persist = resolve }))
@@ -64,8 +85,8 @@ describe("invoice review regressions", () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })
     fillDraft()
-    fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "2" } })
-    fireEvent.change(screen.getAllByRole("spinbutton")[1], { target: { value: "123.45" } })
+    fireEvent.change(screen.getByLabelText("docForm.column.qty"), { target: { value: "2" } })
+    fireEvent.change(screen.getByLabelText("docForm.column.unitPrice"), { target: { value: "123.45" } })
     fireEvent.change(screen.getByLabelText("invoices.issuance.supplyDate"), { target: { value: "2026-10-05" } })
     fireEvent.change(screen.getByLabelText("vat.lineTreatment"), { target: { value: "exempt" } })
     fireEvent.change(screen.getByLabelText("vat.statement"), { target: { value: "Synthetic exemption evidence" } })
