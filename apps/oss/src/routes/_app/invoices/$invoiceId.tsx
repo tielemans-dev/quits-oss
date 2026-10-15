@@ -1,7 +1,6 @@
 import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
 import { defaultDocumentTaxRate } from "../../../lib/invoice-defaults"
-import { TaxRateInput } from "../../../components/invoices/tax-rate-input"
 import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggle"
 import { LineVatSelect } from "../../../components/invoices/line-vat-select"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
@@ -276,13 +275,14 @@ function InvoiceDetailPage() {
   const [focusInvalid, setFocusInvalid] = useState(false)
   const editForm = useRef<HTMLDivElement>(null)
   const [editDueDate, setEditDueDate] = useState("")
+  const [editSupplyDate, setEditSupplyDate] = useState("")
   const [editNotes, setEditNotes] = useState("")
   const [editTaxRate, setEditTaxRate] = useState("0")
   const [editVatEvidence, setEditVatEvidence] = useState<DraftVatEvidence>({})
   const [editItems, setEditItems] = useState<EditItem[]>([])
   // The edit values as of this render, so a save can tell which fields changed while it was in flight.
-  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editNotes: string; editItems: EditItem[] } | null>(null)
-  const editValues = useMemo(() => ({ editContactId, editDueDate, editNotes, editItems }), [editContactId, editDueDate, editNotes, editItems])
+  const editSnapshot = useRef<{ editContactId: string; editDueDate: string; editSupplyDate: string; editNotes: string; editTaxRate: string; editVatEvidence: DraftVatEvidence; editItems: EditItem[] } | null>(null)
+  const editValues = useMemo(() => ({ editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems }), [editContactId, editDueDate, editSupplyDate, editNotes, editTaxRate, editVatEvidence, editItems])
   editSnapshot.current = editValues
   // After a failed save, move focus to the first invalid control (in page order) so the problem is not missed.
   useEffect(() => {
@@ -356,6 +356,7 @@ function InvoiceDetailPage() {
     if (readOnly) { setEditing(true); return }
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
+    setEditSupplyDate(invoice.supplyDate ? new Date(invoice.supplyDate).toISOString().slice(0, 10) : "")
     setEditNotes(invoice.notes ?? "")
     // An all-zero draft restarts at the seller's own default: 0 when not VAT-registered, else the policy or configured rate.
     setEditTaxRate(invoice.agreementTaxRate ?? (Number(storedDocumentTaxRate(invoice.items)) > 0 ? storedDocumentTaxRate(invoice.items) : readiness ? defaultDocumentTaxRate(readiness) : String(orgSettings.taxRate ?? "0")))
@@ -389,6 +390,11 @@ function InvoiceDetailPage() {
     setEditIssues((prev) => (prev.some(drop) ? prev.filter((issue) => !drop(issue)) : prev))
   }
 
+  function changeEditVat(items: EditItem[]) {
+    clearIssues((issue) => issue.field === "items" && issue.column === "vat" && issue.line !== undefined && items[issue.line]?.vat !== editItems[issue.line]?.vat)
+    setEditItems(items)
+  }
+
   function updateEditItem(index: number, field: keyof EditItem, value: string) {
     clearIssues((issue) => issue.field === "items" && issue.line === index && (!issue.column || issue.column === field))
     setEditItems((prev) =>
@@ -417,7 +423,7 @@ function InvoiceDetailPage() {
   function applyCatalogItemToEditItem(index: number, catalogItemId: string) {
     // A catalog item replaces the description and unit price, so their issues no longer apply.
     if (catalogItems.some((item) => item.id === catalogItemId)) {
-      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity")
+      clearIssues((issue) => issue.field === "items" && issue.line === index && issue.column !== "quantity" && issue.column !== "vat")
     }
     setEditItems((prev) =>
       prev.map((item, i) => {
@@ -444,6 +450,11 @@ function InvoiceDetailPage() {
     const follow = (issue: ReadableIssue): ReadableIssue | null => {
       const now = editSnapshot.current!
       if (issue.field === "items") return followLineIssue(issue, submitted.editItems, now.editItems)
+      if (issue.field === "taxRate") return now.editTaxRate === submitted.editTaxRate ? issue : null
+      if (issue.field === "vatEvidence") {
+        const key = issue.evidence as keyof DraftVatEvidence | undefined
+        return (key ? now.editVatEvidence[key] === submitted.editVatEvidence[key] : now.editVatEvidence === submitted.editVatEvidence) ? issue : null
+      }
       const value = ({ contact: "editContactId", dueDate: "editDueDate", notes: "editNotes" } as const)[issue.field as "contact" | "dueDate" | "notes"]
       return !value || now[value] === submitted[value] ? issue : null
     }
@@ -452,6 +463,7 @@ function InvoiceDetailPage() {
         id: invoice.id,
         contactId: editContactId,
         dueDate: editDueDate,
+        supplyDate: editSupplyDate || null,
         notes: editNotes,
         ...(invoice.agreementId ? {} : { taxRate: editTaxRate, pricesIncludeTax: editPricesIncludeTax }),
         vatEvidence: editVatEvidence,
@@ -465,6 +477,7 @@ function InvoiceDetailPage() {
       })
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
+      setIssuance(current => ({ ...current, supplyDate: editSupplyDate || initialIssuanceValues().supplyDate }))
       // Edits made while the save was in flight are not in this response; keep the editor open so they are not lost.
       if (editSnapshot.current !== submitted) return
       setEditing(false)
@@ -624,19 +637,22 @@ function InvoiceDetailPage() {
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>
       [...new Set(editIssues.filter(match).map((issue) => t(issue.key, issue.params)))]
     const hasIssue = (field: ReadableIssue["field"], line?: number, column?: ReadableIssue["column"]) =>
-      editIssues.some((issue) => issue.field === field && issue.line === line && (!issue.column || !column || issue.column === column))
+      editIssues.some((issue) => issue.field === field && issue.line === line && (column === "vat" ? issue.column === "vat" : !issue.column || !column || issue.column === column))
     const fieldMessage = (id: string, match: (issue: ReadableIssue) => boolean) => {
       const messages = issueMessages(match)
       return messages.length > 0 ? <div id={id}>{messages.map((message) => <p key={message} className="text-sm text-destructive" role="alert">{message}</p>)}</div> : null
     }
     const a11y = (id: string, invalid: boolean) => ({ "aria-invalid": invalid || undefined, "aria-describedby": invalid ? id : undefined })
     // Each line column has its own message element; a control is described only by its column's message and any whole-line message.
-    const lineColumns = ["line", "description", "quantity", "unitPrice"] as const
+    const lineColumns = ["line", "description", "quantity", "unitPrice", "vat"] as const
     const lineIssueId = (index: number, column: (typeof lineColumns)[number]) => `edit-line-${index}-${column}-error`
     const lineDescribedBy = (index: number, column: NonNullable<ReadableIssue["column"]>) => {
       const id = (at: (typeof lineColumns)[number]) => editIssues.some((issue) => issue.field === "items" && issue.line === index && (issue.column ?? "line") === at) ? lineIssueId(index, at) : null
-      return [id(column), id("line")].filter(Boolean).join(" ") || undefined
+      return [id(column), column === "vat" ? null : id("line")].filter(Boolean).join(" ") || undefined
     }
+    // A VAT evidence message is tied only to the controls of the entry it was reported for.
+    const evidenceEntries = ["statementText", "buyerVatId", "viesCheck", "exportEvidence"] as const
+    const evidenceIssueId = (entry: keyof DraftVatEvidence) => editIssues.some((issue) => issue.field === "vatEvidence" && issue.evidence === entry) ? `edit-vatEvidence-${entry}-error` : undefined
     const lineA11y = (index: number, column: NonNullable<ReadableIssue["column"]>) => ({ "aria-invalid": hasIssue("items", index, column) || undefined, "aria-describedby": lineDescribedBy(index, column) })
     // An adopter policy fixes the rate and treatment, so a compact VAT column replaces the classification editor.
     const restrictedVat = !!readiness?.standardVatRate
@@ -694,6 +710,18 @@ function InvoiceDetailPage() {
               </div>
             </div>
             {fieldMessage("edit-form-error", (issue) => issue.field === "form" || issue.field === "email" || issue.field === "cvr")}
+
+            <div className="grid gap-2">
+              <Label htmlFor="editSupplyDate">{t("invoices.issuance.supplyDate")}</Label>
+              <LocalizedDateField
+                id="editSupplyDate"
+                value={editSupplyDate}
+                onChange={setEditSupplyDate}
+                locale={locale}
+                placeholder={t("docForm.selectDate")}
+                clearLabel={t("docForm.clear")}
+              />
+            </div>
 
             <PriceBasisToggle value={editPricesIncludeTax} onChange={setEditPricesIncludeTax} disabled={!!invoice.agreementId} />
             {/* Line Items */}
@@ -818,7 +846,9 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
+            {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence" && !issue.evidence)}
+            {evidenceEntries.map((entry) => <div key={entry}>{fieldMessage(`edit-vatEvidence-${entry}-error`, (issue) => issue.field === "vatEvidence" && issue.evidence === entry)}</div>)}
             {!invoice.agreementId && !readiness?.standardVatRate && <VatGroupPreview {...preview} />}
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -829,10 +859,22 @@ function InvoiceDetailPage() {
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
                   {readiness?.standardVatRate || invoice.agreementId ? <span className="num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span> : <div className="flex items-center gap-1">
-                    <TaxRateInput value={editTaxRate} onChange={value => { setEditTaxRate(value); setEditItems(lines => lines.map(line => ({ ...line, vat: undefined }))) }} />
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      disabled={!!invoice.agreementId}
+                      step="0.01"
+                      value={editTaxRate || ""}
+                      {...a11y("edit-taxRate-error", hasIssue("taxRate"))}
+                      onChange={(e) => { clearIssues((issue) => issue.field === "taxRate" || (issue.field === "items" && issue.column === "vat")); setEditTaxRate(e.target.value); setEditItems((lines) => lines.map((line) => ({ ...line, vat: undefined }))) }}
+                      className="w-16 h-7 text-xs"
+                    />
+                    <span className="text-muted-foreground text-xs">%</span>
                     <span className="ml-auto num">{preview.result ? formatCurrency(editTaxAmount, invoice.currency, locale) : "—"}</span>
                   </div>}
                 </div>
+                {fieldMessage("edit-taxRate-error", (issue) => issue.field === "taxRate")}
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t("docForm.summary.total")}</span>
                   <span className="num">{preview.result ? formatCurrency(editTotal, invoice.currency, locale) : "—"}</span>

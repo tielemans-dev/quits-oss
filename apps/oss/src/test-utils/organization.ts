@@ -65,6 +65,7 @@ export async function createTestOrganization(
       timezone: string
       currency: string
       taxRegime: string
+      taxRate: number | null
       pricesIncludeTax: boolean
       companyName: string
       companyEmail: string
@@ -95,6 +96,7 @@ export async function createTestOrganization(
       baseCurrency: settings.currency ?? "USD",
       currency: settings.currency ?? "USD",
       taxRegime: settings.taxRegime ?? "us_sales_tax",
+      taxRate: settings.taxRate ?? null,
       pricesIncludeTax: settings.pricesIncludeTax ?? false,
       // MOCK: an onboarded synthetic seller has a known postal identity for linked issuance.
       companyAddress: "1 Synthetic Street, Test City",
