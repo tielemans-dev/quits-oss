@@ -7,6 +7,7 @@ import { prisma } from "../../lib/db"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { createAgreementDraft } from "../../domain/commands/agreements"
 import { sendAgreement, issueAgreement, recordAgreementAcceptance } from "../../domain/commands/agreement-lifecycle"
+import type { AnyCommandDefinition } from "../../domain/command"
 import { createQuoteDraft, sendQuote, convertQuoteToInvoice } from "../../domain/commands/quotes"
 import { authenticateAgentSecret, createAgentKey } from "../../domain/agent-keys"
 import { decideApproval } from "../../domain/approvals"
@@ -240,7 +241,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     await expect(ctx.caller.quotes.send({ id: second.id, allowSendWithoutEmail: true })).rejects.toThrow("not VAT-registered")
     expect(await prisma.quote.findUniqueOrThrow({ where: { id: second.id } })).toMatchObject({ status: "draft", number: null })
   })
-  it.each([sendAgreement, issueAgreement])("guards existing agreement drafts at $type before issuance", async command => {
+  it.each<AnyCommandDefinition>([sendAgreement, issueAgreement])("guards existing agreement drafts at $type before issuance", async command => {
     const ctx = await setup(true)
     const draft = await completed(executeCommand(createAgreementDraft, {
       contactId: ctx.invoice.contactId, title: "Synthetic agreement", validUntil: "2099-12-01", taxRate: 25,
