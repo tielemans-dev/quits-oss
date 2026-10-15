@@ -1,3 +1,4 @@
+import { automaticReminderSuppressed, REMINDER_UNSUBSCRIBED_MESSAGE } from "../../lib/reminders/unsubscribe"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { Effect } from "effect"
 import { z } from "zod"
@@ -217,6 +218,7 @@ registerDeliveryCompletion(REMINDER_COMPLETION, {
       },
     })
     if (!reminder) return "The reminder no longer exists"
+    if (await automaticReminderSuppressed(db, reminder.invoice.organizationId, target.recipient, target.manual === "true")) return REMINDER_UNSUBSCRIBED_MESSAGE
     const settings = await db.orgSettings.findUnique({
       where: { organizationId: reminder.invoice.organizationId },
       select: { reminderPolicy: true },
@@ -845,7 +847,9 @@ export const deliverScheduledReminder = defineCommand({
 
       const { invoice } = reminder
       const { settings } = yield* loadDocumentContext
+      const unsubscribed = yield* Effect.promise(() => automaticReminderSuppressed(db, organizationId, invoice.contact.email ?? "", false))
       const skipReason =
+        (unsubscribed ? REMINDER_UNSUBSCRIBED_MESSAGE : null) ??
         reminderSkipReason({ reminder, invoice, policy: parseReminderPolicy(settings.reminderPolicy), now }) ??
         (!isValidRecipient(invoice.contact.email)
           ? "Contact has no email address"

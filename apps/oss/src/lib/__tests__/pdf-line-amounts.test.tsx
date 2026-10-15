@@ -50,7 +50,7 @@ describe("invoice PDF lines", () => {
     expect(text).toEqual(expect.arrayContaining(["4.000,00 kr.", "8.000,00 kr.", "6.500,00 kr."]))
     expect(text).not.toContain("10.000,00 kr.")
     expect(text).not.toContain("8.125,00 kr.")
-    expect(text).toEqual(expect.arrayContaining(["Subtotal", "14.500,00 kr.", "Moms (25 %)", "3.625,00 kr.", "18.125,00 kr."]))
+    expect(text).toEqual(expect.arrayContaining(["Subtotal ekskl. moms", "14.500,00 kr.", "Moms 25 %", "3.625,00 kr.", "18.125,00 kr."]))
   })
 
   it("names a gross basis in the headers", () => {
@@ -63,7 +63,7 @@ describe("invoice PDF lines", () => {
     const text = invoiceText({ ...danish, currency: "USD", vatRows: [{ ratePercent: "10", net: "1.00", tax: "0.10", gross: "1.10" }] }, { locale: "en-US" })
     expect(text).toContain("Unit Price excl. tax")
     expect(text).toContain("Amount excl. tax")
-    expect(text).toContain("Tax (10%)")
+    expect(text).toContain("Tax 10%")
     expect(text).toContain("Supply Date")
   })
 
@@ -95,7 +95,7 @@ describe("invoice PDF lines", () => {
     }, { locale: "da-DK" })
     const labels = text.filter((entry) => entry.startsWith("Moms "))
     expect(labels).toEqual(["Moms 0 % af 500,00 kr.", "Moms 5 % af 201,00 kr.", "Moms 25 % af 1.200,00 kr."])
-    expect(text.indexOf("Moms 25 % af 1.200,00 kr.")).toBeLessThan(text.lastIndexOf("Total"))
+    expect(text.indexOf("Moms 25 % af 1.200,00 kr.")).toBeLessThan(text.lastIndexOf("Total inkl. moms"))
   })
 
   it("falls back to the single tax amount when the rows are empty", () => {
@@ -144,7 +144,7 @@ describe("invoice PDF totals", () => {
   it("prints the rounding between the VAT and the total so the rows add up", () => {
     const text = invoiceText(rounded, { locale: "da-DK" })
     const subtotal = text.indexOf("Subtotal ekskl. moms")
-    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms (25 %)", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
+    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms 25 %", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
   })
 
   it("prints no rounding row when there is none", () => {
@@ -156,8 +156,8 @@ describe("invoice PDF totals", () => {
     const gross = invoiceText(rounded, { locale: "da-DK" })
     expect(gross).toEqual(expect.arrayContaining(["Subtotal ekskl. moms", "Total inkl. moms"]))
     const net = invoiceText(danish, { locale: "da-DK" })
-    expect(net).toEqual(expect.arrayContaining(["Subtotal", "Total"]))
-    expect(net).not.toContain("Total inkl. moms")
+    expect(net).toEqual(expect.arrayContaining(["Subtotal ekskl. moms", "Total inkl. moms"]))
+    expect(net).not.toContain("Total")
     const english = invoiceText({ ...rounded, currency: "USD" }, { locale: "en-US" })
     expect(english).toEqual(expect.arrayContaining(["Subtotal excl. tax", "Rounding", "Total incl. tax"]))
   })
@@ -193,7 +193,7 @@ describe("credit note PDF lines", () => {
     const text = creditText(credit)
     expect(text).toContain("Enhedspris ekskl. moms")
     expect(text).toContain("Beløb ekskl. moms")
-    expect(text).toEqual(expect.arrayContaining(["Moms (25 %)", "1.625,00 kr.", "8.125,00 kr."]))
+    expect(text).toEqual(expect.arrayContaining(["Moms 25 %", "1.625,00 kr.", "8.125,00 kr."]))
   })
 
   it("mirrors a gross basis", () => {
@@ -209,7 +209,7 @@ describe("credit note PDF lines", () => {
       items: [{ description: "Vare", quantity: 1, unitPrice: 10.12, total: 10.12 }],
     })
     const subtotal = text.indexOf("Subtotal ekskl. moms")
-    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms (25 %)", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
+    expect(text.slice(subtotal, subtotal + 8)).toEqual(["Subtotal ekskl. moms", "8,10 kr.", "Moms 25 %", "2,03 kr.", "Afrunding", "-0,01 kr.", "Total inkl. moms", "10,12 kr."])
   })
 
   it("keeps the plain headers for a render input frozen before credit notes stated their basis", () => {
@@ -223,4 +223,9 @@ describe("credit note PDF lines", () => {
     const buffer = await renderToBuffer(CreditNotePdfDocument({ creditNote: credit }))
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
   })
+})
+
+it("prints a deviating 25 percent PDF line label once", () => {
+  const output = invoiceText({ ...danish, momsRegistered: true, taxRate: 5, items: [5, 25].map(taxRate => ({ description: `Service ${taxRate}`, taxRate, quantity: 1, unitPrice: 100, total: 100 })) }, { locale: "da-DK" })
+  expect(output.filter(value => value === "25 % moms")).toHaveLength(1)
 })

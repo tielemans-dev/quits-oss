@@ -1,5 +1,6 @@
 import { sellerVatPresentationStatus } from "../documents/seller-vat"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { creditNotePdfParties, type CreditNotePdfContact } from "../credit-notes/pdf-parties"
 import { nonVatStatement } from "../documents/non-vat-note"
 import { withoutNonVatStatement } from "../documents/non-vat-presentation"
 import { documentColors as C } from "../brand/document-colors"
@@ -27,6 +28,9 @@ export type SendCreditNoteEmailParams = {
     issueDate: Date | string
     reason: string
     sellerSnapshot?: unknown
+    buyerSnapshot?: unknown
+    contact?: CreditNotePdfContact
+    taxRate?: number
     subtotal: number
     taxAmount: number
     total: number
@@ -42,6 +46,7 @@ export type SendCreditNoteEmailParams = {
   org: {
     companyName?: string | null
     companyEmail?: string | null
+    companyAddress?: string | null
     locale?: string | null
     timezone?: string | null
   }
@@ -59,11 +64,14 @@ export function buildCreditNoteEmailContent({
 }: Omit<SendCreditNoteEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
-  const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
+  const sellerEmail = parseSellerSnapshot(creditNote.sellerSnapshot)?.companyEmail ?? org.companyEmail
+  const safeCompanyEmail = sellerEmail ? escapeHtml(sellerEmail) : null
   const momsRegistered = sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime)
   const reason = withoutNonVatStatement(creditNote.reason, momsRegistered, creditNote.taxRegime)
   const locale = org.locale
   const timezone = org.timezone
+  const { seller, buyer } = creditNotePdfParties({ ...creditNote, locale, contact: creditNote.contact ?? { name: contactName } }, org)
+  const partyLine = (value: string) => `<div style="color:${C.muted};font-size:14px;">${formatMultilineHtml(value)}</div>`
   const label = `font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;`
 
   const html = layout(
@@ -77,7 +85,8 @@ export function buildCreditNoteEmailContent({
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="${label}">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(safeFromName)}</div>
+        <div style="font-weight:500;">${escapeHtml(seller.name)}</div>
+        ${[seller.address, ...seller.taxIds].filter((value): value is string => !!value).map(partyLine).join("")}
         ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
       </div>
       <div style="text-align:right;">
@@ -87,7 +96,13 @@ export function buildCreditNoteEmailContent({
       </div>
     </div>
 
-    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, false, momsRegistered)}
+    <div style="margin-top:16px;">
+      <div style="${label}">${t("pdf.billTo", locale)}</div>
+      <div style="font-weight:500;">${escapeHtml(buyer.name)}</div>
+      ${[buyer.company, buyer.email, ...buyer.lines, ...buyer.taxIds].filter((value): value is string => !!value).map(partyLine).join("")}
+    </div>
+
+    ${itemsTable(creditNote.items, creditNote.currency, locale, creditNote.priceBasis, false, momsRegistered, creditNote.vatRows, creditNote.taxRate)}
     ${totalsBlock(creditNote, locale)}
     ${momsRegistered === false ? `<p style="margin-top:24px;color:${C.muted};font-size:14px;">${escapeHtml(nonVatStatement(locale))}</p>` : ""}
 

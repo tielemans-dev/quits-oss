@@ -8,12 +8,12 @@
 import {
   parseBuyerSnapshot,
   parseSellerSnapshot,
-  type DocumentTaxId,
 } from "@quits/contracts/documents"
 import { sellerPresentationTaxIds } from "../documents/invoice-identity"
 import { sellerVatPresentationStatus } from "../documents/seller-vat"
 import { canRenderLogo } from "../documents/logo"
-import { translate } from "../i18n/translate"
+import { formatTaxIds, distinctCompany } from "../documents/tax-ids"
+import { pdfBuyerAddress } from "../documents/invoice-identity"
 import type { OrgSettingsForPdf } from "../invoice-pdf"
 
 export type CreditNotePdfContact = {
@@ -55,36 +55,18 @@ export type CreditNotePdfBuyer = {
   taxIds: string[]
 }
 
-const VAT_SCHEMES = new Set(["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"])
-
-function normalizeTaxIdScheme(scheme: DocumentTaxId["scheme"]) {
-  return scheme?.trim().toLowerCase() ?? ""
-}
-
-function formatTaxIds(taxIds: readonly DocumentTaxId[] | undefined, locale: string | null | undefined) {
-  return (taxIds ?? []).flatMap((taxId) => {
-    const value = taxId.value.trim()
-    if (!value) return []
-    const scheme = taxId.scheme?.trim() ?? ""
-    const normalized = normalizeTaxIdScheme(taxId.scheme)
-    const label = VAT_SCHEMES.has(normalized)
-      ? translate("creditNotes.pdf.vatNumber", locale)
-      : normalized === "cvr"
-        ? translate("creditNotes.pdf.cvrNumber", locale)
-        : scheme
-          ? scheme.replace(/_/g, " ").toUpperCase()
-          : translate("creditNotes.pdf.taxId", locale)
-    return [`${label}: ${value}`]
-  })
-}
-
 export function creditNotePdfParties(
   creditNote: CreditNotePdfPartiesInput,
   org: OrgSettingsForPdf
 ): { seller: CreditNotePdfSeller; buyer: CreditNotePdfBuyer } {
   const locale = creditNote.locale ?? org.locale
   const sellerSnapshot = parseSellerSnapshot(creditNote.sellerSnapshot)
-  const buyerSnapshot = parseBuyerSnapshot(creditNote.buyerSnapshot)
+  const parsedBuyer = parseBuyerSnapshot(creditNote.buyerSnapshot)
+  const buyerSnapshot = parsedBuyer && Object.values(parsedBuyer).some(value => value != null && value !== "") ? parsedBuyer : null
+
+  const party = buyerSnapshot
+    ? { ...buyerSnapshot, name: buyerSnapshot.name || creditNote.contact.name }
+    : creditNote.contact
 
   const seller: CreditNotePdfSeller = sellerSnapshot
     ? {
@@ -92,7 +74,7 @@ export function creditNotePdfParties(
         email: sellerSnapshot.companyEmail ?? null,
         address: sellerSnapshot.companyAddress ?? null,
         taxIds: formatTaxIds(sellerPresentationTaxIds(sellerSnapshot.taxIds,
-          sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)), locale),
+          sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)), locale, party.country ?? "DK", sellerVatPresentationStatus(sellerSnapshot.momsRegistered, creditNote.taxRegime)),
         phone: org.companyPhone ?? null,
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
@@ -105,15 +87,11 @@ export function creditNotePdfParties(
         logo: canRenderLogo(org.companyLogo) ? org.companyLogo : null,
       }
 
-  const party = buyerSnapshot
-    ? { ...buyerSnapshot, name: buyerSnapshot.name || creditNote.contact.name }
-    : creditNote.contact
-  const cityLine = [party.city, party.state, party.zip].filter(Boolean).join(", ")
   const buyer: CreditNotePdfBuyer = {
     name: party.name,
-    company: party.company ?? null,
+    company: distinctCompany(party),
     email: party.email ?? null,
-    lines: [party.address, cityLine, party.country].filter((line): line is string => Boolean(line)),
+    lines: pdfBuyerAddress(party, locale),
     taxIds: formatTaxIds(buyerSnapshot?.taxIds, locale),
   }
 

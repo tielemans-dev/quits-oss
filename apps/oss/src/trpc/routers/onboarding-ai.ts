@@ -120,6 +120,7 @@ async function loadSnapshot(organizationId: string) {
   })
 
   const readiness = evaluateOnboardingReadiness({
+    onboardingVersion: settings.onboardingVersion,
     companyName: settings.companyName,
     companyAddress: settings.companyAddress,
     companyEmail: settings.companyEmail,
@@ -311,6 +312,7 @@ async function applyPatchToOrgSettings(
   if ("defaultCurrency" in patch) {
     assertSettingsCurrency(patch.defaultCurrency)
     updateData.defaultCurrency = patch.defaultCurrency
+    updateData.currency = patch.defaultCurrency
   }
   if ("taxRegime" in patch) updateData.taxRegime = patch.taxRegime
   if ("pricesIncludeTax" in patch) updateData.pricesIncludeTax = patch.pricesIncludeTax
@@ -327,6 +329,9 @@ async function applyPatchToOrgSettings(
     if (!settings) {
       // Currency resolution reads the saved book, so initialize it before a sparse first patch.
       await initializeDkSettings(organizationId, tx)
+    }
+    if (patch.countryCode && patch.countryCode !== (settings?.countryCode ?? "DK")) {
+      updateData.taxRate = patch.countryCode === "DK" ? (settings?.momsRegistered === false ? 0 : 25) : null
     }
     updateData.baseCurrency = await resolveBaseCurrency(tx, organizationId, { countryCode: updateData.countryCode as string | undefined })
     await tx.orgSettings.upsert({
