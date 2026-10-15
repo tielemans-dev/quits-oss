@@ -121,6 +121,7 @@ model Organization {
   issuanceCandidates      IssuanceCandidate[]
   settings                OrgSettings?
   vatPeriodEntries        VatPeriodEntry[]
+  cvrVerification         OrganizationCvrVerification?
 
   @@map("organization")
 }
@@ -1235,4 +1236,25 @@ model LearnedDefaultClear {
   @@unique([contactId, field])
   @@index([organizationId])
   @@map("learned_default_clear")
+}
+
+// Registry verification is separate from seller VAT confirmation and has no self-host gate.
+enum CvrVerificationStatus {
+  pending
+  verified
+  invalid
+  inactive
+}
+
+model OrganizationCvrVerification {
+  organizationId String                @id
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cvr            String
+  status         CvrVerificationStatus
+  checkedAt      DateTime?
+  nextAttemptAt  DateTime              @default(now())
+  lastError      String?
+
+  @@index([status, nextAttemptAt])
+  @@map("organization_cvr_verification")
 }
