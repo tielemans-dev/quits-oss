@@ -134,7 +134,8 @@ export async function agreementPdfResponse(input: AgreementPdfInput) {
   const { getDocumentRenderer } = await import("./runtime/services")
   const renderer = getDocumentRenderer()
   if (!renderer) return new Response("Document renderer unavailable", { status: 503 })
-  const bytes = await renderer.renderPdf({
+  const { renderPdf } = await import("./documents/render-pdf")
+  const bytes = await renderPdf(renderer, {
     kind: "agreement", organizationId: "preview", documentId: "preview",
     number: input.number ?? "preview", issuedAt: input.issueDate ?? new Date().toISOString(),
     recipient: null, pdf: input, snapshot: input.snapshot,

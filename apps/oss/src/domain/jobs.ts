@@ -131,7 +131,10 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
             claimToken: null,
           },
     })
-    jobsLogger.warn("job.failed", { jobId: id, type: job.type, attempts: job.attempts, terminal, exhausted, error })
+    jobsLogger[failed ? "error" : "warn"]("job.failed", {
+      organizationId: job.organizationId, jobId: id, type: job.type,
+      attempts: job.attempts, terminal, exhausted, errorType: error instanceof Error ? error.name : "UnknownError",
+    })
     return terminal ? "terminal" : exhausted ? "exhausted" : "retrying"
   }
 }

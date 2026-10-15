@@ -5,6 +5,7 @@ import { documentVatSummary } from "../domain/documents/vat-summary"
 import { lineAmounts, nominalLineTaxRate, priceBasis } from "./documents/line-amounts"
 import { InvoicePdfDocument, type InvoiceForPdf } from "./invoice-pdf"
 import { getDocumentRenderer } from "./runtime/services"
+import { renderPdf } from "./documents/render-pdf"
 
 type QuoteForPdf = Prisma.QuoteGetPayload<{ include: {
   contact: { include: { taxIds: true } }
@@ -55,7 +56,7 @@ export async function renderQuotePdf(quote: QuoteForPdf) {
   const renderer = getDocumentRenderer()
   if (!renderer) throw new Error("Document renderer unavailable")
   const pdf = quotePdfInput(quote)
-  return renderer.renderPdf({
+  return renderPdf(renderer, {
     kind: "quote", organizationId: quote.organizationId, documentId: quote.id,
     number: quote.number ?? "", issuedAt: quote.issueDate.toISOString(),
     recipient: quote.contact.email?.trim() || null,
