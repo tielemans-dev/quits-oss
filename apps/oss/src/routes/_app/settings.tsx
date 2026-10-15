@@ -546,9 +546,10 @@ function SettingsPage() {
     // Settings pre-selects the stored choice, and re-checking a checked radio fires no change. Saving
     // with the choice displayed therefore confirms it, so a stored choice without hosted evidence
     // needs no toggle. Unchanged evidence is kept as is. Only a choice the seller can see is sent, and an
-    // unreviewed one only with a complete Danish identity, so unrelated saves are not blocked by it.
+    // unreviewed one only with a complete Danish identity (CVR in the exact form
+    // prepareSellerVatConfirmation accepts), so unrelated saves are not blocked by it.
     const displayedSellerVatChoice = sellerVatChoice === false && !(isSelfHostDistribution || nonVatEnabled) ? null : sellerVatChoice
-    const sellerIdentityComplete = Boolean(companyNameInput && companyAddressInput) && /^(DK)?\d{8}$/u.test(primaryTaxId.replace(/[\s.\-/]/gu, "").toUpperCase())
+    const sellerIdentityComplete = Boolean(companyNameInput && companyAddressInput) && /^(DK)?\d{8}$/u.test(primaryTaxId.trim())
     const confirmedSellerVatChoice = !sellerVatChoiceShown || withdrawSellerVatEvidence ? null
       : sellerVatChoiceReviewed ? sellerVatChoice : sellerIdentityComplete ? displayedSellerVatChoice : null
     try {

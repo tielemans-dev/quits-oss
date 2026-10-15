@@ -600,9 +600,12 @@ describe("Settings hosted VAT persistence", () => {
     expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
-  it.each([true, false])("does not block unrelated saves with an incomplete Danish identity and stored %s", async status => {
+  it.each([
+    [true, { companyAddress: null }], [false, { companyAddress: null }],
+    [true, { primaryTaxId: "24 25 67 90" }], [true, { primaryTaxId: "dk24256790" }],
+  ])("does not block unrelated saves with stored %s and an unconfirmable identity %o", async (status, identity) => {
     enableHostedConfirmation()
-    await renderDanishSettings(status, { companyAddress: null })
+    await renderDanishSettings(status, identity)
     expectChoice(status)
     submitSettingsForm()
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
