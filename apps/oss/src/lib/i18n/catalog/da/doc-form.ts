@@ -33,7 +33,7 @@ export const daDocFormMessages = {
   "invoiceValidation.cvr.invalid": "Et CVR-nummer har 8 cifre",
   "invoiceValidation.unknown": "Tjek feltet og prøv igen",
   "invoiceValidation.customer.businessName.required": "Indtast kundens firmanavn",
-  "invoiceValidation.customer.country.unsupported": "Lige nu kan du kun fakturere kunder i Danmark",
+  "invoiceValidation.customer.country.unsupported": "Lige nu kan du kun fakturere kunder i: {countries}",
   "invoiceValidation.seller.country.unsupported": "Vælg et understøttet land for dit firma",
   "invoiceValidation.seller.vatRegistration.required": "Bekræft, om du er momsregistreret",
   "invoiceValidation.seller.bank.required": "Tilføj bankoplysninger",

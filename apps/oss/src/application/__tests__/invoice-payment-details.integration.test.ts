@@ -210,7 +210,7 @@ const sellerOf = async (id: string) =>
     const context = await setup({ details: null })
     const invoice = await draft(context)
     const result = await issueDocument({ kind: "invoice", actor: context.actor, commandInput: { id: invoice.id, allowSendWithoutEmail: true } })
-    expect(result).toMatchObject({ status: "failed", error: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
+    expect(result).toMatchObject({ status: "failed", error: { fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
     const response = await documentPdf("invoice", invoice.id, context.org.organizationId)
     expect(response.status).toBe(200)
     const rendered = JSON.parse(await response.text()) as RenderInput & { kind: "invoice" }
@@ -222,7 +222,7 @@ const sellerOf = async (id: string) =>
     const context = await setup({ details: { note: "Pay by MobilePay" } })
     const invoice = await draft(context)
     const result = await issueDocument({ kind: "invoice", actor: context.actor, commandInput: { id: invoice.id, allowSendWithoutEmail: true } })
-    expect(result).toMatchObject({ status: "failed", error: { issues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
+    expect(result).toMatchObject({ status: "failed", error: { fieldIssues: [{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }] } })
   })
 
   it("keeps parsing and rendering an invoice issued before payment details existed", async () => {
