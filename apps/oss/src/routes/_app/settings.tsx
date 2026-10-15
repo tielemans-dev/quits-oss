@@ -62,6 +62,8 @@ import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { shouldAutoLoadAiModels, type AiProviderId } from "./-settings.helpers"
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from "../../lib/onboarding/rules"
 import { AiDraftsCard } from "../../components/settings/ai-drafts-card"
+import { VatPeriodCard } from "../../components/settings/vat-period-card"
+import type { VatPeriod } from "../../lib/vat-deadline"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
@@ -137,6 +139,7 @@ type SettingsData = {
   pricesIncludeTax: boolean
   currency: string
   momsRegistered?: boolean | null
+  vatPeriod?: VatPeriod | null
   paymentTermsDays?: number
   taxRate: number | null
   companyName: string | null
@@ -230,6 +233,7 @@ function SettingsPage() {
   // Confirms changes that save on their own (Connect, AI drafts) outside the form's Save button.
   const [notice, setNotice] = useState<string | null>(null)
   const [savingAiDrafts, setSavingAiDrafts] = useState(false)
+  const [savingVatPeriod, setSavingVatPeriod] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
   // An explicit radio change. Without one, Save confirms the displayed stored choice (see handleSubmit).
@@ -508,6 +512,21 @@ function SettingsPage() {
       setError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
     } finally {
       setSavingAiDrafts(false)
+    }
+  }
+
+  async function saveVatPeriod(vatPeriod: VatPeriod | null) {
+    setError(null)
+    setNotice(null)
+    setSavingVatPeriod(true)
+    try {
+      await trpc.settings.update.mutate({ vatPeriod })
+      setSettings((current) => current ? { ...current, vatPeriod } : current)
+      setNotice(t("settings.vatPeriod.saved"))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("settings.error.saveFailed"))
+    } finally {
+      setSavingVatPeriod(false)
     }
   }
 
@@ -1467,6 +1486,11 @@ function SettingsPage() {
           </CardContent>
         </Card>
         </StripePaymentsSection>
+
+        {/* The moms period behind the Overblik deadline; only for a moms-registered Danish seller. */}
+        {settings.momsRegistered === true && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat" ? (
+          <VatPeriodCard value={settings.vatPeriod ?? null} busy={savingVatPeriod} onChange={(period) => { void saveVatPeriod(period) }} />
+        ) : null}
 
         {/* AI invoice drafting */}
         {settings.aiDrafts?.managed ? (

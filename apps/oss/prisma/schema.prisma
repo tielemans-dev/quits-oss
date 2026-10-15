@@ -193,6 +193,7 @@ model OrgSettings {
   companyAddress                     String?
   companyEmail                       String?
   momsRegistered                     Boolean?
+  vatPeriod                          String?
   paymentTermsDays                    Int?
   onboardingV2Key                    String?
   onboardingV2Result                 Json?

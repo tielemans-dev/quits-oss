@@ -194,6 +194,12 @@ export const daSettingsMessages = {
   "settings.section.ai.title": "AI-fakturakladning",
   "settings.section.ai.description":
     "Vælg hvordan AI-fakturakladder genereres, og konfigurer forbindelsen.",
+  "settings.vatPeriod.title": "Momsperiode",
+  "settings.vatPeriod.help": "Hvor ofte du indberetter moms til Skat. Overblik bruger den til at tælle ned til næste frist.",
+  "settings.vatPeriod.option.none": "Ikke valgt",
+  "settings.vatPeriod.option.quarterly": "Kvartalsvis",
+  "settings.vatPeriod.option.half_yearly": "Halvårligt",
+  "settings.vatPeriod.saved": "Momsperioden er gemt.",
   "settings.ai.drafts.label": "AI-kladder",
   "settings.ai.drafts.help": "Foreslår felter ud fra din beskrivelse. Intet sendes uden dit klik.",
   "settings.ai.drafts.saved.on": "AI-kladder er slået til.",
