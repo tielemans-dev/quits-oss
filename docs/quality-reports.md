@@ -7,6 +7,7 @@ or external delivery. It adds no PR jobs. Copy checks remain in the existing CI.
 The browser report covers `/q`, `/a`, `/pay`, the app invoice page in light and
 dark, invoice and credit note emails, and every page of their rendered PDFs.
 It checks DA/EN at desktop and mobile widths. PDFs have a fixed paper size.
+Signed payment-link inputs are masked in screenshots and remain in axe checks.
 axe checks HTML pages, including contrast and accessible names. Keyboard and
 screen-reader review still need human testing. The hosted landing page is outside
 this repository and is not covered here.

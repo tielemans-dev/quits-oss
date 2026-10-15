@@ -21,7 +21,9 @@ test.afterEach(() => resetQuitsRuntimeForTests())
 
 async function capture(page: Page, info: TestInfo, name: string) {
   await page.evaluate(() => document.fonts.ready)
-  const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' })
+  // Signed links contain random fixture IDs. Keep the input in axe, mask only its pixels.
+  const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide',
+    mask: [page.locator('input[readonly][value*="/pay/"]')], maskColor: '#888888' })
   await info.attach(name, { body: png, contentType: 'image/png' })
   expect.soft(png).toMatchSnapshot(`${name}.png`, { maxDiffPixelRatio: 0.001 })
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
