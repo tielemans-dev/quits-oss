@@ -14,7 +14,7 @@ const SHRINK_MS = DURATION.squareShrink
 const FLY_MS = DURATION.squareFly
 /** Once the job is queued, the square waits this long for the toast before it lets go anyway. */
 const SETTLE_MS = 1500
-const TOAST = '[data-slot="reminder-tracker"]'
+const TOAST = '[data-slot="reminder-tracker"], [data-slot="undo-toast"][data-job-id]'
 
 export type HandoffLabels = { failed: string; retry: string; close: string }
 

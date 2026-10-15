@@ -26,10 +26,9 @@ import { LocalizedDateField } from "../localized-date-field"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { holdSend } from "./held-send"
+import { syncHeldJobs } from "../undo/undo-store"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
-import { announceRequestDone } from "./request-events"
 import { useMorph } from "./use-morph"
 
 const SHRINK_MS = DURATION.card
@@ -70,7 +69,6 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   // The quantities as typed, by line; the one thing the card lets the person change.
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const hours = useRef<HTMLInputElement>(null)
-  const announced = useRef<string | null>(null)
   const dismissRef = useRef(onDismiss)
   useEffect(() => { dismissRef.current = onDismiss })
   const morph = useMorph<HTMLDivElement>(SHRINK_MS)
@@ -160,25 +158,11 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       const reviewedRecipient = state.recipientVersion
       const submit = () => submitInvoice(
         { contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence: back?.vatEvidence ?? {}, notes: back?.notes, issuance, currency, baseCurrency: state.baseCurrency, items: lines },
-        { sendImmediately: true, reviewedRecipient, t }
+        { sendImmediately: true, holdSend: true, reviewedRecipient, t }
       )
       // The draft exists; the invoice page tells what went wrong, as it does after the form.
       const showFailure = (target: Awaited<ReturnType<typeof submit>>) => {
         void navigate({ to: "/invoices/$invoiceId", params: { invoiceId: target.id }, search: { emailWarning: target.emailWarning, sendError: target.sendError } })
-      }
-      if (repeat) {
-        // Fortryd needs time before anything is made: the click starts the wait, and the card is done.
-        holdSend({
-          customer: customerName ?? "",
-          amount: total,
-          run: async () => {
-            const target = await submit()
-            if (target.sendError || target.emailWarning) return showFailure(target)
-            announceRequestDone({ kind: "invoice", invoiceId: target.id })
-          },
-        })
-        onDismiss()
-        return
       }
       const target = await submit()
       if (target.sendError || target.emailWarning) {
@@ -186,6 +170,8 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
         onDismiss()
         return
       }
+      // The send waits out the undo window; its toast offers Fortryd and tells when it has gone.
+      await syncHeldJobs()
       morph.run(() => setSent({ id: target.id, amount: total, customer: customerName ?? "" }))
     } catch (err) {
       const changed = invoiceFieldIssues(err).find(issue => issue.code === "changed_since_review")
@@ -202,17 +188,11 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
     onDismiss()
   }
 
-  // The dashboard behind learns of the new invoice when the check lets go; closing early still tells it.
   useEffect(() => {
     if (!sent) return
-    const announce = () => {
-      if (announced.current === sent.id) return
-      announced.current = sent.id
-      announceRequestDone({ kind: "invoice", invoiceId: sent.id })
-    }
-    const leave = setTimeout(() => { announce(); setLeaving(true) }, SHRINK_MS + HOLD_MS)
+    const leave = setTimeout(() => setLeaving(true), SHRINK_MS + HOLD_MS)
     const close = setTimeout(() => dismissRef.current(), SHRINK_MS + HOLD_MS + LEAVE_MS)
-    return () => { clearTimeout(leave); clearTimeout(close); announce() }
+    return () => { clearTimeout(leave); clearTimeout(close) }
   }, [sent])
 
   // The same element carries the card and the check, so the morph animates one surface and never a blank one.
@@ -228,7 +208,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
           <Check className="size-5" aria-hidden="true" />
         </span>
         <div {...stagger(1)} className="min-w-0">
-          <p className="font-semibold">{t("shell.request.invoice.sent")}</p>
+          <p className="font-semibold">{t("undo.title.invoice")}</p>
           <p className="text-muted-foreground truncate text-sm tabular-nums">{[sent.amount, sent.customer].filter(Boolean).join(" · ")}</p>
         </div>
       </div>

@@ -8,6 +8,8 @@ vi.mock("../../lib/email", async () => {
 
 import { Prisma } from "../../../generated/prisma/client"
 import { prisma } from "../../lib/db"
+import { UNDO_WINDOW_MS } from "../../lib/undo-window"
+import { paymentsRouter } from "../../trpc/routers/payments"
 import { deliver } from "../../lib/email"
 import { findEmailDeliveryJobs } from "../../test-utils/email-outbox"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
@@ -197,11 +199,50 @@ describeIfDatabase("payment received emails", () => {
     expect(messages.map((message) => message.to)).toEqual(["seller@acme.test"])
   })
 
-  it("tells only the seller about an invoice marked paid", async () => {
+  /** The undo window of a mark-paid closes: its held notice becomes due. */
+  const closeUndoWindow = (organizationId: string) =>
+    prisma.job.updateMany({ where: { organizationId, type: "email.deliver", status: "pending" }, data: { runAfter: new Date(0) } })
+
+  it.each([false, true])("payment-match email survives reload and respects Fortryd=%s", async undo => {
+    const { org, invoiceId } = await setup()
+    const caller = () => paymentsRouter.createCaller({ session: {
+      user: { id: org.actors.admin.userId }, session: { activeOrganizationId: org.organizationId },
+    } } as never)
+    const input = { invoiceId, amount: 250, paidAt: "2026-06-02", method: "bank_transfer" as const, requestId: crypto.randomUUID() }
+    const started = Date.now()
+    const recorded = await caller().record(input)
+    const [job] = await queuedPaymentEmails(org.organizationId)
+    expect(job!.runAfter.getTime()).toBeGreaterThanOrEqual(started + UNDO_WINDOW_MS)
+    expect(await sentMessages(org.organizationId)).toEqual([])
+
+    // Fresh callers have no card state or timers; a retry must retain the same payment and hold.
+    expect((await caller().record(input)).payment.id).toBe(recorded.payment.id)
+    expect(await queuedPaymentEmails(org.organizationId)).toHaveLength(1)
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    if (undo) await caller().void({ paymentId: recorded.payment.id, reason: "Fortryd" })
+    await closeUndoWindow(org.organizationId)
+    expect((await sentMessages(org.organizationId)).map(message => message.to)).toEqual(undo ? [] : ["seller@acme.test"])
+    if (undo) expect((await prisma.job.findUniqueOrThrow({ where: { id: job!.id } })).result).toMatchObject({ outcome: "withdrawn" })
+  })
+
+  it("tells only the seller about an invoice marked paid, once the undo window has closed", async () => {
     const { org, invoiceId } = await setup()
     await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    await closeUndoWindow(org.organizationId)
     const messages = await sentMessages(org.organizationId)
     expect(messages.map((message) => message.to)).toEqual(["seller@acme.test"])
+  })
+
+  it("sends no notice at all when Fortryd undoes the mark-paid inside the window", async () => {
+    const { org, invoiceId } = await setup()
+    const marked = await executeIssuanceCommand(markInvoicePaid, { invoiceId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    if (marked.status !== "completed") throw new Error("mark paid failed")
+    const undone = await executeIssuanceCommand(undoInvoiceMarkPaid, { invoiceId, paymentId: marked.result.paymentId, requestId: crypto.randomUUID() }, { actor: org.actors.admin })
+    expect(undone.status).toBe("completed")
+    await closeUndoWindow(org.organizationId)
+    expect(await sentMessages(org.organizationId)).toEqual([])
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).paymentStatus).not.toBe("paid")
   })
 
   it("skips a customer without a valid address and still tells the seller", async () => {

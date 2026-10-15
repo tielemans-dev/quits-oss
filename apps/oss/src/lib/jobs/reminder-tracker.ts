@@ -6,6 +6,8 @@ export type TrackerJob = {
   kind?: string
   status: string
   createdAt: Date | string
+  /** Time left in the undo window; nothing has been sent while it is above zero. */
+  heldForMs?: number
   steps: {
     id: string
     label: string
@@ -67,7 +69,7 @@ export function pickTrackedJob(
   now = Date.now()
 ) {
   return jobs.find((job) => {
-    if (dismissed.has(job.id)) return false
+    if (dismissed.has(job.id) || job.heldForMs) return false
     const { phase } = trackerView(job)
     if (phase === "running" || seen.has(job.id)) return true
     if (job.kind === "vat.summary" && phase === "done" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS) return true

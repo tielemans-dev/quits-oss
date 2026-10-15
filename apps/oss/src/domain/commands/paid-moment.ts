@@ -13,9 +13,10 @@ import { computeSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound } from "../errors"
 import { eventRegistry } from "../events/registry"
 import { Command, Db } from "../services"
-import { recordPayment, voidPayment } from "./payments"
+import { recordPaymentWithUndo, voidPayment } from "./payments"
 
-const UNDO_WINDOW_MS = 10 * 60 * 1000
+/** How long a mark-paid can be undone on the server. The Fortryd toast covers the first seconds of it. */
+const MARK_PAID_UNDO_MS = 10 * 60 * 1000
 
 const loadInvoice = (invoiceId: string) => Effect.gen(function* () {
   const db = yield* Db
@@ -32,7 +33,7 @@ const loadInvoice = (invoiceId: string) => Effect.gen(function* () {
 })
 
 function resultFor(
-  applied: Effect.Effect.Success<ReturnType<typeof recordPayment.handle>>,
+  applied: Effect.Effect.Success<ReturnType<typeof recordPaymentWithUndo.handle>>,
   undoUntil: string,
 ) {
   const { invoice, balanceDue, payment } = applied
@@ -84,13 +85,14 @@ export const markInvoicePaid = defineCommand({
       where: { organizationId: command.organizationId }, select: { timezone: true },
     }))
     // Run the existing handler in this command's transaction, with its events and outbox.
-    const applied = yield* recordPayment.handle({
+    // The payment notice waits out the undo window, so a Fortryd withdraws it before it leaves.
+    const applied = yield* recordPaymentWithUndo.handle({
       invoiceId: invoice.id,
       amount: balanceDue.toNumber(),
       paidAt: formatIsoDate(command.now, settings?.timezone ?? "UTC"),
       method: "manual",
     })
-    const undoUntil = new Date(command.now.getTime() + UNDO_WINDOW_MS).toISOString()
+    const undoUntil = new Date(command.now.getTime() + MARK_PAID_UNDO_MS).toISOString()
     command.emit({
       aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.marked_paid",
       payload: { paymentId: applied.payment.id, undoUntil },

@@ -19,8 +19,8 @@ import '../components/command-bar/register-cards'
 import { AppMain } from '../components/shell/app-main'
 import { I18nProvider } from '../lib/i18n/react'
 import { loginRedirectHref, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, onboardingShellLanguage } from '../lib/login-return'
-import { HeldSendToast } from '../components/command-bar/held-send-toast'
 import { ReminderTracker } from '../components/jobs/reminder-tracker'
+import { UndoToaster } from '../components/undo/undo-toaster'
 import { TrialAccessProvider, TrialBanner, TrialRouteGate } from '../components/billing/trial-access'
 
 export const Route = createFileRoute('/_app')({
@@ -114,8 +114,7 @@ function AppLayoutContent() {
           {organizationReady ? <TrialRouteGate pathname={pathname}><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
         </AppMain>
       </TrialAccessProvider>
-      {hasOrganization && organizationReady ? <ReminderTracker /> : null}
-      <HeldSendToast />
+      {hasOrganization && organizationReady ? <><ReminderTracker /><UndoToaster /></> : null}
     </SidebarProvider>
   )
 }

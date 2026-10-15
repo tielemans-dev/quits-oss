@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { z } from "zod"
 import type { Job, Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { UNDO_WINDOW_MS } from "../lib/undo-window"
 import type { UserActor } from "./actor"
 import { defineCommand } from "./command"
 import { sendReminderNow } from "./commands/reminders"
@@ -50,6 +51,8 @@ export const queueReminderJob = defineCommand({
     const job = yield* Effect.promise(() => db.job.create({ data: {
       organizationId: command.organizationId, type: REMINDER_BATCH_JOB,
       title: "reminders.jobs.title", payload: { actor: command.actor },
+      // Held for the undo window: nothing is sent before it closes (see `cancelHeldJob`).
+      runAfter: new Date(command.now.getTime() + UNDO_WINDOW_MS),
       steps: { create: ids.map((invoiceId, position) => ({
         invoiceId, position, label: "reminders.jobs.step",
         labelParams: { customerName: invoices.find(i => i.id === invoiceId)!.contact.name },
