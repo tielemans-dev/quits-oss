@@ -16,6 +16,23 @@ describe("new document tax defaults", () => {
     const { result } = renderHook(useDocumentTaxRate)
     await waitFor(() => expect(result.current[0]).toBe(String(taxRate ?? 0)))
   })
+  it.each([
+    [{ taxRate: 25, momsRegistered: true }, "25"],
+    [{ taxRate: 25, momsRegistered: false }, "0"],
+    [{ taxRate: 0, momsRegistered: false }, "0"],
+    [{ taxRate: 25, momsRegistered: null }, "25"],
+  ])("applies the seller VAT status to saved %j", async (settings, expected) => {
+    fixture.load.mockResolvedValue(settings)
+    const { result } = renderHook(useDocumentTaxRate)
+    await waitFor(() => expect(result.current[0]).toBe(expected))
+  })
+  it("still lets a non-VAT seller's explicit choice win", async () => {
+    fixture.load.mockResolvedValue({ taxRate: 25, momsRegistered: false })
+    const { result } = renderHook(useDocumentTaxRate)
+    await waitFor(() => expect(result.current[0]).toBe("0"))
+    act(() => result.current[1]("12"))
+    expect(result.current[0]).toBe("12")
+  })
   it.each(["0", "12", ""])("preserves explicit user/AI rate %s when settings arrive late", async chosen => {
     let resolve!: (settings: { taxRate: number }) => void
     fixture.load.mockReturnValue(new Promise(r => { resolve = r }))

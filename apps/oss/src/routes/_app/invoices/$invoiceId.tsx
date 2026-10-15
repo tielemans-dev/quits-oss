@@ -69,6 +69,7 @@ import { Printer, CheckCircle, Pencil, Trash2, Plus, ArrowLeft, Download } from 
 import { useI18n } from "../../../lib/i18n/react"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
+import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { InvoiceLifecyclePanels } from "../../../components/invoices/panels"
 
@@ -319,7 +320,7 @@ function InvoiceDetailPage() {
     setEditContactId(invoice.contact.id)
     setEditDueDate(new Date(invoice.dueDate).toISOString().split("T")[0])
     setEditNotes(invoice.notes ?? "")
-    setEditTaxRate(invoice.agreementTaxRate ?? String(invoice.items.find((item) => Number(item.taxRate) > 0)?.taxRate ?? 0))
+    setEditTaxRate(invoice.agreementTaxRate ?? storedDocumentTaxRate(invoice.items))
     const evidence = draftVatEvidenceSchema.safeParse(invoice.vatEvidence ?? {})
     setEditVatEvidence(evidence.success ? evidence.data : {})
     setEditItems(
