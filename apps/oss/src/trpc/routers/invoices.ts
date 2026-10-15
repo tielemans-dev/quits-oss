@@ -1,6 +1,7 @@
 import type { FieldIssue } from "@quits/contracts/agent"
 import { parseSellerSnapshot } from "@quits/contracts/documents"
 import { invoiceSendReviewVersion, recipientReviewVersion } from "../../domain/approval-contexts"
+import { loadSellerTaxIds } from "../../domain/documents/context"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { invoicePolicyIssues, resolveInvoicePolicies } from "../../domain/documents/issuance-policy"
@@ -216,7 +217,10 @@ export const invoicesRouter = router({
         ? (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { momsRegistered: true } }))?.momsRegistered ?? null
         : (issuedInvoiceSnapshot(invoice.issuanceSnapshot)?.seller ?? parseSellerSnapshot(invoice.sellerSnapshot))?.momsRegistered
       return {
-        reviewedVersion: invoiceSendReviewVersion(invoice, await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })),
+        reviewedVersion: invoiceSendReviewVersion(invoice, {
+          settings: (await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })) ?? { companyName: null, companyEmail: null, companyAddress: null },
+          sellerTaxIds: await loadSellerTaxIds(prisma, ctx.organizationId),
+        }),
         recipientVersion: recipientReviewVersion(invoice.contact),
         momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),
