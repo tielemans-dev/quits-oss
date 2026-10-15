@@ -43,6 +43,7 @@ export function serializePublicQuoteSession(session: {
     rounding?: string
     taxRegime?: string
     currency: string
+    pricesIncludeTax?: boolean
     /** The document's own language and timezone, the ones its PDF and email use. */
     locale?: string | null
     timezone?: string | null
@@ -111,6 +112,7 @@ export function serializePublicQuoteSession(session: {
       vatRows: quote.vatRows,
       rounding: quote.rounding,
       currency: quote.currency,
+      pricesIncludeTax: quote.pricesIncludeTax ?? false,
       taxRegime: quote.taxRegime,
       timezone: presentation.timezone,
       notes: quote.notes,

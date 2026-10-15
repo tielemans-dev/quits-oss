@@ -9,6 +9,13 @@ import { describe, expect, it } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
 import { LocalizedDocument } from "../../documents/localized-document"
 import { PublicQuotePage } from "../public-quote-page"
+import { Prisma } from "../../../../generated/prisma/client"
+import { composeQuoteEmail } from "../../../domain/documents/quote-email"
+import { QuotePdfDocument } from "../../../lib/quote-pdf"
+import { isValidElement } from "react"
+import { Text } from "@react-pdf/renderer"
+import { lineDisplayForUi } from "../../../trpc/routers/document-display"
+import { lineColumnKeys, priceBasis } from "../../../lib/documents/line-amounts"
 import { priceDocumentV2 } from "../../../domain/documents/pricing"
 import { serializePublicQuoteSession } from "../../../lib/quotes/public-session"
 
@@ -66,7 +73,60 @@ function page(locale: string, children: ReactNode) {
   return renderToStaticMarkup(<LocalizedDocument locale={locale}>{children}</LocalizedDocument>)
 }
 
+function pdfText(node: ReactNode): string[] {
+  if (Array.isArray(node)) return node.flatMap(pdfText)
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    const children = pdfText(node.props.children)
+    return node.type === Text ? [children.join("")] : children
+  }
+  return typeof node === "string" || typeof node === "number" ? [String(node)] : []
+}
+
 describe("PublicQuotePage", () => {
+  it.each([false, true])("agrees with app, email and PDF for pricesIncludeTax=%s in DA/EN", pricesIncludeTax => {
+    const D = Prisma.Decimal
+    for (const locale of ["da-DK", "en-US"]) {
+      const quote = { ...baseQuote, pricesIncludeTax, locale, currency: "DKK", organization: { settings: {} },
+        subtotalNet: new D(22500), totalTax: new D(5625), totalGross: new D(28125),
+        vatRows: [{ ratePercent: "25", net: "22500.00", tax: "5625.00", gross: "28125.00" }],
+        items: [18000, 4500].map((net, index) => ({
+          id: String(index), description: `Service ${index}`, quantity: new D(1), sortOrder: index,
+          unitPriceNet: new D(net), lineNet: new D(net), unitPriceGross: new D(net).mul("1.25"),
+          lineGross: new D(net).mul("1.25"), lineTax: new D(net).mul("0.25"), taxRate: new D(25),
+          vatTreatment: "standard", vatCountry: "DK", vatReasonCode: null, vatRateInput: "0.25",
+        })),
+      }
+      const email = composeQuoteEmail({ quote, settings: { companyName: "Synthetic seller" } as never,
+        to: "buyer@example.test", publicQuoteUrl: null }).message.html ?? ""
+      const pdf = pdfText(QuotePdfDocument({ quote: quote as unknown as Parameters<typeof QuotePdfDocument>[0]["quote"] })).join(" ")
+      const normalize = (text: string) => text.replace(/[  ]/g, " ")
+      const columns = lineColumnKeys(priceBasis(pricesIncludeTax))
+      for (const decisionState of ["pending", "accepted"] as const) {
+        const session = serializePublicQuoteSession({ quote, decisionState }, "synthetic")
+        const container = document.createElement("div")
+        container.innerHTML = page(locale, <PublicQuotePage token="synthetic" state={{ kind: "ready", ...session }} />)
+        const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", locale))!.nextElementSibling!
+        for (const [index, item] of quote.items.entries()) {
+          const app = lineDisplayForUi(quote, item)
+          for (const amount of [app.displayUnitPrice, app.displayAmount]) {
+            const formatted = normalize(formatCurrency(amount, "DKK", locale))
+            expect(normalize(lines.children[index]!.textContent!)).toContain(formatted)
+            expect(normalize(email)).toContain(formatted)
+            expect(normalize(pdf)).toContain(formatted)
+          }
+        }
+        for (const key of [columns.unitPrice, columns.amount]) {
+          const label = translate(key, locale)
+          expect(lines.textContent).toContain(label)
+          expect(email).toContain(label)
+          expect(pdf).toContain(label)
+        }
+        expect(normalize(container.textContent!)).toContain(normalize(formatCurrency(28125, "DKK", locale)))
+        expect(normalize(email)).toContain(normalize(formatCurrency(28125, "DKK", locale)))
+        expect(normalize(pdf)).toContain(normalize(formatCurrency(28125, "DKK", locale)))
+      }
+    }
+  })
   it.each([
     { name: "inclusive inputs", items: [{ description: "Brand identity", quantity: "1", unitPrice: "22500" }, { description: "Website design", quantity: "1", unitPrice: "5625" }], taxRate: "25" },
     { name: "zero tax", items: [{ description: "No tax", quantity: "2", unitPrice: "100" }], taxRate: "0" },
@@ -75,7 +135,7 @@ describe("PublicQuotePage", () => {
       { description: "Reduced rate", quantity: "2", unitPrice: "100", vat: { treatment: "standard" as const, rate: "0.125" } },
       { description: "Zero rate", quantity: "1", unitPrice: "100", vat: { treatment: "unclassified_zero" as const, rate: "0" } },
     ], taxRate: "25" },
-  ])("uses stored net values from $name without repricing", ({ items, taxRate }) => {
+  ])("uses stored gross values from $name without repricing", ({ items, taxRate }) => {
     const priced = priceDocumentV2({ items, taxRate, pricesIncludeTax: true, currency: "DKK" })
     const quote = { ...baseQuote, currency: "DKK", pricesIncludeTax: true,
       vatRows: priced.calculation.groups.map(group => ({ ratePercent: String(Number(group.rate) * 100), net: group.net, tax: group.tax, gross: group.gross })),
@@ -93,8 +153,8 @@ describe("PublicQuotePage", () => {
       container.innerHTML = html
       const lines = Array.from(container.querySelectorAll("h2")).find(heading => heading.textContent === translate("public.quote.summary", "da-DK"))!.nextElementSibling!
       for (const [index, row] of quote.items.entries()) {
-        expect(lines.children[index]?.textContent).toContain(money(row.unitPriceNet))
-        expect(lines.children[index]?.textContent).toContain(money(row.lineNet))
+        expect(lines.children[index]?.textContent).toContain(money(row.unitPriceGross))
+        expect(lines.children[index]?.textContent).toContain(money(row.lineGross))
         expect(session.quote.items[index]).toMatchObject({ unitPriceNet: row.unitPriceNet, lineNet: row.lineNet })
       }
       expect(session.quote.totalGross).toBe(Number(priced.totalGross))
