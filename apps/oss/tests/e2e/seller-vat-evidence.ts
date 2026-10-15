@@ -101,7 +101,7 @@ export async function captureHostedOnboarding(page: Page, organizationId: string
   await page.goto("/onboarding")
   await waitForClientReady(page)
   await page.getByRole("textbox", { name: translate("onboardingV2.search.heading", locale), exact: true }).fill("Synthetic")
-  await page.getByRole("button").filter({ hasText: "Synthetic Seller" }).click()
+  await page.getByRole("button", { name: /Synthetic Seller.*24256790/ }).click()
   await expect(page.getByLabel(translate("onboardingV2.field.cvr", locale), { exact: true })).toHaveValue("24256790")
   const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
   const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })

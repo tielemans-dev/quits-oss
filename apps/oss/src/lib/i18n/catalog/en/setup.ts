@@ -1,5 +1,7 @@
 export const enSetupMessages = {
   "cvr.invalid": "Enter a valid CVR number.",
+  "cvr.inactive": "The CVR number must belong to an active business. Try another CVR number.",
+  "cvr.unavailable": "CVR lookup is unavailable. Please try again shortly.",
   "save.failed": "Could not save. Try again.",
   "setup.title": "Set up your Quits instance",
   "setup.subtitle": "Configure your workspace before inviting your team and creating invoices.",

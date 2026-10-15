@@ -210,6 +210,18 @@ describe("saving the Settings language", () => {
     expect(state.getLayout).toHaveBeenCalledTimes(1)
   })
 
+  it.each(["da", "en-US"])("translates CVR refusal keys in Settings for %s", async locale => {
+    state.savedLocale = locale
+    const { container } = await renderSettings()
+    for (const key of ["cvr.inactive", "cvr.unavailable"] as const) {
+      state.updateSettings.mockRejectedValueOnce(new Error(key))
+      fireEvent.submit(container.querySelector("form")!)
+      const alert = await screen.findByRole("alert")
+      await waitFor(() => expect(alert.textContent).toBe(translate(key, locale)))
+      expect(alert.textContent).not.toBe(key)
+    }
+  })
+
   it("keeps the visible and route language while saving and after a rejected save", async () => {
     const { container, router } = await renderSettings()
     let reject!: (error: Error) => void

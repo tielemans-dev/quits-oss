@@ -656,7 +656,7 @@ function SettingsPage() {
     } catch (err) {
       setError(
         err instanceof Error
-          ? err.message
+          ? ["cvr.invalid", "cvr.inactive", "cvr.unavailable"].includes(err.message) ? t(err.message as TranslationKey) : err.message
           : t("settings.error.saveFailed")
       )
     } finally {

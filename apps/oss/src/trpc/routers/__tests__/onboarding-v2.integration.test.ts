@@ -386,7 +386,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it.each(["saveDraft", "complete", "completeManual"].flatMap(mutation => [false, true].map(existing => [mutation, existing] as const)))("serializes %s behind v2 with existing settings %s and preserves identifiers", async (mutation, existing) => {
     const id = await organization()
     const api = await caller(id)
-    if (existing) await api.onboarding.saveDraft({ primaryTaxId: null, companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
+    if (existing) await api.onboarding.saveDraft({ primaryTaxId: "24256790", companyName: "Original", companyAddress: "Testvej 1", companyEmail: "test@example.test", countryCode: "DK", invoicingIdentity: "individual", locale: "da-DK", timezone: "Europe/Copenhagen", defaultCurrency: "DKK", taxRegime: "eu_vat", invoicePrefix: "INV", quotePrefix: "QTE" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
@@ -424,12 +424,12 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it("rolls back legacy draft settings when identifier persistence fails", async () => {
     const id = await organization()
     const api = await caller(id)
-    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "24256790" })
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
     const taxIds = await prisma.organizationTaxId.findMany({ where: { organizationId: id } })
     const constraint = `qui56_draft_${id.replaceAll("-", "")}`
-    await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id ADD CONSTRAINT "${constraint}" CHECK ("organizationId" <> '${id}' OR value <> 'Rejected ID') NOT VALID`)
-    try { await expect(api.onboarding.saveDraft({ companyName: "Must roll back", primaryTaxId: "Rejected ID" })).rejects.toThrow() }
+    await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id ADD CONSTRAINT "${constraint}" CHECK ("organizationId" <> '${id}' OR value <> '24256790') NOT VALID`)
+    try { await expect(api.onboarding.saveDraft({ companyName: "Must roll back", primaryTaxId: "24256790" })).rejects.toThrow(constraint) }
     finally { await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id DROP CONSTRAINT "${constraint}"`) }
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(settings)
     expect(await prisma.organizationTaxId.findMany({ where: { organizationId: id } })).toEqual(taxIds)
@@ -556,7 +556,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it.each([false, true])("serializes AI patches after confirmation with existing settings %s", async existing => {
     const id = await organization()
     const api = await caller(id)
-    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    if (existing) await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "24256790" })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     let entered!: () => void
     let release!: () => void
@@ -565,7 +565,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     setRuntimeServices({ billingProvider: { startTrial: async () => { entered(); await blocked }, getSubscription: async () => ({ status: "trialing", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
     const v2 = api.onboarding.confirmV2(summary())
     await started
-    const patch = { source: "ai" as const, patch: { companyName: "Stale AI", primaryTaxId: "Stale ID" } }
+    const patch = { source: "ai" as const, patch: { companyName: "Stale AI", primaryTaxId: "24256790" } }
     // Attach rejection handling before releasing the confirmation transaction.
     const ai = expect(api.onboardingAi.applyOnboardingPatch(patch)).rejects.toMatchObject({ code: "CONFLICT" })
     try {
@@ -586,7 +586,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   it("serializes confirmation after an AI patch including its tax identifier write", async () => {
     const id = await organization()
     const api = await caller(id)
-    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "Original ID" })
+    await api.onboarding.saveDraft({ companyName: "Original", primaryTaxId: "24256790" })
     const name = `qui56_ai_${id.replaceAll("-", "")}`
     // A PostgreSQL advisory barrier holds the actual identifier write before commit.
     await prisma.$executeRawUnsafe(`CREATE FUNCTION "${name}"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."organizationId" = '${id}' THEN PERFORM pg_advisory_xact_lock(hashtext('${id}')); END IF; RETURN NEW; END $$`)
@@ -600,7 +600,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       entered(); await blocked
     }, { timeout: 60_000 })
     await started
-    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "AI draft ID" } })
+    const ai = api.onboardingAi.applyOnboardingPatch({ source: "ai", patch: { companyName: "AI draft", primaryTaxId: "24256790" } })
     let v2: ReturnType<typeof api.onboarding.confirmV2> | undefined
     try {
       await vi.waitFor(async () => {
