@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ list: vi.fn(), batch: vi.fn(), jobs: vi.fn() }))
+const api = vi.hoisted(() => ({ list: vi.fn(), batch: vi.fn(), jobs: vi.fn(), handoff: vi.fn() }))
 vi.mock("../../../trpc/client", () => ({
   trpc: { invoices: { list: { query: api.list } }, settings: { get: { query: async () => ({ timezone: "Europe/Copenhagen" }) } } },
 }))
+vi.mock("../tracker-handoff", () => ({ handOffToTracker: api.handoff }))
 vi.mock("../../jobs/reminder-jobs-store", () => ({ sendReminderBatch: api.batch, useReminderJobs: api.jobs }))
 
 import { I18nProvider } from "../../../lib/i18n/react"
@@ -66,28 +67,40 @@ describe("overdue request card", () => {
     expect(text()).not.toContain("Havbrise")
   })
 
-  it("sends one job for exactly the ticked rows, then lets go", async () => {
+  it("hands the ticked rows to the corner tracker and lets go, without sending from the card itself", async () => {
     const onDismiss = renderCard()
     fireEvent.click(await screen.findByRole("checkbox", { name: "Vælg faktura F-1 til Havbrise Logistik A/S" }))
     fireEvent.click(await sendButton(1))
 
-    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
-    expect(api.batch).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(api.handoff).toHaveBeenCalledTimes(1)
+    expect(api.batch).not.toHaveBeenCalled()
+    const [from, send, labels] = api.handoff.mock.calls[0]!
+    expect(from).toEqual(expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }))
+    expect(labels.retry).toBe("Prøv igen")
+    await send()
     expect(api.batch).toHaveBeenCalledWith(["2"], expect.any(String))
   })
 
-  it("keeps the card on a failure and retries the same selection under the same request id", async () => {
-    api.batch.mockRejectedValueOnce(new Error("network"))
-    const onDismiss = renderCard()
+  it("sends a retry of the same selection under the same request id", async () => {
+    renderCard()
     fireEvent.click(await sendButton(2))
 
-    await screen.findByText("Rykkerne blev ikke sat i gang. Prøv igen.")
-    expect(onDismiss).not.toHaveBeenCalled()
-    fireEvent.click(await sendButton(2))
-
-    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
+    const [, send] = api.handoff.mock.calls[0]!
+    await send()
+    await send()
     expect(api.batch).toHaveBeenCalledTimes(2)
     expect(api.batch.mock.calls[1]![1]).toBe(api.batch.mock.calls[0]![1])
+    expect(api.batch.mock.calls[0]![0]).toEqual(["1", "2"])
+  })
+
+  it("does not hand off twice on a double click", async () => {
+    renderCard()
+    const button = await sendButton(2)
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(api.handoff).toHaveBeenCalledTimes(1)
   })
 
   it("says so when nothing is overdue", async () => {
@@ -103,7 +116,7 @@ describe("overdue request card", () => {
     renderCard()
     fireEvent.click(await sendButton(100))
 
-    await waitFor(() => expect(api.batch).toHaveBeenCalled())
+    await api.handoff.mock.calls[0]![1]()
     expect(api.batch.mock.calls[0]![0]).toHaveLength(100)
     expect(text()).toContain("højst sendes 100 rykkere")
   })
