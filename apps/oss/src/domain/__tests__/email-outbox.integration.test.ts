@@ -124,27 +124,6 @@ describeIfDatabase("email outbox", () => {
     expect(await prisma.quote.findUniqueOrThrow({ where: { id: quote.result.id } })).toMatchObject({ status: "draft", lastEmailAttemptOutcome: null })
   })
 
-  it("keeps seller-initiated invoice and quote sends and their retries available after reminder unsubscribe", async () => {
-    const { org, invoiceId } = await setup()
-    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, include: { contact: true } })
-    const preference = await prisma.recipientReminderPreference.create({ data: { organizationId: org.organizationId, recipient: invoice.contact.email!.trim().toLowerCase(), locale: "en-US", unsubscribedAt: new Date() } })
-    const quote = await executeIssuanceCommand(createQuoteDraft, { contactId: invoice.contactId, expiryDate: "2099-12-01", taxRate: 0, items: [{ description: "Consulting", quantity: 1, unitPrice: 100 }] }, { actor: org.actors.admin })
-    if (quote.status !== "completed") throw new Error("Quote setup failed")
-    vi.mocked(deliver).mockRejectedValueOnce(new Error("response lost"))
-    expect(await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
-    const job = await deliveryJob(org.organizationId)
-    const originalMessage = vi.mocked(deliver).mock.calls[0]![0]
-    expect(originalMessage.headers).toHaveProperty("List-Unsubscribe")
-    expect(originalMessage.html).toContain("Unsubscribe from automatic reminders")
-    await makeDue(job.id)
-    await runDueJobs({ organizationIds: [org.organizationId] })
-    expect(vi.mocked(deliver).mock.calls[1]![0]).toEqual(originalMessage)
-    expect(await executeIssuanceCommand(sendQuote, { id: quote.result.id }, { actor: org.actors.admin })).toMatchObject({ status: "completed" })
-    expect(deliver).toHaveBeenCalledTimes(3)
-    expect(vi.mocked(deliver).mock.calls[2]![0].headers).toHaveProperty("List-Unsubscribe")
-    expect(await prisma.recipientReminderPreference.findUniqueOrThrow({ where: { id: preference.id } })).toMatchObject({ unsubscribedAt: preference.unsubscribedAt })
-  })
-
   it("never retries an ambiguous SMTP submission, even when configuration changes", async () => {
     const { org, invoiceId } = await setup()
     useSmtp()

@@ -10,8 +10,7 @@ import { appendEvents } from "../events"
 import { registerJobHandler, StaleJobClaimError, TerminalJobError } from "../jobs"
 import { registerTickTask, type TickOptions } from "../scheduler"
 import { lockArtifactOrganization } from "../documents/artifacts"
-import { addReminderUnsubscribe } from "../../lib/reminders/unsubscribe"
-import { Command, Db, type PendingEvent } from "../services"
+import { Command, type PendingEvent } from "../services"
 import { NEVER_SENT_MESSAGE, NOT_CONFIGURED_MESSAGE, emailProviderFailureCodeSchema, emailProviderFailureMessage, type EmailProviderFailureCode } from "./provider-failure"
 
 /**
@@ -93,7 +92,6 @@ const storedMessageSchema = z.object({
   subject: z.string(),
   html: z.string(),
   replyTo: z.string().optional(),
-  headers: z.record(z.string(), z.string()).optional(),
 })
 export type StoredEmailMessage = z.infer<typeof storedMessageSchema>
 
@@ -174,24 +172,17 @@ export function deliveryKey(idempotencyKey: string) {
 export const enqueueEmailDelivery = (input: {
   message: EmailMessage & StoredEmailMessage
   idempotencyKey: string
-  reminderUnsubscribeLocale?: string
   completion: { kind: string; target: Record<string, string> }
 }) =>
   Effect.gen(function* () {
     const command = yield* Command
-    const stored: StoredEmailMessage = {
+    const message: StoredEmailMessage = {
       from: input.message.from,
       to: input.message.to,
       subject: input.message.subject,
       html: input.message.html,
       ...(input.message.replyTo ? { replyTo: input.message.replyTo } : {}),
-      ...(input.message.headers ? { headers: input.message.headers } : {}),
     }
-    const db = yield* Db
-    const locale = input.reminderUnsubscribeLocale
-    const message = locale === undefined
-      ? stored
-      : yield* Effect.promise(() => addReminderUnsubscribe({ db, organizationId: command.organizationId, locale, message: stored }))
     const payload: DeliveryPayload = {
       message,
       idempotencyKey: input.idempotencyKey,

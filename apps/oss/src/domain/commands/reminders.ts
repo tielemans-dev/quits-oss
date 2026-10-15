@@ -327,7 +327,6 @@ const queueReminderEmail = (input: {
     })
     const { deliveryKey } = yield* enqueueEmailDelivery({
       message: composeMessage(input.recipient, content),
-      reminderUnsubscribeLocale: invoice.locale || settings.locale,
       idempotencyKey: input.idempotencyKey,
       completion: {
         kind: REMINDER_COMPLETION,
