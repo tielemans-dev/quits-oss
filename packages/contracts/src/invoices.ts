@@ -77,6 +77,8 @@ export const purchaseOrderRefInputSchema = z.string()
     return true
   }, "Order reference must contain only XML 1.0 characters").nullable().transform(value => value || null)
 
+export const invoicePaymentMethodsSchema = z.array(z.enum(["bank_transfer", "card"])).min(1).max(2)
+
 const currencySchema = z.string().trim().regex(/^[A-Z]{3}$/)
 
 export const invoiceCreateDraftInputSchema = z.object({
@@ -90,6 +92,8 @@ export const invoiceCreateDraftInputSchema = z.object({
   taxRate: documentTaxRateSchema.default(0),
   vatEvidence: draftVatEvidenceSchema.optional(),
   /** Recipient version a person confirmed (from sendReadiness). A different current recipient refuses the create. */
+  paymentMethods: invoicePaymentMethodsSchema.optional(),
+  remindersPaused: z.boolean().optional(),
   reviewedRecipient: z.string().regex(/^[a-f0-9]{32}$/).optional(),
   items: z.array(documentLineInputSchema).min(1).max(100).superRefine(refineDocumentLineKeys),
 })

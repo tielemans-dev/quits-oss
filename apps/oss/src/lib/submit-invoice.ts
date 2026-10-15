@@ -10,6 +10,8 @@ import { clearDraftValuation, retainDraftValuation } from "./invoice-issuance-dr
 
 /** What the new-invoice form and the request card share: the one path that creates and sends an invoice. */
 export type InvoiceSubmission = {
+  paymentMethods?: ("bank_transfer" | "card")[]
+  remindersPaused?: boolean
   contactId: string
   dueDate: string
   taxRate: string
@@ -40,6 +42,8 @@ export function submitInvoice(
     create: async () => {
       const draft = await trpc.invoices.createV2.mutate({
         contactId: invoice.contactId,
+        paymentMethods: invoice.paymentMethods,
+        remindersPaused: invoice.remindersPaused,
         dueDate: invoice.dueDate,
         supplyDate: issuance.supplyDate,
         taxRate: invoice.taxRate,

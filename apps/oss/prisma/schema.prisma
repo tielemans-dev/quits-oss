@@ -361,6 +361,7 @@ model Invoice {
   complianceErrors        Json?
   legalText               Json?
   paymentStatus           String            @default("unpaid")
+  paymentMethods          Json?
   paidAt                  DateTime?
   publicPaymentIssuedAt   DateTime?
   publicPaymentKeyVersion Int               @default(1)

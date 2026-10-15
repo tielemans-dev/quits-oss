@@ -1,3 +1,5 @@
+import { InvoiceFlow, InvoiceDetailPanel } from "../../../components/invoices/flow"
+import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { useCalendarDate } from "../../../hooks/use-calendar-date"
@@ -71,6 +73,16 @@ function formatDate(dateStr: string, locale?: string) {
 function InvoicesListPage() {
   const { t, locale } = useI18n()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [flowOpen, setFlowOpen] = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [notice, setNotice] = useState<CreatedDocumentTarget | null>(null)
+  const [fresh, setFresh] = useState<string | null>(null)
+  async function completed(target: CreatedDocumentTarget) {
+    setFlowOpen(false)
+    setNotice(target)
+    setFresh(target.id)
+    await loadInvoices()
+  }
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
   const today = useCalendarDate(timezone)
@@ -124,16 +136,22 @@ function InvoicesListPage() {
   }
 
   const newInvoice = (label: string) => (
-    <Button asChild>
-      <Link to="/invoices/new">
+    <Button data-invoice-create onClick={() => setFlowOpen(true)}>
         <Plus />
         {label}
-      </Link>
     </Button>
   )
 
   return (
     <div className="p-6">
+      {flowOpen && <InvoiceFlow open onClose={() => setFlowOpen(false)} onComplete={target => { void completed(target) }} />}
+      {selected && <InvoiceDetailPanel key={selected} id={selected} onClose={() => setSelected(null)} onChanged={() => { void loadInvoices() }} />}
+      {notice && <div role="status" className="invoice-toast fixed bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)] rounded-lg border bg-panel p-4 shadow-lg">
+        <p>{notice.sendError ?? (notice.emailWarning ? t("invoices.detail.warning.emailSkipped", { reason: notice.emailWarning }) : t(notice.kind === "recurring" ? "invoices.flow.scheduleSaved" : notice.kind === "draft" ? "invoices.flow.created" : "invoices.flow.sent"))}</p>
+        {invoices.find(invoice => invoice.id === notice.id) && <Amount value={decimalFromNumber(invoices.find(invoice => invoice.id === notice.id)!.total, invoices.find(invoice => invoice.id === notice.id)!.currency)} currency={invoices.find(invoice => invoice.id === notice.id)!.currency} locale={locale} />}
+        {notice.paymentUrl && <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(notice.paymentUrl!).catch(() => {}) }}>{t("invoices.flow.copyLink")}</Button>}
+        <Button variant="ghost" onClick={() => setNotice(null)}>{t("ui.close")}</Button>
+      </div>}
       <PageHeader title={t("invoices.title")} actions={newInvoice(t("invoices.action.new"))} />
 
       {invoices.length === 0 ? (
@@ -163,12 +181,13 @@ function InvoicesListPage() {
               const partlyPaid = invoice.balanceDue > 0 && invoice.balanceDue < invoice.total
               const dueDate = formatDate(invoice.dueDate, locale)
               return (
-                <ListRow key={invoice.id}>
+                <ListRow key={invoice.id} data-invoice-id={invoice.id} className={invoice.id === fresh ? "invoice-fresh-row" : undefined}>
                   <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <CustomerMark name={invoice.contact.name} />
                       <div className="min-w-0">
                         <Link
+                          onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && event.button === 0) { event.preventDefault(); setSelected(invoice.id) } }}
                           to="/invoices/$invoiceId"
                           params={{ invoiceId: invoice.id }}
                           search={{ emailWarning: undefined }}

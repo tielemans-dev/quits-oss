@@ -211,6 +211,7 @@ export const invoicesRouter = router({
         paymentState,
         balanceDue: computeSettlement(invoice).balanceDue,
         currency: invoice.currency,
+        paymentMethods: invoice.paymentMethods,
       }))
 
       const momsRegistered = invoice.status === "draft"
