@@ -134,8 +134,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const epoch = useRef(0)
   const TT = (suffix: string, vars?: Record<string, string | number>) => t(key(suffix), vars)
 
-  // The answer lives in the draft, so editing other fields or reloading keeps it.
-  const sellerVatChoice = draft?.vatChoiceConfirmed ? draft.values.momsRegistered : null
+  // Keep unsupported registry answers unanswered, including when restoring a draft.
+  const sellerVatChoice = draft && (!confirmationEnabled || draft.vatChoiceConfirmed) &&
+    (nonVatEnabled || draft.values.momsRegistered !== false) ? draft.values.momsRegistered : null
 
   function discard() {
     epoch.current++
@@ -360,23 +361,25 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     const v = draft.values
     // The form opts out of native (English-only) browser validation; required text fields the schema allows empty are checked here.
     const empty: string[] = (["companyName", "companyAddress", "companyForm", "companyEmail"] as const).filter((name) => !v[name].trim())
-    // Never a silently disabled button: a missing VAT answer is a visible, focused validation error (QUI-56).
-    // Reject before capability guards or the payload's non-null VAT assertion.
-    if ((confirmationEnabled && sellerVatChoice === null) || v.momsRegistered === null) {
-      reject([...empty, "momsRegistered"])
-      return
-    }
-    if (!nonVatEnabled && v.momsRegistered === false) return
-    if (
-      (v.bankRegNumber || v.bankAccountNumber) &&
+    const invalidBank = Boolean((v.bankRegNumber || v.bankAccountNumber) &&
       (!/^\d{4}$/.test(v.bankRegNumber) || !/^\d{1,10}$/.test(v.bankAccountNumber))
-    ) {
-      setBankErrors(true)
-      return
-    }
-    const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload(draft))
-    if (!validated.success || empty.length) {
-      reject([...new Set([...empty, ...(validated.success ? [] : validated.error.issues.map((issue) => String(issue.path.at(-1))))])])
+    )
+    setBankErrors(invalidBank)
+    // Validate the other fields even when VAT is unanswered. This temporary value is
+    // only for validation; the missing answer below always prevents submission.
+    const validated = (confirmationEnabled ? confirmOnboardingV2WithVatConfirmationSchema : confirmOnboardingV2Schema).safeParse(confirmationPayload({
+      ...draft, values: { ...v, momsRegistered: v.momsRegistered ?? true },
+    }))
+    const fields = [...new Set([
+      ...empty,
+      ...(sellerVatChoice === null ? ["momsRegistered"] : []),
+      ...(validated.success ? [] : validated.error.issues.map((issue) => {
+        const name = String(issue.path.at(-1))
+        return name === "regNumber" ? "bankRegNumber" : name === "accountNumber" ? "bankAccountNumber" : name
+      })),
+    ])]
+    if (fields.length) {
+      reject(fields)
       return
     }
     setValidationErrors([])
@@ -709,8 +712,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             {confirmationEnabled ? <div className="grid gap-3">
               <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
               {/* Not natively required: confirm() shows, focuses and explains a missing answer (QUI-56). */}
-              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} invalid={validationErrors.includes("momsRegistered")} disabled={busy} onChange={value => update("momsRegistered", value)} />
-              {validationErrors.includes("momsRegistered") ? <p className="ob-error" role="alert">{t("validation.required")}</p> : null}
+              <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} invalid={validationErrors.includes("momsRegistered")} aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined} disabled={busy} onChange={value => update("momsRegistered", value)} />
+              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
             </div> : (
             <SourceField label={TT("field.vat")} tag={factsTag}>
               <select
@@ -718,16 +721,16 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 name="momsRegistered"
                 aria-invalid={validationErrors.includes("momsRegistered")}
                 aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined}
-                value={draft.values.momsRegistered === null ? "" : String(draft.values.momsRegistered)}
+                value={sellerVatChoice === null ? "" : String(sellerVatChoice)}
                 aria-required
                 disabled={busy}
                 onChange={(e) => update("momsRegistered", e.target.value === "" ? null : e.target.value === "true")}
               >
-                {draft.values.momsRegistered === null && <option value="" disabled>{TT("vatUnknown")}</option>}
+                {sellerVatChoice === null && <option value="" disabled>{TT(draft.values.momsRegistered === null ? "vatUnknown" : "vatChoose")}</option>}
                 <option value="true">{TT("yes")}</option>
                 {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
-              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{t("validation.required")}</p> : null}
+              {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
             </SourceField>
             )}
             {field("taxRate", "field.rate", TT("defaultTag"), {

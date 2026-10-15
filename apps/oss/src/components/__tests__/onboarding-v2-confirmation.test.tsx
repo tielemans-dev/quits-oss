@@ -162,39 +162,67 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
     storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
     const done = vi.fn()
     render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled={confirmationEnabled} nonVatEnabled={nonVatEnabled} client={createOnboardingV2Client(false, confirmationEnabled)} onComplete={done} /></I18nProvider>)
-    const save = await screen.findByRole("button", { name: translate("onboardingV2.confirm", locale) })
-    const vat = confirmationEnabled ? screen.getAllByRole("radio")[0]! : screen.getByRole("combobox", { name: translate("onboardingV2.field.vat", locale) })
-    const unanswered = confirmationEnabled || momsRegistered === null
+    const copy = locale === "da-DK" ? {
+      save: "Bekræft og opret", vat: "Momsregistreret?",
+      banner: "Tjek de markerede felter, før du opretter din virksomhed.",
+      required: "Bekræft, om du er momsregistreret.",
+    } : {
+      save: "Confirm and create", vat: "VAT registered?",
+      banner: "Check the highlighted fields before creating your company.",
+      required: "Confirm whether you're VAT-registered.",
+    }
+    const save = await screen.findByRole("button", { name: copy.save })
+    const vat = confirmationEnabled ? screen.getAllByRole("radio")[0]! : screen.getByRole("combobox", { name: copy.vat })
+    const unanswered = confirmationEnabled || momsRegistered === null || (!nonVatEnabled && !momsRegistered)
+    if (!confirmationEnabled) expect((vat as HTMLSelectElement).value).toBe(unanswered ? "" : String(momsRegistered))
     if (confirmationEnabled) expect((vat as HTMLInputElement).checked).toBe(false)
     fireEvent.click(save)
 
     if (unanswered) {
-      expect(await screen.findByText(translate("onboardingV2.validation", locale))).toBeTruthy()
-      const error = screen.getByText(translate("validation.required", locale))
+      expect(await screen.findByText(copy.banner)).toBeTruthy()
+      const error = screen.getByText(copy.required)
       expect(error.closest(".ob-card")?.contains(vat)).toBe(true)
       expect(vat.getAttribute("aria-invalid")).toBe("true")
+      for (const control of confirmationEnabled ? screen.getAllByRole("radio") : [vat]) {
+        expect(control.getAttribute("aria-describedby")).toBe(error.id)
+      }
       expect(document.activeElement).toBe(vat)
       expect(api.prepare).not.toHaveBeenCalled()
       expect(api.confirm).not.toHaveBeenCalled()
       expect(done).not.toHaveBeenCalled()
-    } else if (momsRegistered || nonVatEnabled) {
+    } else {
       // Self-hosted setup can use a known registry value without hosted confirmation.
       await waitFor(() => expect(done).toHaveBeenCalledOnce())
       expect(api.prepare).not.toHaveBeenCalled()
       expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered }))
       return
-    } else {
-      expect(api.confirm).not.toHaveBeenCalled()
     }
 
     // Answering the question clears the error and permits a retry in every capability state.
     if (confirmationEnabled) fireEvent.click(vat)
     else fireEvent.change(vat, { target: { value: "true" } })
-    expect(screen.queryByText(translate("validation.required", locale))).toBeNull()
+    expect(screen.queryByText(copy.required)).toBeNull()
     fireEvent.click(save)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
     expect(api.prepare).toHaveBeenCalledTimes(confirmationEnabled ? 1 : 0)
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+  })
+
+  it.each([true, false])("shows all review errors together with an unanswered VAT choice, confirmation=%s", async confirmationEnabled => {
+    const draft = newDraft({ cvr: "24256790", name: "Synthetic Studio ApS", address: "Testvej 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: null }, "signup@example.test", false)
+    Object.assign(draft.values, { cvr: "12345678", companyEmail: "bad-email", companyName: "", invoicePrefix: "!", bankRegNumber: "12" })
+    storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
+    render(<I18nProvider locale="da-DK"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" confirmationEnabled={confirmationEnabled} nonVatEnabled client={createOnboardingV2Client(false, confirmationEnabled)} onComplete={() => {}} /></I18nProvider>)
+    fireEvent.click(await screen.findByRole("button", { name: "Bekræft og opret" }))
+    expect(screen.getByText("Bekræft, om du er momsregistreret.")).toBeTruthy()
+    expect(screen.getByText("Et CVR-nummer har 8 cifre")).toBeTruthy()
+    expect(screen.getByText("Indtast en gyldig e-mail, fx navn@firma.dk")).toBeTruthy()
+    for (const name of ["Navn", "CVR-nummer", "Fakturaemail", "Fakturanummerpræfiks", "Reg.nr.", "Kontonr."]) {
+      expect(screen.getByLabelText(name).getAttribute("aria-invalid")).toBe("true")
+    }
+    expect(document.activeElement).toBe(screen.getByLabelText("Navn"))
+    expect(api.prepare).not.toHaveBeenCalled()
+    expect(api.confirm).not.toHaveBeenCalled()
   })
 })
 
