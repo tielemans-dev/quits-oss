@@ -149,7 +149,8 @@ for (const locale of ['da-DK', 'en-US']) {
           expect(await paymentRows.locator('td').first().evaluate(cell => getComputedStyle(cell).textAlign)).toBe('right')
           expect(await paymentRows.locator('th').first().evaluate(cell => getComputedStyle(cell).textTransform)).toBe('uppercase')
         }
-        expect(await page.locator('body').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(theme === 'dark' ? 'rgb(17, 17, 18)' : 'rgb(250, 250, 249)')
+        // The light document canvas follows --canvas (#faf9f6) in styles.css.
+        expect(await page.locator('body').evaluate(element => getComputedStyle(element).backgroundColor)).toBe(theme === 'dark' ? 'rgb(17, 17, 18)' : 'rgb(250, 249, 246)')
         await testInfo.attach('invoice-email-mobile', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
         if (bankKind === 'domestic') {
           // Actual payment/credit commands populate the balances used by both rendering paths.
