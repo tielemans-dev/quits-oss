@@ -37,15 +37,21 @@ for (const lang of ['da', 'en']) {
 }
 
 test('a signed-out visit to a protected page logs in and resumes it', async ({ page }) => {
-  const target = '/invoices?filter=a%20b&tab=all'
-  await page.goto(target)
+  // The router may re-encode the query (`%20` as `+`), so compare what the path means.
+  const resumed = (path: string | null, base: string) => {
+    const url = new URL(path ?? '', new URL(base).origin)
+    return { pathname: url.pathname, filter: url.searchParams.get('filter'), tab: url.searchParams.get('tab') }
+  }
+  const expected = { pathname: '/invoices', filter: 'a b', tab: 'all' }
+  await page.goto('/invoices?filter=a%20b&tab=all')
   await expect(page).toHaveURL(/\/login\?/)
-  expect(new URL(page.url()).searchParams.get('redirect')).toBe(target)
+  expect(resumed(new URL(page.url()).searchParams.get('redirect'), page.url())).toEqual(expected)
   await waitForClientReady(page)
   const signup = await page.getByRole('link', { name: 'Sign up' }).getAttribute('href')
-  expect(new URL(signup!, page.url()).searchParams.get('redirect')).toBe(target)
+  expect(resumed(new URL(signup!, page.url()).searchParams.get('redirect'), page.url())).toEqual(expected)
   await page.getByLabel('Email').fill(adminCredentials.email)
   await page.getByLabel('Password').fill(adminCredentials.password)
   await page.getByRole('button', { name: 'Log in', exact: true }).click()
-  await expect(page).toHaveURL(/\/invoices\?filter=a%20b&tab=all/)
+  await expect(page).toHaveURL(/\/invoices\?/)
+  expect(resumed(`${new URL(page.url()).pathname}${new URL(page.url()).search}`, page.url())).toEqual(expected)
 })
