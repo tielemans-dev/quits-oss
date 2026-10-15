@@ -60,7 +60,7 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
   }
   const updated = yield* Effect.promise(() => db.invoice.update({ where: { id: invoice.id }, data: {
     ...(input.purchaseOrderRef !== undefined ? { purchaseOrderRef: input.purchaseOrderRef } : {}),
-    editRevision: { increment: 1 }, ...totals, ...(input.supplyDate ? { supplyDate: new Date(input.supplyDate) } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),
+    editRevision: { increment: 1 }, ...totals, ...(input.supplyDate !== undefined ? { supplyDate: input.supplyDate ? new Date(input.supplyDate) : null } : {}), ...(input.vatEvidence !== undefined ? { vatEvidence: toNullableJsonInput(input.vatEvidence) } : {}), ...(input.dueDate ? { dueDate: new Date(input.dueDate) } : {}), ...(input.notes !== undefined ? { notes: input.notes } : {}),
   }, include: { contact: true, items: { orderBy: { sortOrder: "asc" } } } }))
   command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_updated", payload: { fields: Object.keys(input).filter(key => key !== "id") } })
   return updated

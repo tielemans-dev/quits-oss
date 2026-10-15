@@ -99,6 +99,7 @@ model Organization {
   subscriptionStatus      String?                 @default("free")
   members                 Member[]
   invitations             Invitation[]
+  recipientReminderPreferences RecipientReminderPreference[]
   contacts                Contact[]
   catalogItems            CatalogItem[]
   taxIds                  OrganizationTaxId[]
@@ -179,15 +180,15 @@ model OrgSettings {
   id                                 String       @id @default(cuid())
   organizationId                     String       @unique
   organization                       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  countryCode                        String       @default("US")
-  locale                             String       @default("en-US")
-  timezone                           String       @default("UTC")
-  defaultCurrency                    String       @default("USD")
-  baseCurrency                       String       @default("USD")
-  taxRegime                          String       @default("us_sales_tax")
+  countryCode                        String       @default("DK")
+  locale                             String       @default("da-DK")
+  timezone                           String       @default("Europe/Copenhagen")
+  defaultCurrency                    String       @default("DKK")
+  baseCurrency                       String       @default("DKK")
+  taxRegime                          String       @default("eu_vat")
   pricesIncludeTax                   Boolean      @default(false)
-  currency                           String       @default("USD")
-  taxRate                            Decimal?     @db.Decimal(5, 2)
+  currency                           String       @default("DKK")
+  taxRate                            Decimal?     @default(25) @db.Decimal(5, 2)
   companyName                        String?
   companyAddress                     String?
   companyEmail                       String?
@@ -1143,4 +1144,18 @@ model IssuanceCandidate {
   @@index([organizationId, documentKind, documentId])
   @@index([stagingId, status, createdAt])
   @@map("issuance_candidate")
+}
+
+// A recipient may stop automatic reminders from one organization. Direct sends remain available.
+model RecipientReminderPreference {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipient      String
+  locale         String
+  unsubscribedAt DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, recipient])
+  @@map("recipient_reminder_preference")
 }
