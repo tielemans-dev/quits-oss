@@ -1,8 +1,13 @@
+import { randomUUID } from "node:crypto"
+import { buildAbsoluteUrl, resolveAppOrigin } from "@quits/shared/http"
 import { readFallbackSecret, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getRuntimeEnv } from "../runtime/platform"
+import { escapeHtml } from "../email"
+import { translate } from "../i18n/translate"
 import { localeFromAcceptLanguage } from "../i18n/accept-language"
-import { normalizeReminderRecipient, reminderPreferenceId, verifyReminderUnsubscribeToken } from "./unsubscribe-token"
+import { normalizeReminderRecipient, reminderPreferenceId, signReminderUnsubscribeToken, verifyReminderUnsubscribeToken } from "./unsubscribe-token"
 import type { Prisma } from "../../../generated/prisma/client"
+import type { StoredEmailMessage } from "../../domain/delivery/outbox"
 
 export type ReminderPreferenceDb = Pick<Prisma.TransactionClient, "recipientReminderPreference" | "organization">
 
@@ -11,6 +16,42 @@ function unsubscribeSecret() {
   const secret = readFallbackSecret(readProductEnv(env, "REMINDER_UNSUBSCRIBE_SECRET"), env.BETTER_AUTH_SECRET, 32)
   if (!secret) throw new Error("A reminder unsubscribe signing secret of at least 32 characters is required")
   return secret
+}
+
+function unsubscribeUrl(path: string, token: string) {
+  const env = getRuntimeEnv()
+  const origin = resolveAppOrigin([readProductEnv(env, "APP_ORIGIN"), env.BETTER_AUTH_URL])
+  if (!/^https?:\/\//.test(origin)) throw new Error("An absolute app origin is required for reminder unsubscribe links")
+  return buildAbsoluteUrl(origin, `${path}?token=${encodeURIComponent(token)}`)
+}
+
+/** Persist the binding in the sending transaction. Resends never reset an unsubscribe. */
+export async function addReminderUnsubscribe(input: {
+  db: ReminderPreferenceDb
+  organizationId: string
+  locale: string
+  message: StoredEmailMessage
+}) {
+  const recipient = normalizeReminderRecipient(input.message.to)
+  const preference = await input.db.recipientReminderPreference.upsert({
+    where: { organizationId_recipient: { organizationId: input.organizationId, recipient } },
+    create: { id: randomUUID(), organizationId: input.organizationId, recipient, locale: input.locale },
+    update: { locale: input.locale },
+  })
+  const token = signReminderUnsubscribeToken(preference, unsubscribeSecret())
+  const pageUrl = unsubscribeUrl("/reminders/unsubscribe", token)
+  const oneClickUrl = unsubscribeUrl("/api/reminders/unsubscribe", token)
+  const footer = `<p style="margin:12px 0 0;font-size:12px;"><a href="${escapeHtml(pageUrl)}">${escapeHtml(translate("email.reminderUnsubscribe.link", input.locale))}</a><br />${escapeHtml(translate("email.reminderUnsubscribe.scope", input.locale))}</p>`
+  return {
+    ...input.message,
+    html: input.message.html.replace("<!-- automatic-reminder-preferences -->", footer),
+    headers: {
+      ...input.message.headers,
+      "List-Unsubscribe": `<${oneClickUrl.startsWith("https:") ? oneClickUrl : pageUrl}>`,
+      // RFC 8058 requires HTTPS. HTTP self-hosters keep the explicit confirmation link.
+      ...(oneClickUrl.startsWith("https:") ? { "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : {}),
+    },
+  }
 }
 
 export const REMINDER_UNSUBSCRIBED_MESSAGE = "The recipient unsubscribed from automatic reminders from this organization"

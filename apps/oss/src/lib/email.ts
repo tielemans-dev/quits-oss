@@ -254,6 +254,7 @@ ${invoicePresentation ? `<meta name="color-scheme" content="light dark"><meta na
     </div>
     <div style="padding:16px 32px;background:${C.paper};border-top:1px solid ${C.hairline};font-size:12px;color:${C.muted};text-align:center;">
       ${t("email.footer.sentVia", locale)}
+      <!-- automatic-reminder-preferences -->
     </div>
   </div>
 </body>

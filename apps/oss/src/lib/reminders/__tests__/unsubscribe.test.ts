@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { automaticReminderSuppressed, postReminderUnsubscribe, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
+import { buildInvoiceEmailContent, buildQuoteEmailContent, composeMessage } from "../../email"
+import { addReminderUnsubscribe, automaticReminderSuppressed, postReminderUnsubscribe, reminderUnsubscribeState, type ReminderPreferenceDb } from "../unsubscribe"
 import { signReminderUnsubscribeToken } from "../unsubscribe-token"
 
 const secret = "test-reminder-secret-with-at-least-32-characters"
@@ -94,5 +95,34 @@ describe("reminder unsubscribe state and POST", () => {
     findUnique.mockClear()
     expect(await automaticReminderSuppressed(db, row.organizationId, row.recipient, true)).toBe(false)
     expect(findUnique).not.toHaveBeenCalled()
+  })
+})
+
+describe("quote and invoice unsubscribe footer", () => {
+  it.each(["da-DK", "en-US"])("adds reminder-only %s copy, an opaque link and HTTPS one-click headers", async locale => {
+    const { db } = fixture()
+    const document = { number: "DOC-1", issueDate: "2026-10-01", dueDate: "2026-10-31", expiryDate: "2026-10-31", subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", items: [] }
+    const common = { org: { companyName: "Seller", locale }, contactName: "Buyer" }
+    const contents = [buildInvoiceEmailContent({ ...common, invoice: document }), buildQuoteEmailContent({ ...common, quote: document })]
+    for (const content of contents) {
+      const message = await addReminderUnsubscribe({ db, organizationId: "org-one", locale, message: composeMessage(binding.recipient, content) })
+      expect(message.html).toContain(locale === "da-DK" ? "Afmeld automatiske påmindelser" : "Unsubscribe from automatic reminders")
+      expect(message.html).toContain(locale === "da-DK" ? "Tilbud, fakturaer og påmindelser sendt af sælgeren kommer stadig frem." : "Quotes, invoices and reminders sent by the seller will still arrive.")
+      const href = /href="([^"]*reminders\/unsubscribe[^"]*)"/.exec(message.html)?.[1]
+      expect(href).toBeTruthy()
+      expect(href).not.toContain(binding.recipient)
+      expect(href).not.toContain(binding.organizationId)
+      expect(message.headers).toMatchObject({ "List-Unsubscribe": expect.stringMatching(/^<https:\/\/app.example.test\/api\/reminders\/unsubscribe\?token=v1\./), "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" })
+    }
+  })
+
+  it("keeps self-hosted HTTP links usable without advertising unsupported one-click", async () => {
+    vi.stubEnv("QUITS_APP_ORIGIN", "http://localhost:3000")
+    const { db, row } = fixture()
+    row.unsubscribedAt = new Date()
+    const message = await addReminderUnsubscribe({ db, organizationId: row.organizationId, locale: row.locale, message: { from: "seller@example.test", to: row.recipient, subject: "Invoice", html: "<body><!-- automatic-reminder-preferences --></body>" } })
+    expect(message.headers["List-Unsubscribe"]).toContain("<http://localhost:3000/reminders/unsubscribe?")
+    expect(message.headers).not.toHaveProperty("List-Unsubscribe-Post")
+    expect(row.unsubscribedAt).not.toBeNull()
   })
 })
