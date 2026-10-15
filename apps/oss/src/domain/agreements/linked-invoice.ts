@@ -66,5 +66,5 @@ export const updateLinkedInvoice = (invoice: Invoice & { items: InvoiceItem[] },
   }, include: { contact: { include: { taxIds: true } }, items: { orderBy: { sortOrder: "asc" } } } }))
   command.emit({ aggregateType: "invoice", aggregateId: invoice.id, type: "invoice.draft_updated", payload: { fields: Object.keys(input).filter(key => key !== "id") } })
   // The detail page replaces its invoice with this result, so it must carry the review version like unlinked edits do.
-  return { ...updated, reviewedVersion: invoiceSendReviewVersion(updated, (yield* loadDocumentContext).settings) }
+  return { ...updated, reviewedVersion: invoiceSendReviewVersion(updated, yield* loadDocumentContext) }
 })

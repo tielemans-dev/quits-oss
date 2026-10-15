@@ -43,6 +43,6 @@ describe("send confirmation bindings", () => {
       }) },
     }
     const result = await run(updateLinkedInvoice(invoice as never, { id: invoice.id, notes: "n" } as never), db)
-    expect(result).toMatchObject({ _tag: "Right", right: { reviewedVersion: invoiceSendReviewVersion(updated as never, null) } })
+    expect(result).toMatchObject({ _tag: "Right", right: { reviewedVersion: invoiceSendReviewVersion(updated as never, { settings: {}, sellerTaxIds: [] } as never) } })
   })
 })
