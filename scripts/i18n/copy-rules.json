@@ -1,0 +1,68 @@
+{
+  "$comment": "Human-extendable rules for scripts/i18n-copy-check.mjs. Add a rule, a glossary term or an allowlist entry here. Every entry needs a reason. Inline opt-out in a catalog: put '// copy-check: allow <rule-id> <reason>' on the entry's line or the line above it (the reason is required).",
+  "untranslated": {
+    "$comment": "Danish values identical to English fail unless allowed. Values with no letters outside {placeholders}, URLs and values of 3 characters or fewer are skipped automatically.",
+    "allowValues": [
+      { "value": "Admin", "reason": "Same word in Danish" },
+      { "value": "Agent", "reason": "Same word in Danish" },
+      { "value": "Bank", "reason": "Same word in Danish" },
+      { "value": "BIC", "reason": "Banking code" },
+      { "value": "Claude Code", "reason": "Product name" },
+      { "value": "Data", "reason": "Same word in Danish" },
+      { "value": "Download CSV", "reason": "Common Danish UI wording, CSV is a format name" },
+      { "value": "Download PDF", "reason": "Common Danish UI wording, PDF is a format name" },
+      { "value": "Euro", "reason": "Currency name, same in Danish" },
+      { "value": "Freelancer", "reason": "Same word in Danish" },
+      { "value": "IBAN", "reason": "Banking code" },
+      { "value": "Jane Doe", "reason": "Example name in a placeholder" },
+      { "value": "John Doe", "reason": "Example name in a placeholder" },
+      { "value": "MobilePay Box 12345", "reason": "Example value in a placeholder" },
+      { "value": "Navigation", "reason": "Same word in Danish" },
+      { "value": "Note", "reason": "Same word in Danish" },
+      { "value": "OpenRouter", "reason": "Product name" },
+      { "value": "QUITS-XXXX-XXXX", "reason": "Invite code format" },
+      { "value": "Reference", "reason": "Same word in Danish" },
+      { "value": "Send", "reason": "Same word in Danish" },
+      { "value": "Standard", "reason": "Same word in Danish" },
+      { "value": "Start", "reason": "Same word in Danish" },
+      { "value": "Status", "reason": "Same word in Danish" },
+      { "value": "Stripe", "reason": "Product name" },
+      { "value": "Subtotal", "reason": "Same word in Danish" },
+      { "value": "System", "reason": "Same word in Danish" },
+      { "value": "Total", "reason": "Same word in Danish" },
+      { "value": "Type", "reason": "Same word in Danish" },
+      { "value": "Webhook", "reason": "Technical term used as is in Danish" }
+    ]
+  },
+  "files": ["README.md", "COPY.md"],
+  "rules": [
+    {
+      "id": "open-source",
+      "langs": ["en", "da"],
+      "pattern": "open[- ]source|åben[- ]kildekode",
+      "flags": "i",
+      "message": "Quits is source-available (FSL), not open source. Say \"source-available\"."
+    },
+    {
+      "id": "bookkeeping-promise",
+      "langs": ["en", "da"],
+      "pattern": "\\b(we|quits)\\b[^.]{0,30}\\b(do|handle|handles|take care of|automate|automates|file|files)\\b[^.]{0,20}\\b(bookkeeping|accounting|taxes|vat returns?)\\b|\\b(bookkeeping|tax|audit)[- ](ready|proof|compliant)\\b|\\b(legally|fully|100 ?%) compliant\\b|\\bguaranteed? (compliance|accuracy)\\b|\\bbogføringsklar\\b|\\brevisionssikker\\b|\\b(lovmæssigt|fuldt ud) (korrekt|compliant)\\b",
+      "flags": "i",
+      "message": "Quits does not promise bookkeeping, tax filing or guaranteed compliance. Describe what the feature does instead."
+    },
+    {
+      "id": "da-vat",
+      "langs": ["da"],
+      "pattern": "\\bVAT\\b",
+      "flags": "",
+      "message": "Use \"moms\" in Danish copy, not \"VAT\"."
+    },
+    {
+      "id": "da-cvr-english",
+      "langs": ["da"],
+      "pattern": "\\bCVR[- ](number|no\\.?)(?![a-zæøå])",
+      "flags": "i",
+      "message": "Use \"CVR-nr.\" or \"CVR-nummer\" in Danish copy."
+    }
+  ]
+}
