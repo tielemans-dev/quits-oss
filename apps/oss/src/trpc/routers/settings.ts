@@ -27,7 +27,8 @@ import {
   type AiProviderKind,
 } from "../../lib/ai/provider"
 import { encryptSecret } from "../../lib/secrets"
-import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget, usesStripeConnectCheckout } from "../../lib/payments/stripe"
+import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget, stripeByokConfigured, usesStripeConnectCheckout } from "../../lib/payments/stripe"
+import { appLogger } from "../../lib/observability"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
@@ -248,7 +249,7 @@ export const settingsRouter = router({
     ])
     const settings = existingSettings ?? (await createDefaultOrgSettings(ctx.organizationId))
     const runtimeCapabilities = getRuntimeCapabilities()
-    const connectMode = runtimeCapabilities.payments.managed || usesStripeConnectCheckout()
+    const connectMode = usesStripeConnectCheckout()
     const stripeState = getStripePaymentConfigurationState({
       stripePublishableKey: settings.stripePublishableKey,
       stripeSecretKeyEnc: settings.stripeSecretKeyEnc,
@@ -256,16 +257,15 @@ export const settingsRouter = router({
       stripeAccountStatus: settings.stripeAccountStatus,
     })
     // Cached readiness alone does not supply the runtime's Connect checkout client.
-    const resolvedStripeTarget = stripeState.configured && (!connectMode || settings.stripeAccountStatus === "active")
+    const stripeTarget = stripeState.configured
       ? await resolveStripeCheckoutTarget(
           { organizationId: ctx.organizationId },
           { connectReady: settings.stripeAccountStatus === "active" },
         ).catch(() => {
-          console.warn("Settings could not resolve Stripe checkout target", { organizationId: ctx.organizationId })
+          appLogger.warn("settings.stripe_checkout_target_unavailable", { organizationId: ctx.organizationId })
           return null
         })
       : null
-    const stripeTarget = connectMode && resolvedStripeTarget?.kind !== "connect" ? null : resolvedStripeTarget
     const managedDocumentDomainProvider = getManagedDocumentDomainProvider()
     const environment = getRuntimeEnv()
     const emailDelivery = getEmailDeliveryRuntimeStatus({
@@ -311,7 +311,7 @@ export const settingsRouter = router({
       aiProvider: isAiProviderKind(settings.aiProvider) ? settings.aiProvider : "openrouter",
       aiBaseUrl: settings.aiBaseUrl,
       aiModel: settings.aiModel,
-      stripeByokConfigured: getStripePaymentConfigurationState({ ...settings, stripeAccountStatus: null }).configured,
+      stripeByokConfigured: stripeByokConfigured(settings),
       stripePaymentsEnabled: Boolean(stripeTarget),
       stripeCheckoutKind: stripeTarget?.kind ?? null,
       stripePublishableKey: settings.stripePublishableKey,
@@ -719,8 +719,13 @@ export const settingsRouter = router({
           message: "Stripe Connect actions are not available",
         })
       }
-      const result = await handler.run(input.action, { organizationId: ctx.organizationId })
-      return { url: stripeConnectRedirectUrl(result?.url) }
+      try {
+        const result = await handler.run(input.action, { organizationId: ctx.organizationId })
+        return { url: stripeConnectRedirectUrl(result?.url) }
+      } catch {
+        appLogger.warn("settings.stripe_connect_action_failed", { organizationId: ctx.organizationId, action: input.action })
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not update Stripe Connect. Please try again." })
+      }
     }),
 })
 
@@ -736,7 +741,7 @@ function assertStripeByokWritable(input: {
   clearStripeSecretKey?: boolean
   clearStripeWebhookSecret?: boolean
 }, current: { stripePublishableKey: string | null } | null) {
-  if (!getRuntimeCapabilities().payments.managed) return
+  if (!usesStripeConnectCheckout()) return
   const publishableChanged =
     input.stripePublishableKey !== undefined &&
     input.stripePublishableKey !== (current?.stripePublishableKey ?? null)

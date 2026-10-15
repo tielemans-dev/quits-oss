@@ -145,6 +145,12 @@ describe("public pay card gating", () => {
     await expectUnavailable()
   })
 
+  it("refuses leftover BYOK keys when only the managed payments capability is registered", async () => {
+    setRuntimeExtensions([{ id: "managed-only", resolveCapabilities: () => ({ payments: { managed: true } }) }])
+    Object.assign(state.settings, configuredByok)
+    await expectUnavailable()
+  })
+
   it("shows card and transfer details and opens checkout for active Connect", async () => {
     state.settings.stripeAccountStatus = "active"
     const html = await publicPayPage()
