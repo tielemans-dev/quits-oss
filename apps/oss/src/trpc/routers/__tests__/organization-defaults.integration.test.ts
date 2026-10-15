@@ -8,7 +8,7 @@ import { loadDocumentContext } from "../../../domain/documents/context"
 import { allocateDocumentNumber } from "../../../domain/documents/numbering"
 import { appendEvents } from "../../../domain/events"
 import { Command, Db, type CommandScope } from "../../../domain/services"
-import { cleanupTestOrganizations, hasTestDatabase } from "../../../test-utils/organization"
+import { cleanupTestOrganizations, createTestOrganization, hasTestDatabase } from "../../../test-utils/organization"
 import { ensureTestMembership } from "../../../test-utils/membership"
 
 const ids: string[] = []
@@ -29,6 +29,15 @@ async function fixture() {
   afterEach(async () => {
     vi.unstubAllEnvs()
     for (const id of ids.splice(0)) await cleanupTestOrganizations({ where: { id } })
+  })
+
+  it.each([undefined, null, 0, 10])("keeps the shared US fixture's tax rate at %s", async taxRate => {
+    const { organizationId } = await createTestOrganization({ settings: { taxRate } })
+    ids.push(organizationId)
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })
+
+    expect(settings).toMatchObject({ countryCode: "US", taxRegime: "us_sales_tax", currency: "USD" })
+    expect(settings.taxRate?.toNumber() ?? null).toBe(taxRate ?? null)
   })
 
   it.each(["Prisma", "SQL", "Settings", "Settings update", "initializer", "onboarding", "draft", "profile", "AI", "AI patch", "artifact", "context", "numbering", "payment", "reminders", "events"])("defaults to Danish settings through %s", async path => {
@@ -69,6 +78,25 @@ async function fixture() {
     else if (path === "Settings") await api.settings.update({ ...choices, currency: "USD" })
     else await api.onboardingAi.applyOnboardingPatch({ source: "manual", patch: choices })
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).taxRate?.toString()).toBe("10")
+  })
+
+  it.each([
+    { momsRegistered: true, savedRate: 25, taxRate: undefined, expectedRate: null },
+    { momsRegistered: false, savedRate: 0, taxRate: undefined, expectedRate: null },
+    { momsRegistered: true, savedRate: 25, taxRate: 0, expectedRate: 0 },
+    { momsRegistered: true, savedRate: 25, taxRate: 10, expectedRate: 10 },
+  ])("updates an existing DK row to US with $momsRegistered registration and $taxRate explicit tax", async ({ momsRegistered, savedRate, taxRate, expectedRate }) => {
+    const { id, api } = await fixture()
+    const before = await prisma.orgSettings.create({ data: { organizationId: id, momsRegistered, taxRate: savedRate } })
+    expect(before).toMatchObject({ countryCode: "DK", currency: "DKK", defaultCurrency: "DKK", baseCurrency: "DKK", taxRegime: "eu_vat" })
+    expect(before.taxRate?.toNumber()).toBe(savedRate)
+
+    await api.settings.update({ countryCode: "US", currency: "USD", defaultCurrency: "USD", taxRegime: "us_sales_tax", taxRate })
+
+    const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
+    expect(settings).toMatchObject({ id: before.id, countryCode: "US", currency: "USD", defaultCurrency: "USD", baseCurrency: "USD", taxRegime: "us_sales_tax", momsRegistered: null, pricesIncludeTax: false })
+    expect(settings.taxRate?.toNumber() ?? null).toBe(expectedRate)
+    expect(await api.settings.get()).toMatchObject({ countryCode: "US", currency: "USD", defaultCurrency: "USD", baseCurrency: "USD", taxRegime: "us_sales_tax", momsRegistered: null, taxRate: expectedRate })
   })
 
   it.each(["foreign", "non-VAT"])("never resets saved %s settings on initialization or reads", async scenario => {

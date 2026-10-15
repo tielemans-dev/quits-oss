@@ -50,7 +50,7 @@ async function handleTrpcRequest(request: Request) {
       })
       // The client's intended organization, checked against the session in orgProcedure.
       const requestedOrganizationId = (request.headers.get(ORGANIZATION_HEADER) ?? request.headers.get(LEGACY_ORGANIZATION_HEADER))?.trim() || null
-      return createRequestContext(session, requestedOrganizationId, { url: request.url, headers: request.headers })
+      return createRequestContext(session, requestedOrganizationId, { url: request.url, headers: request.headers, signal: request.signal })
     },
   })
 }

@@ -50,6 +50,7 @@ export function DashboardView({
   summary,
   readyCompany,
   sendReminder,
+  sendReminderBatch,
   onRemindersSettled,
   userName,
   commandBar,
@@ -61,6 +62,8 @@ export function DashboardView({
   /** The command bar, under the greeting. The page does not know how requests are answered. */
   commandBar?: ReactNode
   sendReminder: SendReminder
+  /** Queues a reminder job for several invoices at once; the tracker toast follows it. */
+  sendReminderBatch?: (invoiceIds: string[]) => Promise<unknown>
   onRemindersSettled?: () => void
 }) {
   const { t, locale } = useI18n()
@@ -121,6 +124,11 @@ export function DashboardView({
                   items={summary.attention}
                   reminders={reminders}
                   onRemind={remind}
+                  onRemindAll={
+                    sendReminderBatch
+                      ? (ids) => void sendReminderBatch(ids).catch(() => {}).finally(() => onRemindersSettled?.())
+                      : undefined
+                  }
                 />
               ) : null}
             </div>

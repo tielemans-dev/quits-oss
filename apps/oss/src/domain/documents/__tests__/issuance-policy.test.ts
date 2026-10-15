@@ -42,6 +42,15 @@ describe("optional invoice issuance policy", () => {
   ])("rejects missing or unsupported %s", (_field, patch) => {
     expect(invoicePolicyIssues({ ...document, ...patch }, policy).length).toBeGreaterThan(0)
   })
+  it("returns separate actionable field issues without English prose", () => {
+    expect(invoicePolicyIssues({ ...document, buyerSnapshot: { ...document.buyerSnapshot, company: "", country: "SE" } }, policy)).toEqual([
+      { code: "customer.country.unsupported", field: "customer.country", params: { countries: "DK" } },
+      { code: "customer.businessName.required", field: "customer.company", params: {} },
+    ])
+  })
+  it.each(["Danmark", "Denmark", "dk"])("accepts the recognised historical country %s", country => {
+    expect(invoicePolicyIssues({ ...document, buyerSnapshot: { ...document.buyerSnapshot, country } }, policy)).toEqual([])
+  })
   it.each([undefined, null])("does not infer VAT registration from a CVR: %s", momsRegistered => {
     expect(invoicePolicyIssues({ ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered } }, policy).length).toBeGreaterThan(0)
   })
@@ -67,10 +76,14 @@ describe("optional invoice issuance policy", () => {
   })
   it("refuses a zero VAT seller when the adopter affirms registration", () => {
     const zero = { ...document, sellerSnapshot: { ...document.sellerSnapshot, momsRegistered: false }, items: [{ ...document.items[0]!, vatTreatment: "unclassified_zero", taxRate: "0", vatRateInput: "0" }] }
-    expect(invoicePolicyIssues(zero, policy)).toEqual(["Seller VAT registration confirmation is missing or does not match the effective seller."])
+    expect(invoicePolicyIssues(zero, policy)).toEqual([{ code: "seller.vatRegistration.required", field: "seller.vatRegistered", params: {} }])
   })
   it("preserves self-host scope when no policy is installed", async () => {
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD", sellerSnapshot: {}, buyerSnapshot: null }))).resolves.toBeUndefined()
+  })
+  it("lets a self-hosted organization issue without bank details or Stripe", async () => {
+    setRuntimeExtensions([])
+    await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, paymentAvailable: false }))).resolves.toBeUndefined()
   })
   it("passes the effective identity to the adopter and enforces its policy", async () => {
     setRuntimeExtensions([{ id: "synthetic", resolveInvoiceIssuancePolicy: context => {
@@ -79,6 +92,29 @@ describe("optional invoice issuance policy", () => {
       return policy
     } }])
     await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", document))).resolves.toBeUndefined()
-    await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD" }))).rejects.toThrow("supported invoice currency")
+    const refused = await Effect.runPromise(Effect.either(requireInvoiceIssuancePolicy("test", { ...document, currency: "USD" })))
+    expect(refused).toMatchObject({ _tag: "Left", left: { code: "invoice_issuance_policy", fieldIssues: [
+      { code: "currency.unsupported", field: "currency", params: { currencies: "DKK, EUR" } },
+    ] } })
+  })
+  it("keeps the readable policy sentence next to the field issues, since API clients and agents read the message", async () => {
+    setRuntimeExtensions([{ id: "synthetic", resolveInvoiceIssuancePolicy: () => policy }])
+    const mixed = { ...document, items: [document.items[0]!, { ...document.items[0]!, taxRate: "0", vatRateInput: "0", vatTreatment: "exempt" }] }
+    const refused = await Effect.runPromise(Effect.either(requireInvoiceIssuancePolicy("test", mixed)))
+    expect(refused).toMatchObject({ _tag: "Left", left: {
+      code: "invoice_issuance_policy",
+      message: "Only ordinary domestic sales with 25% VAT are supported. Exempt, mixed, foreign and special VAT cases need a supported invoicing service.",
+      fieldIssues: [{ code: "vat.unsupported", field: "items.1.vat", params: { rate: "25" } }],
+    } })
+  })
+  it("holds back an unpaid-for invoice only when the adopter requires payment details", async () => {
+    const unpaid = { ...document, paymentAvailable: false }
+    expect(invoicePolicyIssues(unpaid, policy)).toEqual([])
+    expect(invoicePolicyIssues(unpaid, { ...policy, requirePaymentDetails: true })).toEqual([
+      { code: "seller.bank.required", field: "seller.bankAccount", params: {} },
+    ])
+    expect(invoicePolicyIssues({ ...document, paymentAvailable: true }, { ...policy, requirePaymentDetails: true })).toEqual([])
+    // No adopter policy at all: a self-hosted organization paid by other means still sends.
+    await expect(Effect.runPromise(requireInvoiceIssuancePolicy("test", unpaid))).resolves.toBeUndefined()
   })
 })

@@ -1,7 +1,9 @@
+import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../../../components/ui/alert-dialog"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
@@ -35,6 +37,8 @@ type ContactData = {
   peppolEndpointId: string | null
   peppolEndpointScheme: string | null
   notes: string | null
+  reminderUnsubscribedAt: Date | string | null
+  canResumeReminders: boolean
 }
 
 function EditContactPage() {
@@ -44,6 +48,7 @@ function EditContactPage() {
   const [contact, setContact] = useState<ContactData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [resuming, setResuming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -53,6 +58,19 @@ function EditContactPage() {
       .catch(() => setError(t("contacts.edit.error.notFound")))
       .finally(() => setLoading(false))
   }, [contactId])
+
+  async function resumeReminders() {
+    setResuming(true)
+    setError(null)
+    try {
+      await trpc.contacts.resumeReminders.mutate({ id: contactId })
+      setContact(await trpc.contacts.get.query({ id: contactId }))
+    } catch {
+      setError(t("contacts.reminders.error"))
+    } finally {
+      setResuming(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -135,8 +153,36 @@ function EditContactPage() {
               </p>
             )}
 
+            {contact.email && (
+              <div className="grid gap-2 rounded-md border p-4" aria-busy={resuming}>
+                <p className="text-sm font-medium" role="status">
+                  {t(contact.reminderUnsubscribedAt ? "contacts.reminders.stopped" : "contacts.reminders.active")}
+                </p>
+                <p className="text-sm text-muted-foreground">{t("contacts.reminders.scope", { email: contact.email })}</p>
+                {contact.reminderUnsubscribedAt && contact.canResumeReminders && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button type="button" variant="outline" disabled={resuming}>
+                        {t(resuming ? "contacts.reminders.resuming" : "contacts.reminders.resume")}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t("contacts.reminders.resume")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("contacts.reminders.confirm", { email: contact.email })}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t("contacts.action.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={resumeReminders}>{t("contacts.reminders.resume")}</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            )}
+
             <div className="grid gap-2">
-              <Label htmlFor="name">{t("contacts.field.name")} *</Label>
+              <Label htmlFor="name">{t("contacts.field.name")} {t("contacts.field.required")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -220,12 +266,7 @@ function EditContactPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <Input
-                  id="country"
-                  name="country"
-                  maxLength={80}
-                  defaultValue={contact.country ?? ""}
-                />
+                <CountrySelect id="country" name="country" value={contact.country} />
               </div>
             </div>
 

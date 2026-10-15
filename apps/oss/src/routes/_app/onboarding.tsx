@@ -1,7 +1,7 @@
 import { OnboardingV2 } from "../../components/onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client } from "../../components/onboarding-v2/client"
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
+import { isValidDanishCvr, DANISH_ONBOARDING_V2_DEFAULTS } from '@quits/contracts/onboarding'
 import type { OnboardingMissingField } from '@quits/contracts/onboarding'
 import type { RuntimeCapabilities } from '@quits/contracts/runtime'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -27,9 +27,11 @@ import {
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
+import { translateCvrError } from '../../lib/i18n/cvr-error'
 import { companyEmailIssue } from '../../lib/validation/company-email'
 import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
+import { B2bNotice } from "../../components/onboarding/b2b-notice"
 import { CompanySetup } from "../../components/onboarding/company-setup"
 import { loadPage } from '../../lib/page-navigation'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../../lib/login-return'
@@ -193,6 +195,7 @@ function OnboardingPageContent() {
   const [lookupCompanies, setLookupCompanies] = useState<CvrLookupCompany[]>([])
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
   const [manualName, setManualName] = useState('')
+  const [manualCvr, setManualCvr] = useState('')
   // App-side messages for the name-only and lookup forms (native browser tooltips are English-only).
   const [manualNameError, setManualNameError] = useState<'validation.required' | null>(null)
   const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
@@ -209,6 +212,8 @@ function OnboardingPageContent() {
   const [runtimeCapabilities, setRuntimeCapabilities] = useState<
     Pick<RuntimeCapabilities, 'onboardingAi' | 'onboardingV2' | 'sellerVatConfirmation'> | null
   >(null)
+  const legacyOnboardingReady = v2Availability !== null && runtimeCapabilities !== null && !v2Availability.enabled &&
+    !(runtimeCapabilities.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled)
   const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled])
   const [values, setValues] = useState<CloudOnboardingValues>(() => ({ ...DEFAULT_CLOUD_ONBOARDING_VALUES, locale: organizationLocaleForUi(uiLocale) }))
   const localeChoice = useRef<string | null>(null)
@@ -294,6 +299,7 @@ function OnboardingPageContent() {
 
     let cancelled = false
     setStatusLoading(true)
+    setError(null)
 
     trpc.onboarding.getStatus
       .query()
@@ -302,7 +308,7 @@ function OnboardingPageContent() {
           return
         }
 
-        const selected = !status.isComplete && session?.user?.id && session.session.activeOrganizationId
+        const selected = legacyOnboardingReady && !status.isComplete && session?.user?.id && session.session.activeOrganizationId
           ? readSelectedCompany(session.user.id, session.session.activeOrganizationId)
           : null
         const uiOrganizationLocale = localeChoice.current ?? organizationLocaleForUi(uiLocale)
@@ -331,10 +337,9 @@ function OnboardingPageContent() {
           else if (selected || (!parsed.companyName.trim() && parsed.locale === 'da-DK')) {
             parsed.locale = organizationLocaleForUi(uiLocale)
           }
-          if (!selected && !localeChoice.current && !parsed.companyName.trim() &&
+          if (legacyOnboardingReady && !selected && !localeChoice.current && !parsed.companyName.trim() &&
             parsed.locale !== String(status.values.locale ?? '') && parsed.locale !== 'da-DK') {
-            // Onboarding v2 is confirmation-only: an abandoned v2 wizard must not leave a legacy
-            // draft. When capabilities are unknown, skip the write; the next visit can store it.
+            // Onboarding v2 is confirmation-only; an abandoned wizard must not leave a legacy draft.
             const v2Active = await withTimeout(trpc.runtime.capabilities.query(), ONBOARDING_LOOKUP_TIMEOUT_MS)
               .then(capabilities => (capabilities as Pick<RuntimeCapabilities, 'onboardingV2'> | undefined)?.onboardingV2?.enabled === true)
               .catch(() => true)
@@ -385,7 +390,7 @@ function OnboardingPageContent() {
     return () => {
       cancelled = true
     }
-  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale])
+  }, [hasActiveOrg, isCloud, navigate, target, returnDestination, search.lang, uiLocale, legacyOnboardingReady])
 
   const [runtimeCapabilitiesFailed, setRuntimeCapabilitiesFailed] = useState(false)
   useEffect(() => {
@@ -480,7 +485,10 @@ function OnboardingPageContent() {
 
   async function createOrganizationFromCompanyName(name: string, company?: CvrLookupCompany) {
     setError(null)
+    const cvr = company?.cvr ?? manualCvr.trim()
+    if ((isCloud || cvr) && !isValidDanishCvr(cvr)) { setError(t('cvr.invalid')); return }
     setSubmitting(true)
+    let confirmedCompany = company
     let created: Awaited<ReturnType<typeof createNamedOrganization>>
     try {
       created = await createNamedOrganization({
@@ -492,8 +500,13 @@ function OnboardingPageContent() {
           throw new Error(checked.error.message ?? 'slug check failed')
         },
         create: async (body) => {
-          const result = await authClient.organization.create(body)
-          if (result.data?.id) return { ok: true, id: result.data.id }
+          const result = await authClient.organization.create({ ...body, metadata: { cvr } })
+          if (result.data?.id) {
+            confirmedCompany = result.data.metadata?.onboardingCompany ?? company ?? { cvr, name, address: '' }
+            return { ok: true, id: result.data.id }
+          }
+          setError(t(result.error?.code === 'cvr.inactive' ? 'auth.onboarding.cvrInactive'
+            : result.error?.code === 'cvr.unavailable' ? 'auth.onboarding.lookup.failed' : 'auth.onboarding.error'))
           return { ok: false, message: result.error?.message ?? '' }
         },
       })
@@ -503,16 +516,16 @@ function OnboardingPageContent() {
       return
     }
     if (!created.ok) {
-      setError(t('auth.onboarding.error'))
+      setError(current => current ?? t('auth.onboarding.error'))
       setSubmitting(false)
       return
     }
 
     // The next page acts for the new organization; this page's requests still name the old one.
-    // v2 collects and confirms company details itself; staging would save a legacy draft first.
-    if (session?.user?.id && !noOrgV2) {
+    // Carry the verified registry selection into the review after switching organizations.
+    if (session?.user?.id) {
       try {
-        stageSelectedCompany(session.user.id, created.id, company ?? { name, address: '', cvr: '' })
+        stageSelectedCompany(session.user.id, created.id, confirmedCompany ?? { name, address: '', cvr })
       } catch {
         // Creation already succeeded; storage must not prevent selecting the new organization.
       }
@@ -624,7 +637,7 @@ function OnboardingPageContent() {
       if (target || search.lang) loadPage(returnDestination)
       else navigate({ to: '/' })
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : t('auth.onboarding.finish.error')
+      const message = cause instanceof Error ? translateCvrError(cause.message, t) : t('auth.onboarding.finish.error')
       setError(message)
       setSubmitting(false)
     }
@@ -704,7 +717,7 @@ function OnboardingPageContent() {
       )
     }
 
-    const nameOnly = entryMode === 'manual' || noOrgV2 === true
+    const nameOnly = entryMode === 'manual'
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
@@ -716,6 +729,7 @@ function OnboardingPageContent() {
               {t(nameOnly ? 'auth.onboarding.lookup.manualDescription' : 'auth.onboarding.lookup.description')}
             </CardDescription>
           </CardHeader>
+          {isCloud && <B2bNotice className="px-6 pb-4 text-sm text-muted-foreground" />}
           {nameOnly ? (
             <form noValidate onSubmit={(e) => void handleManualOrganization(e)}>
               <CardContent className="flex flex-col gap-4">
@@ -725,6 +739,9 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
+                  <Label htmlFor="company-cvr">{t('auth.onboarding.cvrLabel')}</Label>
+                  <Input id="company-cvr" inputMode="numeric" maxLength={8} required={isCloud} value={manualCvr}
+                    onChange={event => setManualCvr(event.target.value)} />
                   <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
                   <Input
                     id="company-name"
@@ -750,7 +767,7 @@ function OnboardingPageContent() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? t('auth.onboarding.submitting') : t('auth.onboarding.submit')}
                 </Button>
-                {isCloud && !noOrgV2 && <Button
+                {isCloud && <Button
                   type="button"
                   variant="link"
                   className="w-full"
@@ -881,7 +898,7 @@ function OnboardingPageContent() {
   }
 
   if (!v2Availability?.enabled && runtimeCapabilities?.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled) {
-    return <div className="mx-auto w-full max-w-xl p-6"><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
+    return <div className="mx-auto w-full max-w-xl space-y-4 p-6"><B2bNotice className="text-sm text-muted-foreground" /><CompanySetup nonVatEnabled={runtimeCapabilities.onboardingV2.nonVatEnabled === true} onComplete={() => { invalidateAppLayoutSession(); navigate({ to: "/" }) }} /></div>
   }
 
   if (v2Availability?.enabled && session) {
@@ -900,6 +917,7 @@ function OnboardingPageContent() {
           <CardDescription>
             {t('auth.onboarding.finish.description')}
           </CardDescription>
+          <B2bNotice className="text-sm text-muted-foreground" />
         </CardHeader>
         <form onSubmit={handleCompleteCloudOnboarding} noValidate>
           <fieldset disabled={statusLoading || submitting} className="min-w-0 border-0 p-0">
@@ -1046,9 +1064,9 @@ function OnboardingPageContent() {
                     }`}
                     onClick={() => applySuggestedDefaults(values.countryCode, 'individual')}
                   >
-                    <p className="text-sm font-semibold">{t('auth.onboarding.identity.individual')}</p>
+                    <p className="text-sm font-semibold">{t(isCloud ? 'auth.onboarding.identity.soleTrader' : 'auth.onboarding.identity.individual')}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {t('auth.onboarding.identity.individualHelp')}
+                      {t(isCloud ? 'auth.onboarding.identity.soleTraderHelp' : 'auth.onboarding.identity.individualHelp')}
                     </p>
                   </button>
                   <button

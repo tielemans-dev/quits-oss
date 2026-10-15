@@ -7,6 +7,7 @@ import { DashboardError, DashboardSkeleton } from "../../components/dashboard/st
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
 import { CommandBar } from "../../components/command-bar/command-bar"
 import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
+import { sendReminderBatch } from "../../components/jobs/reminder-jobs-store"
 import { useShellPermissions } from "../../components/shell/use-shell-permissions"
 import { useSession } from "../../lib/auth-client"
 import { trpc } from "../../trpc/client"
@@ -60,6 +61,7 @@ function DashboardPage() {
       readyCompany={readyCompany}
       summary={load.summary}
       sendReminder={sendReminder}
+      sendReminderBatch={sendReminderBatch}
       onRemindersSettled={refresh}
       userName={session?.user.name}
       commandBar={<CommandBar recognize={permittedRequest(recognizeRequest, can)} />}

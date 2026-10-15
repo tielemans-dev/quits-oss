@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, LoaderCircle, Search, X } from "lucide-react"
+import { B2bNotice } from "../onboarding/b2b-notice"
 import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { useI18n } from "../../lib/i18n/react"
@@ -18,6 +19,7 @@ import {
   type ReviewValues,
 } from "./draft"
 import type { OnboardingV2Client } from "./client"
+import { readSelectedCompany, clearSelectedCompany } from "../../lib/onboarding/selected-company"
 import { readableIssues } from "../../lib/validation/readable-errors"
 import "./onboarding-v2.css"
 
@@ -139,6 +141,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     (nonVatEnabled || draft.values.momsRegistered !== false) ? draft.values.momsRegistered : null
 
   function discard() {
+    clearSelectedCompany(userId, organizationId)
     epoch.current++
     request.current?.abort()
     suggestionRequest.current?.abort()
@@ -158,6 +161,22 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       setDraft(saved)
       setScreen("review")
       setRestored(true)
+    }
+    const staged = !saved ? readSelectedCompany(userId, organizationId) : null
+    if (staged?.cvr) {
+      const controller = new AbortController()
+      request.current = controller
+      const run = epoch.current
+      const timeout = setTimeout(() => controller.abort(), 10_000)
+      client.get(staged.cvr, controller.signal).then(company => {
+        if (controller.signal.aborted || run !== epoch.current || !company || company.cvr !== staged.cvr || company.status !== "active" || company.statusClass !== "active") return
+        setDraft(newDraft(company, signupEmail, Boolean(client.suggestions)))
+        setScreen("review")
+        clearSelectedCompany(userId, organizationId)
+      }).catch(() => { /* Keep the lookup available for retry. */ }).finally(() => {
+        clearTimeout(timeout)
+        if (mounted.current && run === epoch.current) setQuery(staged.cvr)
+      })
     }
     const startingPath = window.location.pathname
     function clearOnLeave() {
@@ -312,8 +331,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         setSearched(true)
         setScreen("search")
       } else if (
-        facts.statusClass === "blocked" ||
-        ["ceased", "dissolved", "bankrupt"].includes(facts.status)
+        facts.statusClass !== "active" || facts.status !== "active"
       ) {
         suggestionRequest.current?.abort()
         setSelected(facts)
@@ -507,6 +525,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <section className="ob-search">
           <h1>{TT("search.heading")}</h1>
           <p>{TT("search.sub")}</p>
+          <B2bNotice />
           <label className="ob-search-input">
             <Search size={20} aria-hidden="true" />
             <Input
@@ -516,7 +535,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               placeholder={TT("search.placeholder")}
               value={query}
               maxLength={120}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { discard(); setQuery(event.target.value) }}
             />
           </label>
           {invalid ? (
@@ -632,6 +651,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
+          <B2bNotice />
           {restored ? (
             <p className="ob-notice" role="status">
               {TT("restored")}

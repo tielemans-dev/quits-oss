@@ -17,6 +17,7 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
   await expect(page.getByText("Opsæt din Quits-instans")).toBeVisible()
 
   await page.getByRole("button", { name: "Næste" }).click()
+  await page.getByLabel("CVR-nr.").fill("24256790")
   await page.getByLabel("Organisationsnavn").fill("Setup Smoke Org")
   await page.getByLabel("Administratornavn").fill("Setup Smoke Admin")
   await page.getByLabel("Administrator-e-mail").fill(adminEmail)

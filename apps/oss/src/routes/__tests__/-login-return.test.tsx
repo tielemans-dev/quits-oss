@@ -208,6 +208,7 @@ describe('return after required organization flow', () => {
         if (cloud) fireEvent.click(await screen.findByRole('button', { name: 'Enter manually' }))
         const input = await screen.findByLabelText('Company name')
         fireEvent.change(input, { target: { value: 'New org' } })
+        fireEvent.change(screen.getByLabelText('CVR number'), { target: { value: '24256790' } })
         fireEvent.submit(screen.getByRole('button', { name: 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : '/hosted/account?tab=vat&lang=en'))
@@ -229,6 +230,7 @@ describe('return after required organization flow', () => {
       if (create) {
         if (cloud) fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
         fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Virksomhedsnavn' : 'Company name'), { target: { value: 'New org' } })
+        fireEvent.change(screen.getByLabelText(lang === 'da' ? 'CVR-nr.' : 'CVR number'), { target: { value: '24256790' } })
         fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : `/hosted/account?tab=vat&lang=${lang}`))
@@ -242,7 +244,7 @@ describe('return after required organization flow', () => {
     state.setActive.mockResolvedValue({ data: {} })
     state.searchCvr.mockResolvedValue({
       available: true,
-      companies: [{ cvr: '12345678', name: 'Nordlys Studio ApS', address: 'Vestergade 1' }],
+      companies: [{ cvr: '24256790', name: 'Nordlys Studio ApS', address: 'Vestergade 1' }],
     })
     renderPage(Onboarding)
     expect(screen.queryByLabelText('Slug')).toBeNull()
@@ -250,7 +252,7 @@ describe('return after required organization flow', () => {
     expect(screen.getByRole('button', { name: 'Look up' }).closest('form')?.className).toContain('gap-6')
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
     fireEvent.click(await screen.findByRole('button', { name: /Use Nordlys Studio ApS/ }))
-    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2' }))
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ name: 'Nordlys Studio ApS', slug: 'nordlys-studio-aps-2', metadata: { cvr: '24256790' } }))
     expect(state.load).toHaveBeenCalledWith('/')
 
     cleanup()

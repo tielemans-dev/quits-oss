@@ -178,7 +178,7 @@ function PublicInvoiceDocument({
               <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
                 <p>{invoice.buyerSnapshot?.name || t("public.document.notProvided")}</p>{distinctCompany(invoice.buyerSnapshot) && <p>{distinctCompany(invoice.buyerSnapshot)}</p>}
                 {formatTaxIds(invoice.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
-                {buyerAddress(invoice.buyerSnapshot).map((line, index) => <p key={index}>{line}</p>)}
+                {buyerAddress(invoice.buyerSnapshot, locale).map((line, index) => <p key={index}>{line}</p>)}
               </div>
             </div>
             <div className="grid gap-3">

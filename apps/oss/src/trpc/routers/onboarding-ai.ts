@@ -1,3 +1,4 @@
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
 import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
 import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
@@ -351,7 +352,8 @@ async function applyPatchToOrgSettings(
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         select: { id: true },
       })
-      const scheme = patch.primaryTaxIdScheme ?? "vat"
+      const country = patch.countryCode ?? settings?.countryCode ?? (await tx.orgSettings.findUniqueOrThrow({ where: { organizationId }, select: { countryCode: true } })).countryCode
+      const scheme = country === "DK" ? "cvr" : patch.primaryTaxIdScheme ?? "vat"
 
       if (existing) {
         await tx.organizationTaxId.update({
@@ -359,6 +361,7 @@ async function applyPatchToOrgSettings(
           data: {
             value: primaryTaxId,
             scheme,
+            countryCode: country,
             isPrimary: true,
           },
         })
@@ -368,6 +371,7 @@ async function applyPatchToOrgSettings(
             organizationId,
             value: primaryTaxId,
             scheme,
+            countryCode: country,
             isPrimary: true,
           },
         })
@@ -441,6 +445,10 @@ export const onboardingAiRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCloudOnboardingAiEnabled()
       try {
+        if (input.patch.primaryTaxId !== undefined) await requireOnboardingCvr({
+          cvr: input.patch.primaryTaxId.replace(/^DK/, ""), scheme: input.patch.primaryTaxIdScheme,
+          cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId,
+        })
         await applyPatchToOrgSettings(ctx.organizationId, input.patch, input.source)
       } catch (error) {
         onboardingLogger.error("onboarding_ai.apply.failed", {

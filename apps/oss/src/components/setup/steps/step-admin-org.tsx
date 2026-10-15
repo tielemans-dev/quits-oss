@@ -1,8 +1,11 @@
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { Input } from "../../ui/input"
 import { Label } from "../../ui/label"
 import { useI18n } from "../../../lib/i18n/react"
 
 type AdminOrgStepProps = {
+  organizationCvr: string
+  onOrganizationCvrChange: (value: string) => void
   organizationName: string
   organizationSlug: string
   adminName: string
@@ -16,6 +19,8 @@ type AdminOrgStepProps = {
 }
 
 export function AdminOrgStep({
+  organizationCvr,
+  onOrganizationCvrChange,
   organizationName,
   organizationSlug,
   adminName,
@@ -28,6 +33,7 @@ export function AdminOrgStep({
   onAdminPasswordChange,
 }: AdminOrgStepProps) {
   const { t } = useI18n()
+  const cvrInvalid = Boolean(organizationCvr.trim()) && !isValidDanishCvr(organizationCvr.trim())
 
   return (
     <div className="space-y-4">
@@ -37,6 +43,13 @@ export function AdminOrgStep({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="setup-org-cvr">{t("auth.onboarding.cvrLabel")}</Label>
+          <Input id="setup-org-cvr" inputMode="numeric" maxLength={8} pattern="[0-9]{8}" value={organizationCvr}
+            aria-invalid={cvrInvalid} aria-describedby={cvrInvalid ? "setup-org-cvr-error" : undefined}
+            onChange={event => onOrganizationCvrChange(event.target.value)} />
+          {cvrInvalid && <p id="setup-org-cvr-error" role="alert" className="text-sm text-destructive">{t("cvr.invalid")}</p>}
+        </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="setup-org-name">{t("setup.field.organizationName")}</Label>
           <Input

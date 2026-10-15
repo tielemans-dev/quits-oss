@@ -33,9 +33,6 @@ const EMPTY_VALUES: Values = {
   note: "",
 }
 
-/** The invoice number shown in the preview. */
-const SAMPLE_INVOICE_NUMBER = "INV-0001"
-
 const ERROR_KEYS: Record<PaymentDetailsField, { invalid: TranslationKey; required?: TranslationKey }> = {
   accountHolder: { invalid: "settings.paymentDetails.error.accountHolder" },
   bankName: { invalid: "settings.paymentDetails.error.bankName" },
@@ -153,9 +150,9 @@ function Field({
 }
 
 /** Written like an invoice is: in the organization's language, not the one the app is shown in. */
-function PaymentDetailsPreview({ values, locale }: { values: Values; locale: string | undefined }) {
+function PaymentDetailsPreview({ values, locale, number }: { values: Values; locale: string | undefined; number: string | null }) {
   const { t } = useI18n()
-  const block = buildPaymentDetailsBlock(previewDetails(values), SAMPLE_INVOICE_NUMBER, locale)
+  const block = buildPaymentDetailsBlock(previewDetails(values), number, locale)
 
   return (
     <div className="grid gap-2">
@@ -198,6 +195,7 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
   const { t } = useI18n()
   const idPrefix = useId()
   const [loaded, setLoaded] = useState(false)
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState<string | null>(null)
   // Only admins may change the details (settings:update); everyone else sees them read-only.
   const [canUpdate, setCanUpdate] = useState(false)
   const [values, setValues] = useState<Values>(EMPTY_VALUES)
@@ -206,6 +204,11 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null)
+  useEffect(() => {
+    if (message?.kind !== "success") return
+    const timer = setTimeout(() => setMessage(null), 5000)
+    return () => clearTimeout(timer)
+  }, [message])
   // The details belong to the active organization; `undefined` while loading. Keyed on it so the
   // card starts over, read-only, after the user switches organization.
   const organizationId = useActiveOrganizationId()
@@ -219,6 +222,7 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
     setCanUpdate(false)
     setSaving(false)
     setMessage(null)
+    setNextInvoiceNumber(null)
     setTouched({})
     setSubmitted(false)
     if (organizationId === undefined) return
@@ -232,6 +236,7 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
         setValues(next)
         setSaved(next)
         setCanUpdate(state.canUpdate)
+        setNextInvoiceNumber(state.nextInvoiceNumber)
         setLoaded(true)
       })
       .catch(() => {
@@ -409,11 +414,11 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
           />
         </Field>
 
-        <PaymentDetailsPreview values={values} locale={locale ?? undefined} />
+        <PaymentDetailsPreview values={values} locale={locale ?? undefined} number={nextInvoiceNumber} />
 
         {message && (
           <p
-            className={message.kind === "error" ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
+            className={message.kind === "error" ? "text-sm text-destructive" : "fixed bottom-6 right-6 z-50 max-w-[calc(100vw-3rem)] rounded-md border bg-background px-4 py-3 text-sm shadow-md"}
             role={message.kind === "error" ? "alert" : "status"}
           >
             {message.text}

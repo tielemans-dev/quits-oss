@@ -16,7 +16,12 @@ import {
 } from "../lib/organization-request"
 
 export type Context = {
-  request?: { url: string; headers: Headers }
+  request?: {
+    url: string
+    headers: Headers
+    /** Browser cancellation for downstream I/O. Never use it to cancel a transaction or commit. */
+    signal?: AbortSignal
+  }
   session: Awaited<ReturnType<typeof auth.api.getSession>> | null
   /**
    * The organization the client says it is acting for (the `x-yaip-organization-id` header), if
@@ -41,7 +46,9 @@ const t = initTRPC.context<Context>().create({
       : error.cause instanceof CurrencyPrecisionUnsupported ? error.cause.code
       : error.cause instanceof DomainRefusal ? (error.cause.code ?? null) : null
     const details = error.cause instanceof DomainRefusal ? (error.cause.details ?? null) : null
-    return { ...shape, data: { ...shape.data, reason, details } }
+    const issues = error.cause instanceof DomainRefusal ? (error.cause.issues ?? null) : null
+    const fieldIssues = error.cause instanceof DomainRefusal ? (error.cause.fieldIssues ?? null) : null
+    return { ...shape, data: { ...shape.data, reason, details, issues, fieldIssues } }
   },
 })
 

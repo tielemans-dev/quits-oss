@@ -3,7 +3,6 @@ import { einvoiceDocumentKindSchema, isPeppolEasCode, isValidPeppolIdentifier, t
 
 /**
  * Provider-neutral lifecycle of one electronic delivery of an issued invoice or credit note.
- * The record design is in docs/plans/2026-10-08-denmark-einvoice-delivery-decision.md.
  *
  * Four concerns are kept apart, because each answers a different question:
  *

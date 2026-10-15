@@ -25,7 +25,7 @@ const company: CvrCompany = {
 const client: OnboardingV2Client = {
   search: async (query, signal) => {
     await wait(50, signal)
-    // CVR registry outage: every lookup fails, manual setup must still finish.
+    // Synthetic lookup outage for the manual form validation checks.
     if (scenario === "lookup-down") throw new Error("Lookup unavailable")
     return query === "00000000" || query === "Unknown"
       ? []

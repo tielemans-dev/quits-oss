@@ -3,7 +3,6 @@ import { useState, useEffect } from "react"
 import { trpc } from "../../../trpc/client"
 import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
-import { StatusBadge } from "../../../components/status-badge"
 import { Amount } from "../../../components/kvit/amount"
 import {
   decimalFromNumber,
@@ -42,6 +41,9 @@ import {
   invoiceDisplayStatus,
 } from "../../../lib/payments/invoice-display-status"
 import { loadInvoicesListData } from "./-index.helpers"
+import { PILL_STAGGER_MS, SwappingStatusBadge } from "../../../components/jobs/swapping-status-badge"
+import { useReminderJobs } from "../../../components/jobs/reminder-jobs-store"
+import { remindedInvoiceIds } from "../../../lib/jobs/reminder-tracker"
 
 export const Route = createFileRoute("/_app/invoices/")({
   component: InvoicesListPage,
@@ -71,6 +73,10 @@ function InvoicesListPage() {
   const [loading, setLoading] = useState(true)
   const [timezone, setTimezone] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const reminded = remindedInvoiceIds(useReminderJobs())
+  // Rows whose pill changes together fade one after another, top to bottom.
+  const stagger = new Map<string, number>()
+  for (const invoice of invoices) if (reminded.has(invoice.id)) stagger.set(invoice.id, stagger.size)
 
   async function loadInvoices() {
     try {
@@ -227,7 +233,10 @@ function InvoicesListPage() {
                     </div>
                   </ListCell>
                   <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
-                    <StatusBadge domain="invoice" status={invoiceDisplayStatus(invoice, timezone)} />
+                    <SwappingStatusBadge
+                      status={invoiceDisplayStatus(invoice, timezone, undefined, reminded.has(invoice.id))}
+                      delay={Math.min(stagger.get(invoice.id) ?? 0, 5) * PILL_STAGGER_MS}
+                    />
                   </ListCell>
                   <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
                     {invoice.status === "draft" && (

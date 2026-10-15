@@ -12,7 +12,7 @@ vi.mock("../../domain/execute", async () => {
     if (options.clientRequestId !== "overlap" || !prepare) return actual.executeCommand(definition, input, options)
     return actual.executeCommand(definition, input, { ...options, prepareIssuance: async (parsed, now) => {
       const id = await prepare(parsed, now)
-      await gates.afterPreparation?.(id)
+      if (id) await gates.afterPreparation?.(id)
       return id
     } })
   } }

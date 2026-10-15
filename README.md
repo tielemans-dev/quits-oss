@@ -121,6 +121,9 @@ Source-available invoicing for freelancers and small businesses.
 
 ### Isolated worktrees in T3 Code
 
+For 60fps route recordings and before/after motion comparisons, see
+[Record motion for design review](docs/recording-motion.md).
+
 Run `bun install --frozen-lockfile` in each new worktree before Setup Worktree.
 Install Bun and PostgreSQL `psql`, `createdb`, and `dropdb`. Supply
 `QUITS_WORKTREE_POSTGRES_URL` explicitly in the process environment: a loopback
@@ -237,7 +240,11 @@ Run the standard test suite:
 bun run test
 ```
 
-Build, test and typecheck commands generate the Prisma client first, including on a fresh checkout or a root Turbo cache hit. Before running Vitest, TypeScript or `knip:report` directly in a fresh checkout, run `bun run prisma:generate` from the repository root once; direct tools bypass the package-script preparation hooks.
+Build, test, integration-test and typecheck commands generate the Prisma client
+first, including on a fresh checkout or a root Turbo cache hit. Before running
+Vitest, TypeScript or `knip:report` directly in a fresh checkout, run
+`bun run prisma:generate` from the repository root once; direct tools bypass the
+package-script preparation hooks.
 
 Run the repo quality gates:
 

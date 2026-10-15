@@ -13,6 +13,17 @@
           "email"
         ]
       }
+    },
+    {
+      "source": "commands/contacts.ts",
+      "typeExpression": "\"contact.updated\"",
+      "payloadExpression": "{ fields: [\"reminderUnsubscribedAt\"] }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "reminderUnsubscribedAt"
+        ]
+      }
     }
   ]
 }

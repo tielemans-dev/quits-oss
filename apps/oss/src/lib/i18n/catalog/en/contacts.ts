@@ -1,6 +1,7 @@
 export const enContactsMessages = {
   "contacts.title": "Customers",
   "contacts.loading": "Loading...",
+  "contacts.field.required": "(required)",
   "contacts.field.name": "Name",
   "contacts.field.email": "Email",
   "contacts.field.phone": "Phone",
@@ -40,4 +41,11 @@ export const enContactsMessages = {
   "contacts.delete.title": "Delete customer",
   "contacts.delete.description":
     "Are you sure you want to delete {name}? This action cannot be undone.",
+  "contacts.reminders.stopped": "Automatic reminders are unsubscribed",
+  "contacts.reminders.active": "Automatic reminders are allowed",
+  "contacts.reminders.scope": "Applies to automatic reminders from this organization to {email}. Invoices and other documents will still be sent.",
+  "contacts.reminders.resume": "Resume automatic reminders",
+  "contacts.reminders.confirm": "The recipient at {email} chose to stop automatic reminders. Do you want to resume them?",
+  "contacts.reminders.resuming": "Resuming…",
+  "contacts.reminders.error": "Could not resume reminders. Please try again.",
 } as const

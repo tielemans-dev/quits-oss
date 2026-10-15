@@ -7,7 +7,7 @@ import { adminCredentials, danishLocale, resetDatabase, seedPublicInvoice, usEng
 
 // MOCK: synthetic local/test organizations only. Never imported by application code.
 const variant = process.env.QUI61_SCREENSHOTS === "before" ? "before" : "after"
-const captureDir = process.env.QUI61_SCREENSHOTS ? resolve(import.meta.dirname, "../../../../docs/qa/qui-61") : null
+const captureDir = process.env.QUI61_SCREENSHOTS ? resolve(import.meta.dirname, "../../../../.artifacts/qui-61") : null
 async function capture(page: Page, name: string) {
   if (!captureDir) return
   await mkdir(captureDir, { recursive: true })

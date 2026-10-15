@@ -125,6 +125,7 @@ describe("OnboardingPage org selection", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError") })
     render(<RoutePage />)
     const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Acme" } })
     fireEvent.submit(name.closest("form")!)
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
@@ -202,7 +203,7 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
   })
 
-  it("sends a hosted user with no organization into onboarding v2 instead of the v1 lookup card", async () => {
+  it("requires a CVR before creating a hosted organization for v2", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
@@ -211,16 +212,15 @@ describe("OnboardingPage org selection", () => {
     vi.mocked(authClient.organization.create).mockResolvedValue({ data: { id: "org_created" }, error: null } as never)
     setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
     render(<RoutePage />)
+    fireEvent.click(await screen.findByRole("button", { name: "auth.onboarding.lookup.manual" }))
     const name = await screen.findByLabelText("auth.onboarding.field.companyName")
-    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
-    expect(screen.queryByRole("button", { name: "auth.onboarding.lookup.manualBack" })).toBeNull()
+    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Nordlys ApS" } })
     fireEvent.submit(name.closest("form")!)
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
     // The new organization continues in the v2 wizard (lookup, review, confirm), not the app.
     expect(loadPage).toHaveBeenCalledWith("/onboarding")
-    // v2 collects company details itself: no legacy staged company (and draft save) on reload.
-    expect(Object.keys(sessionStorage).some(key => /selected/i.test(key))).toBe(false)
+    expect(authClient.organization.create).toHaveBeenCalledWith(expect.objectContaining({ metadata: { cvr: "24256790" } }))
   })
 
   it("keeps v2 unknown with a retry instead of falling back to v1 when capabilities fail", async () => {
@@ -235,8 +235,8 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
     expect(screen.queryByLabelText("auth.onboarding.field.companyName")).toBeNull()
     fireEvent.click(retry)
-    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
-    expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
+    expect(await screen.findByLabelText("auth.onboarding.lookup.query")).toBeTruthy()
+    expect(screen.getByText("auth.onboarding.lookup.title")).toBeTruthy()
   })
 
   it("keeps the v1 lookup card when v2 is enabled but CVR onboarding is unavailable", async () => {
@@ -303,6 +303,7 @@ describe("OnboardingPage org selection", () => {
     expect(name.getAttribute("aria-invalid")).toBe("true")
     expect(name.getAttribute("aria-describedby")).toBe("company-name-error")
     expect(authClient.organization.create).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Acme" } })
     expect(screen.queryByText("validation.required")).toBeNull()
     expect(name.getAttribute("aria-invalid")).toBeNull()

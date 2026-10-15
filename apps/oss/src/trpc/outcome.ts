@@ -27,12 +27,16 @@ export class DomainRefusal extends Error {
   readonly code: string | undefined
   readonly tag: string
   readonly details: CommandError["details"]
+  readonly issues: CommandError["issues"]
+  readonly fieldIssues: CommandError["fieldIssues"]
   constructor(error: CommandError) {
     super(error.message)
     this.name = "DomainRefusal"
     this.tag = error.tag
     this.code = error.code
     this.details = error.details
+    this.issues = error.issues
+    this.fieldIssues = error.fieldIssues
   }
 }
 
