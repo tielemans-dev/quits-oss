@@ -482,6 +482,7 @@ export const sendInvoice = defineCommand({
         recipient,
         message: email.message,
         idempotencyKey: `invoice-send:${invoice.id}:${now.getTime()}`,
+        numberTaken: found.number === null,
         publicLinkIssuedAt: publicPaymentIssuedAt,
         markSending: (data) => db.invoice.update({ where: { id: invoice.id }, data: { ...data, number: invoice.number } }),
       })

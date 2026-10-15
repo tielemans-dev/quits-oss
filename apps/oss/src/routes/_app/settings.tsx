@@ -212,6 +212,8 @@ function SettingsPage() {
   const [success, setSuccess] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
   const [sellerVatChoice, setSellerVatChoice] = useState<boolean | null>(null)
+  // A displayed saved choice must not reconfirm VAT evidence on unrelated saves.
+  const [sellerVatChoiceReviewed, setSellerVatChoiceReviewed] = useState(false)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
   const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState<boolean | null>(null)
@@ -325,6 +327,7 @@ function SettingsPage() {
           nextSettings.onboardingInvoicingIdentity ?? "registered_business"
         )
         setMomsRegistered(nextSettings.momsRegistered ?? null)
+        setSellerVatChoice(nextSettings.momsRegistered ?? null)
         setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
@@ -468,6 +471,7 @@ function SettingsPage() {
 
   function clearSellerVatReview() {
     setSellerVatChoice(null)
+    setSellerVatChoiceReviewed(false)
     setWithdrawSellerVatEvidence(false)
   }
 
@@ -539,7 +543,7 @@ function SettingsPage() {
       ? null
       : showVatStatus && momsRegistered !== (settings?.momsRegistered ?? null) ? momsRegistered : undefined
     try {
-      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoice !== null || withdrawSellerVatEvidence)
+      const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (sellerVatChoiceReviewed || withdrawSellerVatEvidence)
         ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : sellerVatChoice })).token
         : undefined
       const savedSettings = await trpc.settings.update.mutate({
@@ -554,7 +558,7 @@ function SettingsPage() {
         primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoice ?? undefined : momsRegisteredUpdate,
+        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : sellerVatChoiceReviewed ? sellerVatChoice ?? undefined : undefined : momsRegisteredUpdate,
         sellerVatConfirmationToken,
         paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
@@ -583,7 +587,8 @@ function SettingsPage() {
       })
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
-      setSellerVatChoice(null)
+      setSellerVatChoice(savedSettings.momsRegistered ?? null)
+      setSellerVatChoiceReviewed(false)
       setWithdrawSellerVatEvidence(false)
       setTimezone(timezoneInput)
       const savedBaseUrl = aiProvider === "openai_compatible" ? aiBaseUrlInput || null : settings?.aiBaseUrl ?? null
@@ -934,7 +939,7 @@ function SettingsPage() {
             </div>
 
             {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
               </div>
             ) : null}
@@ -1204,7 +1209,7 @@ function SettingsPage() {
                   id="invoicePrefix"
                   name="invoicePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("settings.prefix.title")}
                   placeholder="INV"
                   defaultValue={settings.invoicePrefix}
@@ -1225,7 +1230,7 @@ function SettingsPage() {
                   id="quotePrefix"
                   name="quotePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("settings.prefix.title")}
                   placeholder="QTE"
                   defaultValue={settings.quotePrefix}
@@ -1246,7 +1251,7 @@ function SettingsPage() {
                   id="creditNotePrefix"
                   name="creditNotePrefix"
                   maxLength={10}
-                  pattern="^[A-Z0-9-]{1,10}$"
+                  pattern="^[A-Z0-9\-]{1,10}$"
                   title={t("creditNotes.validation.invalidPrefix")}
                   placeholder="CN"
                   defaultValue={settings.creditNotePrefix}
