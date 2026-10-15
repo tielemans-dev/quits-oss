@@ -18,6 +18,7 @@ export const creditNoteLineSelectionSchema = z.object({
 })
 
 const creditNoteIssueBase = {
+  id: z.string().min(1).optional(),
   invoiceId: z.string().min(1),
   reason: creditNoteReasonSchema,
 }
@@ -49,7 +50,7 @@ export const creditNoteListInputSchema = z
   .object({ invoiceId: z.string().min(1).optional() })
   .optional()
 
-export const creditNoteStatusSchema = z.enum(["issued"])
+export const creditNoteStatusSchema = z.enum(["draft", "issued", "cancelled"])
 export const creditNoteModeSchema = z.enum(["full", "lines", "amount"])
 
 export type CreditNoteLineSelection = z.infer<typeof creditNoteLineSelectionSchema>

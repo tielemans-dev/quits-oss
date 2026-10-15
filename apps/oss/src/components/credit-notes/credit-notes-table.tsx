@@ -1,3 +1,4 @@
+import { StatusBadge } from "../status-badge"
 import { Link } from "@tanstack/react-router"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
@@ -37,6 +38,7 @@ export function CreditNotesTable({
                 <Link to="/credit-notes/$creditNoteId" params={{ creditNoteId: creditNote.id }} className="underline underline-offset-4">
                   {creditNote.number}
                 </Link>
+                {creditNote.status === "draft" && <StatusBadge domain="creditNote" status="draft" className="ml-2" />}
               </TableCell>
               {showInvoice && <TableCell>{creditNote.invoice.number}</TableCell>}
               {showInvoice && <TableCell>{creditNote.contact.name}</TableCell>}
