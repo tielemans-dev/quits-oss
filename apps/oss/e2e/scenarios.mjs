@@ -142,8 +142,9 @@ export function registerProductScenarios(test, expect) {
   test.beforeEach(async ({ page, account, entryURL }) => {
     await page.goto(entryURL)
     await expect(page).toHaveURL(/\/login(?:\?|$)/)
-    // SSR inputs can be filled before React attaches their handlers, then reset
-    // during hydration. Refill and verify both together before submitting.
+    // Wait until React has attached the controlled inputs' handlers before filling.
+    await page.locator('form[data-hydrated="true"]').waitFor({ state: 'visible' })
+    // Verify both controlled values together before submitting; retry a reset.
     await expect(async () => {
       const email = page.getByLabel('Email', { exact: true })
       const password = page.getByLabel('Password', { exact: true })

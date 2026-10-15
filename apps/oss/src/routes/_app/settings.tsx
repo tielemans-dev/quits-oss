@@ -4,7 +4,7 @@ import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react"
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -69,6 +69,7 @@ import { ReminderPolicyCard } from "../../components/settings/reminder-policy-ca
 import { useRuntimeUi } from "../../lib/runtime/ui"
 import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
+import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
@@ -216,7 +217,11 @@ function SettingsPage() {
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
   const settingsFormId = useId()
-  const { data: session } = useSession()
+  const { data: session, isPending: sessionPending } = useSession()
+  const liveUserId = useRef<string | undefined>(undefined)
+  useLayoutEffect(() => {
+    liveUserId.current = sessionPending ? undefined : session?.user.id
+  }, [sessionPending, session?.user.id])
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -669,7 +674,20 @@ function SettingsPage() {
       // Refresh from the accepted mutation, keeping this tab's organization and usable layout.
       // Refetching the session here could select another tab's organization or fail after saving.
       invalidateAppLayoutSession()
-      seedAppLayoutSession({ ...layoutContext, locale: savedSettings.locale })
+      // A save can outlive a sign-out/account change. Leave the cache empty in that case.
+      if (liveUserId.current === layoutContext.user.id) {
+        seedAppLayoutSession({
+          ...layoutContext,
+          locale: savedSettings.locale,
+          cloudOnboardingComplete: layoutContext.runtime.distribution === "cloud"
+            ? getCloudOnboardingState({
+                ...savedSettings,
+                // Empty input preserves the stored identifier, just as settings.update does.
+                primaryTaxId: primaryTaxId.trim() || settings?.primaryTaxId || null,
+              }).isComplete
+            : null,
+        })
+      }
       await router.invalidate({ sync: true })
       setSuccess(true)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
