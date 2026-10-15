@@ -58,14 +58,15 @@ export async function scan(input: Consumer & { interestedTypes: readonly string[
   })
 }
 
-export async function claim(input: Consumer & { limit: number; leaseMs: number; now: Date }, db: Db = prisma) {
+export async function claim(input: Consumer & { limit: number; leaseMs: number; now: Date; sequence?: number }, db: Db = prisma) {
   const limit = batchLimit(input.limit)
   if (!Number.isFinite(input.leaseMs) || input.leaseMs <= 0 || !Number.isFinite(input.now.getTime())) throw new RangeError("Invalid lease or time")
   const leaseUntil = new Date(input.now.getTime() + input.leaseMs)
   if (!Number.isFinite(leaseUntil.getTime())) throw new RangeError("Invalid lease end")
   const eligible: Prisma.EventConsumerDeliveryWhereInput = {
     organizationId: input.organizationId, consumerKey: input.consumerKey,
-    OR: [{ status: "pending" }, { status: "claimed", leaseUntil: { lte: input.now } }],
+    ...(input.sequence !== undefined ? { sequence: input.sequence } : {}),
+    OR: [{ status: "pending", availableAt: { lte: input.now } }, { status: "claimed", leaseUntil: { lte: input.now } }],
   }
   return transaction(db, async (tx) => {
     const candidates = await tx.eventConsumerDelivery.findMany({ where: eligible, orderBy: { sequence: "asc" }, take: limit })
