@@ -1,8 +1,9 @@
 # Accounting integrations
 
-QUI-77 starts with pure e-conomic and Dinero payload preparation. There are no
-requests, credentials, connection records or UI yet. It is available to the
-self-hostable runtime without hosted gates. Billy follows e-conomic and Dinero.
+QUI-77 includes pure e-conomic and Dinero payload preparation and an injectable
+delivery step. There is no live transport, credential storage, connection record
+or UI yet. It is available to the self-hostable runtime without hosted gates.
+Billy follows e-conomic and Dinero.
 
 ## Provider boundary
 
@@ -10,7 +11,8 @@ self-hostable runtime without hosted gates. Billy follows e-conomic and Dinero.
 a versioned money event, its stable outbox delivery ID and resolved settings.
 It returns a prepared payload with expected decimal totals, or an explicit refusal.
 The adapter never reads current document rows, recalculates historical prices or
-owns transport. A later worker handles connections, remote IDs and delivery state.
+owns transport. The delivery step handles request state; live connections and
+multi-operation remote bookkeeping remain follow-ups.
 
 Use `invoice.issued` v1 and postable `credit_note.issued` v2, not email or cumulative
 paid notifications. `postingsFor` validates frozen evidence, equations and base
@@ -111,6 +113,37 @@ dependencies; claiming by sequence alone does not enforce them. Only done/skippe
 deliveries advance the contiguous acknowledgement cursor. A refusal stays visible
 as failed until corrected or explicitly skipped with an audit reason.
 
+## Injectable delivery step
+
+`domain/accounting/delivery.ts` exposes `deliverAccounting`. Callers supply an
+`AccountingConnections` lookup and `AccountingTransport`; neither has a live
+implementation or automatic scheduler registration yet. A missing connection
+pauses without scanning. Connection keys must identify immutable remote-account
+generations, and settings must supply frozen event-specific evidence. The lookup
+selects the existing pure adapter and converts its prepared result to a relative
+HTTP path/body. No credentials may enter that stored request.
+
+The step reuses `EventConsumerDelivery`, uniquely scoped to organization,
+connection and event sequence. Its stored request also records the event ID,
+mapping revision, expected totals and stable `:request` idempotency key. `pending`,
+`done` and `failed` mean pending, delivered and failed; `claimed` is a leased
+attempt. Errors contain safe codes, never raw transport responses. The migration
+adds pinned request JSON and retry availability to this existing table.
+
+One call processes at most one event. Failed, leased and delayed predecessors
+block later requests. Transient transport, 429 and server failures retry with
+exponential backoff, jitter and Retry-After, for at most five HTTP sends. Lease
+recovery may add reconciliation attempts. Every
+replay requires transport reconciliation to prove delivery or authoritative
+absence, including in-flight requests; an unknown result fails visibly without
+resending. Lease tokens fence persistence and completion.
+
+Delivered means the single prepared draft/payment request was accepted, not that
+sales were booked. Draft total validation, booking, remote relationship validation
+and provider-specific reconciliation are required before enabling a live worker.
+Legacy payments without immutable evidence remain refused. Failed rows have no
+automatic requeue or skip policy in this slice.
+
 ## Per-organization connections
 
 Later persist provider, remote agreement/organization ID, connection generation,
@@ -142,5 +175,7 @@ code flow, with no pasted keys. Authenticated configuration stays inside the app
 
 - Richer frozen payment events with date, base valuation and settlement evidence.
 - OAuth/agreement-grant connection flow and per-org credential storage.
-- Outbox delivery worker with operation persistence, reconciliation and retries.
+- Live transport/reconciliation, remote total checks, booking operation records,
+  invoice dependency resolution, sync start positions and audited requeue/skip.
+- Scheduler wiring after connection lookup and live delivery safeguards exist.
 - Settings UI for connection status, account/VAT mapping, failures and disconnect.
