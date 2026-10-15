@@ -1,5 +1,7 @@
 /** Owned by the reminders feature. */
 export const daRemindersMessages = {
+  "reminders.jobs.title": "Send rykkere til {count} forfaldne fakturaer",
+  "reminders.jobs.step": "Rykker til {customerName}",
   "reminders.email.subject.upcoming": "Påmindelse: faktura {number} forfalder {dueDate}",
   "reminders.email.subject.overdue": "Forfalden: faktura {number} — {balance} udestående",
   "reminders.email.title.upcoming": "Betalingspåmindelse",
