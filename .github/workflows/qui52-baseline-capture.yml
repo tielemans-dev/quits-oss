@@ -37,6 +37,7 @@ jobs:
         run: |
           cp evidence/apps/oss/tests/shared/invoice-payment-capture.spec.ts baseline/apps/oss/tests/shared/
           cp evidence/apps/oss/e2e/qui52-capture.mjs baseline/apps/oss/e2e/
+          cp evidence/apps/oss/e2e/qui52-runner.mjs baseline/apps/oss/e2e/
           git -C baseline diff --exit-code
           test "$(git -C baseline rev-parse HEAD)" = 4931661dd7e53d83555590e06a2e2cf97448743b
       - run: bun install --frozen-lockfile
