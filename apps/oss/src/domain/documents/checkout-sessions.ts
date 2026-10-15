@@ -1,9 +1,7 @@
 import { Effect } from "effect"
 import { z } from "zod"
-import { prisma } from "../../lib/db"
 import { appLogger } from "../../lib/observability"
-import { expireOpenStripeCheckoutSession, resolveStripeCheckoutTarget } from "../../lib/payments/stripe"
-import { decryptSecret } from "../../lib/secrets"
+import { expireOrganizationCheckoutSession } from "../../lib/payments/checkout-sessions"
 import { registerJobHandler, TerminalJobError } from "../jobs"
 import { Command, Db } from "../services"
 
@@ -68,18 +66,7 @@ export const expireReplacedCheckoutSession = (
     ? expireStaleCheckoutSession(invoice)
     : Effect.void
 
-/**
- * Loads the organization's Stripe API secret key, or null when none is stored. Expiring a session
- * needs only this key, so it is read on its own: a payment configuration that is incomplete
- * otherwise (no webhook secret, say) must not stop a stale session from being expired.
- */
-export async function organizationStripeSecretKey(organizationId: string) {
-  const settings = await prisma.orgSettings.findUnique({
-    where: { organizationId },
-    select: { stripeSecretKeyEnc: true },
-  })
-  return settings?.stripeSecretKeyEnc ? decryptSecret(settings.stripeSecretKeyEnc) : null
-}
+export { organizationStripeSecretKey } from "../../lib/payments/checkout-sessions"
 
 /*
  * Registered next to the code that enqueues it, so every process that changes a settlement (UI,
@@ -91,12 +78,9 @@ registerJobHandler(EXPIRE_CHECKOUT_SESSION_JOB, async (job) => {
     throw new TerminalJobError(`Invalid ${EXPIRE_CHECKOUT_SESSION_JOB} payload: ${parsed.error.message}`)
   }
   const { invoiceId, checkoutSessionId } = parsed.data
-  const target = await resolveStripeCheckoutTarget({ organizationId: job.organizationId })
-  const outcome = await expireResolvedCheckoutSession({
+  const outcome = await expireOrganizationCheckoutSession({
     organizationId: job.organizationId,
-    invoiceId,
-    checkoutSessionId,
-    target,
+    sessionId: checkoutSessionId,
   })
   paymentsLogger.info("checkout.expire.done", {
     organizationId: job.organizationId,
@@ -105,36 +89,3 @@ registerJobHandler(EXPIRE_CHECKOUT_SESSION_JOB, async (job) => {
     outcome,
   })
 })
-
-/**
- * Connect sessions expire on the connected account. BYOK uses the stored secret key, including
- * when the rest of the Stripe setup is incomplete: a missing webhook secret must not leave a
- * payable session open.
- */
-async function expireResolvedCheckoutSession(input: {
-  organizationId: string
-  invoiceId: string
-  checkoutSessionId: string
-  target: Awaited<ReturnType<typeof resolveStripeCheckoutTarget>>
-}) {
-  if (input.target?.kind === "connect") {
-    return expireOpenStripeCheckoutSession({ target: input.target, sessionId: input.checkoutSessionId })
-  }
-  const secretKey =
-    input.target?.kind === "byok"
-      ? input.target.secretKey
-      : await organizationStripeSecretKey(input.organizationId)
-  if (!secretKey) {
-    // The session was opened with a key that has since been removed and may still be payable.
-    // Fail visibly and retry, so restoring the key lets the expiry go through.
-    paymentsLogger.error("checkout.expire.no_secret_key", {
-      organizationId: input.organizationId,
-      invoiceId: input.invoiceId,
-      checkoutSessionId: input.checkoutSessionId,
-    })
-    throw new Error(
-      `Cannot expire Stripe Checkout session ${input.checkoutSessionId}: the organization has no Stripe secret key`
-    )
-  }
-  return expireOpenStripeCheckoutSession({ secretKey, sessionId: input.checkoutSessionId })
-}
