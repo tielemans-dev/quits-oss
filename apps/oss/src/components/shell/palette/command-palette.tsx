@@ -1,12 +1,17 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Dialog as DialogPrimitive, VisuallyHidden } from 'radix-ui'
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { cn } from '../../../lib/utils'
+import { useMorph } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
 import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
 import { useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
+
+/** Growing into a card: the palette takes this long to change height, and the list this long to fade. */
+const CARD_MORPH_MS = 420
+const LIST_FADE_MS = 90
 
 type Props = {
   open: boolean
@@ -104,6 +109,10 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   const listboxId = useId()
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
+  // A card the palette has grown into, in place of the list. The list stays a moment to fade out.
+  const [card, setCard] = useState<ReactNode>(null)
+  const [listLeaving, setListLeaving] = useState(false)
+  const morph = useMorph<HTMLDivElement>(CARD_MORPH_MS)
   // Where focus was before the palette opened, and goes back to when it closes.
   const returnFocusTo = useRef<HTMLElement | null>(null)
 
@@ -125,8 +134,16 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   const effectiveActiveId = items.some((item) => item.id === activeId) ? activeId : (items[0]?.id ?? null)
 
   useEffect(() => {
-    if (open) setQuery('')
+    if (!open) return
+    setQuery('')
+    setCard(null)
   }, [open])
+
+  useEffect(() => {
+    if (!listLeaving) return
+    const timer = setTimeout(() => setListLeaving(false), LIST_FADE_MS)
+    return () => clearTimeout(timer)
+  }, [listLeaving])
 
   useEffect(() => {
     if (!effectiveActiveId) return
@@ -143,9 +160,14 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           void navigate({ to } as Parameters<typeof navigate>[0])
         },
         close,
+        expand: (content) =>
+          morph.run(() => {
+            setCard(content)
+            setListLeaving(true)
+          }),
       })
     },
-    [close, navigate, onNavigate]
+    [close, navigate, onNavigate, morph.run]
   )
 
   function move(delta: number | 'first' | 'last') {
@@ -157,6 +179,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    // With a card open the request is settled; the card owns the keys.
+    if (card) return
     // Esc is Radix's: it closes and returns focus. Everything else is the list's.
     if (event.key === 'ArrowDown') {
       event.preventDefault()
@@ -182,8 +206,9 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 duration-200 ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
+          ref={morph.ref}
           data-slot="command-palette"
           onOpenAutoFocus={() => {
             returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -195,9 +220,13 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             returnFocusTo.current = null
           }}
           className={cn(
-            'fixed top-[12vh] left-1/2 z-50 w-[min(600px,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-xl',
+            'fixed top-[12vh] left-1/2 z-50 w-[min(600px,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden',
             'border border-hairline bg-panel text-foreground shadow-2xl shadow-black/30 outline-none',
-            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-150'
+            // Opens and closes with a 200ms fade and scale; reduced motion keeps the fade only.
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-200 ease-out motion-reduce:zoom-in-100 motion-reduce:zoom-out-100',
+            // The corners grow from 12 to 18px as the palette becomes a card.
+            card ? 'rounded-[18px]' : 'rounded-xl',
+            '[transition:border-radius_420ms_cubic-bezier(0.32,0.72,0,1)] motion-reduce:[transition:none]'
           )}
         >
           <VisuallyHidden.Root>
@@ -208,7 +237,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             <input
               type="text"
               role="combobox"
-              aria-expanded="true"
+              aria-expanded={!card}
               aria-controls={listboxId}
               aria-autocomplete="list"
               aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
@@ -217,6 +246,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               autoComplete="off"
               spellCheck={false}
               value={query}
+              readOnly={card !== null}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onKeyDown}
               className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
@@ -228,7 +258,12 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             role="listbox"
             aria-busy={pending}
             aria-label={t('shell.palette.title')}
-            className="max-h-[min(380px,55vh)] overflow-y-auto p-2"
+            className={cn(
+              'max-h-[min(380px,55vh)] overflow-y-auto p-2',
+              // Once a card is open the list fades out where it was, then goes. It stays in the DOM
+              // meanwhile: the card needs no blank frame to arrive on.
+              card !== null && (listLeaving ? 'pointer-events-none absolute inset-x-0 animate-out fade-out-0 fill-mode-forwards duration-[90ms]' : 'hidden')
+            )}
           >
             {sections.length === 0 &&
               (pending ? (
@@ -278,7 +313,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               </div>
             ))}
           </div>
-          <div className="mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-[10.5px]" aria-hidden="true">
+          {card}
+          <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-[10.5px]', card !== null && 'hidden')} aria-hidden="true">
             <span>↑↓ {t('shell.palette.hint.select')}</span>
             <span>↵ {t('shell.palette.hint.open')}</span>
             <span>esc {t('shell.palette.hint.close')}</span>

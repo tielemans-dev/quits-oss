@@ -350,3 +350,23 @@ html[data-document] {
   max-width: none;
   padding: 0;
 }
+
+/*
+ * Content of a request card slot rises in part by part (45ms apart) once the surface around it
+ * has made room. Reduced motion keeps the fade and drops the movement.
+ */
+@keyframes request-rise {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@keyframes request-fade {
+  from { opacity: 0; }
+}
+.request-stagger [data-stagger] {
+  animation: request-rise 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation-delay: calc(var(--stagger-delay, 0ms) + var(--stagger) * 45ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .request-stagger [data-stagger] {
+    animation-name: request-fade;
+  }
+}
