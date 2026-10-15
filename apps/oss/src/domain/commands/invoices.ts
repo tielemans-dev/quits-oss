@@ -22,7 +22,9 @@ import { prisma } from "../../lib/db"
 import { createEmailDeliveryAttempt } from "../../lib/email-delivery"
 import { appLogger } from "../../lib/observability"
 import { assertCloudOnboardingComplete } from "../../lib/onboarding/guard"
-import { getPublicInvoicePaymentUrl } from "../../lib/payments/public"
+import { resolveCardCheckoutTarget } from "../../lib/payments/public-access"
+import { computeSettlement } from "../documents/settlement"
+import { getInvoicePaymentState, getPublicInvoicePaymentUrl } from "../../lib/payments/public"
 import { defineCommand } from "../command"
 import { assessCompliance, loadDocumentContext } from "../documents/context"
 import {
@@ -535,8 +537,16 @@ export const resendInvoiceEmail = defineCommand({
           : null
       // Only an adopter policy holds a resend back for missing payment details. The resend reproduces what was issued and
       // never repairs it: today's Settings cannot supply a bank account the invoice did not freeze, so only the frozen
-      // bank account or a payment link the email will actually carry counts.
-      yield* requireResendPaymentDetails(command.organizationId, invoice, frozenBankTransfer || Boolean(publicPaymentUrl))
+      // bank account or a payment link whose page offers card payment for this balance counts. A link to a page with no
+      // payment method is not payment details.
+      const cardOffered = !frozenBankTransfer && publicPaymentUrl !== null && Boolean(yield* Effect.promise(() => resolveCardCheckoutTarget({
+        organizationId: command.organizationId,
+        settings,
+        paymentState: getInvoicePaymentState(invoice),
+        balanceDue: computeSettlement(invoice).balanceDue,
+        currency: invoice.currency,
+      })))
+      yield* requireResendPaymentDetails(command.organizationId, invoice, frozenBankTransfer || cardOffered)
       const recipient = yield* requireRecipientEmail(invoice.contact)
       if (!emailContext.emailDelivery.available) {
         return yield* new InvalidState({
