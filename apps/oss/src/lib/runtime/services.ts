@@ -1,5 +1,6 @@
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import type { AiProvider } from "../ai/provider"
+import type { AccountingDeliveryRuntime } from "../../domain/accounting/connections"
 import { setOperationPolicy, type OperationPolicy } from "./operation-policy"
 export type { OperationPolicy, RuntimeOperation, OperationDecision } from "./operation-policy"
 import type { RenderInput } from "../../domain/documents/render-input"
@@ -78,6 +79,8 @@ export type CvrLookupProvider = {
 export type CvrLookupContext = { userId: string; organizationId?: string; signal: AbortSignal }
 
 export type RuntimeServices = {
+  /** Optional in every distribution until transport/reconciliation and frozen settings are supplied. */
+  accountingDelivery?: AccountingDeliveryRuntime
   cvrLookupProvider?: CvrLookupProvider
   operationPolicy?: OperationPolicy
   documentRenderer?: DocumentRenderer
@@ -139,6 +142,7 @@ export function getManagedDocumentDomainProvider(): ManagedDocumentDomainProvide
 }
 
 export function getDocumentRenderer() { return runtimeServices.documentRenderer }
+export function getAccountingDelivery() { return runtimeServices.accountingDelivery }
 export function getDocumentArtifactStore() { return runtimeServices.documentArtifactStore }
 
 export function getManagedAiProvider(): AiProvider | undefined {
