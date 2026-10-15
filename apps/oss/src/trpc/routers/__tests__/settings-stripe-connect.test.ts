@@ -179,6 +179,19 @@ describe("settings stripe account contract", () => {
     expect(result.stripeCheckoutKind).toBeNull()
   })
 
+  it("offers the AI drafts switch only where the runtime supplies the model", async () => {
+    mocks.findUnique.mockResolvedValue(settingsRow({ aiDraftsEnabled: false }))
+    expect((await createCaller().get()).aiDrafts).toEqual({ managed: false, available: true, enabled: true })
+
+    vi.stubEnv("QUITS_DISTRIBUTION", "cloud")
+    expect((await createCaller().get()).aiDrafts).toEqual({ managed: true, available: false, enabled: false })
+  })
+
+  it("saves the AI drafts switch on its own", async () => {
+    await createCaller().update({ aiDraftsEnabled: false })
+    expect(mocks.txUpsert.mock.calls[0]?.[0].update).toMatchObject({ aiDraftsEnabled: false })
+  })
+
   it("does not report BYOK keys for an active Connect account without keys", async () => {
     mocks.findUnique.mockResolvedValue(
       settingsRow({

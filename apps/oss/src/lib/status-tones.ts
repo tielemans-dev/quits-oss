@@ -126,8 +126,8 @@ export const statusTones = {
   stripeAccount: {
     none: { tone: "neutral", labelKey: "settings.payments.connect.status.none" },
     pending: { tone: "warning", labelKey: "settings.payments.connect.status.pending" },
-    active: { tone: "success", labelKey: "settings.payments.connect.status.active" },
-    restricted: { tone: "danger", labelKey: "settings.payments.connect.status.restricted" },
+    active: { tone: "neutral", labelKey: "settings.payments.connect.status.active" },
+    restricted: { tone: "warning", labelKey: "settings.payments.connect.status.restricted" },
   },
   /** Setup of the organization's own sending domain (Settings). */
   documentSending: {

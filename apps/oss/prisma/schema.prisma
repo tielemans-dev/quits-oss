@@ -225,6 +225,7 @@ model OrgSettings {
   aiBaseUrl                          String?
   aiApiKeyEnc                        String?
   aiModel                            String       @default("openai/gpt-4o-mini")
+  aiDraftsEnabled                    Boolean      @default(true)
   stripePublishableKey               String?
   stripeSecretKeyEnc                 String?
   stripeWebhookSecretEnc             String?

@@ -143,6 +143,7 @@ export const settingsUpdateSchema = z.object({
   aiProvider: z.enum(AI_PROVIDER_KINDS).optional(),
   aiBaseUrl: aiBaseUrlSchema.nullable().optional(),
   aiModel: z.string().trim().min(1).max(120).optional(),
+  aiDraftsEnabled: z.boolean().optional(),
   // Local endpoints (Ollama, LM Studio, ...) may use short or placeholder keys, so no long minimum.
   aiApiKey: z.string().trim().min(1).max(500).optional(),
   clearAiApiKey: z.boolean().optional(),
@@ -199,6 +200,7 @@ const orgSettingsReadSelect = {
   aiBaseUrl: true,
   aiApiKeyEnc: true,
   aiModel: true,
+  aiDraftsEnabled: true,
   stripePublishableKey: true,
   stripeSecretKeyEnc: true,
   stripeWebhookSecretEnc: true,
@@ -317,6 +319,10 @@ export const settingsRouter = router({
       aiProvider: isAiProviderKind(settings.aiProvider) ? settings.aiProvider : "openrouter",
       aiBaseUrl: settings.aiBaseUrl,
       aiModel: settings.aiModel,
+      // Hosted runs the model itself, so Settings shows one switch (or nothing) instead of provider fields.
+      aiDrafts: connectMode
+        ? { managed: true as const, available: runtimeCapabilities.aiInvoiceDraft.managed, enabled: settings.aiDraftsEnabled }
+        : { managed: false as const, available: true, enabled: true },
       stripeByokConfigured: stripeByokConfigured(settings),
       stripePaymentsEnabled: Boolean(stripeTarget),
       stripeCheckoutKind: stripeTarget?.kind ?? null,
