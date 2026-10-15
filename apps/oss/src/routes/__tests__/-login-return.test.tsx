@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nProvider } from '../../lib/i18n/react'
-import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget } from '../../lib/login-return'
+import { loginReturnDestination, loginReturnOnboarding, loginReturnSearchSchema, loginReturnTarget, onboardingShellLanguage } from '../../lib/login-return'
 
 const state = vi.hoisted(() => ({
   search: {} as Record<string, string>, cloud: false, active: false,
@@ -256,5 +256,16 @@ describe('return after required organization flow', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Afslut opsætning' }).closest('form')!)
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?tab=vat&lang=da'))
     expect(state.complete).toHaveBeenCalledWith({ method: 'manual' })
+  })
+})
+
+describe('onboarding shell language (QUI-56)', () => {
+  it('gives the app shell the language onboarding was opened with, and only on onboarding', () => {
+    expect(onboardingShellLanguage('/onboarding', { lang: 'da' })).toBe('da')
+    expect(onboardingShellLanguage('/onboarding/', { lang: 'en', next: '/invoices' })).toBe('en')
+    expect(onboardingShellLanguage('/onboarding', {})).toBeUndefined()
+    expect(onboardingShellLanguage('/onboarding', { lang: 'xx' })).toBeUndefined()
+    expect(onboardingShellLanguage('/invoices', { lang: 'da' })).toBeUndefined()
+    expect(onboardingShellLanguage('/onboardingx', { lang: 'da' })).toBeUndefined()
   })
 })
