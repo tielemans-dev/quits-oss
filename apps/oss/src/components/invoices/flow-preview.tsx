@@ -20,7 +20,7 @@ export function FlowPreview({ customer, company, dueDate, currency, items, total
   const amount = total === null ? "—" : formatCurrency(Number(total), currency, locale)
   return <div className="invoice-preview grid content-start gap-5 p-4 sm:p-8">
     <div role="tablist" aria-label={t("invoices.flow.review")} className="flex gap-2">
-      {(["invoice", "paymentPage", "email"] as const).map(key => <Button key={key} id={`preview-tab-${key}`} role="tab" aria-selected={tab === key} aria-controls="invoice-preview-content" variant={tab === key ? "secondary" : "ghost"} onClick={() => setTab(key)}>{t(`invoices.flow.${key}`)}</Button>)}
+      {(["invoice", "paymentPage", "email"] as const).map(key => <Button key={key} id={`preview-tab-${key}`} role="tab" aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={event => { const tabs = ["invoice", "paymentPage", "email"]; const index = tabs.indexOf(tab); const next = event.key === "ArrowRight" ? (index + 1) % 3 : event.key === "ArrowLeft" ? (index + 2) % 3 : event.key === "Home" ? 0 : event.key === "End" ? 2 : -1; if (next < 0) return; event.preventDefault(); setTab(tabs[next]!); document.getElementById(`preview-tab-${tabs[next]}`)?.focus() }} aria-controls="invoice-preview-content" variant={tab === key ? "secondary" : "ghost"} onClick={() => setTab(key)}>{t(`invoices.flow.${key}`)}</Button>)}
     </div>
     <article id="invoice-preview-content" role="tabpanel" aria-labelledby={`preview-tab-${tab}`} className="invoice-paper mx-auto w-full max-w-lg rounded-lg border p-5 text-sm sm:p-10">
       <p className="font-semibold">{company}</p>

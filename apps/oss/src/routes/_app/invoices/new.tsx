@@ -1,4 +1,3 @@
-import { SendConfirmation } from "../../../components/invoices/send-confirmation"
 import { FlowPreview } from "../../../components/invoices/flow-preview"
 import { useInvoiceMorph, type InvoiceFlowKind } from "../../../components/invoices/flow"
 import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
@@ -12,6 +11,7 @@ import { PriceBasisToggle } from "../../../components/invoices/price-basis-toggl
 import type { FieldIssue } from "@quits/contracts/agent"
 import { InvoiceLinesEditor } from "../../../components/invoices/lines-editor"
 import { OrganizationGaps } from "../../../components/invoices/organization-gaps"
+import { SendConfirmation } from "../../../components/invoices/send-confirmation"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { invoiceQuantityInput, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { defaultDocumentTaxRate, reconcilePolicyVat } from "../../../lib/invoice-defaults"
@@ -281,6 +281,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
         return
       }
 
+      if (!onComplete && draft.dueDate) setDueDate(draft.dueDate)
+      if (!onComplete && typeof draft.taxRate === "number" && !readiness?.standardVatRate) { taxRateEdited.current = true; setTaxRate(String(draft.taxRate)) }
       if (draft.notes) setNotes(draft.notes)
       if (draft.items.length > 0) {
         setItems(
@@ -352,7 +354,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
       let settingsRequested = false
       const target = await submitInvoice(
         {
-          contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency, paymentMethods, remindersPaused: !reminders,
+          contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency, ...(onComplete ? { paymentMethods, remindersPaused: !reminders } : {}),
           items: items.map(item => normalizeInvoiceQuantity(item, locale)),
         },
         {
@@ -367,7 +369,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
       )
 
       if (settingsRequested) { if (onComplete) onComplete(target); return }
-      if (onComplete) { if (kind === "link" && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
+      if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
       navigate({
         to: "/invoices/$invoiceId",
         params: { invoiceId: target.id },
@@ -404,8 +406,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             <Label htmlFor="aiPrompt">{t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}</Label>
             <input
               className="w-full rounded-md border bg-transparent px-3 py-2 text-base"
-              aria-label={t("invoices.flow.composer")}
-              onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); compose() } }}
+              aria-label={t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}
+              onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (onComplete) compose(); else if (aiDraftAvailable) void handleGenerateInvoiceDraftFromAi() } }}
               id="aiPrompt"
               value={aiPrompt}
               onChange={(event) => setAiPrompt(event.target.value)}
@@ -415,13 +417,13 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
               <Button
                 type="button"
                 variant="outline"
-                onClick={compose}
-                disabled={aiGenerating || loadingContacts}
+                onClick={onComplete ? compose : handleGenerateInvoiceDraftFromAi}
+                disabled={aiGenerating || (onComplete ? loadingContacts : loadingAiCapabilities || !aiDraftAvailable)}
               >
                 <Sparkles className="size-4" />
                 {aiGenerating
                   ? t("invoices.new.ai.action.generating")
-                  : t("invoices.flow.apply")}
+                  : t(onComplete ? "invoices.flow.apply" : "invoices.new.ai.action.generate")}
               </Button>
               {!onComplete && loadingAiCapabilities && (
                 <p className="text-xs text-muted-foreground">
@@ -485,9 +487,10 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
           </div>
 
           {kind === "recurring" && <p>{t("invoices.flow.schedule", { date: formatDate(issuance.supplyDate, locale), day: new Date(`${issuance.supplyDate}T00:00:00Z`).getUTCDate() })}</p>}
-          <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-medium">{t("invoices.flow.paidVia")}</legend>
-            {(["bank_transfer", "mobilepay", "card"] as const).map(method => <label key={method} className="flex justify-between gap-3 text-sm">{t(method === "bank_transfer" ? "invoices.flow.bank" : method === "card" ? "invoices.flow.card" : "invoices.flow.mobilePay")}<Switch checked={paymentMethods.some(value => value === method)} title={method === "mobilepay" ? t("invoices.flow.notConfigured") : undefined} disabled={method === "mobilepay" || method === "card" && !settings?.stripePaymentsEnabled} aria-label={t(method === "bank_transfer" ? "invoices.flow.bank" : method === "card" ? "invoices.flow.card" : "invoices.flow.mobilePay")} onCheckedChange={checked => setPaymentMethods(current => checked && method !== "mobilepay" ? [...current, method] : current.filter(value => value !== method))} /></label>)}
-          </fieldset>
+          {onComplete && kind !== "recurring" && <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-medium">{t("invoices.flow.paidVia")}</legend>
+            {(["bank_transfer", "card"] as const).map(method => <label key={method} className="flex justify-between gap-3 text-sm">{t(method === "bank_transfer" ? "invoices.flow.bank" : "invoices.flow.card")}<Switch checked={paymentMethods.includes(method)} disabled={method === "card" && !settings?.stripePaymentsEnabled} onCheckedChange={checked => setPaymentMethods(current => checked ? [...current, method] : current.filter(value => value !== method))} /></label>)}
+            {!settings?.stripePaymentsEnabled && <><label className="flex justify-between text-sm">{t("invoices.flow.mobilePay")}<Switch disabled checked={false} /></label><p className="text-xs text-muted-foreground">{t("invoices.flow.connectStripe")}</p></>}
+          </fieldset>}
           {kind !== "recurring" && <PriceBasisToggle value={pricesIncludeTax} onChange={value => { priceBasisEdited.current = true; setPricesIncludeTax(value) }} />}
           <InvoiceLinesEditor items={items} onItemsChange={value => { setItems(value); setFieldIssues(issues => issues.filter(issue => !issue.field.startsWith("items."))) }} catalogItems={catalogItems} onCatalogItem={applyCatalogItem} onAdd={addItem} onRemove={removeItem}
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
@@ -561,8 +564,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
       {confirmOpen && onComplete && <div className="invoice-review-bar flex flex-wrap items-center justify-end gap-3 border-t bg-panel p-4">
         <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
         <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>
-        <Button variant="outline" onClick={() => setConfirmOpen(false)}>{t("invoices.flow.edit")}</Button>
-        <Button disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("invoices.flow.scheduleAction") : t("invoiceSend.confirm")}</Button>
+        <Button variant="outline" onClick={() => setConfirmOpen(false)}>{t("invoices.detail.action.edit")}</Button>
+        <Button autoFocus disabled={saving} onClick={() => { void handleSubmit(true) }}>{saving ? t("invoices.detail.action.sending") : kind === "recurring" ? t("invoices.flow.scheduleAction") : t("invoiceSend.confirm")}</Button>
       </div>}
 
       {!onComplete && <SendConfirmation open={confirmOpen} onOpenChange={setConfirmOpen} recipient={recipientReview?.recipient ?? ""} amount={formatCurrencyIntl(total, currency, locale)} dueDate={dueDate ? formatDate(dueDate, locale) : ""} pending={saving} onConfirm={() => { void handleSubmit(true) }} />}

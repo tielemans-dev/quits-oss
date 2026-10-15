@@ -35,7 +35,7 @@ function translate(key: string, params?: Record<string, unknown>) {
   return key
 }
 
-import { Route as NewRoute } from "../_app/invoices/new"
+import { Route as NewRoute, NewInvoicePage } from "../_app/invoices/new"
 import { Route as DetailRoute } from "../_app/invoices/$invoiceId"
 const NewPage = (NewRoute as unknown as { component: ComponentType }).component
 const DetailPage = (DetailRoute as unknown as { component: ComponentType }).component
@@ -71,6 +71,20 @@ function fillDraft() {
 }
 const deliveryDraft = { ...invoice, status: "draft", number: null, supplyDate: "2026-10-05", currency: "DKK", items: [] }
 describe("new invoice send review", () => {
+  it("composes locally and sends the reviewed payment and reminder choices without navigating", async () => {
+    const completed = vi.fn(); api.send.mockResolvedValue({}); render(<NewInvoicePage onComplete={completed} />)
+    await screen.findByRole("option", { name: contact.name })
+    fireEvent.change(screen.getByLabelText("invoices.flow.composer"), { target: { value: "Synthetic Buyer 2 timer à 100 kr. Design betaling 14 dage" } })
+    fireEvent.click(screen.getByRole("button", { name: "invoices.flow.apply" }))
+    expect((screen.getByLabelText("docForm.column.description") as HTMLInputElement).value).toBe("Design")
+    expect(screen.getByRole("switch", { name: "invoices.flow.mobilePay" }).hasAttribute("disabled")).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "invoices.flow.review" }))
+    fireEvent.click(await screen.findByRole("switch", { name: "invoices.flow.reminders" }))
+    fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" }))
+    await waitFor(() => expect(completed).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, kind: "invoice" })))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethods: ["bank_transfer"], remindersPaused: true, items: [expect.objectContaining({ quantity: "2", unitPrice: "100" })] }))
+    expect(api.navigate).not.toHaveBeenCalled(); expect(api.generate).not.toHaveBeenCalled()
+  })
   it("opens a draft without a delivery date with an empty field", async () => {
     api.get.mockResolvedValue(deliveryDraft)
     api.get.mockResolvedValue({ ...await api.get(), supplyDate: null })

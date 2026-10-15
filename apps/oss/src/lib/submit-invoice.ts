@@ -42,8 +42,8 @@ export function submitInvoice(
     create: async () => {
       const draft = await trpc.invoices.createV2.mutate({
         contactId: invoice.contactId,
-        paymentMethods: invoice.paymentMethods,
-        remindersPaused: invoice.remindersPaused,
+        ...(invoice.paymentMethods === undefined ? {} : { paymentMethods: invoice.paymentMethods }),
+        ...(invoice.remindersPaused === undefined ? {} : { remindersPaused: invoice.remindersPaused }),
         dueDate: invoice.dueDate,
         supplyDate: issuance.supplyDate,
         taxRate: invoice.taxRate,
