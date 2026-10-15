@@ -134,7 +134,8 @@ suites. Do not run a full suite or build to prove a small change.
 
 - Do not hardcode version strings in prose; use package metadata as the authority.
 - Keep plans, evidence dumps, research notes, scratch files, and PR-only assets
-  out of git. The issue and merged PR hold the implementation record.
+  out of git. Write local captures to `.artifacts/`; upload CI captures as job
+  artifacts. The issue and merged PR hold the implementation record.
 - Document decisions, cross-cutting constraints, and traps the code does not
   reveal. Rewrite or remove stale guidance rather than append a second account.
 

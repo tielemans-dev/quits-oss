@@ -232,7 +232,7 @@ jobs:
         with:
           name: qui64-browser-evidence
           path: |
-            .github/assets/qui64/
+            .artifacts/qui64/
             apps/oss/test-results/
             apps/oss/playwright-report/
 

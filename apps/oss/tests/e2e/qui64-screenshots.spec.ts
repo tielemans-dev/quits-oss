@@ -5,7 +5,7 @@ import { prisma } from "../../src/lib/db"
 import { danishLocale, loginAsAdmin, resetDatabase, seedPublicQuote, usEnglishLocale, waitForClientReady } from "./support"
 
 const stage = process.env.QUI64_SCREENSHOT_STAGE
-const directory = resolve(import.meta.dirname, "../../../../.github/assets/qui64")
+const directory = resolve(import.meta.dirname, "../../../../.artifacts/qui64")
 
 for (const locale of [usEnglishLocale, danishLocale]) {
   test(`QUI-64 screenshots ${locale.locale}`, async ({ page }) => {
