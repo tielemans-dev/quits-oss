@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react"
 
 import { DURATION, prefersReducedMotion } from "../../lib/motion"
 
-const motionAllowed = () => typeof window !== "undefined" && !prefersReducedMotion()
+// Without matchMedia (server, bare test DOM) the figure appears at once.
+const motionAllowed = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && !prefersReducedMotion()
 
 /**
  * Counts a figure up from zero once, the first time it appears, over `DURATION.count`. Later changes (the
