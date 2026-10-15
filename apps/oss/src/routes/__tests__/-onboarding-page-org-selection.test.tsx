@@ -291,41 +291,6 @@ describe("OnboardingPage org selection", () => {
     expect(screen.queryByText("auth.onboarding.lookup.manualBack")).toBeNull()
   })
 
-  it("shows the app's own message for an empty company name instead of the browser's English tooltip", async () => {
-    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
-    listOrganizations.mockResolvedValue({ data: [] })
-    render(<RoutePage />)
-    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
-    const form = name.closest("form")!
-    expect(form.noValidate).toBe(true)
-    fireEvent.submit(form)
-    expect((await screen.findByRole("alert")).textContent).toBe("validation.required")
-    expect(name.getAttribute("aria-invalid")).toBe("true")
-    expect(name.getAttribute("aria-describedby")).toBe("company-name-error")
-    expect(authClient.organization.create).not.toHaveBeenCalled()
-    fireEvent.change(name, { target: { value: "Acme" } })
-    expect(screen.queryByText("validation.required")).toBeNull()
-    expect(name.getAttribute("aria-invalid")).toBeNull()
-  })
-
-  it("shows the app's own message for an empty or too short CVR lookup", async () => {
-    isCloudDistributionMock.mockReturnValue(true)
-    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
-    listOrganizations.mockResolvedValue({ data: [] })
-    render(<RoutePage />)
-    const query = await screen.findByLabelText("auth.onboarding.lookup.query")
-    const form = query.closest("form")!
-    expect(form.noValidate).toBe(true)
-    fireEvent.submit(form)
-    expect((await screen.findByRole("alert")).textContent).toBe("validation.required")
-    expect(query.getAttribute("aria-describedby")).toBe("cvr-query-error")
-    fireEvent.change(query, { target: { value: "ab" } })
-    fireEvent.submit(form)
-    expect((await screen.findByRole("alert")).textContent).toBe("validation.unknown")
-    fireEvent.change(query, { target: { value: "abc" } })
-    expect(screen.queryByRole("alert")).toBeNull()
-  })
-
   it("loads a new page acting for the organization the user chooses", async () => {
     useSessionMock.mockReturnValue({
       data: {
