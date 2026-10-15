@@ -1,3 +1,5 @@
+import { requireOnboardingCvr } from "../../lib/onboarding/require-cvr"
+import { isCloudDistribution } from "../../lib/distribution"
 import { translate } from "../../lib/i18n/translate"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
@@ -392,6 +394,14 @@ export const settingsRouter = router({
         const resolvedCountry = normalizeCountryCode(
           settingsInput.countryCode ?? current?.countryCode
         )
+        if (isCloudDistribution && primaryTaxId !== undefined) {
+          const stored = await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })
+          if (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase()) {
+            await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
+              cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId })
+          }
+        }
         // Registration describes the Danish EU VAT setup, not a hidden cross-jurisdiction flag.
         const clearsRegistration = resolvedCountry !== "DK" || (settingsInput.taxRegime ?? current?.taxRegime) !== "eu_vat"
         if (clearsRegistration) settingsInput.momsRegistered = null

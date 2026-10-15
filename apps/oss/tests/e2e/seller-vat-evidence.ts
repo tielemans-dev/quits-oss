@@ -91,7 +91,7 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
 export async function captureHostedOnboarding(page: Page, organizationId: string, locale: string, registered = false) {
   // Existing documents forbid rerunning confirmV2. Use a fresh synthetic organization.
   const response = await page.request.post("/api/auth/organization/create", {
-    headers: { origin: "http://127.0.0.1:3040" }, data: { name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
+    headers: { origin: "http://127.0.0.1:3040" }, data: { metadata: { cvr: "24256790" }, name: "Synthetic Review", slug: `review-${crypto.randomUUID()}` },
   })
   expect(response.ok()).toBe(true)
   const organization = await response.json() as { id: string }
@@ -101,7 +101,7 @@ export async function captureHostedOnboarding(page: Page, organizationId: string
   await page.goto("/onboarding")
   await waitForClientReady(page)
   await page.getByRole("textbox", { name: translate("onboardingV2.search.heading", locale), exact: true }).fill("Synthetic")
-  await page.getByRole("button").filter({ hasText: "Synthetic Seller" }).click()
+  await page.getByRole("button", { name: /Synthetic Seller.*24256790/ }).click()
   await expect(page.getByLabel(translate("onboardingV2.field.cvr", locale), { exact: true })).toHaveValue("24256790")
   const yes = page.getByRole("radio", { name: translate("vatStatus.yes", locale), exact: true })
   const no = page.getByRole("radio", { name: translate("vatStatus.no", locale), exact: true })
