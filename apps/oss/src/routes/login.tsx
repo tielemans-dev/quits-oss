@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { AuthPage } from '../components/auth/auth-page'
 import { authLinkSearch } from '../lib/auth/navigation'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { authClient } from '../lib/auth-client'
 import { switchActiveOrganization } from '../lib/active-organization'
 import { loadPage } from '../lib/page-navigation'
@@ -22,6 +22,7 @@ import { useI18n } from '../lib/i18n/react'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { getOrganizationAccessState } from '../lib/organization-access'
+import { listOrganizationsAfterSignIn } from '../lib/auth/post-login'
 import { loginReturnSearchSchema, loginReturnTarget, loginReturnDestination, loginReturnOnboarding } from '../lib/login-return'
 
 const loginSearchSchema = loginReturnSearchSchema.extend({
@@ -47,6 +48,13 @@ function LoginPageContent() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Post-login work outlives a click by up to a few seconds; once the page is left it must not
+  // switch organization or load another page on the user's behalf.
+  const unmounted = useRef(false)
+  useEffect(() => {
+    unmounted.current = false
+    return () => { unmounted.current = true }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -68,9 +76,11 @@ function LoginPageContent() {
       )
     } catch {
       setError(t('auth.error.network'))
+      setLoading(false)
       return
-    } finally { setLoading(false) }
+    }
 
+    if (!result.data) setLoading(false)
     if (result.error) setError(t(result.error.status === 429 ? 'auth.error.rateLimited' : 'auth.login.error'))
     if (result.data) {
       // The next page load must not reuse an answer given before signing in. (Mainly matters for a
@@ -81,16 +91,24 @@ function LoginPageContent() {
       const target = loginReturnTarget(search)
       const redirectPath = loginReturnDestination(target ?? '/', lang)
       try {
-        const organizations = await authClient.organization.list()
+        const listed = await listOrganizationsAfterSignIn(() => authClient.organization.list(), undefined, () => unmounted.current)
+        if (unmounted.current) return
+        if (listed.kind === 'no-session') {
+          // The server does not see the session yet: navigating on would only bounce to /login.
+          setError(t('auth.login.sessionPending'))
+          setLoading(false)
+          return
+        }
         const accessState = getOrganizationAccessState({
-          organizations: organizations.data ?? [],
+          organizations: listed.kind === 'listed' ? listed.organizations : [],
         })
 
         if (accessState.kind === 'auto-select') {
           const switched = await switchActiveOrganization(accessState.organizationId, {
             destination: target ? redirectPath : loginReturnDestination(isCloud ? '/onboarding' : '/', lang),
+            isCancelled: () => unmounted.current,
           })
-          if (!switched?.error) return
+          if (!switched?.error || unmounted.current) return
         }
 
         if (accessState.kind === 'choose' || accessState.kind === 'create') {
@@ -101,7 +119,7 @@ function LoginPageContent() {
         // Fall through to the normal post-login route and let app guards recover.
       }
 
-      loadPage(redirectPath)
+      if (!unmounted.current) loadPage(redirectPath)
     }
   }
 

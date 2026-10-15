@@ -32,6 +32,7 @@ export const daAuthMessages = {
   "auth.login.submit": "Log ind",
   "auth.login.submitting": "Logger ind…",
   "auth.login.error": "E-mail eller adgangskode passer ikke. Prøv igen, eller nulstil din adgangskode.",
+  "auth.login.sessionPending": "Du blev logget ind, men vi kunne ikke bekræfte sessionen. Prøv igen.",
   "auth.login.noAccount": "Har du ikke en konto?",
   "auth.login.toSignup": "Opret konto",
   "auth.signup.title": "Opret konto",
