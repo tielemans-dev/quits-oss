@@ -31,12 +31,8 @@ type Props = {
   anchor?: DOMRect | null
   /** How far into that field its icon sits; the palette's icon lands on it. */
   anchorInset?: number
-  /** What was already typed in that field; the palette opens with it. */
-  initialQuery?: string
   /** The field's own placeholder, so the text does not change as the palette takes its place. */
   placeholder?: string
-  /** Closed by Esc or a click outside, with what the field held: the field it grew out of keeps it. */
-  onDismiss?: (query: string) => void
   /**
    * In the page instead of over it: the field itself, with no dimming, that unfolds into results
    * and cards as it is typed in, and folds back into a field when it loses focus. Cards come at
@@ -141,14 +137,14 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '', placeholder, onDismiss, inline = false }: Props) {
+export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, placeholder, inline = false }: Props) {
   // Inline it is always there; it unfolds while it has focus or holds a card.
   const open = openProp || inline
   const [focused, setFocused] = useState(false)
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
-  const [query, setQuery] = useState(open ? initialQuery : '')
+  const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   // A card the palette has grown into, in place of the list: one chosen with Enter, or else the
   // leading item's own card once typing has paused (see `lead` below).
@@ -189,12 +185,12 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
   // A new query, or new results, start on the first item; keep the choice while it still exists.
   const effectiveActiveId = items.some((item) => item.id === activeId) ? activeId : (items[0]?.id ?? null)
 
-  // Opening starts over, with what the field held.
+  // Opening starts over.
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
-      setQuery(initialQuery)
+      setQuery('')
       setCard(null)
       setPaused(false)
     }
@@ -524,7 +520,6 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
       open={open}
       onOpenChange={(next) => {
         if (next) return onOpenChange(true)
-        onDismiss?.(query)
         close()
       }}
     >

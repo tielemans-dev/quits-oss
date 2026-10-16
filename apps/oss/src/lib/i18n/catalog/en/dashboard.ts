@@ -22,9 +22,7 @@ export const enDashboardMessages = {
   "dashboard.morning.vat.title.other": "Moms for {period} is due in {count} days",
   "dashboard.morning.vat.today": "Moms for {period} is due today",
   "dashboard.morning.vat.detail": "Deadline {date}",
-  "dashboard.commandBar.label": "Write a task for quits",
   "dashboard.commandBar.placeholder": "Search, ask quits, or type a task …",
-  "dashboard.commandBar.submit": "Ask quits",
 
   "dashboard.error.title": "The overview could not be loaded",
   "dashboard.error.description": "We could not fetch your figures just now. Your invoices are not affected.",
