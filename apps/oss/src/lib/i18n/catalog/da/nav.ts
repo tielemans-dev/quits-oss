@@ -46,6 +46,7 @@ export const daNavMessages = {
   "shell.palette.hint.close": "luk",
   "shell.palette.groupRequest": "Opgave",
   "shell.palette.groupSuggest": "Forslag",
+  "shell.palette.groupNext": "Næste",
   "shell.palette.request.ask": "Bed quits: {request}",
   "shell.request.slotLabel": "Opgave",
   "shell.request.title.vat": "Momsoversigt",

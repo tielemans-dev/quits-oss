@@ -46,6 +46,7 @@ export const enNavMessages = {
   "shell.palette.hint.close": "close",
   "shell.palette.groupRequest": "Task",
   "shell.palette.groupSuggest": "Suggestions",
+  "shell.palette.groupNext": "Up next",
   "shell.palette.request.ask": "Ask quits: {request}",
   "shell.request.slotLabel": "Task",
   "shell.request.title.vat": "VAT overview",

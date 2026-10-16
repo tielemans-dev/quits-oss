@@ -10,9 +10,8 @@ import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } fro
 
 /** Waits this long after the last key. A call costs next to nothing; a late card costs the moment. */
 const DEBOUNCE_MS = 30
-/** How sure the model has to be before its answer is offered at all, and before it opens a card by itself. */
+/** How sure the model has to be before its answer is offered. Showing a card commits to nothing: its button does. */
 const OFFER = 0.6
-const OPEN = 0.85
 /** Rows offered for one answer: a customer's invoices to credit, or customers with the same first name. */
 const SHOWN = 3
 
@@ -152,19 +151,20 @@ function offer(text: string, decision: Decision | null, known: Known, { can, t }
   if (!decision || decision.probability < OFFER) return []
   const { requests, start } = writtenRequests(decision.kind, text, known)
   const permitted = permittedRequest(recognizeRequest, can)
-  const lone = requests.length === 1 && decision.probability >= OPEN
   const items = requests.flatMap((written): PaletteItem[] => {
     const intent = permitted(written)
     if (!intent) return []
-    // Its reads start now, not when the card is chosen, so it opens with its figures.
-    if (lone) prefetchRequest(intent)
+    // The first one's reads start now, not when the card shows, so it opens with its figures.
+    if (written === requests[0]) prefetchRequest(intent)
     return [{
       id: `decide:${written}`,
       label: written,
       icon: REQUEST_ICONS[intent.kind],
       content: <RequestRow intent={intent} known={known} t={t} />,
       perform: ({ fill }) => fill(written),
-      card: lone ? ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} /> : undefined,
+      // Every reading has its card; the palette shows the first and offers the others beside it.
+      card: ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} />,
+      prefetch: () => prefetchRequest(intent),
     }]
   })
   const startKind = start === 'fakturer ' ? 'invoice' : 'creditNote'

@@ -108,7 +108,7 @@ export function CreditNoteRequestCard({ intent, onDismiss }: RequestCardProps) {
     {error && <p role="alert" className="text-sm text-destructive">{t("creditNotes.error.generic")}</p>}
     <div {...stagger(4)} className="flex justify-end gap-2">
       <Button variant="outline" disabled={pending} onClick={onDismiss} className="transition-[color,background-color,box-shadow]">{t("creditNotes.action.cancel")}</Button>
-      <Button disabled={pending || !preview?.ok} onClick={() => void create()} className="transition-[color,background-color,box-shadow]">{t("creditNotes.action.create")}</Button>
+      <Button data-primary disabled={pending || !preview?.ok} onClick={() => void create()} className="transition-[color,background-color,box-shadow]">{t("creditNotes.action.create")}</Button>
     </div>
   </div>
 }
