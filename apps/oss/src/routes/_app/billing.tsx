@@ -259,6 +259,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
   const isTrial = access.state === "trial"
   const isPaid = access.state === "subscribed"
   const isComped = access.state === "complimentary"
+  const trialEnded = access.state === "read_only" && access.reason === "trial_ended"
   const days = access.state === "trial" ? access.daysLeft : 0
   const progress = access.state === "trial" ? access.progress : 0
   return <div className="mx-auto max-w-4xl px-1 py-1 text-foreground">
@@ -275,7 +276,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <h2 className="text-2xl font-semibold">{isTrial ? t("trial.billing.trial") : plan?.name ?? "quits"}</h2>
           <span className="rounded-full bg-settled/14 px-2.5 py-1 text-xs font-semibold text-settled-text">
-            {isComped ? t("trial.billing.comped") : isPaid ? t("trial.billing.paid") : isTrial ? t("trial.status.active") : t("trial.paywall.pill")}
+            {isComped ? t("trial.billing.comped") : isPaid ? t("trial.billing.paid") : isTrial ? t("trial.status.active") : t(trialEnded ? "trial.paywall.pill" : "trial.lock")}
           </span>
         </div>
         {isTrial && trialEnd && <>
@@ -285,7 +286,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           </div>
           <p className="mt-5 text-sm text-muted-foreground">{t("trial.billing.data")}</p>
         </>}
-        {!isTrial && !isPaid && !isComped && <p className="mt-4 text-sm text-muted-foreground">{t("trial.banner.endedMeta")}</p>}
+        {access.state === "read_only" && <p className="mt-4 text-sm text-muted-foreground">{t(trialEnded ? "trial.banner.endedMeta" : "billing.readOnly.body")}</p>}
         {isPaid && <>
           {subscription.renewalDate && <p className="mt-3 text-sm text-muted-foreground">{t("trial.billing.renews", { date: formatTrialDate(subscription.renewalDate, locale) })}</p>}
           {subscription.paymentMethod && <p className="mt-2 text-sm text-muted-foreground">{t("trial.billing.card", {

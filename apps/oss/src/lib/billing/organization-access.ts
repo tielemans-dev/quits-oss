@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server"
 import type { OrganizationAccess } from "./types"
-export type { OrganizationAccess } from "./types"
+export type { OrganizationAccess, ReadOnlyReason } from "./types"
 
 /** The same server decision supplies UI state and authorizes mutations. Missing state fails closed. */
 export function assertOrganizationWriteAccess(access: OrganizationAccess | undefined) {

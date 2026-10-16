@@ -6,7 +6,9 @@ for the client. The core write guard consumes this same decision on every mutati
 operation policies must also consume it rather than maintain a second entitlement predicate.
 
 States are `self_hosted` (unlimited), `trial` (server-calculated days left, dates and progress),
-`subscribed`, `complimentary`, and `read_only`. The app shares one subscription snapshot across
+`subscribed`, `complimentary`, and `read_only` with reason `trial_ended`, `payment_failed` or
+`canceled`. All reasons block writes; only `trial_ended` uses trial copy. Other reasons link to
+billing with neutral read-only copy, ignoring legacy trial dates. The app shares one snapshot across
 the banner, form gates, read-only indicator and billing page, refreshing every minute and on
 window focus. The server remains authoritative between refreshes. A missing decision refuses
 writes. Self-hosters use the noop provider and have unlimited access without hosted gates.

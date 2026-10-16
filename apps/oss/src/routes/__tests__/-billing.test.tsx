@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { I18nProvider } from "../../lib/i18n/react"
 
 const state = vi.hoisted(() => ({
-  subscription: { status: "canceled", organizationAccess: { state: "read_only", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } } as unknown,
+  subscription: { status: "canceled", organizationAccess: { state: "read_only", reason: "canceled", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } } as unknown,
   billingEnabled: true,
   checkout: vi.fn(async () => ({ url: null })), portal: vi.fn(async () => ({ url: null })),
 }))
@@ -23,6 +23,20 @@ const BillingPage = Route.options.component!
 afterEach(() => { cleanup(); vi.clearAllMocks(); state.billingEnabled = true })
 
 describe("billing presentation follows server state", () => {
+  it.each(["da-DK", "en-US"])("shows trial copy only for trial expiry in %s", async locale => {
+    for (const reason of ["trial_ended", "payment_failed", "canceled"] as const) {
+      state.subscription = { status: "expired", priceId: null,
+        organizationAccess: { state: "read_only", reason, trialEnd: 1 } }
+      render(<I18nProvider locale={locale}><TrialAccessProvider><BillingPage /></TrialAccessProvider></I18nProvider>)
+      const trialEnded = reason === "trial_ended"
+      const label = trialEnded ? locale === "da-DK" ? "Prøveperiode slut" : "Trial ended"
+        : locale === "da-DK" ? "SKRIVEBESKYTTET" : "READ-ONLY"
+      expect(await screen.findByText(label)).toBeTruthy()
+      expect(Boolean(screen.queryAllByText(/prøveperiode|trial/i).length)).toBe(trialEnded)
+      cleanup()
+    }
+  })
+
   it.each([
     ["da-DK", "Aktiv · gratis adgang", "Nuværende plan"],
     ["en-US", "Active · complimentary access", "Current Plan"],
@@ -45,7 +59,7 @@ describe("billing presentation follows server state", () => {
   })
 
   it.each(["en-US", "da-DK"])("has no free offer or URL-based activation for unpaid paid-only access in %s", async locale => {
-    state.subscription = { status: "canceled", organizationAccess: { state: "read_only", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
+    state.subscription = { status: "canceled", organizationAccess: { state: "read_only", reason: "canceled", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null, access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
     render(<I18nProvider locale={locale}><TrialAccessProvider><BillingPage /></TrialAccessProvider></I18nProvider>)
     const button = await screen.findByRole("button", { name: locale === "da-DK" ? "Opgrader nu" : "Upgrade now" })
     expect(screen.queryByText(/5 (invoices|fakturaer)/)).toBeNull()
@@ -55,7 +69,7 @@ describe("billing presentation follows server state", () => {
   })
 
   it("offers recovery for a current past-due subscription without creating another subscription", async () => {
-    state.subscription = { status: "past_due", organizationAccess: { state: "read_only", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: "synthetic", access: { paidOnly: true, hasSubscription: true, checkoutAvailable: false, portalAvailable: true } }
+    state.subscription = { status: "past_due", organizationAccess: { state: "read_only", reason: "payment_failed", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: "synthetic", access: { paidOnly: true, hasSubscription: true, checkoutAvailable: false, portalAvailable: true } }
     render(<I18nProvider locale="en-US"><TrialAccessProvider><BillingPage /></TrialAccessProvider></I18nProvider>)
     fireEvent.click(await screen.findByRole("button", { name: "Manage payment" }))
     expect(state.portal).toHaveBeenCalledOnce()

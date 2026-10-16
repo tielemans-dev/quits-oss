@@ -150,7 +150,7 @@ describe("managed AI", () => {
     setRuntimeServices({
       managedAiProvider: { id: "managed", complete },
       billingProvider: {
-        getSubscription: async () => ({ status: "past_due", organizationAccess: { state: "read_only", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null }),
+        getSubscription: async () => ({ status: "past_due", organizationAccess: { state: "read_only", reason: "payment_failed", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null }),
         assertInvoiceCreationAllowed: async () => {},
       },
     })

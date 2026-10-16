@@ -1,12 +1,13 @@
 import type { Prisma } from "../../../generated/prisma/client"
 
 export type SubscriptionStatus = "free" | "trialing" | "expired" | "active" | "canceled" | "past_due"
+export type ReadOnlyReason = "trial_ended" | "payment_failed" | "canceled"
 
 /** Resolved by the server provider. Clients must never infer access from payment status or clocks. */
 export type OrganizationAccess =
   | { state: "self_hosted" | "subscribed" | "complimentary" }
   | { state: "trial"; daysLeft: number; trialStart: number; trialEnd: number; progress: number }
-  | { state: "read_only"; trialEnd?: number | null }
+  | { state: "read_only"; reason: ReadOnlyReason; trialEnd?: number | null }
 
 export type BillingSubscription = {
   organizationAccess: OrganizationAccess
