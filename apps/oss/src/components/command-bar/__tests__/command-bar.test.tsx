@@ -23,6 +23,20 @@ function renderBar(can: Parameters<typeof permittedRequest>[1] = () => true) {
 }
 
 describe("command bar", () => {
+  it("hands what is typed to search when it is the page's search field", () => {
+    const onSearch = vi.fn()
+    render(
+      <I18nProvider locale="da-DK">
+        <CommandBar recognize={recognizeRequest} onSearch={onSearch} />
+      </I18nProvider>
+    )
+    const input = screen.getByRole("textbox", { name: "Skriv en opgave til quits" }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: "k" } })
+
+    expect(onSearch).toHaveBeenCalledWith(input.form, "k")
+    expect(input.value).toBe("")
+  })
+
   it("does nothing for text that is not a request", () => {
     const { input, submit } = renderBar()
     fireEvent.change(input, { target: { value: "nordlys" } })

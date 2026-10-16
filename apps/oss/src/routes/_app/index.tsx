@@ -11,6 +11,7 @@ import { CommandBar } from "../../components/command-bar/command-bar"
 import { onRequestDone } from "../../components/command-bar/request-events"
 import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
 import { sendReminderBatch } from "../../components/jobs/reminder-jobs-store"
+import { openPaletteFrom } from "../../components/shell/palette"
 import { useShellPermissions } from "../../components/shell/use-shell-permissions"
 import { useSession } from "../../lib/auth-client"
 import { trpc } from "../../trpc/client"
@@ -72,7 +73,7 @@ function DashboardPage() {
       sendReminderBatch={sendReminderBatch}
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
-      commandBar={<CommandBar recognize={recognize} suggest={suggest} />}
+      commandBar={<CommandBar recognize={recognize} suggest={suggest} onSearch={(from, query) => openPaletteFrom({ from, query })} />}
       morningCard={<MorningCard canSendReminders={can("invoice:send")} />}
     />
   )

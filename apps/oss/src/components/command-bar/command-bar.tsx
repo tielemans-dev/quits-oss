@@ -13,10 +13,11 @@ import { useFollowHeight } from "./use-morph"
 
 /**
  * The pill under the greeting on Overblik: write a request, and when it reads as one, the pill
- * grows into the card slot in place. Anything else does nothing here; search stays in the top bar
- * and ⌘K. Closing the card puts the cursor back in the pill.
+ * grows into the card slot in place. Closing the card puts the cursor back in the pill. With
+ * `onSearch` it is also the page's search field: typing hands the text over (the palette grows out
+ * of the pill and answers requests as well), and the pill only opens cards it is asked to.
  */
-export function CommandBar({ recognize, suggest, className }: { recognize: RequestRecognizer; suggest?: (input: string, signal: AbortSignal) => Promise<RequestIntent | null>; className?: string }) {
+export function CommandBar({ recognize, suggest, onSearch, className }: { recognize: RequestRecognizer; suggest?: (input: string, signal: AbortSignal) => Promise<RequestIntent | null>; onSearch?: (from: HTMLFormElement, query: string) => void; className?: string }) {
   const { t } = useI18n()
   // Back from the form with an edited invoice, the card opens again for the request it began with.
   const [returned] = useState(() => readHandoff("card"))
@@ -84,7 +85,10 @@ export function CommandBar({ recognize, suggest, className }: { recognize: Reque
             type="text"
             value={value}
             readOnly={intent !== null}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              if (onSearch && event.currentTarget.form) onSearch(event.currentTarget.form, event.target.value)
+              else setValue(event.target.value)
+            }}
             aria-label={t("dashboard.commandBar.label")}
             placeholder={t("dashboard.commandBar.placeholder")}
             autoComplete="off"
