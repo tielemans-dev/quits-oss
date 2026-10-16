@@ -37,7 +37,6 @@ export function useFollowHeight(duration: number, animate: () => boolean = () =>
       }
     },
     // The surface keeps the first `animate` it is given; pass one that reads a ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [duration]
   )
 }
