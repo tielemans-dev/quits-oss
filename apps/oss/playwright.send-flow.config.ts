@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { outputFolder: "playwright-report/send-flow", open: "never" }]],
   use: { ...base.use, baseURL, colorScheme: "light" },
   webServer: {
-    command: "bunx prisma generate && bunx prisma migrate deploy && bunx vite dev --port 3061 --host 127.0.0.1",
+    command: "bunx prisma generate && bunx prisma migrate deploy && bunx --no-install vp dev --port 3061 --host 127.0.0.1",
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 180_000,

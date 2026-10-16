@@ -22,7 +22,7 @@ export async function runPaymentCapture({ cwd, baseline }) {
   try {
     await harness.run('bunx', ['prisma', 'generate'])
     await harness.run('bunx', ['prisma', 'migrate', 'deploy'])
-    await harness.run('bunx', ['vite', 'build'])
+    await harness.run('bunx', ['--no-install', 'vp', 'build'])
     await harness.serve('node', ['.output/server/index.mjs'], `${baseURL}/login`, { name: 'app' })
     await harness.run('bunx', ['playwright', 'test', '-c', 'playwright.shared.config.ts', 'invoice-payment-capture.spec.ts', '--workers=1'], { name: 'playwright' })
   } finally { await harness.close() }

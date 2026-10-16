@@ -9,7 +9,7 @@ export default defineConfig({
   ...base, testMatch: "document-artifacts.spec.ts", testIgnore: [],
   use: { ...base.use, baseURL },
   webServer: {
-    command: "bunx prisma generate && bunx prisma migrate deploy && bunx vite dev --port 3018 --host 127.0.0.1",
+    command: "bunx prisma generate && bunx prisma migrate deploy && bunx --no-install vp dev --port 3018 --host 127.0.0.1",
     cwd: import.meta.dirname, reuseExistingServer: false, timeout: 120_000, url: baseURL,
     env: {
       ...process.env, DATABASE_URL: databaseURL,

@@ -15,7 +15,7 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   use: { baseURL, colorScheme: "light", viewport: { width: 1440, height: 1100 }, trace: "retain-on-failure" },
   webServer: {
-    command: `bunx prisma migrate deploy && bunx vite dev ${hosted ? "--config vite.seller-vat.config.ts" : ""} --port 3040 --host 127.0.0.1`,
+    command: `bunx prisma migrate deploy && bunx --no-install vp dev ${hosted ? "--config vite.seller-vat.config.ts" : ""} --port 3040 --host 127.0.0.1`,
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 180_000,
