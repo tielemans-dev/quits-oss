@@ -9,7 +9,7 @@ import { Button } from "../ui/button"
 import { onRequestOpen } from "./request-events"
 import { RequestCardSlot } from "./request-card-slot"
 import type { RequestIntent, RequestRecognizer } from "./request-intent"
-import { useMorph } from "./use-morph"
+import { useFollowHeight } from "./use-morph"
 
 /**
  * The pill under the greeting on Overblik: write a request, and when it reads as one, the pill
@@ -23,7 +23,7 @@ export function CommandBar({ recognize, suggest, className }: { recognize: Reque
   const [value, setValue] = useState(returned?.input ?? "")
   const [intent, setIntent] = useState<RequestIntent | null>(() => (returned ? recognize(returned.input, returned.suggested) : null))
   const inputRef = useRef<HTMLInputElement>(null)
-  const morph = useMorph<HTMLFormElement>(DURATION.base)
+  const follow = useFollowHeight(DURATION.base)
   const [suggestion, setSuggestion] = useState<RequestIntent | null>(null)
   const recognized = recognize(value) ?? (suggestion?.input === value ? suggestion : null)
   useEffect(() => {
@@ -40,24 +40,20 @@ export function CommandBar({ recognize, suggest, className }: { recognize: Reque
     () =>
       onRequestOpen((request) => {
         if (open.current) return
-        morph.run(() => {
-          setValue(request.input)
-          setIntent(request)
-        })
+        setValue(request.input)
+        setIntent(request)
       }),
-    [morph.run]
+    []
   )
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    if (recognized && !intent) morph.run(() => setIntent(recognized))
+    if (recognized && !intent) setIntent(recognized)
   }
 
   function dismiss() {
-    morph.run(() => {
-      setIntent(null)
-      setValue("")
-    })
+    setIntent(null)
+    setValue("")
     inputRef.current?.focus()
   }
 
@@ -67,45 +63,48 @@ export function CommandBar({ recognize, suggest, className }: { recognize: Reque
 
   return (
     <form
-      ref={morph.ref}
       data-slot="command-bar"
       onSubmit={submit}
       onKeyDown={onKeyDown}
       className={cn(
         "border-hairline bg-panel overflow-hidden border shadow-xs",
-        // The corners ease from pill to card in step with the height.
+        // The corners ease from pill to card in step with the height. Both are real radii: from
+        // `rounded-full` the radius stays a pill until the very end, then snaps.
         "[transition:border-radius_var(--duration-base)_var(--ease-enter)] motion-reduce:[transition:none]",
-        intent ? "rounded-xl" : "rounded-full",
+        intent ? "rounded-2xl" : "rounded-[29px]",
         className
       )}
     >
-      <div className="flex h-14 items-center gap-3 pr-2 pl-5">
-        <Sparkles className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          readOnly={intent !== null}
-          onChange={(event) => setValue(event.target.value)}
-          aria-label={t("dashboard.commandBar.label")}
-          placeholder={t("dashboard.commandBar.placeholder")}
-          autoComplete="off"
-          spellCheck={false}
-          className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
-        />
-        {/* The shadcn default animates every property; name the ones that change. */}
-        <Button
-          type="submit"
-          size="icon-sm"
-          variant="secondary"
-          disabled={!recognized || intent !== null}
-          aria-label={t("dashboard.commandBar.submit")}
-          className="rounded-full transition-[color,background-color,opacity]"
-        >
-          <ArrowUp aria-hidden="true" />
-        </Button>
+      {/* The pill follows this: it grows with the card, and again when the card's data arrives. */}
+      <div ref={follow}>
+        <div className="flex h-14 items-center gap-3 pr-2 pl-5">
+          <Sparkles className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            readOnly={intent !== null}
+            onChange={(event) => setValue(event.target.value)}
+            aria-label={t("dashboard.commandBar.label")}
+            placeholder={t("dashboard.commandBar.placeholder")}
+            autoComplete="off"
+            spellCheck={false}
+            className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
+          />
+          {/* The shadcn default animates every property; name the ones that change. */}
+          <Button
+            type="submit"
+            size="icon-sm"
+            variant="secondary"
+            disabled={!recognized || intent !== null}
+            aria-label={t("dashboard.commandBar.submit")}
+            className="rounded-full transition-[color,background-color,opacity]"
+          >
+            <ArrowUp aria-hidden="true" />
+          </Button>
+        </div>
+        {intent && <RequestCardSlot intent={intent} onDismiss={dismiss} className="border-hairline border-t" />}
       </div>
-      {intent && <RequestCardSlot intent={intent} onDismiss={dismiss} className="border-hairline border-t" />}
     </form>
   )
 }

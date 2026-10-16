@@ -12,7 +12,6 @@ import { useShellPermissions } from "../shell/use-shell-permissions"
 import { Button } from "../ui/button"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
-import { useMorph } from "./use-morph"
 
 /** How long Fortryd stays after the payment is recorded (the check holds for the same time). */
 const UNDO_MS = 8000
@@ -38,7 +37,6 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
   const request = useRef<{ key: string; id: string } | null>(null)
   const dismissRef = useRef(onDismiss)
   useEffect(() => { dismissRef.current = onDismiss })
-  const morph = useMorph<HTMLDivElement>(DURATION.card)
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +64,7 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
         invoiceId: chosen.invoice.id, amount: payment.amountMinor / 100, paidAt: today, method: "bank_transfer",
         reference: payment.reference || undefined, requestId: request.current.id,
       })
-      morph.run(() => setDone({ paymentId: result.payment.id, candidate: chosen, undone: false }))
+      setDone({ paymentId: result.payment.id, candidate: chosen, undone: false })
     } catch {
       setError(t("shell.request.payment.error.record"))
     } finally { sending.current = false; setPending(false) }
@@ -93,7 +91,6 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
     const { invoice } = done.candidate
     return (
       <div
-        ref={morph.ref}
         role="status"
         className={cn("request-stagger flex items-center gap-3 overflow-hidden p-6", leaving && "scale-90 opacity-0 transition-[opacity,transform] motion-reduce:scale-100")}
         style={{ "--stagger-delay": `${DURATION.squareShrink}ms`, ...(leaving && { transitionDuration: `${DURATION.leave}ms`, transitionTimingFunction: EASE_ENTER }) } as CSSProperties}
@@ -123,7 +120,7 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
   )
 
   return (
-    <div ref={morph.ref} className="space-y-4 overflow-hidden p-4">
+    <div className="space-y-4 overflow-hidden p-4">
       <p {...stagger(0)} className="font-semibold">{t("shell.request.title.payment")}</p>
       {payment && (
         <dl {...stagger(1)} className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
