@@ -23,7 +23,7 @@ Source-available invoicing for freelancers and small businesses.
 - [Prisma](https://www.prisma.io) + PostgreSQL — Database ORM
 - [Better Auth](https://www.better-auth.com) — Authentication with organization support
 - [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS — UI components
-- [Turbo](https://turbo.build/repo) — Repository task orchestration
+- [Vite+](https://viteplus.dev) — Repository task orchestration
 
 ## Runtime Settings UI extension
 

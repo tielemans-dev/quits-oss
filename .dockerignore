@@ -7,3 +7,6 @@ dist
 .env
 .git
 generated
+
+.artifacts
+.vite-plus

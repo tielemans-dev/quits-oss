@@ -614,7 +614,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   })
   it("uses current-year defaults for a fresh confirmation but preserves an existing numbering book", async () => {
     const api = await caller(await organization())
-    vi.spyOn(Intl, "DateTimeFormat").mockReturnValue({ format: () => "2027" } as Intl.DateTimeFormat)
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(class { format() { return "2027" } } as unknown as typeof Intl.DateTimeFormat)
     expect(await api.onboarding.getDefaultsV2()).toMatchObject({ invoicePrefix: "2027" })
     await api.onboarding.confirmV2(summary())
     expect(await api.settings.get()).toMatchObject({ invoicePrefix: "2027", invoiceNextNum: 1 })

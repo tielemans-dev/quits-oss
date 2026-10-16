@@ -9,7 +9,7 @@ import { test } from "node:test"
 const source = fileURLToPath(new URL("../../", import.meta.url))
 const readJson = (path) => JSON.parse(readFileSync(join(source, path), "utf8"))
 
-test("Prisma hooks generate once through root commands, cache hits and direct app commands", (t) => {
+test("Prisma hooks generate once through root commands, repeated runs and direct app commands", (t) => {
   const temporary = mkdtempSync(join(tmpdir(), "quits-prisma-hooks-"))
   t.after(() => rmSync(temporary, { recursive: true, force: true }))
   const root = join(temporary, "repo")
@@ -41,10 +41,9 @@ test("Prisma hooks generate once through root commands, cache hits and direct ap
     mkdirSync(join(root, path), { recursive: true })
     writeFileSync(join(root, path, "package.json"), JSON.stringify({ name: `@quits/${name}` }))
   }
-  writeFileSync(join(root, "turbo.json"), JSON.stringify(readJson("turbo.json")))
-  writeFileSync(join(root, ".gitignore"), "node_modules/\n.turbo/\n")
-  const env = { ...process.env, PATH: `${join(source, "node_modules/.bin")}${delimiter}${process.env.PATH}`,
-    TURBO_TELEMETRY_DISABLED: "1", TURBO_DAEMON: "false" }
+  writeFileSync(join(root, "vite.config.ts"), "export default { run: { cache: false } }")
+  writeFileSync(join(root, ".gitignore"), "node_modules/\n.vite-plus/\n")
+  const env = { ...process.env, PATH: `${join(source, "node_modules/.bin")}${delimiter}${process.env.PATH}` }
   delete env.QUITS_PRISMA_PREGENERATED
   execFileSync("git", ["--no-pager", "init", "--quiet", "--template="], { cwd: root, env })
   execFileSync("git", ["--no-pager", "add", "."], { cwd: root, env })
@@ -53,7 +52,7 @@ test("Prisma hooks generate once through root commands, cache hits and direct ap
   })
   for (const cwd of [root, app]) {
     for (const task of tasks) {
-      // Repeat root tasks after deleting the client to exercise a Turbo cache hit.
+      // Repeat root tasks after deleting the client; every invocation must regenerate it.
       for (let attempt = 0; attempt < (cwd === root ? 2 : 1); attempt++) {
         rmSync(client, { force: true })
         writeFileSync(events, "")
@@ -62,10 +61,7 @@ test("Prisma hooks generate once through root commands, cache hits and direct ap
         const recorded = readFileSync(events, "utf8").trim().split("\n")
         assert.equal(recorded.filter((event) => event === "generate").length, 1, `${cwd}/${task}`)
         assert.equal(recorded[0], "generate")
-        if (cwd === root && attempt === 1 && task !== "typecheck:app" && task !== "test:integration") {
-          assert.match(result.stdout, /cache hit/, task)
-          assert.deepEqual(recorded, ["generate"], task)
-        } else assert.deepEqual(recorded, ["generate", "task"], task)
+        assert.deepEqual(recorded, ["generate", "task"], task)
       }
     }
     writeFileSync(events, "")

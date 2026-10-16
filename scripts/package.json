@@ -3,15 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "oxlint --deny-warnings --report-unused-disable-directives . && node check-motion.mjs",
+    "lint": "vp lint --deny-warnings --report-unused-disable-directives . && node check-motion.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run __tests__/*.test.ts && node --test --test-concurrency=1 __tests__/*.test.mjs"
+    "test": "sh -c 'vp test run __tests__/*.test.ts && node --test --test-concurrency=1 __tests__/*.test.mjs'"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "dotenv": "^17.3.1",
-    "oxlint": "^1.50.0",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.5"
+    "vitest": "5.0.1",
+    "vite-plus": "1.0.0"
   }
 }

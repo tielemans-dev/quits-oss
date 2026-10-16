@@ -6,7 +6,7 @@ export default defineConfig({
   use: { baseURL: "http://127.0.0.1:4316", trace: "retain-on-failure" },
   reporter: [["list"]],
   webServer: {
-    command: "bunx vite --config tests/onboarding-v2/vite.config.ts",
+    command: "bunx --no-install vp dev --config tests/onboarding-v2/vite.config.ts",
     url: "http://127.0.0.1:4316",
     reuseExistingServer: !process.env.CI,
   },

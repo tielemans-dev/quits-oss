@@ -30,7 +30,7 @@ it.each([undefined, baseline])('preserves capture mode %s and one-worker issued/
   expect(harness.run.mock.calls).toEqual([
     ['bunx', ['prisma', 'generate']],
     ['bunx', ['prisma', 'migrate', 'deploy']],
-    ['bunx', ['vite', 'build']],
+    ['bunx', ['--no-install', 'vp', 'build']],
     ['bunx', ['playwright', 'test', '-c', 'playwright.shared.config.ts', 'invoice-payment-capture.spec.ts', '--workers=1'], { name: 'playwright' }],
   ])
   expect(harness.serve).toHaveBeenCalledWith('node', ['.output/server/index.mjs'], 'http://127.0.0.1:4310/login', { name: 'app' })

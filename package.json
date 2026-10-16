@@ -16,16 +16,16 @@
     "lint:staged": "bun scripts/lint-staged.mjs",
     "dev": "bun --filter @quits/oss dev",
     "prebuild": "bun --filter @quits/oss prisma:generate",
-    "build": "QUITS_PRISMA_PREGENERATED=1 turbo run build --filter=@quits/oss",
+    "build": "QUITS_PRISMA_PREGENERATED=1 vp run --filter @quits/oss build",
     "preview": "bun --filter @quits/oss preview",
-    "lint": "turbo run lint --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
+    "lint": "vp lint --deny-warnings --report-unused-disable-directives apps/oss packages/contracts packages/shared scripts && node scripts/check-motion.mjs",
     "knip:report": "knip --config knip.json --no-exit-code",
     "pretypecheck": "bun --filter @quits/oss prisma:generate",
-    "typecheck": "QUITS_PRISMA_PREGENERATED=1 turbo run typecheck --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
+    "typecheck": "QUITS_PRISMA_PREGENERATED=1 vp run --filter \"@quits/*\" --filter \"!@quits/workspace\" typecheck",
     "pretypecheck:app": "bun --filter @quits/oss prisma:generate",
     "typecheck:app": "QUITS_PRISMA_PREGENERATED=1 bun --filter @quits/oss typecheck:app",
     "pretest": "bun --filter @quits/oss prisma:generate",
-    "test": "QUITS_PRISMA_PREGENERATED=1 turbo run test --filter=@quits/oss --filter=@quits/scripts --filter=@quits/contracts --filter=@quits/shared",
+    "test": "QUITS_PRISMA_PREGENERATED=1 vp run --filter \"@quits/*\" --filter \"!@quits/workspace\" test",
     "test:e2e": "bun --filter @quits/oss test:e2e",
     "test:integration": "bun --filter @quits/oss test:integration",
     "db:start": "bun --filter @quits/oss db:start",
@@ -36,20 +36,28 @@
     "migrate": "bun --filter @quits/oss migrate",
     "i18n:check": "bun --filter @quits/oss i18n:check",
     "i18n:update-tm-allowlist": "bun --filter @quits/oss i18n:update-tm-allowlist",
-    "test:e2e:shared": "bun --filter @quits/oss test:e2e:shared"
+    "test:e2e:shared": "bun --filter @quits/oss test:e2e:shared",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "knip": "6.41.0",
     "lefthook": "2.2.2",
-    "nitro": "npm:nitro-nightly@latest",
-    "oxlint": "^1.50.0",
-    "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "nitro": "npm:nitro-nightly@3.0.1-20260309-141311-a2ee33b1",
+    "typescript": "^5.7.2",
+    "vite-plus": "1.0.0"
   },
   "trustedDependencies": [
     "@prisma/engines",
     "esbuild",
     "prisma"
-  ]
+  ],
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0",
+    "vitest": "5.0.1"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+  }
 }

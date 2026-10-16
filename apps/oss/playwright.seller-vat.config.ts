@@ -1,4 +1,9 @@
 import { defineConfig } from "@playwright/test"
+import { readFileSync } from "node:fs"
+
+// The baseline harness runs with the checked-out revision's dependencies.
+const appPackage = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
+const devCommand = appPackage.devDependencies?.["vite-plus"] ? "bunx --no-install vp dev" : "bunx --no-install vite dev"
 
 const databaseURL = process.env.DATABASE_URL
 if (!databaseURL || new URL(databaseURL).pathname !== "/qui62_oss_browser") {
@@ -15,11 +20,12 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   use: { baseURL, colorScheme: "light", viewport: { width: 1440, height: 1100 }, trace: "retain-on-failure" },
   webServer: {
-    command: `bunx prisma migrate deploy && bunx vite dev ${hosted ? "--config vite.seller-vat.config.ts" : ""} --port 3040 --host 127.0.0.1`,
+    command: `bunx prisma migrate deploy && ${devCommand} ${hosted ? "--config vite.seller-vat.config.ts" : ""} --port 3040 --host 127.0.0.1`,
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 180_000,
-    url: baseURL,
+    // Keep Playwright's short readiness requests out of Nitro's cold SSR module loading.
+    url: `${baseURL}/@vite/client`,
     env: { ...process.env, DATABASE_URL: databaseURL,
       PLAYWRIGHT_BASE_URL: baseURL,
       BETTER_AUTH_SECRET: "qui62-browser-test-secret-over-32-characters",

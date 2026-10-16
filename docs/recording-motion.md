@@ -85,7 +85,7 @@ Run only the recorder's pure tests and touched-file lint locally:
 
 ```sh
 node --test scripts/__tests__/record-motion.test.mjs
-bunx oxlint --deny-warnings --report-unused-disable-directives scripts/record-motion*.mjs scripts/__tests__/record-motion.test.mjs
+bunx --no-install vp lint --deny-warnings --report-unused-disable-directives scripts/record-motion*.mjs scripts/__tests__/record-motion.test.mjs
 ```
 
 Optional local smoke check: `node --test scripts/record-motion.smoke.mjs` covers

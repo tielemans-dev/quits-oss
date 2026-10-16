@@ -58,9 +58,9 @@
     "./cvr": "./src/cvr.ts"
   },
   "scripts": {
-    "lint": "oxlint --deny-warnings --report-unused-disable-directives src",
+    "lint": "vp lint --deny-warnings --report-unused-disable-directives src",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vp test run"
   },
   "publishConfig": {
     "access": "public"
@@ -69,8 +69,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "oxlint": "^1.50.0",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.5"
+    "vitest": "5.0.1",
+    "vite-plus": "1.0.0"
   }
 }

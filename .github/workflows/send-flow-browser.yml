@@ -48,6 +48,9 @@ jobs:
       PW_TEST_SOURCE_TRANSFORM_SCOPE: ${{ github.workspace }}/apps/oss/src
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version

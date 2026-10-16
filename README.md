@@ -45,7 +45,7 @@ Source-available invoicing for freelancers and small businesses.
 - [Prisma](https://www.prisma.io) + PostgreSQL — Database ORM
 - [Better Auth](https://www.better-auth.com) — Authentication with organization support
 - [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS — UI components
-- [Turbo](https://turbo.build/repo) — Repository task orchestration
+- [Vite+](https://viteplus.dev) — Vite, Vitest, linting, formatting, and workspace tasks
 
 ## Getting Started
 
@@ -244,7 +244,7 @@ bun run test
 ```
 
 Build, test, integration-test and typecheck commands generate the Prisma client
-first, including on a fresh checkout or a root Turbo cache hit. Before running
+first, including on a fresh checkout or a repeated root command. Before running
 Vitest, TypeScript or `knip:report` directly in a fresh checkout, run
 `bun run prisma:generate` from the repository root once; direct tools bypass the
 package-script preparation hooks. Root commands that already generated the client
@@ -309,6 +309,19 @@ bun run test:e2e
 ```
 
 ## Bun-Only Repo
+
+Vite+ supplies the local `vp` CLI. Bun remains the package manager; no global Vite+
+installation or account is needed. Use a Node.js version accepted by `engines.node`
+in the root `package.json`.
+
+`bun run build`, `bun run typecheck`, and `bun run test` run workspace tasks through
+`vp run`. Tasks run without caching so database tests and environment-sensitive
+builds always execute. The root task is excluded from recursive selection to keep
+Prisma generation running once per command.
+
+`bun run lint` uses the bundled Oxlint and the existing motion check. `bun run fmt`
+formats files, and `bun run fmt:check` checks formatting. Pass paths to format only
+the files you changed. Existing files are not reformatted by this migration.
 
 This repository is Bun-native. Use `bun install` and `bun run ...` commands for local development, CI reproduction, and self-host deployment workflows.
 

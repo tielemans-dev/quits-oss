@@ -90,12 +90,12 @@ suites. Do not run a full suite or build to prove a small change.
   pointers, required sections, and changed-line budget. No runtime checks needed.
 - For behavior changes, run the smallest relevant failing test first, then only
   touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
-  bunx vitest run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
+  bunx --no-install vp test run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
   `vitest.global.config.ts` instead when that config owns the test.
-- Direct `bunx vitest` needs the generated Prisma client. Run
+- Direct `bunx --no-install vp test` needs the generated Prisma client. Run
   `bun run prisma:generate` from the root first. T3 worktree setup also
   generates the client.
-- Lint changed source files with `bunx oxlint --deny-warnings
+- Lint changed source files with `bunx --no-install vp lint --deny-warnings
   --report-unused-disable-directives <changed-files>` from the owning workspace.
   For app types, use `bun run typecheck:app` from the root. For contracts, shared
   helpers, or scripts, use `bun run --cwd <workspace> typecheck`. The root
@@ -151,14 +151,3 @@ suites. Do not run a full suite or build to prove a small change.
   artifacts. The issue and merged PR hold the implementation record.
 - Document decisions, cross-cutting constraints, and traps the code does not
   reveal. Rewrite or remove stale guidance rather than append a second account.
-
-<!-- BEGIN:turborepo-agent-rules -->
-
-# This is NOT the Turborepo you know
-
-Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
-
-Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
-
-This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
-<!-- END:turborepo-agent-rules -->

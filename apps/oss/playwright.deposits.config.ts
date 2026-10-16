@@ -12,7 +12,7 @@ export default defineConfig({
   use: { ...base.use, baseURL },
   webServer: {
     ...base.webServer,
-    command: "bunx prisma generate && bunx prisma migrate deploy && bunx vite dev --port 3088 --host 127.0.0.1",
+    command: "bunx prisma generate && bunx prisma migrate deploy && bunx --no-install vp dev --port 3088 --host 127.0.0.1",
     url: baseURL,
     reuseExistingServer: false,
     env: {

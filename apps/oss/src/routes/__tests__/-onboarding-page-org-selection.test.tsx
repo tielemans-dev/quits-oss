@@ -106,6 +106,7 @@ const RoutePage = route.component
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.clearAllMocks()
   cleanup()
   navigate.mockReset()
   loadPage.mockReset()

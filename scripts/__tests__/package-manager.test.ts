@@ -1,8 +1,22 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 
 import { describe, expect, it } from "vitest"
 
 describe("repository Bun contract", () => {
+  it("launches browser servers and builds through the installed Vite+ CLI", () => {
+    const app = new URL("../../apps/oss/", import.meta.url)
+    for (const file of readdirSync(app).filter((name) => /^playwright.*\.config\.ts$/.test(name))) {
+      const text = readFileSync(new URL(file, app), "utf8")
+      if (!text.includes("webServer:")) continue
+      expect(text, file).not.toMatch(/bunx\s+vite\b/)
+      expect(text, file).toContain("bunx --no-install vp dev")
+    }
+    for (const file of ["run.mjs", "qui52-runner.mjs"]) {
+      const text = readFileSync(new URL(`e2e/${file}`, app), "utf8")
+      expect(text, file).toContain("['--no-install', 'vp', 'build']")
+    }
+  })
+
   it("declares Bun as package manager and pins a Bun version file", () => {
     const packageJson = JSON.parse(
       readFileSync(new URL("../../package.json", import.meta.url), "utf8")

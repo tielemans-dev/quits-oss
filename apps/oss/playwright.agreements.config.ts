@@ -19,7 +19,7 @@ export default defineConfig({
   use: { ...base.use, baseURL },
   webServer: {
     command:
-      "bunx prisma generate && bunx prisma migrate deploy && bunx vite dev --port 3015 --host 127.0.0.1",
+      "bunx prisma generate && bunx prisma migrate deploy && bunx --no-install vp dev --port 3015 --host 127.0.0.1",
     cwd: import.meta.dirname,
     reuseExistingServer: false,
     timeout: 120_000,

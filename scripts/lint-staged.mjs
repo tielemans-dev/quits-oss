@@ -7,7 +7,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url))
 
 export function lintStaged(root = repositoryRoot) {
   const git = (args) => {
-    const result = spawnSync("git", ["--literal-pathspecs", ...args], {
+    const result = spawnSync("git", ["--no-pager", "--literal-pathspecs", ...args], {
       cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024,
     })
     if (result.error) throw result.error
@@ -34,13 +34,14 @@ export function lintStaged(root = repositoryRoot) {
   }
 
   // Use only the installed binary. No bunx fetch, recursive lint script, fix, or staging.
-  const oxlint = resolve(root, "node_modules/.bin/oxlint")
+  const vp = resolve(root, "node_modules/.bin/vp")
   for (let offset = 0; offset < files.length; offset += 50) {
-    const result = spawnSync(oxlint, [
+    const result = spawnSync(vp, [
+      "lint",
       "--deny-warnings", "--report-unused-disable-directives", "--",
       ...files.slice(offset, offset + 50).map((file) => `./${file}`),
     ], { cwd: root, stdio: "inherit" })
-    if (result.error) throw new Error("Local Oxlint could not start. Run bun install first.", { cause: result.error })
+    if (result.error) throw new Error("Local Vite+ could not start. Run bun install first.", { cause: result.error })
     if (result.status !== 0) return result.status ?? 1
   }
   return 0

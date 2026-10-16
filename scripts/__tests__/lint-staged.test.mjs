@@ -1,16 +1,16 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { lintStaged } from "../lint-staged.mjs"
 
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), "quits-staged-"))
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "quits-staged-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const git = (...args) => {
-    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" })
+    const result = spawnSync("git", ["--no-pager", ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
     return result.stdout
   }
@@ -18,7 +18,7 @@ function fixture(t) {
   const write = (name, content = "export const value = 1\n") => writeFileSync(join(root, name), content)
   const capture = join(root, "invocations.jsonl")
   mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
-  const binary = join(root, "node_modules/.bin/oxlint")
+  const binary = join(root, "node_modules/.bin/vp")
   writeFileSync(binary, `#!/usr/bin/env node
 const { appendFileSync } = require("node:fs")
 appendFileSync(${JSON.stringify(capture)}, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2) }) + "\\n")
@@ -39,7 +39,7 @@ test("passes exact filenames from the index as arguments and runs at the root", 
   const indexBefore = f.git("write-tree")
   assert.equal(lintStaged(f.root), 0)
   assert.deepEqual(f.calls(), [{ cwd: f.root, args: [
-    "--deny-warnings", "--report-unused-disable-directives", "--",
+    "lint", "--deny-warnings", "--report-unused-disable-directives", "--",
     ...names.sort().map((name) => `./${name}`),
   ] }])
   assert.equal(f.git("write-tree"), indexBefore)
@@ -57,7 +57,7 @@ test("CLI finds the repository root when invoked from a nested directory", (t) =
   assert.equal(f.calls()[0].cwd, f.root)
 })
 
-test("skips empty, documentation-only, and deleted-source commits without Oxlint", (t) => {
+test("skips empty, documentation-only, and deleted-source commits without Vite+", (t) => {
   const f = fixture(t)
   rmSync(f.binary)
   assert.equal(lintStaged(f.root), 0)
@@ -84,7 +84,7 @@ test("rejects partial staging without changing the index or working copy", (t) =
   assert.equal(f.git("show", ":partial.ts"), "staged\n")
 })
 
-test("rejects source symlinks and unstaged deletions before invoking Oxlint", (t) => {
+test("rejects source symlinks and unstaged deletions before invoking Vite+", (t) => {
   const f = fixture(t)
   f.write("target.txt")
   symlinkSync("target.txt", join(f.root, "linked.ts"))
@@ -104,7 +104,7 @@ test("preserves a lint failure and reports a missing binary without fetching", (
   writeFileSync(f.binary, "#!/usr/bin/env node\nprocess.exit(7)\n")
   assert.equal(lintStaged(f.root), 7)
   rmSync(f.binary)
-  assert.throws(() => lintStaged(f.root), /Local Oxlint could not start/)
+  assert.throws(() => lintStaged(f.root), /Local Vite\+ could not start/)
 })
 
 test("installed Lefthook rejects partial staging without hiding or staging changes", (t) => {
@@ -123,11 +123,11 @@ test("installed Lefthook rejects partial staging without hiding or staging chang
   f.git("add", "partial.ts")
   f.write("partial.ts", "unstaged\n")
   const indexBefore = f.git("write-tree")
-  const commit = spawnSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+  const commit = spawnSync("git", ["--no-pager", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
     "commit", "-m", "fixture partial staging"], { cwd: f.root, encoding: "utf8" })
   assert.notEqual(commit.status, 0)
   assert.match(commit.stdout + commit.stderr, /Partial staging is not supported/)
   assert.equal(f.git("write-tree"), indexBefore)
   assert.equal(readFileSync(join(f.root, "partial.ts"), "utf8"), "unstaged\n")
-  assert.equal(f.git("stash", "list"), "")
+  assert.equal(f.git("for-each-ref", "--format=%(refname)", "refs/stash"), "")
 })

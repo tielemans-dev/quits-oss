@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { execFileSync, spawn } from "node:child_process"
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -52,7 +52,7 @@ test("independent processes allocate unique slots and release without resetting 
 })
 
 test("setup and teardown only operate on a recorded worktree DB, preserve failed cleanup, and retry migrations", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "quits-setup-"))
+  const directory = await realpath(await mkdtemp(join(tmpdir(), "quits-setup-")))
   const main = join(directory, "main"), worktree = join(directory, "worktree")
   const git = (...args) => execFileSync("git", args, { cwd: main, stdio: "ignore" })
   try {

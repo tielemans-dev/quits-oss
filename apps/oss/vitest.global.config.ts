@@ -8,6 +8,8 @@ export default defineConfig({
     setupFiles: ["./src/test-utils/artifact-runtime.ts"],
     watch: false,
     globals: false,
+    // Preserve Vitest 3 mock history; Vitest 5 clears it before each test by default.
+    clearMocks: false,
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 30_000,
