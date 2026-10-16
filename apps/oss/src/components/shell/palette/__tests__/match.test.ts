@@ -32,4 +32,9 @@ describe("matchItems", () => {
       "Kreditnotaer",
     ])
   })
+  it("leaves out the words that only ask, so a sentence finds its page", () => {
+    expect(matchItems(items, "vis mine fakturaer").map((item) => item.label)).toEqual(["Fakturaer", "Gentagne fakturaer"])
+    expect(matchItems(items, "gå til kreditnotaer").map((item) => item.label)).toEqual(["Kreditnotaer"])
+    expect(matchItems(items, "vis").map((item) => item.label)).toEqual([])
+  })
 })
