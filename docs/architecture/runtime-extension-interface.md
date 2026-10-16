@@ -20,6 +20,33 @@ Each extension provides a stable `id` and optional `resolveCapabilities(base)` p
 
 The OSS baseline exposes capabilities via `trpc.runtime.capabilities`.
 
+## Managed sending-domain rejections
+
+`@quits/oss/runtime/services` exports `ManagedDomainRejectedError`,
+`ManagedDomainRejectionReason`, and `isManagedDomainRejection` alongside
+`ManagedDocumentDomainProvider`.
+Providers may throw `new ManagedDomainRejectedError(reason)` from `createDomain`,
+`refreshDomain`, or `deleteDomain` for expected request rejections:
+
+- `invalid_domain` becomes tRPC `BAD_REQUEST` with HTTP 400.
+- `not_found` becomes tRPC `NOT_FOUND` with HTTP 404.
+- `conflict` becomes tRPC `CONFLICT` with HTTP 409.
+
+The guard checks the stable `code: "MANAGED_DOMAIN_REJECTED"` brand and a known
+reason, so separate package copies work. Unknown reasons remain ordinary server
+errors. A new reason must ship in an OSS release before a hosted provider may throw it.
+For `deleteDomain`, `not_found` means already deleted and succeeds. This lets users
+retry replacement or disable sending after deletion succeeded but creation failed.
+
+Configure, refresh, and disable translate these rejections using the organization's
+saved locale, with Danish and English messages owned by core. Provider messages
+and diagnostic causes are never forwarded for these rejections. All other errors
+remain server failures. Providers must keep outages and configuration failures
+outside this rejection contract. Self-hosted defaults require no provider.
+Rejections log only the organization ID, provider operation, validated reason, and
+outcome. The outcome is `treated_as_deleted` for an already-missing domain during
+deletion and `rejected` for a rejection returned to the client.
+
 ## Stripe Connect webhooks
 
 `RuntimeExtension.resolveStripeConnectWebhook` may return a
