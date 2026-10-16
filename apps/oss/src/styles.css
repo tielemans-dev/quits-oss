@@ -573,7 +573,8 @@ body { caret-color: var(--caret); }
  * specificity. Everything else is covered here:
  *  - transitions are limited to colour and opacity properties, so transform, translate, scale,
  *    clip-path, size and position changes are instant;
- *  - tw-animate-css entrances and exits keep their opacity but lose slide, zoom, spin and blur;
+ *  - tw-animate-css entrances and exits lose slide, zoom, spin and blur and always fade from or to
+ *    transparent, so a sheet that only slides (no fade-in-0) still cross-fades instead of cutting;
  *  - spinners and pulsing skeletons stop.
  */
 @media (prefers-reduced-motion: reduce) {
@@ -582,6 +583,8 @@ body { caret-color: var(--caret); }
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, outline-color, box-shadow, opacity !important;
     transition-duration: var(--duration-fade) !important;
     --tw-animation-duration: var(--duration-fade) !important;
+    --tw-enter-opacity: 0 !important;
+    --tw-exit-opacity: 0 !important;
     --tw-enter-translate-x: 0 !important;
     --tw-enter-translate-y: 0 !important;
     --tw-enter-scale: 1 !important;
