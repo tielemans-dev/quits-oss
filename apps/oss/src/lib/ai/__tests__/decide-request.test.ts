@@ -1,41 +1,45 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { decideRequest } from "../decide-request"
+import { allowDecision, decideRequest } from "../decide-request"
 
-const answer = (intent: string, customer: string) => ({
-  answers: {
-    intent: { type: "choice", choice: intent, probabilities: { [intent]: 0.95 } },
-    customer: { type: "choice", choice: customer, probabilities: { [customer]: 0.7 } },
-  },
+const answer = (intent: string) => ({
+  answers: { intent: { type: "choice", choice: intent, probabilities: { [intent]: 0.95 } } },
 })
 
 afterEach(() => vi.unstubAllGlobals())
 
 describe("decideRequest", () => {
-  it("asks for one request kind and one of the organization's customers, and reads both back", async () => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify(answer("creditNote", "Birk Arkitekter"))))
+  it("sends only what was typed and reads back the request kind", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify(answer("creditNote"))))
     vi.stubGlobal("fetch", fetch)
 
-    const decision = await decideRequest({ apiKey: "key", text: "annuller fakturaen til birk", customers: ["Birk Arkitekter", "Studio Vester"] })
+    const decision = await decideRequest({ apiKey: "key", text: "annuller fakturaen til birk" })
 
-    expect(decision).toEqual({ kind: "creditNote", probability: 0.95, customer: { name: "Birk Arkitekter", probability: 0.7 } })
+    expect(decision).toEqual({ kind: "creditNote", probability: 0.95 })
     const body = JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
     expect(body.state).toBe("annuller fakturaen til birk")
-    expect(Object.keys(body.questions.customer.criteria)).toEqual(["Birk Arkitekter", "Studio Vester", "none"])
+    expect(Object.keys(body.questions)).toEqual(["intent"])
   })
 
-  it("drops a customer that is not the organization's and a kind it did not offer", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(answer("invoice", "Somebody Else")))))
-    expect((await decideRequest({ apiKey: "key", text: "faktura til nogen", customers: ["Birk Arkitekter"] }))?.customer).toBeNull()
-
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(answer("delete everything", "none")))))
-    expect(await decideRequest({ apiKey: "key", text: "slet alt", customers: [] })).toBeNull()
+  it("drops a kind it did not offer", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(answer("delete everything")))))
+    expect(await decideRequest({ apiKey: "key", text: "slet alt" })).toBeNull()
   })
 
   it("leaves ordinary search on an upstream error", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })))
-    expect(await decideRequest({ apiKey: "key", text: "hvem skylder mig penge", customers: [] })).toBeNull()
+    expect(await decideRequest({ apiKey: "key", text: "hvem skylder mig penge" })).toBeNull()
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline") }))
-    expect(await decideRequest({ apiKey: "key", text: "hvem skylder mig penge", customers: [] })).toBeNull()
+    expect(await decideRequest({ apiKey: "key", text: "hvem skylder mig penge" })).toBeNull()
+  })
+})
+
+describe("allowDecision", () => {
+  it("allows 60 calls a minute per organization", () => {
+    const now = 1_000_000
+    for (let call = 0; call < 60; call++) expect(allowDecision("org-limit", now)).toBe(true)
+    expect(allowDecision("org-limit", now)).toBe(false)
+    expect(allowDecision("org-other", now)).toBe(true)
+    expect(allowDecision("org-limit", now + 60_000)).toBe(true)
   })
 })

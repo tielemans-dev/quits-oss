@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { actorCan } from "../../domain/actor"
-import { decideRequest } from "../../lib/ai/decide-request"
+import { allowDecision, decideRequest } from "../../lib/ai/decide-request"
 import { fillRequest } from "../../lib/ai/request-fallback"
 import { FALLBACK_AI_MODELS, generateInvoiceDraft } from "../../lib/ai/invoice-draft"
 import {
@@ -118,9 +118,8 @@ export const aiRouter = router({
       const apiKey = readProductEnv(getRuntimeEnv(), "TYPESAFE_API_KEY")?.trim()
       if (!apiKey) return null
       const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { aiDraftsEnabled: true } })
-      if (settings?.aiDraftsEnabled === false) return null
-      const customers = await prisma.contact.findMany({ where: { organizationId: ctx.organizationId }, select: { name: true }, orderBy: { name: "asc" }, take: 254 })
-      return decideRequest({ apiKey, text: input.text, customers: customers.map((customer) => customer.name), signal })
+      if (settings?.aiDraftsEnabled === false || !allowDecision(ctx.organizationId)) return null
+      return decideRequest({ apiKey, text: input.text, signal })
     }),
 
   fillRequest: authorizedProcedure("contact:read")
