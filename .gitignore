@@ -8,7 +8,6 @@ dist-ssr
 .tanstack
 .wrangler
 .output
-.turbo/
 .vite-plus/
 .vinxi
 __unconfig*

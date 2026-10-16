@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "vp lint --deny-warnings --report-unused-disable-directives . && node check-motion.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vp test run .test.ts && sh -c 'node --test --test-concurrency=1 __tests__/*.test.mjs'"
+    "test": "vp test run __tests__/*.test.ts && sh -c 'node --test --test-concurrency=1 __tests__/*.test.mjs'"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

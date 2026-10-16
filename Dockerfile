@@ -1,9 +1,9 @@
 FROM node:22.22.3-bookworm-slim AS node
 FROM oven/bun:1.3.9 AS base
-COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 
 FROM base AS build
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY . .
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bun run prisma:generate

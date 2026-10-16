@@ -10,7 +10,7 @@ function fixture(t) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "quits-staged-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const git = (...args) => {
-    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" })
+    const result = spawnSync("git", ["--no-pager", ...args], { cwd: root, encoding: "utf8" })
     assert.equal(result.status, 0, result.stderr)
     return result.stdout
   }
@@ -123,10 +123,11 @@ test("installed Lefthook rejects partial staging without hiding or staging chang
   f.git("add", "partial.ts")
   f.write("partial.ts", "unstaged\n")
   const indexBefore = f.git("write-tree")
-  const commit = spawnSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+  const commit = spawnSync("git", ["--no-pager", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
     "commit", "-m", "fixture partial staging"], { cwd: f.root, encoding: "utf8" })
   assert.notEqual(commit.status, 0)
   assert.match(commit.stdout + commit.stderr, /Partial staging is not supported/)
   assert.equal(f.git("write-tree"), indexBefore)
   assert.equal(readFileSync(join(f.root, "partial.ts"), "utf8"), "unstaged\n")
+  assert.equal(f.git("for-each-ref", "--format=%(refname)", "refs/stash"), "")
 })

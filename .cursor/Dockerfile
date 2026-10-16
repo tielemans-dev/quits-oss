@@ -3,7 +3,7 @@
 # checks it out. No secrets here; use Cursor Secrets.
 FROM ubuntu:24.04
 
-ARG NODE_VERSION=22.23.3
+ARG NODE_VERSION=22.22.3
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

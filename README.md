@@ -244,7 +244,7 @@ bun run test
 ```
 
 Build, test, integration-test and typecheck commands generate the Prisma client
-first, including on a fresh checkout or a root Turbo cache hit. Before running
+first, including on a fresh checkout or a repeated root command. Before running
 Vitest, TypeScript or `knip:report` directly in a fresh checkout, run
 `bun run prisma:generate` from the repository root once; direct tools bypass the
 package-script preparation hooks. Root commands that already generated the client
