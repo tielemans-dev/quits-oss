@@ -35,7 +35,7 @@ function BillingPage() {
 
   if (!billingEnabled || subscription?.organizationAccess?.state === "self_hosted") {
     return (
-      <div className="p-6 max-w-2xl">
+      <div>
         <div className="flex items-center gap-2 mb-6">
           <CreditCard className="size-6" />
           <h1 className="text-2xl font-bold">{t("billing.title")}</h1>
@@ -90,7 +90,7 @@ function BillingPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <div className="flex items-center gap-2 mb-6">
           <CreditCard className="size-6" />
           <h1 className="text-2xl font-bold">{t("billing.title")}</h1>

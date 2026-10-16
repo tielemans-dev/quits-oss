@@ -12,6 +12,9 @@ vi.mock("../../ui/sidebar", () => ({
   useSidebar: () => ({ setOpenMobile: sidebar.setOpenMobile }),
 }))
 vi.mock("../search-field", () => ({ SearchField: () => null }))
+vi.mock("../../user-menu", () => ({ UserMenu: () => null }))
+vi.mock("../../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock("@tanstack/react-router", () => ({ Link: () => null }))
 vi.mock("../palette", () => ({
   CommandPalette: ({ onNavigate }: { onNavigate?: () => void }) => (
     <button type="button" onClick={onNavigate}>

@@ -88,7 +88,7 @@ function NewContactPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>{t("contacts.new.title")}</CardTitle>

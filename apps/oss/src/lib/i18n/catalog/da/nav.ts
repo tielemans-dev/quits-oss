@@ -22,6 +22,7 @@ export const daNavMessages = {
   "shell.search.placeholderDraft": "Søg, eller skriv en faktura…",
   "shell.search.placeholderShort": "Søg…",
   "shell.search.open": "Åbn søgning og kommandoer",
+  "shell.settings": "Indstillinger",
   "shell.new": "Ny",
   "shell.new.menuLabel": "Opret ny",
   "shell.new.invoice": "Faktura",

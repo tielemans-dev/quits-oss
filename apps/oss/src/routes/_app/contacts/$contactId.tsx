@@ -127,7 +127,7 @@ function EditContactPage() {
 
   if (loading || (contact && contact.id !== contactId)) {
     return (
-      <div className="p-6">
+      <div>
         <QuerySkeleton />
       </div>
     )
@@ -135,7 +135,7 @@ function EditContactPage() {
 
   if (!contact) {
     return (
-      <div className="p-6">
+      <div>
         <p className="text-destructive">
           {error ?? t("contacts.edit.error.notFound")}
         </p>
@@ -151,7 +151,7 @@ function EditContactPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>{t("contacts.edit.title")}</CardTitle>

@@ -21,7 +21,7 @@ function CreditNotesPage() {
   if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
 
   return (
-    <div className="p-6">
+    <div>
       <PageHeader title={t("creditNotes.title")} />
 
       {loading ? (

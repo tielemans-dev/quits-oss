@@ -1,4 +1,5 @@
-import { ChevronsUpDown, LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { Link, type LinkProps } from '@tanstack/react-router'
+import { CreditCard, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 
 import { authClient, useSession } from '../lib/auth-client'
 import { invalidateAppLayoutSession } from '../lib/app-layout-session'
@@ -15,12 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from './ui/sidebar'
+import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { useI18n } from '../lib/i18n/react'
 import type { TranslationKey } from '../lib/i18n/messages'
 
@@ -43,9 +39,10 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+/** The avatar at the right end of the top bar: who is signed in, theme, billing and sign out. */
 export function UserMenu() {
   const { t } = useI18n()
-  const { isMobile } = useSidebar()
+  const { billingEnabled } = useRuntimeDistribution()
   const { data: session } = useSession()
   const { preference: themePreference, setPreference: setThemePreference } = useTheme()
 
@@ -62,36 +59,18 @@ export function UserMenu() {
   if (!user) return null
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarFallback className="rounded-lg bg-brand-soft text-brand-text">
-                  {getInitials(user.name ?? user.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {user.name ?? t('user.defaultName')}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {user.email}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-          >
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={t('user.menu')}
+        className="flex size-8 shrink-0 items-center justify-center rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Avatar className="size-7">
+          <AvatarFallback className="bg-(--neutral-10) text-xs font-medium text-foreground">
+            {getInitials(user.name ?? user.email)}
+          </AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-60" align="end" sideOffset={6}>
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="size-8 rounded-lg">
@@ -125,13 +104,23 @@ export function UserMenu() {
               ))}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
+            {billingEnabled && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to={'/billing' as LinkProps['to']}>
+                    <CreditCard />
+                    {t('nav.billing')}
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut />
               {t('user.signOut')}
             </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

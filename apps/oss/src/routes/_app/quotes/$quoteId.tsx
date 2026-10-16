@@ -451,7 +451,7 @@ function QuoteDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <QuerySkeleton />
       </div>
     )
@@ -459,7 +459,7 @@ function QuoteDetailPage() {
 
   if (!quote) {
     return (
-      <div className="p-6">
+      <div>
         <p className="text-destructive">
           {error ?? t("quotes.detail.error.notFound")}
         </p>
@@ -483,7 +483,7 @@ function QuoteDetailPage() {
     const editTotal = Number(preview.result?.gross ?? "0")
 
     return (
-      <div className="p-6 max-w-3xl">
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>

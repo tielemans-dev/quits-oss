@@ -117,7 +117,7 @@ function CatalogPage() {
   if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div>
       <div className="flex items-center gap-2 mb-6">
         <Package className="size-6" />
         <h1 className="text-2xl font-bold">{t("catalog.title")}</h1>

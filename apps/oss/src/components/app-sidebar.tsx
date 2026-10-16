@@ -3,7 +3,6 @@ import { Link, useRouterState, type LinkProps } from '@tanstack/react-router'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
@@ -11,28 +10,23 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from './ui/sidebar'
-import { QuitsWordmark } from './brand/quits-wordmark'
 import { isNavItemActive, visibleNavGroups, type NavItem } from './shell/nav-model'
 import { OrgSwitcher } from './shell/org-switcher'
 import { SkipLink } from './shell/skip-link'
-import { UserMenu } from './user-menu'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { useI18n } from '../lib/i18n/react'
-import { cn } from '../lib/utils'
-
-/** The brand's double rule as two 1px lines under the label of the page you are on. */
-const ACTIVE_RULE =
-  'bg-[linear-gradient(var(--brand-text),var(--brand-text)),linear-gradient(var(--brand-text),var(--brand-text))] bg-[length:100%_1px] bg-[position:0_100%,0_calc(100%-3px)] bg-no-repeat pb-1 -mb-1'
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const { t } = useI18n()
   const { setOpenMobile } = useSidebar()
+  const Icon = item.icon
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         isActive={active}
-        className="h-8 gap-2.5 px-2.5 text-sm font-medium text-muted-foreground hover:text-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground"
+        // One signal for the page you are on: a neutral fill. No bullet, no rule, no brand colour.
+        className="h-8 gap-2.5 rounded-lg px-2 text-sm font-normal text-muted-foreground hover:bg-(--neutral-6) hover:text-foreground data-[active=true]:bg-(--neutral-10) data-[active=true]:font-medium data-[active=true]:text-foreground"
       >
         <Link
           to={item.path as LinkProps['to']}
@@ -40,67 +34,42 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           // On a phone the sidebar is a drawer over the page: choosing a page closes it.
           onClick={() => setOpenMobile(false)}
         >
-          <span
-            aria-hidden="true"
-            className={cn('size-1.5 shrink-0 rounded-none bg-current opacity-35', active && 'bg-brand-text opacity-100')}
-          />
-          <span className={cn('min-w-0', active && ACTIVE_RULE)}>{t(item.labelKey)}</span>
+          <Icon className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+          <span className="min-w-0 truncate">{t(item.labelKey)}</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
 }
 
+/**
+ * The app's sidebar: the organisation on top, then the destinations in groups split by a hairline.
+ * Settings, billing and the user menu live in the top bar (see `AppMain`).
+ */
 export function AppSidebar() {
   const { t } = useI18n()
-  const { setOpenMobile } = useSidebar()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const { billingEnabled } = useRuntimeDistribution()
-  const groups = visibleNavGroups(billingEnabled)
-  const scrolling = groups.filter((group) => !group.pinned)
-  const pinned = groups.filter((group) => group.pinned)
+  const groups = visibleNavGroups(billingEnabled).filter((group) => !group.pinned)
 
   return (
     <>
       <SkipLink />
-      {/* The one light source: a faint wash from the top left behind the identity. It sits
-          behind the page canvas, so only bare canvas shows it. */}
-      <div
-        aria-hidden="true"
-        className="bg-brand-glow pointer-events-none fixed top-0 left-0 -z-10 h-[520px] w-[40vw] max-md:hidden"
-      />
       <Sidebar>
-        <SidebarHeader className="relative gap-3 px-3 pt-4 pb-2">
-          <div
-            aria-hidden="true"
-            className="bg-brand-glow pointer-events-none absolute inset-x-0 top-0 h-56 md:hidden"
-          />
-          <Link
-            to="/"
-            aria-label="quits"
-            onClick={() => setOpenMobile(false)}
-            className="relative ml-2 w-fit rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          >
-            <QuitsWordmark className="text-2xl" />
-          </Link>
-          <OrgSwitcher className="relative" />
+        <SidebarHeader className="h-(--topbar-height) justify-center px-2 py-0">
+          <OrgSwitcher />
         </SidebarHeader>
-        <SidebarContent className="px-3">
+        <SidebarContent className="gap-0">
           <nav aria-label={t('shell.nav.label')} className="flex flex-col">
-            {scrolling.map((group) => (
+            {groups.map((group, index) => (
               <SidebarGroup
                 key={group.id}
                 role={group.labelKey ? 'group' : undefined}
-                aria-labelledby={group.labelKey ? `nav-group-${group.id}` : undefined}
-                className="p-0"
+                aria-label={group.labelKey ? t(group.labelKey) : undefined}
+                className={index === 0 ? 'px-2 py-2' : 'border-t border-hairline px-2 py-2'}
               >
-                {group.labelKey && (
-                  <div id={`nav-group-${group.id}`} className="mono-label px-2.5 pt-5 pb-1.5">
-                    {t(group.labelKey)}
-                  </div>
-                )}
-                <SidebarMenu>
+                <SidebarMenu className="gap-0.5">
                   {group.items.map((item) => (
                     <NavLink key={item.path} item={item} active={isNavItemActive(item, currentPath)} />
                   ))}
@@ -109,18 +78,6 @@ export function AppSidebar() {
             ))}
           </nav>
         </SidebarContent>
-        <SidebarFooter className="gap-2 px-3 pt-2 pb-3">
-          {pinned.map((group) => (
-            <nav key={group.id} aria-label={t('shell.nav.account')} className="border-t border-hairline pt-2">
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <NavLink key={item.path} item={item} active={isNavItemActive(item, currentPath)} />
-                ))}
-              </SidebarMenu>
-            </nav>
-          ))}
-          <UserMenu />
-        </SidebarFooter>
       </Sidebar>
     </>
   )

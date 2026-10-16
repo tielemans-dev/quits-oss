@@ -23,7 +23,7 @@ function ApprovalsPage() {
   const approvals = list.data ? [...list.data, ...retained.filter(row => !list.data?.some(current => current.id === row.id))] : null
 
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-6 grid gap-1">
         <h1 className="text-2xl font-bold">{t("agents.approvals.title")}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{t("agents.approvals.description")}</p>

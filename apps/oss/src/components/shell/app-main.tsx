@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+import { Settings } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
@@ -9,6 +11,8 @@ import { SearchField } from './search-field'
 import { useShellHotkeys } from './use-shell-hotkeys'
 import { useShellPermissions } from './use-shell-permissions'
 import { isReadOnly, useTrialAccess } from '../billing/trial-access'
+import { UserMenu } from '../user-menu'
+import { useI18n } from '../../lib/i18n/react'
 
 /**
  * Everything to the right of the sidebar: the top bar (menu, search, "+ Ny"), the command
@@ -16,6 +20,7 @@ import { isReadOnly, useTrialAccess } from '../billing/trial-access'
  * the container sets the width and the padding (see `[data-slot='app-content']` in styles.css).
  */
 export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNode; children: ReactNode; sidebar?: boolean }) {
+  const { t } = useI18n()
   const { billingEnabled } = useRuntimeDistribution()
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
@@ -48,19 +53,28 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="sticky top-0 z-20 border-b border-hairline bg-background">
-        <div className="relative mx-auto flex h-14 w-full max-w-[1280px] items-center gap-2 px-4 md:gap-3 md:px-8">
-          <SearchField onOpen={openPalette} className="max-w-[560px]" />
-          {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:absolute md:left-0" /> : null}
-          <div className="flex-1 max-md:hidden" />
+      <header className="sticky top-0 z-20 bg-background">
+        {/* The bar shares the content's width, so search starts where the page does. */}
+        <div className="mx-auto flex h-(--topbar-height) w-full max-w-[calc(var(--content-width)+2*var(--gutter))] items-center gap-2 px-(--gutter)">
+          <SearchField onOpen={openPalette} className="max-w-[360px]" />
+          {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:hidden" /> : null}
+          <div className="flex-1" />
           <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
+          {sidebar ? (
+            <Link
+              to="/settings"
+              aria-label={t('shell.settings')}
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-hidden hover:bg-(--neutral-6) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[status=active]:text-foreground"
+            >
+              <Settings className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Link>
+          ) : null}
+          <UserMenu />
         </div>
       </header>
       {banner}
-      <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-x-auto outline-none">
-        <div data-slot="app-content" className="mx-auto w-full max-w-[1280px] px-4 py-5 md:px-8 md:py-8">
-          {children}
-        </div>
+      <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+        <div data-slot="app-content">{children}</div>
       </main>
       <CommandPalette
         open={paletteOpen}
