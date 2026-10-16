@@ -77,6 +77,7 @@ import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
 import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
+import { SettingsEmpty, SettingsRow, SettingsRows } from "../../components/settings/settings-row"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -107,8 +108,8 @@ function SettingsPane({ id, open, children }: { id: SettingsSection; open: Setti
   return <div className={id === open ? "grid grid-cols-[minmax(0,1fr)] gap-6" : "hidden"}>{children}</div>
 }
 
-/** The pages with fields in the shared form, which need its Save button. */
-const FORM_SECTIONS: readonly SettingsSection[] = ["company", "invoicing", "payments", "ai"]
+/** The pages with fields in the shared form, which need its Save button. Company rows save themselves. */
+const FORM_SECTIONS: readonly SettingsSection[] = ["invoicing", "payments", "ai"]
 
 type OrgMember = {
   id: string
@@ -254,6 +255,8 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  // Bumped after each successful save so open settings rows close.
+  const [savedVersion, setSavedVersion] = useState(0)
   // Confirms changes that save on their own (Connect, AI drafts) outside the form's Save button.
   const [notice, setNotice] = useState<string | null>(null)
   const [savingAiDrafts, setSavingAiDrafts] = useState(false)
@@ -737,6 +740,14 @@ function SettingsPage() {
             }
           : prev ? { ...prev, momsRegistered: savedSettings.momsRegistered } : prev
       )
+      // The company rows show what was saved.
+      setSettings((prev) => prev && {
+        ...prev,
+        companyName: savedSettings.companyName,
+        companyAddress: savedSettings.companyAddress,
+        companyEmail: savedSettings.companyEmail,
+        companyPhone: savedSettings.companyPhone,
+      })
       setClearAiApiKey(false)
       setAiApiKeyDraft("")
       setClearStripeSecretKey(false)
@@ -760,6 +771,7 @@ function SettingsPage() {
       }
       await router.invalidate({ sync: true })
       setSuccess(true)
+      setSavedVersion((version) => version + 1)
       if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
       successHideTimeout.current = setTimeout(() => {
         successHideTimeout.current = null
@@ -995,136 +1007,117 @@ function SettingsPage() {
         )}
 
         <SettingsPane id="company" open={section}>
-        {/* Company Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.section.company.title")}</CardTitle>
-            <CardDescription>
-              {t("settings.section.company.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="companyName">{t("settings.companyName.label")}</Label>
+        {/* Company profile: Mercury-style rows that edit in place and save through the shared form. */}
+        <SettingsRows>
+          <SettingsRow label={t("settings.companyName.label")} value={settings.companyName || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            <Label htmlFor="companyName" className="sr-only">{t("settings.companyName.label")}</Label>
+            <Input
+              id="companyName"
+              name="companyName"
+              form={settingsFormId}
+              maxLength={120}
+              placeholder={t("settings.companyName.placeholder")}
+              defaultValue={settings.companyName ?? ""}
+              onChange={clearSellerVatReview}
+            />
+          </SettingsRow>
+          <SettingsRow label={t("settings.companyAddress.label")} value={settings.companyAddress ? <span className="whitespace-pre-line">{settings.companyAddress}</span> : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            <Label htmlFor="companyAddress" className="sr-only">{t("settings.companyAddress.label")}</Label>
+            <Textarea
+              id="companyAddress"
+              name="companyAddress"
+              form={settingsFormId}
+              placeholder={t("settings.companyAddress.placeholder")}
+              rows={3}
+              maxLength={240}
+              defaultValue={settings.companyAddress ?? ""}
+              onChange={clearSellerVatReview}
+            />
+          </SettingsRow>
+          <SettingsRow label={t("settings.companyEmail.label")} value={settings.companyEmail || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            <Label htmlFor="companyEmail" className="sr-only">{t("settings.companyEmail.label")}</Label>
               <Input
-                id="companyName"
-                name="companyName"
+                id="companyEmail"
+                name="companyEmail"
                 form={settingsFormId}
-                maxLength={120}
-                placeholder={t("settings.companyName.placeholder")}
-                defaultValue={settings.companyName ?? ""}
-                onChange={clearSellerVatReview}
+                type="email"
+                maxLength={254}
+                placeholder={t("settings.companyEmail.placeholder")}
+                defaultValue={settings.companyEmail ?? ""}
               />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="organizationSlug">{t("settings.organizationSlug.label")}</Label>
+          </SettingsRow>
+          <SettingsRow label={t("settings.companyPhone.label")} value={settings.companyPhone || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            <Label htmlFor="companyPhone" className="sr-only">{t("settings.companyPhone.label")}</Label>
               <Input
-                id="organizationSlug"
-                name="organizationSlug"
-                value={organizationSlug}
-                maxLength={48}
-                spellCheck={false}
-                placeholder={t("settings.organizationSlug.placeholder")}
-                onChange={(event) => { setOrganizationSlug(event.target.value); setSlugSaved(false); setSlugError(null) }}
-              />
-              <p className="text-xs text-muted-foreground">{t("settings.organizationSlug.help")}</p>
-              <Button type="button" variant="outline" disabled={slugSaving || savedOrganizationSlug === null || organizationSlug.trim() === savedOrganizationSlug} onClick={() => void saveOrganizationSlug()}>
-                {t("settings.organizationSlug.save")}
-              </Button>
-              {slugSaved && <p role="status">{t("settings.organizationSlug.saved")}</p>}
-              {slugError && <p role="alert" className="text-sm text-destructive">{slugError}</p>}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="companyAddress">{t("settings.companyAddress.label")}</Label>
-              <Textarea
-                id="companyAddress"
-                name="companyAddress"
+                id="companyPhone"
+                name="companyPhone"
                 form={settingsFormId}
-                placeholder={t("settings.companyAddress.placeholder")}
-                rows={3}
-                maxLength={240}
-                defaultValue={settings.companyAddress ?? ""}
-                onChange={clearSellerVatReview}
+                maxLength={40}
+                pattern="^\+?[0-9()\-\s.]{6,20}$"
+                title={t("settings.companyPhone.title")}
+                placeholder={t("settings.companyPhone.placeholder")}
+                defaultValue={settings.companyPhone ?? ""}
               />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="companyEmail">{t("settings.companyEmail.label")}</Label>
-                <Input
-                  id="companyEmail"
-                  name="companyEmail"
-                  form={settingsFormId}
-                  type="email"
-                  maxLength={254}
-                  placeholder={t("settings.companyEmail.placeholder")}
-                  defaultValue={settings.companyEmail ?? ""}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="companyPhone">{t("settings.companyPhone.label")}</Label>
-                <Input
-                  id="companyPhone"
-                  name="companyPhone"
-                  form={settingsFormId}
-                  maxLength={40}
-                  pattern="^\+?[0-9()\-\s.]{6,20}$"
-                  title={t("settings.companyPhone.title")}
-                  placeholder={t("settings.companyPhone.placeholder")}
-                  defaultValue={settings.companyPhone ?? ""}
-                />
-              </div>
-            </div>
-
-            {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
-              <div className="grid gap-3"><p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+          </SettingsRow>
+          {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+            // Answered in place: invoices cannot be sent until it is, so it is never behind an edit step.
+            <SettingsRow label={t("settings.row.vat")} description={t("sellerCard.body")} value={
+              <div className="grid gap-3"><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
+                {/* Saving the choice shown also confirms it, so this is offered even without a change. */}
+                <Button type="submit" form={settingsFormId} size="sm" className="justify-self-start" disabled={saving}>
+                  {saving ? t("settings.action.saving") : t("settings.action.save")}
+                </Button>
               </div>
-            ) : null}
-
-            <div className="grid gap-2">
-              <Label htmlFor="companyLogoUrl">{t("settings.companyLogo.label")}</Label>
-              <Input
-                id="companyLogoUrl"
-                form={settingsFormId}
-                type="url"
-                maxLength={2000}
-                placeholder={t("settings.companyLogo.placeholder")}
-                value={companyLogoUrlInput}
-                onChange={handleCompanyLogoUrlChange}
+            } />
+          ) : null}
+          <SettingsRow label={t("settings.companyLogo.label")} description={t("settings.companyLogo.help")} value={companyLogo
+            ? <img src={companyLogo} alt={t("settings.companyLogo.previewAlt")} className="h-10 w-auto max-w-40 object-contain" />
+            : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            <Label htmlFor="companyLogoUrl" className="sr-only">{t("settings.companyLogo.label")}</Label>
+            <Input
+              id="companyLogoUrl"
+              form={settingsFormId}
+              type="url"
+              maxLength={2000}
+              placeholder={t("settings.companyLogo.placeholder")}
+              value={companyLogoUrlInput}
+              onChange={handleCompanyLogoUrlChange}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="file"
+                aria-label={t("settings.companyLogo.file")}
+                accept={LOGO_FILE_ACCEPT}
+                onChange={handleLogoFileChange}
+                className="block w-full max-w-sm text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80"
               />
-              <p className="text-xs text-muted-foreground">
-                {t("settings.companyLogo.help")}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="file"
-                  aria-label={t("settings.companyLogo.file")}
-                  accept={LOGO_FILE_ACCEPT}
-                  onChange={handleLogoFileChange}
-                  className="block w-full max-w-sm text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80"
-                />
-                {companyLogo && (
-                  <Button type="button" variant="outline" size="sm" onClick={clearCompanyLogo}>
-                    {t("settings.companyLogo.remove")}
-                  </Button>
-                )}
-              </div>
-              {logoError && <p className="text-xs text-destructive">{logoError}</p>}
               {companyLogo && (
-                <div className="rounded-md border bg-muted/20 p-3">
-                  <img
-                    src={companyLogo}
-                    alt={t("settings.companyLogo.previewAlt")}
-                    className="h-14 w-auto max-w-52 object-contain"
-                  />
-                </div>
+                <Button type="button" variant="outline" size="sm" onClick={clearCompanyLogo}>
+                  {t("settings.companyLogo.remove")}
+                </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+            {logoError && <p className="text-xs text-destructive">{logoError}</p>}
+          </SettingsRow>
+          <SettingsRow label={t("settings.organizationSlug.label")} description={t("settings.organizationSlug.help")} value={savedOrganizationSlug || <SettingsEmpty />}>
+            <Label htmlFor="organizationSlug" className="sr-only">{t("settings.organizationSlug.label")}</Label>
+            <Input
+              id="organizationSlug"
+              name="organizationSlug"
+              value={organizationSlug}
+              maxLength={48}
+              spellCheck={false}
+              placeholder={t("settings.organizationSlug.placeholder")}
+              onChange={(event) => { setOrganizationSlug(event.target.value); setSlugSaved(false); setSlugError(null) }}
+            />
+            <Button type="button" variant="outline" disabled={slugSaving || savedOrganizationSlug === null || organizationSlug.trim() === savedOrganizationSlug} onClick={() => void saveOrganizationSlug()}>
+              {t("settings.organizationSlug.save")}
+            </Button>
+            {slugSaved && <p role="status">{t("settings.organizationSlug.saved")}</p>}
+            {slugError && <p role="alert" className="text-sm text-destructive">{slugError}</p>}
+          </SettingsRow>
+        </SettingsRows>
 
         {CompanyDetails && organizationId && (
           <CompanyDetails

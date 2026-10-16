@@ -762,7 +762,7 @@ describe("Settings UI extension", () => {
   it("keeps the default UI empty and company fields attached to the original save form", async () => {
     prepare()
     const { container } = render(<RouteComponent />)
-    await screen.findByText("Company")
+    await screen.findAllByText("settings.companyName.label")
     expect(screen.queryByTestId("company-extension")).toBeNull()
     const name = container.querySelector<HTMLInputElement>('input[name="companyName"]')!
     const form = name.form!
@@ -788,7 +788,7 @@ describe("Settings UI extension", () => {
     expect(extension.parentElement?.closest("form")).toBeNull()
     fireEvent.submit(extension)
     expect(settingsUpdate).not.toHaveBeenCalled()
-    expect(extension.previousElementSibling?.textContent).toContain("Company description")
+    expect(extension.previousElementSibling?.textContent).toContain("settings.companyName.label")
     // The extension closes the company page; the save form follows it.
     expect(extension.nextElementSibling).toBeNull()
     const saveForm = extension.parentElement?.nextElementSibling as HTMLFormElement
@@ -801,7 +801,7 @@ describe("Settings UI extension", () => {
   it("does not mount the extension without an active organization", async () => {
     prepare(null)
     render(<RuntimeUiProvider value={{ settingsCompanyDetails: CompanyDetails }}><RouteComponent /></RuntimeUiProvider>)
-    await screen.findByText("Company")
+    await screen.findAllByText("settings.companyName.label")
     expect(screen.queryByTestId("company-extension")).toBeNull()
   })
 

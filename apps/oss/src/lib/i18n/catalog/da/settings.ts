@@ -277,4 +277,10 @@ export const daSettingsMessages = {
   "settings.nav.ai": "AI og agenter",
   "settings.nav.accounting": "Bogføring",
   "settings.nav.audit": "Aktivitetslog",
+  "settings.row.edit": "Rediger",
+  "settings.row.save": "Gem",
+  "settings.row.cancel": "Annuller",
+  "settings.row.done": "Færdig",
+  "settings.row.empty": "Ikke angivet",
+  "settings.row.vat": "Momsregistrering",
 } as const
