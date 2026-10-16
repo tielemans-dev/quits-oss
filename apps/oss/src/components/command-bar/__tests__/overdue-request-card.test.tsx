@@ -3,10 +3,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ list: vi.fn(), batch: vi.fn(), jobs: vi.fn(), handoff: vi.fn() }))
+const api = vi.hoisted(() => ({ list: vi.fn(), batch: vi.fn(), jobs: vi.fn(), handoff: vi.fn(), capabilities: vi.fn() }))
 vi.mock("../../../trpc/client", () => ({
-  trpc: { invoices: { list: { query: api.list } }, settings: { get: { query: async () => ({ timezone: "Europe/Copenhagen" }) } } },
+  trpc: { invoices: { list: { query: api.list } }, runtime: { capabilities: { query: api.capabilities } }, settings: { get: { query: async () => ({ timezone: "Europe/Copenhagen" }) } } },
 }))
+vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a href="/settings/email">{children}</a> }))
 vi.mock("../tracker-handoff", () => ({ handOffToTracker: api.handoff }))
 vi.mock("../../jobs/reminder-jobs-store", () => ({ sendReminderBatch: api.batch, useReminderJobs: api.jobs }))
 
@@ -35,6 +36,7 @@ const sendButton = (count: number) => screen.findByRole("button", { name: `Send 
 
 beforeEach(() => {
   api.jobs.mockReturnValue([])
+  api.capabilities.mockResolvedValue({ emailDelivery: { enabled: true, managed: false, configured: true } })
   api.batch.mockResolvedValue({ jobId: "job-1" })
   api.list.mockResolvedValue([
     invoice("1", "Havbrise Logistik A/S", { balanceDue: 1250.5 }),
@@ -50,6 +52,16 @@ afterEach(() => {
 })
 
 describe("overdue request card", () => {
+  it("points to the email settings instead of offering a send that can only fail", async () => {
+    api.capabilities.mockResolvedValue({ emailDelivery: { enabled: true, managed: false, configured: false } })
+    renderCard()
+
+    expect(await screen.findByRole("link", { name: "Åbn indstillinger" })).toBeTruthy()
+    expect(text()).toContain("E-mail er ikke sat op endnu.")
+    expect(screen.queryByRole("button", { name: /Send rykker/ })).toBeNull()
+    expect(text()).toContain("Havbrise Logistik A/S")
+  })
+
   it("lists the invoices the list calls overdue, oldest first, with days and the total, and sends nothing by itself", async () => {
     renderCard()
     await sendButton(2)
