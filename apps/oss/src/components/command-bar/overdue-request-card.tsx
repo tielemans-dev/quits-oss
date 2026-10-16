@@ -10,6 +10,7 @@ import { Button } from "../ui/button"
 import { syncHeldJobs } from "../undo/undo-store"
 import { MAX_BATCH, overdueInvoices, totalsByCurrency, type Invoice } from "./overdue-invoices"
 import { stagger } from "./request-card-slot"
+import { previewRequest } from "./request-preview"
 import type { RequestCardProps } from "./request-intent"
 import { handOffToTracker } from "./tracker-handoff"
 
@@ -51,6 +52,9 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
   )
 
   const ticked = (overdue ?? []).filter(({ invoice }, index) => (chosen ? chosen.has(invoice.id) : index < MAX_BATCH))
+  const previewIds = ticked.map(({ invoice }) => invoice.id).join(",")
+  useEffect(() => { previewRequest(previewIds ? { kind: "reminded", invoiceIds: previewIds.split(",") } : null) }, [previewIds])
+  useEffect(() => () => previewRequest(null), [])
   const tickedIds = new Set(ticked.map(({ invoice }) => invoice.id))
   const full = ticked.length >= MAX_BATCH
   const totals = totalsByCurrency(ticked.map(({ invoice }) => invoice))

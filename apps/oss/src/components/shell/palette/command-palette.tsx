@@ -503,6 +503,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
           ref={panel}
           data-slot="command-palette"
           data-unfolded={unfolded}
+          data-card={unfolded && shown !== null}
           onFocus={() => setFocused(true)}
           onKeyDown={(event) => {
             // Esc anywhere in it, the card included: empty it first, then fold it. A menu that took Esc keeps it.
@@ -512,8 +513,10 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
             else close()
           }}
           className={cn(
-            'absolute inset-x-0 top-0 z-40 overflow-hidden border border-hairline bg-panel text-foreground',
-            '[transition:border-radius_var(--duration-palette)_var(--ease-enter),box-shadow_var(--duration-palette)_var(--ease-enter)]',
+            'absolute left-0 top-0 z-40 overflow-hidden border border-hairline bg-panel text-foreground',
+            '[transition:border-radius_var(--duration-palette)_var(--ease-enter),box-shadow_var(--duration-palette)_var(--ease-enter),right_var(--duration-palette)_var(--ease-enter)]',
+            // A card keeps to Overblik's left column, so the right one can show what it would do (see `request-preview`).
+            'right-0 min-[1180px]:data-[card=true]:right-[calc((100%-1rem)*0.4+1rem)]',
             unfolded ? 'rounded-2xl shadow-2xl shadow-black/15 dark:border-white/10 dark:shadow-black/60' : 'rounded-[29px] shadow-xs'
           )}
         >
