@@ -1,3 +1,5 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
@@ -5,7 +7,7 @@ import { DocumentVatFields, VatGroupPreview } from "../../../components/document
 import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
@@ -53,7 +55,8 @@ function NewQuotePage() {
   const { pricesIncludeTax } = useOrgPricingSettings()
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
   const navigate = useNavigate()
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const contactQuery = useAppQuery(["contacts"], () => trpc.contacts.list.query())
+  const contacts = (contactQuery.data ?? []) as Contact[]
   const [contactId, setContactId] = useState("")
   const [expiryDate, setExpiryDate] = useState("")
   const [notes, setNotes] = useState("")
@@ -63,25 +66,14 @@ function NewQuotePage() {
   ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadingContacts, setLoadingContacts] = useState(true)
-  const [loadingCatalog, setLoadingCatalog] = useState(true)
-  const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
+  const loadingContacts = contactQuery.loading
+  const catalogQuery = useAppQuery(["catalog"], () => trpc.catalog.list.query())
+  const catalogItems = (catalogQuery.data ?? []) as CatalogItemOption[]
+  const loadingCatalog = catalogQuery.loading
 
-  useEffect(() => {
-    trpc.contacts.list
-      .query()
-      .then((data) => setContacts(data as Contact[]))
-      .catch(() => {})
-      .finally(() => setLoadingContacts(false))
-  }, [])
 
-  useEffect(() => {
-    trpc.catalog.list
-      .query()
-      .then((data) => setCatalogItems(data as CatalogItemOption[]))
-      .catch(() => {})
-      .finally(() => setLoadingCatalog(false))
-  }, [])
+
+
 
   function updateItem(index: number, field: keyof LineItem, value: string) {
     setItems((prev) =>
@@ -177,6 +169,7 @@ function NewQuotePage() {
           <CardTitle>{t("quotes.new.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-6">
+          {catalogQuery.error && <QueryError error={catalogQuery.error} retry={catalogQuery.refresh} />}
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -186,10 +179,8 @@ function NewQuotePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
               <Label htmlFor="contactId">{t("docForm.contact")} *</Label>
-              {loadingContacts ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  {t("docForm.loadingContacts")}
-                </p>
+              {contactQuery.error ? <QueryError error={contactQuery.error} retry={contactQuery.refresh} /> : loadingContacts ? (
+                <QuerySkeleton />
               ) : contacts.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
                   {t("docForm.noContacts")}

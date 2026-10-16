@@ -1,3 +1,5 @@
+import { QueryError } from "../../query-state"
+import { useQueryRefresh } from "../../../hooks/use-query-refresh"
 import { useCallback, useEffect, useState } from "react"
 import { settlementEvidenceSchema } from "@quits/contracts/payments"
 import type {
@@ -57,6 +59,8 @@ export function ReceiptsPanel({
       setError(err instanceof Error ? err.message : t("payments.error.loadFailed"))
     }
   }, [invoiceId, t])
+  useQueryRefresh(["payments"], () => { void load() })
+
   useEffect(() => {
     void load()
   }, [load, balanceDue])
@@ -75,9 +79,7 @@ export function ReceiptsPanel({
       </div>
       <p className="text-sm text-muted-foreground">{t("payments.receipts.description")}</p>
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <QueryError error={new Error(error)} retry={load} />
       ) : null}
       {view?.receipts.map((receipt) => (
         <div key={receipt.id} className="grid gap-2 rounded-md border p-3">

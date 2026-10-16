@@ -1,3 +1,5 @@
+import { getRequestOrganizationId } from "../../lib/active-organization"
+import { notifyMutation } from "../../lib/query-refresh"
 import { useSyncExternalStore } from "react"
 
 import { trpc } from "../../trpc/client"
@@ -30,7 +32,9 @@ export function refreshReminderJobs() {
 async function read() {
   clearTimeout(timer)
   try {
+    const previous = new Map(jobs.map(job => [job.id, trackerView(job).phase]))
     jobs = (await trpc.jobs.list.query()) as TrackerJob[]
+    if (jobs.some(job => previous.has(job.id) && previous.get(job.id) !== trackerView(job).phase && trackerView(job).phase !== "running")) notifyMutation("jobs.settled", getRequestOrganizationId())
     emit()
   } catch {
     // The next poll or visit tries again; the toast keeps what it last knew.

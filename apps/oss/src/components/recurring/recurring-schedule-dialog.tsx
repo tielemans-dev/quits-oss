@@ -1,3 +1,5 @@
+import { useAppQuery } from "../../hooks/use-query-refresh"
+import { QueryError } from "../query-state"
 import { FormErrorSummary, type SummaryError } from "../form-error-summary"
 import { previewDraft } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
@@ -81,8 +83,9 @@ export function RecurringScheduleDialog({
   const orgCurrency = useOrgCurrency()
   const currency = schedule?.currency ?? orgCurrency
 
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [loadingContacts, setLoadingContacts] = useState(true)
+  const contactQuery = useAppQuery(["contacts"], () => trpc.contacts.list.query(), [], open)
+  const contacts = (contactQuery.data ?? []) as Contact[]
+  const loadingContacts = contactQuery.loading
   const [name, setName] = useState("")
   const [contactId, setContactId] = useState("")
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
@@ -144,12 +147,6 @@ export function RecurringScheduleDialog({
     setEndsAt(schedule?.endsAt ? toCalendarDate(schedule.endsAt) : "")
     setRuns(schedule?.remainingRuns ?? 12)
 
-    setLoadingContacts(true)
-    trpc.contacts.list
-      .query()
-      .then((data) => setContacts(data as Contact[]))
-      .catch(() => {})
-      .finally(() => setLoadingContacts(false))
   }, [open, schedule])
 
   function updateItem(index: number, patch: Partial<LineItem>) {
@@ -250,7 +247,7 @@ export function RecurringScheduleDialog({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="recurring-contact">{t("docForm.contact")} *</Label>
-              {loadingContacts ? (
+              {contactQuery.error ? <QueryError error={contactQuery.error} retry={contactQuery.refresh} /> : loadingContacts ? (
                 <p className="text-sm text-muted-foreground py-2">{t("docForm.loadingContacts")}</p>
               ) : contacts.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">{t("docForm.noContacts")}</p>

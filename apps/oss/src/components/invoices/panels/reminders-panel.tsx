@@ -1,3 +1,4 @@
+import { useQueryRefresh } from "../../../hooks/use-query-refresh"
 import { useCallback, useEffect, useState } from "react"
 import { BellRing } from "lucide-react"
 import type { InvoiceReminderRecord } from "@quits/contracts/reminders"
@@ -62,6 +63,8 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
   }, [invoice.id, t])
 
   // Switching organization keeps the panel mounted, so start over with nothing allowed.
+  useQueryRefresh(["reminders", "invoices"], () => { void load() })
+
   useEffect(() => {
     setCapabilities(NO_CAPABILITIES)
     if (organizationId === undefined) return

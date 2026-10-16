@@ -1,10 +1,12 @@
+import { useQueryRefresh } from "../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../components/query-state"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import type { FieldIssue } from "@quits/contracts/agent"
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -295,6 +297,9 @@ function SettingsPage() {
   const [members, setMembers] = useState<OrgMember[]>([])
   const [invitations, setInvitations] = useState<OrgInvitation[]>([])
   const [teamLoading, setTeamLoading] = useState(true)
+  const [teamError, setTeamError] = useState<unknown>(null)
+  const [teamMutationError, setTeamMutationError] = useState<string | null>(null)
+  const [teamAttempt, setTeamAttempt] = useState(0)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("member")
   const [inviting, setInviting] = useState(false)
@@ -333,12 +338,19 @@ function SettingsPage() {
     if (successHideTimeout.current !== null) clearTimeout(successHideTimeout.current)
   }, [])
 
-  const reportSettingsLoadError = useEffectEvent(() => {
-    setError(t("settings.error.loadFailed"))
-  })
+  const [settingsAttempt, setSettingsAttempt] = useState(0)
+  const [loadError, setLoadError] = useState<unknown>(null)
+  const [refreshError, setRefreshError] = useState<unknown>(null)
+  function refreshSettings() {
+    setRefreshError(null)
+    return trpc.settings.get.query().then(data => setSettings(data as SettingsData)).catch(setRefreshError)
+  }
+  useQueryRefresh(["settings"], () => { void refreshSettings() })
 
   // Initialize once per mount. A language change must not reload and overwrite form edits.
   useEffect(() => {
+    setLoading(true)
+    setLoadError(null)
     trpc.settings.get
       .query()
       .then((data) => {
@@ -385,9 +397,9 @@ function SettingsPage() {
           void loadAiModels()
         }
       })
-      .catch(() => reportSettingsLoadError())
+      .catch(setLoadError)
       .finally(() => setLoading(false))
-  }, [])
+  }, [settingsAttempt])
 
   useEffect(() => {
     setCapabilitiesFailed(false)
@@ -449,52 +461,68 @@ function SettingsPage() {
 
   useEffect(() => {
     async function loadTeam() {
-      const org = await authClient.organization.getFullOrganization()
-      if (org.data) {
-        const slug = typeof org.data.slug === "string" ? org.data.slug : ""
-        setOrganizationSlug(slug)
-        setSavedOrganizationSlug(slug)
-        setMembers((org.data.members ?? []) as OrgMember[])
-        setInvitations(
-          ((org.data.invitations ?? []) as OrgInvitation[]).filter(
-            (i) => i.status === "pending"
+      setTeamLoading(true)
+      setTeamError(null)
+      try {
+        const org = await authClient.organization.getFullOrganization()
+        if (org.error) throw new Error(org.error.message ?? t("ui.queryError"))
+        if (org.data) {
+          const slug = typeof org.data.slug === "string" ? org.data.slug : ""
+          setOrganizationSlug(slug)
+          setSavedOrganizationSlug(slug)
+          setMembers((org.data.members ?? []) as OrgMember[])
+          setInvitations(
+            ((org.data.invitations ?? []) as OrgInvitation[]).filter(
+              (i) => i.status === "pending"
+            )
           )
-        )
-      }
-      setTeamLoading(false)
+        }
+      } catch (failure) { setTeamError(failure) }
+      finally { setTeamLoading(false) }
     }
-    loadTeam()
-  }, [])
+    void loadTeam()
+  }, [teamAttempt])
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     setInviteError(null)
     setInviting(true)
-    const result = await authClient.organization.inviteMember({
-      email: inviteEmail,
-      role: inviteRole as "member" | "admin" | "accountant",
-    })
-    if (result.error) {
-      setInviteError(
-        result.error.message ??
-          t("settings.error.inviteFailed")
-      )
-    } else if (result.data) {
-      setInvitations((prev) => [...prev, result.data as OrgInvitation])
-      setInviteEmail("")
-    }
-    setInviting(false)
+    try {
+      const result = await authClient.organization.inviteMember({
+        email: inviteEmail,
+        role: inviteRole as "member" | "admin" | "accountant",
+      })
+      if (result.error) {
+        setInviteError(
+          result.error.message ??
+            t("settings.error.inviteFailed")
+        )
+      } else if (result.data) {
+        setInvitations((prev) => [...prev, result.data as OrgInvitation])
+        setInviteEmail("")
+      }
+    } catch (failure) { setInviteError(failure instanceof Error ? failure.message : t("settings.error.inviteFailed")) }
+    finally { setInviting(false) }
   }
 
   async function handleRemoveMember(memberId: string) {
-    await authClient.organization.removeMember({ memberIdOrEmail: memberId })
-    setMembers((prev) => prev.filter((m) => m.id !== memberId))
+    setTeamMutationError(null)
+    try {
+      const result = await authClient.organization.removeMember({ memberIdOrEmail: memberId })
+      if (result.error) { setTeamMutationError(result.error.message ?? t("ui.mutationError")); return }
+      setMembers((prev) => prev.filter((m) => m.id !== memberId))
+    } catch (failure) { setTeamMutationError(failure instanceof Error ? failure.message : t("ui.mutationError")) }
   }
 
   async function handleCancelInvite(invitationId: string) {
-    await authClient.organization.cancelInvitation({ invitationId })
-    setInvitations((prev) => prev.filter((i) => i.id !== invitationId))
+    setTeamMutationError(null)
+    try {
+      const result = await authClient.organization.cancelInvitation({ invitationId })
+      if (result.error) { setTeamMutationError(result.error.message ?? t("ui.mutationError")); return }
+      setInvitations((prev) => prev.filter((i) => i.id !== invitationId))
+    } catch (failure) { setTeamMutationError(failure instanceof Error ? failure.message : t("ui.mutationError")) }
   }
+
 
   function clearSellerVatReview() {
     setSellerVatChoice(null)
@@ -898,6 +926,8 @@ function SettingsPage() {
     setLogoError(null)
   }
 
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={() => setSettingsAttempt(value => value + 1)} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
@@ -905,7 +935,7 @@ function SettingsPage() {
           <Settings className="size-6" />
           <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
         </div>
-        <p className="text-muted-foreground">{t("settings.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }
@@ -936,6 +966,7 @@ function SettingsPage() {
         <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
       </div>}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        {refreshError ? <QueryError error={refreshError} retry={refreshSettings} /> : null}
         {error && (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -1736,6 +1767,7 @@ function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
+          {teamMutationError ? <p role="alert" className="text-sm text-destructive">{teamMutationError}</p> : null}
           {/* Invite form */}
           <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2">
             <Input
@@ -1766,8 +1798,8 @@ function SettingsPage() {
           )}
 
           {/* Members list */}
-          {teamLoading ? (
-            <p className="text-sm text-muted-foreground">{t("settings.team.loading")}</p>
+          {teamError ? <QueryError error={teamError} retry={() => setTeamAttempt(value => value + 1)} /> : teamLoading ? (
+            <QuerySkeleton />
           ) : (
             <div className="divide-y rounded-md border">
               {members.map((m) => {

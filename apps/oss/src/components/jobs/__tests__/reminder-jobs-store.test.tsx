@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const list = vi.fn()
 vi.mock("../../../trpc/client", () => ({ trpc: { jobs: { list: { query: () => list() } } } }))
 
+import { getRequestOrganizationId } from "../../../lib/active-organization"
+import { subscribeQueryRefresh } from "../../../lib/query-refresh"
+
 import { useReminderJobs } from "../reminder-jobs-store"
 
 const job = (steps: string[]) => [{ id: "job-1", status: "running", createdAt: new Date(), steps: steps.map((status, index) => ({ id: `s${index}`, label: "", labelParams: {}, invoiceId: `inv-${index}`, status })) }]
@@ -26,6 +29,18 @@ describe("useReminderJobs", () => {
     const reads = list.mock.calls.length
     await act(() => vi.advanceTimersByTimeAsync(10_000))
     expect(list.mock.calls.length).toBe(reads)
+  })
+
+  it("refreshes invoice readers when steps settle before the parent job status changes", async () => {
+    const refresh = vi.fn()
+    const unsubscribe = subscribeQueryRefresh(["invoices"], getRequestOrganizationId(), refresh)
+    list.mockResolvedValueOnce(job(["running"])).mockResolvedValue(job(["succeeded"]))
+    renderHook(() => useReminderJobs())
+    await act(() => vi.advanceTimersByTimeAsync(0))
+    refresh.mockClear()
+    await act(() => vi.advanceTimersByTimeAsync(1500))
+    expect(refresh).toHaveBeenCalledTimes(1)
+    unsubscribe()
   })
 
   it("keeps its subscription across re-renders, so a render cannot cut the polling chain", async () => {
