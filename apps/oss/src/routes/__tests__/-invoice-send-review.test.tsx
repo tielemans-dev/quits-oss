@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { handledMutationError } from "../../lib/query-refresh"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType, ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -52,6 +51,7 @@ const invoice = {
   lastEmailAttemptAt: null, lastEmailAttemptOutcome: null, lastEmailAttemptCode: null, lastEmailAttemptMessage: null, contact, items: [],
 }
 import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
+import { handledMutationError, notifyMutation } from "../../lib/query-refresh"
 beforeEach(() => {
   sessionStorage.clear()
   api.currency = "DKK"
@@ -602,7 +602,7 @@ describe("invoice detail send review", () => {
     await act(async () => { fireEvent.click(send) })
     expect(await screen.findByText("invoiceValidation.policyUnavailable")).toBeTruthy()
     await act(async () => { fireEvent.click(send) })
-    expect(await screen.findByText("invoiceValidation.unknown")).toBeTruthy()
+    expect(await screen.findByText("Synthetic readiness failure")).toBeTruthy()
     expect(screen.queryByText("invoiceValidation.policyUnavailable")).toBeNull()
     expect(screen.queryByRole("button", { name: "invoiceSend.confirm" })).toBeNull()
     expect(api.send).not.toHaveBeenCalled()
@@ -939,5 +939,68 @@ describe("a failed invoice email", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoiceSend.confirm" })) })
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ search: expect.objectContaining({ sendError: "email_send_failed" }) })))
+  })
+})
+
+describe('converted quote supply date', () => {
+  it('keeps unexpected review preparation failures generic', async () => {
+    api.get.mockResolvedValue({ ...invoice, status: 'draft', number: null })
+    api.readiness.mockRejectedValue(Object.assign(new Error('Prisma internal exception'), { data: { code: 'INTERNAL_SERVER_ERROR' } }))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole('button', {name:'invoices.detail.action.send'}))
+    await screen.findByText('invoiceValidation.unknown')
+    expect(document.body.textContent).not.toContain('Prisma')
+  })
+  it('preserves valuation inputs when the supply-date mutation refreshes the document', async () => {
+    const draft = { ...invoice, currency: 'EUR', status: 'draft', number: null, supplyDate: null, editRevision: 1 }
+    api.get.mockResolvedValue(draft)
+    api.update.mockImplementation(async () => { notifyMutation('invoices.updateV2', 'synthetic-org'); return { ...draft, reviewedVersion: 'saved-version' } })
+    render(<DetailPage />)
+    const send = await screen.findByRole('button', {name:'invoices.detail.action.send'})
+    fireEvent.change(document.getElementById('exchangeRate')!, {target:{value:'7.45'}})
+    fireEvent.change(document.getElementById('rateDate')!, {target:{value:'2026-10-16'}})
+    fireEvent.click(send)
+    await screen.findByRole('dialog')
+    expect((document.getElementById('exchangeRate') as HTMLInputElement).value).toBe('7.45')
+    expect((document.getElementById('rateDate') as HTMLInputElement).value).toBe('2026-10-16')
+  })
+  it('ignores an older refresh that finishes after a newer refresh', async () => {
+    let resolveOld!: (value: unknown) => void
+    api.get.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve })).mockResolvedValue({ ...invoice, notes: "Newest invoice" })
+    render(<DetailPage />)
+    await act(async () => notifyMutation('invoices.updateV2', 'synthetic-org'))
+    await screen.findByText('Newest invoice')
+    await act(async () => resolveOld({ ...invoice, notes:'Stale invoice' }))
+    expect(screen.queryByText('Stale invoice')).toBeNull()
+    expect(screen.getByText('Newest invoice')).toBeTruthy()
+  })
+  it('offers the back action for a confirmed missing invoice', async () => {
+    api.get.mockRejectedValue(Object.assign(new Error('Invoice missing'), {data:{code:'NOT_FOUND'}}))
+    render(<DetailPage />)
+    expect(await screen.findByRole('button', {name:'invoices.detail.action.back'})).toBeTruthy()
+    expect(screen.queryByRole('button', {name:'ui.retry'})).toBeNull()
+  })
+  it('saves the chosen supply date before opening review and uses the saved version', async () => {
+    api.get.mockResolvedValue({ ...invoice, status: 'draft', number: null, supplyDate: null, editRevision: 1 })
+    api.update.mockResolvedValue({ ...invoice, status: 'draft', number: null, supplyDate: '2026-10-16', reviewedVersion: 'saved-version' })
+    api.send.mockResolvedValue({})
+    render(<DetailPage />)
+    const send = await screen.findByRole('button', {name:'invoices.detail.action.send'})
+    fireEvent.change(document.getElementById('supplyDate')!, {target:{value:'2026-10-16'}})
+    fireEvent.click(send)
+    await screen.findByRole('button', {name:'invoiceSend.confirm'})
+    expect(api.update).toHaveBeenCalledWith({id:invoice.id, expectedRevision:1, supplyDate:'2026-10-16'})
+    expect(api.send).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', {name:'invoiceSend.confirm'}))
+    await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({reviewedVersion:'saved-version', supplyDate:'2026-10-16'}), handledMutationError))
+  })
+  it('shows a failed date save and never confirms or sends', async () => {
+    api.get.mockResolvedValue({ ...invoice, status:'draft', number:null, supplyDate:null })
+    api.update.mockRejectedValue(new Error('Draft changed. Reload before saving.'))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole('button', {name:'invoices.detail.action.send'}))
+    expect(await screen.findByText('Draft changed. Reload before saving.')).toBeTruthy()
+    expect(screen.queryByRole('button', {name:'invoiceSend.confirm'})).toBeNull()
+    expect(api.send).not.toHaveBeenCalled()
   })
 })

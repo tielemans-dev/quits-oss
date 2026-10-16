@@ -1,4 +1,6 @@
 import { handledMutationError } from "../../../lib/query-refresh"
+import { useQueryRevision } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
@@ -173,6 +175,8 @@ function QuoteDetailPage() {
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
   const { quoteId } = Route.useParams()
+  const query = useQueryRevision(["quotes", "settings"])
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -204,7 +208,10 @@ function QuoteDetailPage() {
   const beginRequest = useDocumentResponseGuard(quoteId)
 
   useEffect(() => {
-    const isCurrent = beginRequest(quoteId)
+    setLoadError(null)
+    let cancelled = false
+    const belongsToDocument = beginRequest(quoteId)
+    const isCurrent = () => !cancelled && belongsToDocument()
     Promise.all([trpc.quotes.get.query({ id: quoteId }), trpc.settings.get.query()])
       .then(([quoteData, settings]) => {
         if (!isCurrent()) return
@@ -212,13 +219,14 @@ function QuoteDetailPage() {
         setQuote(q)
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() => {
-        if (isCurrent()) setError(t("quotes.detail.error.notFound"))
+      .catch((failure: unknown) => {
+        if (isCurrent()) { if ((failure as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND") { setQuote(null); setError(t("quotes.detail.error.notFound")) } else setLoadError(failure) }
       })
       .finally(() => {
         if (isCurrent()) setLoading(false)
       })
-  }, [beginRequest, quoteId, t])
+    return () => { cancelled = true }
+  }, [beginRequest, quoteId, t, query.revision])
 
   async function reloadQuote() {
     const isCurrent = beginRequest(quoteId)
@@ -439,10 +447,12 @@ function QuoteDetailPage() {
     }
   }
 
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">{t("quotes.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }

@@ -1,4 +1,6 @@
 import { handledMutationError } from "../../../lib/query-refresh"
+import { useQueryRevision } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { FormErrorSummary } from "../../../components/form-error-summary"
 import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
@@ -231,6 +233,8 @@ function InvoiceDetailPage() {
   const trial = useTrialAccess()
   const readOnly = isReadOnly(trial?.subscription ?? null)
   const { invoiceId } = Route.useParams()
+  const query = useQueryRevision(["invoices", "settings"])
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { emailWarning, sendError } = Route.useSearch()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
@@ -314,7 +318,10 @@ function InvoiceDetailPage() {
   const beginRequest = useDocumentResponseGuard(invoiceId)
 
   useEffect(() => {
-    const isCurrent = beginRequest(invoiceId)
+    setLoadError(null)
+    let cancelled = false
+    const belongsToDocument = beginRequest(invoiceId)
+    const isCurrent = () => !cancelled && belongsToDocument()
     Promise.all([
       trpc.invoices.get.query({ id: invoiceId }),
       trpc.settings.get.query(),
@@ -340,13 +347,16 @@ function InvoiceDetailPage() {
         })
         setEmailDelivery(settings.emailDelivery)
       })
-      .catch(() => {
-        if (isCurrent()) setError(t("invoices.detail.error.notFound"))
+      .catch((failure: unknown) => {
+        if (!isCurrent()) return
+        if ((failure as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND") { setInvoice(null); setError(t("invoices.detail.error.notFound")) }
+        else setLoadError(failure)
       })
       .finally(() => {
         if (isCurrent()) setLoading(false)
       })
-  }, [beginRequest, invoiceId, t])
+    return () => { cancelled = true }
+  }, [beginRequest, invoiceId, t, query.revision])
 
   async function reloadInvoice() {
     const isCurrent = beginRequest(invoiceId)
@@ -526,26 +536,34 @@ function InvoiceDetailPage() {
     // Known gaps (seller identity, recipient, currency, policy) are shown instead of asking for a confirmation that
     // would be refused. The state is read fresh: Settings may have changed since the page loaded.
     setActing(true)
+    let reviewedVersion = invoice.reviewedVersion
     try {
+      retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
+      // Review the persisted date, including drafts converted from quotes without one.
+      if (invoice.supplyDate !== undefined && issuance.supplyDate !== (invoice.supplyDate ? new Date(invoice.supplyDate).toISOString().slice(0, 10) : "")) {
+        const updated = await trpc.invoices.updateV2.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, supplyDate: issuance.supplyDate })
+        setInvoice(updated as unknown as Invoice)
+        reviewedVersion = updated.reviewedVersion
+      }
       const state = await trpc.invoices.sendReadiness.query({ contactId: invoice.contact.id, currency: invoice.currency })
       setReadiness(state)
       if (state.policyUnavailable) { setError(t("invoiceValidation.policyUnavailable")); return }
       const blocking = state.issues.filter(issue => !(allowSendWithoutEmail && issue.code === "missing_recipient"))
       setFieldIssues(blocking)
       if (blocking.length) return
-    } catch {
-      setError(t("invoiceValidation.unknown"))
+    } catch (failure) {
+      setError(failure instanceof Error && !isUnexpectedFailure(failure) ? failure.message : t("invoiceValidation.unknown"))
       return
     } finally {
       setActing(false)
     }
     // Without a reviewed version the server would skip both review checks; refetch instead of confirming blind.
-    if (!invoice.reviewedVersion) {
+    if (!reviewedVersion) {
       setFieldIssues([{ code: "changed_since_review", field: "invoice", params: {} }])
       void reloadInvoice()
       return
     }
-    setSendReviewVersion(invoice.reviewedVersion)
+    setSendReviewVersion(reviewedVersion)
     setSendConfirmation(allowSendWithoutEmail ? "manual" : "send")
   }
 
@@ -671,10 +689,12 @@ function InvoiceDetailPage() {
     window.print()
   }
 
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">{t("invoices.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach, expect, it, vi } from "vitest"
+import { notifyMutation } from "../../lib/query-refresh"
 import { I18nProvider } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
 
@@ -30,4 +31,18 @@ it.each(["da-DK", "en-US"])("requires confirmation and permits cancellation befo
   fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: t("contacts.reminders.resume") }))
   await waitFor(() => expect(api.resume).toHaveBeenCalledExactlyOnceWith({ id: "buyer" }))
   await waitFor(() => expect(screen.getByRole("status").textContent).toBe(t("contacts.reminders.active")))
+})
+
+it("preserves customer edits through a failed background refresh and retry", async () => {
+  api.get.mockResolvedValue({ id: "buyer", name: "Buyer", email: null })
+  render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
+  const name = await screen.findByDisplayValue("Buyer")
+  fireEvent.change(name, { target: { value: "Unsaved buyer" } })
+  api.get.mockRejectedValueOnce(new Error("Customer refresh unavailable"))
+  await act(async () => notifyMutation("contacts.update", null))
+  await screen.findByText("Customer refresh unavailable")
+  expect(name.isConnected).toBe(true)
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+  await waitFor(() => expect(screen.queryByText("Customer refresh unavailable")).toBeNull())
+  expect(screen.getByDisplayValue("Unsaved buyer")).toBe(name)
 })

@@ -1,3 +1,5 @@
+import { useQueryRevision } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
@@ -47,6 +49,8 @@ async function downloadPdf(creditNote: CreditNoteDetail, _org: OrgSettingsForPdf
 function CreditNoteDetailPage() {
   const { t, locale } = useI18n()
   const { creditNoteId } = Route.useParams()
+  const query = useQueryRevision(["creditNotes", "settings"])
+  const [loadError, setLoadError] = useState<unknown>(null)
   const [creditNote, setCreditNote] = useState<CreditNoteDetail | null>(null)
   const [org, setOrg] = useState<OrgContext>({ emailAvailable: false })
   const [loading, setLoading] = useState(true)
@@ -117,24 +121,24 @@ function CreditNoteDetailPage() {
   // Another credit note (or organization) keeps the page mounted, so start over with nothing
   // allowed and nothing reported about the previous one.
   useEffect(() => {
+    setLoadError(null)
     setCanCreate(false)
     setCanSend(false)
     setError(null)
-    setNotice(null)
-    setSending(false)
     if (organizationId === undefined) return
     const isCurrent = beginRequest(creditNoteId)
     load()
       .catch((err: unknown) => {
         if (!isCurrent()) return
-        const notFound = err !== null && typeof err === "object" && "data" in err &&
-          err.data !== null && typeof err.data === "object" && "code" in err.data && err.data.code === "NOT_FOUND"
-        setError(t(notFound ? "creditNotes.detail.notFound" : "creditNotes.error.generic"))
+        const code = (err as { data?: { code?: string } } | null)?.data?.code
+        if (code === "NOT_FOUND") { setCreditNote(null); setError(t("creditNotes.detail.notFound")) } else setLoadError(err)
       })
       .finally(() => {
         if (isCurrent()) setLoading(false)
       })
-  }, [beginRequest, creditNoteId, load, t, organizationId])
+  }, [beginRequest, creditNoteId, load, t, organizationId, query.revision])
+
+  useEffect(() => { setNotice(null); setSending(false) }, [creditNoteId, organizationId])
 
   async function handleSend() {
     if (!creditNote) return
@@ -201,10 +205,12 @@ function CreditNoteDetailPage() {
     </Button>
   )
 
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">{t("creditNotes.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }

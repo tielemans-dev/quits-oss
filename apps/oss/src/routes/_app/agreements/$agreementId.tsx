@@ -1,3 +1,5 @@
+import { useQueryRevision } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { InvoiceDeliverables } from "../../../components/agreements/invoice-deliverables"
 import { DeliverableAllocation } from "../../../components/agreements/deliverable-allocation"
 import { DeliverableControls } from "../../../components/agreements/deliverable-controls"
@@ -32,6 +34,8 @@ export const Route = createFileRoute("/_app/agreements/$agreementId")({
 })
 function AgreementDetail() {
   const { agreementId } = Route.useParams()
+  const query = useQueryRevision(["agreements", "settings"])
+  const [loadError, setLoadError] = useState<unknown>(null)
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const [agreement, setAgreement] = useState<Awaited<
@@ -58,6 +62,7 @@ function AgreementDetail() {
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   useEffect(() => {
+    setLoadError(null)
     let cancelled = false
     Promise.all([
       trpc.agreements.get.query({ id: agreementId }),
@@ -76,12 +81,12 @@ function AgreementDetail() {
         setPublicLink(link?.url ?? null)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t("agreements.error"))
+        if (!cancelled) setLoadError(err)
       })
     return () => {
       cancelled = true
     }
-  }, [agreementId, t])
+  }, [agreementId, t, query.revision])
   const preview = useMemo(() => {
     if (!agreement) return { html: "", error: null }
     if (agreement.offerSnapshot)
@@ -124,9 +129,10 @@ function AgreementDetail() {
       setDeleting(false)
     }
   }
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
   if (!agreement)
     return (
-      <div className="p-6">{error ? <p role="alert">{error}</p> : t("agreements.loading")}</div>
+      <div className="p-6"><QuerySkeleton /></div>
     )
   return (
     <div className="p-6 max-w-4xl grid gap-6">

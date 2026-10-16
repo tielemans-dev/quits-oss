@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import {
   contactUpdateInputSchema,
@@ -21,9 +22,10 @@ export const contactsRouter = router({
   get: authorizedProcedure("contact:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const contact = await prisma.contact.findFirstOrThrow({
+      const contact = await prisma.contact.findFirst({
         where: { id: input.id, organizationId: ctx.organizationId },
       })
+      if (!contact) throw new TRPCError({ code: "NOT_FOUND" })
       const preference = contact.email ? await prisma.recipientReminderPreference.findUnique({
         where: { organizationId_recipient: { organizationId: ctx.organizationId, recipient: normalizeReminderRecipient(contact.email) } },
         select: { unsubscribedAt: true },

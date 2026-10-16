@@ -1,3 +1,5 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { FormErrorSummary } from "../../../components/form-error-summary"
 import { FlowPreview } from "../../../components/invoices/flow-preview"
 import { useInvoiceMorph, type InvoiceFlowKind } from "../../../components/invoices/flow"
@@ -96,7 +98,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   const taxRateEdited = useRef(!!handed)
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>(handed?.vatEvidence ?? {})
   const navigate = useNavigate()
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const contactQuery = useAppQuery(["contacts"], () => trpc.contacts.list.query())
+  const contacts = (contactQuery.data ?? []) as Contact[]
   const [contactId, setContactId] = useState(handed?.contactId ?? "")
   const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState(handed?.notes ?? "")
@@ -106,8 +109,9 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadingContacts, setLoadingContacts] = useState(true)
-  const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
+  const loadingContacts = contactQuery.loading
+  const catalogQuery = useAppQuery(["catalog"], () => trpc.catalog.list.query())
+  const catalogItems = (catalogQuery.data ?? []) as CatalogItemOption[]
   const [aiCapabilities, setAiCapabilities] = useState<
     Pick<RuntimeCapabilities, "aiInvoiceDraft"> | null
   >(null)
@@ -124,21 +128,9 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
 
   useEffect(() => { if (handed?.dueDate) setDueDate(handed.dueDate) }, [])
 
-  useEffect(() => {
-    trpc.contacts.list
-      .query()
-      .then((data) => setContacts(data as Contact[]))
-      .catch(() => {})
-      .finally(() => setLoadingContacts(false))
-  }, [])
 
-  useEffect(() => {
-    trpc.catalog.list
-      .query()
-      .then((data) => setCatalogItems(data as CatalogItemOption[]))
-      .catch(() => {})
 
-  }, [])
+
 
   useEffect(() => {
     trpc.runtime.capabilities
@@ -420,6 +412,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
           })} />
           <OrganizationGaps issues={[...(readiness?.issues ?? []), ...fieldIssues]} warnings={readiness?.warnings} />
           {readiness?.issues.filter(issue => issue.field === "currency").map(issue => <p key={issue.code} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+          {catalogQuery.error && <QueryError error={catalogQuery.error} retry={catalogQuery.refresh} />}
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -469,10 +462,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4">
               <div className="grid gap-2">
               <Label htmlFor="invoice-contact">{t("docForm.contact")} *</Label>
-              {loadingContacts ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  {t("docForm.loadingContacts")}
-                </p>
+              {contactQuery.error ? <QueryError error={contactQuery.error} retry={contactQuery.refresh} /> : loadingContacts ? (
+                <QuerySkeleton />
               ) : contacts.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
                   {t("docForm.noContacts")}

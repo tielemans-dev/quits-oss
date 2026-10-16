@@ -1,5 +1,7 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import { AlertTriangle, ArrowLeft } from "lucide-react"
 import { trpc } from "../../../trpc/client"
 import { formatCurrency } from "../../../lib/i18n/format"
@@ -34,25 +36,13 @@ type Message = { kind: "info" | "error"; text: string }
 function RecurringSchedulePage() {
   const { t, locale } = useI18n()
   const { scheduleId } = Route.useParams()
-  const [schedule, setSchedule] = useState<RecurringScheduleDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
+  const query = useAppQuery(["recurring"], () => trpc.recurring.get.query({ id: scheduleId }), [scheduleId])
+  const notFound = (query.error as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND"
+  const schedule: RecurringScheduleDetail | null = notFound ? null : query.data ?? null
+  const loading = query.loading
+  const load = query.refresh
   const [message, setMessage] = useState<Message | null>(null)
   const { canUpdate } = useRecurringCapabilities()
-
-  const load = useCallback(async () => {
-    try {
-      setSchedule(await trpc.recurring.get.query({ id: scheduleId }))
-    } catch {
-      setNotFound(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [scheduleId])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   const backLink = (
     <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
@@ -63,15 +53,17 @@ function RecurringSchedulePage() {
     </Button>
   )
 
+  if (query.error && !notFound) return <div className="p-6"><QueryError error={query.error} retry={load} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">{t("recurring.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }
 
-  if (notFound || !schedule) {
+  if (!schedule) {
     return (
       <div className="p-6">
         {backLink}
@@ -106,7 +98,6 @@ function RecurringSchedulePage() {
           schedule={schedule}
           canUpdate={canUpdate}
           variant="buttons"
-          onChanged={() => void load()}
           onMessage={setMessage}
         />
       </div>

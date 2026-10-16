@@ -27,6 +27,11 @@ describeIfDatabase("customer reminder preferences", () => {
     return { org, contact, preference, admin: caller("admin"), reader: caller("accountant") }
   }
 
+  it.each(["contacts", "quotes", "invoices"] as const)("returns NOT_FOUND for missing %s details", async family => {
+    const { admin } = await setup()
+    await expect(admin[family].get({ id: crypto.randomUUID() })).rejects.toMatchObject({ code: "NOT_FOUND" })
+  })
+
   it("shows the mailbox opt-out, resumes it with an audit event and leaves other organizations opted out", async () => {
     const a = await setup()
     const b = await setup()
