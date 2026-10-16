@@ -29,6 +29,8 @@ if (envFile) {
 }
 
 if (dev) {
+  // Only the interactive dev command enables background work; direct Vite test servers do not.
+  env.QUITS_DEV_SCHEDULER ??= "true"
   const port = env.PORT || "3000"
   if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) throw new Error("Invalid PORT")
   args.push("--port", port, "--strictPort")
