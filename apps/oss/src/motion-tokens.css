@@ -5,14 +5,11 @@
  *
  * Entrances use `--ease-enter`; exits use `--ease-exit`. Durations are named for the motion they
  * time, so changing one moves only that motion. Name transitioned properties (`transition-[opacity]`),
- * avoid catch-all transitions.
+ * avoid catch-all transitions. Reduced motion (styles.css) keeps fades and drops movement.
  *
  * Spec: micro 120-180ms, morphs 220-300ms, 350ms ceiling for anything spatial (palette, card,
  * toast, row, sheet). `--duration-count` (count-up), `--duration-highlight` (tint fade),
  * `--duration-spin` and `--duration-pulse` are non-spatial: they move nothing, so they are exempt.
- *
- * Reduced motion (styles.css) drops movement and keeps opacity and colour changes as
- * `--duration-fade` cross-fades; it does not switch motion off.
  *
  * Layout properties are not compositor-only, so animate transform and opacity instead. The
  * exceptions that remain, each because the surrounding layout has to follow the change:

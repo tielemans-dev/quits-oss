@@ -61,23 +61,20 @@ export function checkReducedMotion(stylesheets, main) {
     return movement.length ? `${name} animates ${movement.join(", ")}` : null
   }
   let universal = false
+  const overrides = new Set(), stops = new Set()
   for (const [file, css] of stylesheets) {
     for (const { body } of blocks(strip(css), /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)\s*\{/g)) {
       for (const { selector, declarations } of rules(body)) {
         const where = `${file}: reduced motion, ${selector}`
         const get = (property) => declarations.find(([name]) => name === property)?.[1]
-        if (selector.split(",").some((part) => part.trim() === "*")) {
+        const parts = selector.split(",").map((part) => part.trim())
+        if (get("animation") !== undefined || get("animation-name") !== undefined) for (const part of parts) overrides.add(part)
+        if (get("animation") === "none") for (const part of parts) stops.add(part)
+        if (parts.includes("*")) {
           universal ||= file === main
-          for (const property of ["animation", "animation-name", "transition"]) {
-            if (get(property) !== undefined) failures.push(`${where}: \`${property}\` on everything turns fades into hard cuts; limit \`transition-property\` to opacity and colour instead`)
-          }
-          for (const property of (get("transition-property") ?? "").split(",").map((part) => part.trim())) {
-            if (!FADE_PROPERTIES.has(property)) failures.push(`${where}: \`transition-property\` allows ${property || "nothing"}; only opacity and colour may transition`)
-          }
-          if (get("transition-property") === undefined) failures.push(`${where}: missing \`transition-property\` limited to opacity and colour`)
-          for (const [property, value] of Object.entries(UNIVERSAL_VALUES)) {
-            if (get(property) !== value) failures.push(`${where}: \`${property}\` must be ${value}, found ${get(property) ?? "nothing"}`)
-          }
+          for (const property of ["animation", "animation-name", "transition"]) if (get(property) !== undefined) failures.push(`${where}: \`${property}\` on everything turns fades into hard cuts; limit \`transition-property\` to opacity and colour instead`)
+          for (const property of (get("transition-property") ?? "").split(",").map((part) => part.trim())) if (!FADE_PROPERTIES.has(property)) failures.push(`${where}: \`transition-property\` allows ${property || "nothing"}; only opacity and colour may transition`)
+          for (const [property, value] of Object.entries(UNIVERSAL_VALUES)) if (get(property) !== value) failures.push(`${where}: \`${property}\` must be ${value}, found ${get(property) ?? "nothing"}`)
           continue
         }
         for (const [property, value] of declarations) {
@@ -93,16 +90,21 @@ export function checkReducedMotion(stylesheets, main) {
               if (property === "animation" && duration !== FADE && !(tint && duration === "var(--duration-highlight)")) failures.push(`${where}: \`${name}\` must last ${FADE}, found ${duration ?? item}`)
             }
           }
-          if (property === "transition" && value !== "none") {
-            for (const item of value.split(/,(?![^(]*\))/)) {
-              const [target] = item.trim().split(" ")
-              if (!FADE_PROPERTIES.has(target) || !item.includes(FADE)) failures.push(`${where}: transition \`${item.trim()}\` must be an opacity or colour fade of ${FADE}`)
-            }
+          if (property === "transition" && value !== "none") for (const item of value.split(/,(?![^(]*\))/)) {
+            if (!FADE_PROPERTIES.has(item.trim().split(" ")[0]) || !item.includes(FADE)) failures.push(`${where}: transition \`${item.trim()}\` must be an opacity or colour fade of ${FADE}`)
           }
         }
       }
     }
   }
+  // A rule that animates movement needs a reduced-motion override; spinners and pulses (Tailwind utilities) need their stop rule.
+  for (const [file, css] of stylesheets) {
+    for (const { selector, declarations } of rules(strip(css).replace(/@[\w-]+[^{;]*(?:;|\{(?:[^{}]|\{[^{}]*\})*\})/g, ""))) {
+      const moving = declarations.filter(([property]) => property === "animation" || property === "animation-name").flatMap(([, value]) => value.split(/[\s,]+/)).map(fadeKeyframe).filter(Boolean)
+      for (const part of selector.split(",").map((name) => name.trim())) if (moving.length && !overrides.has(part)) failures.push(`${file}: ${part} animates (${moving[0]}) but has no reduced motion fallback`)
+    }
+  }
+  for (const part of [".animate-spin", ".animate-pulse"]) if (!stops.has(part)) failures.push(`${main}: reduced motion must stop ${part} with \`animation: none\``)
   if (!universal) failures.push(`${main}: missing the universal \`*, *::before, *::after\` rule inside \`@media (prefers-reduced-motion: reduce)\``)
   return failures
 }
