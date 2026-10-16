@@ -18,6 +18,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     vi.unstubAllEnvs()
     for (const id of organizations.splice(0)) {
       await prisma.domainEvent.deleteMany({ where: { organizationId: id } })
+      await prisma.orgSettings.deleteMany({ where: { organizationId: id } })
       await prisma.organization.delete({ where: { id } })
     }
   })

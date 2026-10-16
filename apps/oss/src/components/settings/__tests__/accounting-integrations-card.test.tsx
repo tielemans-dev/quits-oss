@@ -24,7 +24,7 @@ const idle = [
   { provider: "dinero", status: "not_connected", remoteAccountId: null, delivery: null },
 ]
 const dinero = (delivery: object, status = "connected") => [idle[0], { provider: "dinero", status, remoteAccountId: "1234", delivery }]
-const clean = { lastDeliveredAt: null, failedCount: 0, lastErrorCode: null }
+const clean = { lastDeliveredAt: null, failedCount: 0, pendingCount: 3, backoffCount: 2, lastErrorCode: null }
 const load = (providers: object[], canDisconnect = true) => api.status.mockResolvedValue({ providers, canDisconnect })
 const confirmDisconnect = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Disconnect" }))
@@ -86,7 +86,41 @@ describe("AccountingIntegrationsCard", () => {
     expect(api.retry).not.toHaveBeenCalled()
     api.retry.mockResolvedValue({ providers: dinero(clean), canDisconnect: true })
     fireEvent.click(screen.getByRole("button", { name: "Retry delivery" }))
+    const dialog = within(await screen.findByRole("alertdialog"))
+    expect(dialog.getByText(/Dinero account 1234/)).toBeTruthy()
+    expect(api.retry).not.toHaveBeenCalled()
+    fireEvent.click(dialog.getByRole("button", { name: "Cancel" }))
+    expect(api.retry).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Retry delivery" }))
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Retry delivery" }))
     await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1", confirmReconnect: true }))
+  })
+  it.each(["source_review_required", "payload_totals_mismatch", "provider_totals_mismatch"])("offers only Skip for %s", async lastErrorCode => {
+    load(dinero({ ...failed, lastErrorCode }, "error"))
+    render(<AccountingIntegrationsCard />)
+    expect(await screen.findByRole("button", { name: "Skip delivery" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Retry delivery" })).toBeNull()
+  })
+  it("reloads a stale mapping save with the current revision and shows backlog and invalid rows", async () => {
+    const { defaultMappings } = await import("../../../domain/accounting/mappings")
+    const providers = dinero(clean)
+    Object.assign(providers[1]!, { generation: "g", mappingRevision: "old", mappings: defaultMappings(), mappingsInvalid: true, invalidMappingRows: [0] })
+    load(providers)
+    api.saveMappings.mockRejectedValueOnce(new Error("accounting_mapping_stale"))
+    render(<AccountingIntegrationsCard />)
+    expect(await screen.findByText("Pending deliveries: 3")).toBeTruthy()
+    expect(screen.getByText("Waiting to retry: 2")).toBeTruthy()
+    expect(screen.getByText("Review saved VAT group 1.")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Disconnect" })).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
+    const reload = await screen.findByRole("button", { name: "Reload settings" })
+    const current = { ...providers[1], mappingRevision: "current", mappings: { ...defaultMappings(), paymentAccount: 55000 } }
+    load([providers[0]!, current])
+    api.saveMappings.mockResolvedValue({ providers: [providers[0], current], canDisconnect: true })
+    fireEvent.click(reload)
+    await waitFor(() => expect((screen.getByLabelText("Payment account") as HTMLInputElement).value).toBe("55000"))
+    fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
+    await waitFor(() => expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ mappingRevision: "current" })))
   })
   it("retries the earliest failure and refreshes the card", async () => {
     load(dinero(failed, "error"))
@@ -178,6 +212,9 @@ describe("AccountingIntegrationsCard", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("Could not load accounting integrations.")
     expect(screen.queryByText("Loading accounting integrations…")).toBeNull()
+    load(idle)
+    fireEvent.click(screen.getByRole("button", { name: "Reload settings" }))
+    expect(await screen.findByText("Dinero")).toBeTruthy()
   })
 })
 

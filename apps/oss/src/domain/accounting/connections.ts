@@ -11,7 +11,7 @@ import { dineroProvider, type DineroSettings } from "./dinero"
 import { economicProvider, type EconomicSettings } from "./economic"
 import type { AccountingConnections, AccountingTransport } from "./delivery"
 import type { AccountingEvent, AccountingProvider } from "./provider"
-import { mappingContextSchema, mappingsSchema, type AccountingMappings, type MappingContext } from "./mappings"
+import { mappingContextSchema, readStoredMappings, type AccountingMappings, type MappingContext } from "./mappings"
 
 export type ConnectionInfo = {
   organizationId: string; generation: string; provider: AccountingProviderId
@@ -78,7 +78,8 @@ export function accountingConnections(runtime: AccountingDeliveryRuntime, db: Pr
         select: { organizationId: true, generation: true, provider: true, remoteAccountId: true, mappingRevision: true, syncStartAt: true, reviewBefore: true, mappings: true },
       })
       if (!stored) return null
-      const record = { ...stored, mappings: stored.mappings === null ? undefined : mappingsSchema.parse(stored.mappings) }
+      const decoded = readStoredMappings(stored.mappings)
+      const record = { ...stored, ...decoded, mappings: stored.mappings === null ? undefined : decoded.mappings }
       const provider: AccountingProvider<Settings, Payload> = {
         id: record.provider,
         supportsDelivery: (record.provider === "dinero" ? dineroProvider : economicProvider).supportsDelivery,
@@ -100,7 +101,10 @@ export function accountingConnections(runtime: AccountingDeliveryRuntime, db: Pr
             consumerKey: { startsWith: `accounting:${record.provider}:` }, prepared: { path: ["accountFingerprint"], equals: fingerprint } }, orderBy: { updatedAt: "desc" } })
           return mappingContextSchema.parse(delivery.prepared)
         },
-        settings: (event: AccountingEvent & { id: string }, mapping?: MappingContext) => runtime.settings(mapping ? { ...record, mappingRevision: mapping.mappingRevision, mappings: mapping.mappings } : record, event),
+        settings: async (event: AccountingEvent & { id: string }, mapping?: MappingContext) => {
+          if ((!mapping || mapping.mappingRevision === record.mappingRevision) && record.mappingsInvalid) throw new Error("Invalid stored accounting mappings")
+          return runtime.settings(mapping ? { ...record, mappingRevision: mapping.mappingRevision, mappings: mapping.mappings } : record, event)
+        },
         request: (prepared: Extract<ReturnType<typeof provider.map>, { status: "prepared" }>) => prepared.payload }
     },
   } satisfies AccountingConnections<Settings, Payload>

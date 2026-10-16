@@ -47,6 +47,15 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     expect(events[0]).toMatchObject({ actorId: f.org.actors.admin.userId, commandId: expect.any(String), payload: { action: "disconnect", provider: "dinero", generation: "generation-1" } })
   })
 
+  it("keeps status and disconnect available with an invalid stored mapping row", async () => {
+    const f = await failedDelivery(), mappings = defaultMappings()
+    await prisma.accountingConnection.update({ where: { organizationId: f.org.organizationId }, data: {
+      mappings: { ...mappings, rows: [mappings.rows[0]!, { ...mappings.rows[0]!, kind: "services", country: "DE", revenueAccount: -1 }] },
+    } })
+    expect((await f.admin.accounting.status()).providers[1]).toMatchObject({ status: "error", invalidMappingRows: [1], mappingsInvalid: true })
+    await expect(f.admin.accounting.disconnect()).resolves.toMatchObject({ providers: [{ status: "not_connected" }, { status: "not_connected" }] })
+  })
+
   it.each(["dinero", "economic"] as const)("saves %s mappings with an audit entry and rejects stale or unauthorized edits", async provider => {
     const f = await failedDelivery(), mappings = defaultMappings()
     await prisma.eventConsumerDelivery.update({ where: { id: f.first.id }, data: { error: { code: "missing_mapping" } } })
@@ -114,6 +123,30 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
       expect(f.transport.reconcile).not.toHaveBeenCalled()
       expect(f.transport.send).toHaveBeenCalledTimes(2)
     }
+  })
+
+  it("recovers the right remote draft after three alternating-account reconnects", async () => {
+    const f = await failedDelivery()
+    vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-accounting-test-encryption-key")
+    await f.admin.accounting.retry({ deliveryId: f.first.id })
+    f.transport.send.mockResolvedValue({ status: 400, externalRef: "", totals: { net: "1", tax: "0.25", gross: "1.25" } })
+    expect(await f.run()).toBe("failed")
+    let accountBRequest: unknown
+    for (const remoteAccountId of ["account-B", "1234", "account-B"]) {
+      await connectAccounting({ actor: f.org.actors.admin, organizationId: f.org.organizationId, provider: "dinero", remoteAccountId, credential: "synthetic", mappingRevision: "1" })
+      expect(await f.run()).toBe("failed")
+      const deliveryId = (await f.admin.accounting.status()).providers[1]!.delivery!.failedDeliveryId!
+      await f.admin.accounting.retry({ deliveryId, confirmReconnect: true })
+      if (accountBRequest && remoteAccountId === "account-B") {
+        f.transport.reconcile.mockResolvedValueOnce({ status: "delivered", externalRef: "recovered-B", totals: { net: "1", tax: "0.25", gross: "1.25" } })
+        expect(await f.run()).toBe("delivered")
+        expect(f.transport.reconcile).toHaveBeenLastCalledWith(accountBRequest, expect.any(AbortSignal))
+      } else {
+        expect(await f.run()).toBe("failed")
+        if (remoteAccountId === "account-B") accountBRequest = (await prisma.eventConsumerDelivery.findUniqueOrThrow({ where: { id: deliveryId } })).prepared
+      }
+    }
+    expect(f.transport.send).toHaveBeenCalledTimes(3)
   })
 
   it.each(["retry", "skip"] as const)("requires an explicit %s decision for old pending deliveries", async action => {

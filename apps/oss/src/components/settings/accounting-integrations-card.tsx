@@ -36,6 +36,7 @@ export function describeAccountingError(code: string | null, provider: string, t
 export function AccountingIntegrationsCard() {
   const { t, locale } = useI18n()
   const organizationId = useActiveOrganizationId()
+  const [reload, setReload] = useState(0)
   const [state, setState] = useState<State | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -60,7 +61,7 @@ export function AccountingIntegrationsCard() {
       .catch(() => {
         if (latest.current === token) setError(t("accounting.error.load"))
       })
-  }, [t, organizationId])
+  }, [t, organizationId, reload])
 
   const canDisconnect = state?.canDisconnect === true
 
@@ -87,7 +88,8 @@ export function AccountingIntegrationsCard() {
         <CardDescription>{t("accounting.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-3">
-        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        {error ? <div className="grid justify-items-start gap-2"><p role="alert" className="text-sm text-destructive">{error}</p>
+          <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => setReload(value => value + 1)}>{t("accounting.refetch")}</Button></div> : null}
         {state === null && !error ? <p className="text-sm text-muted-foreground">{t("accounting.loading")}</p> : null}
         {state?.providers.map((item) => {
           const name = t(`accounting.provider.${item.provider}`)
@@ -131,6 +133,8 @@ export function AccountingIntegrationsCard() {
                   <span>{t("accounting.account", { id: item.remoteAccountId ?? "" })}</span>
                   {item.syncStartAt ? <span>{t("accounting.syncStart", { date: formatDateTime(item.syncStartAt, locale) })}</span> : null}
                   <span>{delivery.lastDeliveredAt ? t("accounting.lastDelivered", { date: formatDateTime(delivery.lastDeliveredAt, locale) }) : t("accounting.neverDelivered")}</span>
+                  <span>{t("accounting.pending", { count: delivery.pendingCount })}</span>
+                  <span>{t("accounting.backoff", { count: delivery.backoffCount })}</span>
                   <span>{t("accounting.failed", { count: delivery.failedCount })}</span>
                   {delivery.blockedDocument ? <span className="text-destructive">{t("accounting.mappings.blockedDocument", { number: delivery.blockedDocument })}</span> : null}
                   {delivery.failedCount > 0 ? (
@@ -140,7 +144,20 @@ export function AccountingIntegrationsCard() {
                   ) : null}
                   {canDisconnect && delivery.failedDeliveryId ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, ...(delivery.lastErrorCode === "reconnect_review_required" ? { confirmReconnect: true } : {}) }), t("accounting.action.error"))}>{t("accounting.retry")}</Button>
+                      {delivery.lastErrorCode === "reconnect_review_required" ? <AlertDialog>
+                        <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.retry")}</Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t("accounting.retry.title")}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("accounting.retry.description", { provider: name, account: item.remoteAccountId ?? "" })}</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, confirmReconnect: true }), t("accounting.action.error"))}>{t("accounting.retry")}</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog> : !["source_review_required", "payload_totals_mismatch", "provider_totals_mismatch"].includes(delivery.lastErrorCode ?? "") ?
+                        <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId! }), t("accounting.action.error"))}>{t("accounting.retry")}</Button> : null}
                       <AlertDialog onOpenChange={() => setSkipReason("")}>
                         <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.skip")}</Button></AlertDialogTrigger>
                         <AlertDialogContent>
@@ -161,7 +178,8 @@ export function AccountingIntegrationsCard() {
                   ) : null}
                 </div>
               ) : null}
-              {item.mappings ? <AccountingMappingsEditor key={`${organizationId}:${item.generation}`} provider={item.provider} config={item.mappings} canEdit={canDisconnect} busy={disconnecting}
+              {item.mappingsInvalid ? <p role="alert" className="text-sm text-destructive">{t("accounting.mappings.storedInvalid")}</p> : null}
+              {item.mappings ? <AccountingMappingsEditor key={`${organizationId}:${item.generation}:${reload}`} invalidRows={item.invalidMappingRows} provider={item.provider} config={item.mappings} canEdit={canDisconnect} busy={disconnecting}
                 save={mappings => runAction(() => trpc.accounting.saveMappings.mutate({ provider: item.provider, generation: item.generation!, mappingRevision: item.mappingRevision!, mappings }), t("accounting.mappings.error"))} /> : null}
             </div>
           )

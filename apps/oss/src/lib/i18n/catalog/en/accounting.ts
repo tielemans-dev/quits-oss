@@ -1,5 +1,13 @@
 /** Owned by the accounting integrations settings. */
 export const enAccountingMessages = {
+  "accounting.refetch": "Reload settings",
+  "accounting.pending": "Pending deliveries: {count}",
+  "accounting.backoff": "Waiting to retry: {count}",
+  "accounting.retry.title": "Retry on this connection?",
+  "accounting.retry.description": "Check the previous account for this document first. Confirm to retry on {provider} account {account}.",
+  "accounting.mappings.storedInvalid": "Some saved mappings are invalid. Review the fields and save before sending new documents.",
+  "accounting.mappings.invalidRow": "Review saved VAT group {row}.",
+
   "accounting.mappings.blockedDocument": "Missing mapping for {number}.",
   "activity.event.accounting.mappings_updated": "Updated accounting mappings ({provider})",
   "accounting.mappings.title": "Account and VAT mappings",
@@ -12,7 +20,7 @@ export const enAccountingMessages = {
   "accounting.mappings.domestic": "Domestic sales, 25% VAT",
   "accounting.mappings.services": "EU services, 0% VAT",
   "accounting.mappings.goods": "EU goods, 0% VAT",
-  "accounting.mappings.country": "Country code, blank for no country",
+  "accounting.mappings.country": "Country code, DK for domestic sales",
   "accounting.mappings.revenueAccount": "Revenue account",
   "accounting.mappings.vatCode": "VAT code",
   "accounting.mappings.productNumber": "Product number",
@@ -72,6 +80,6 @@ export const enAccountingMessages = {
   "accounting.deliveryError.http": "{provider} rejected the request (HTTP {status}).",
   "accounting.deliveryError.unknown": "Delivery failed.",
   "accounting.deliveryError.payload_totals_mismatch": "The accounting payload totals differ from the source document. Nothing was sent. Review this delivery.",
-  "accounting.deliveryError.provider_totals_mismatch": "The accounting provider reported different totals. Review the remote document before retrying.",
+  "accounting.deliveryError.provider_totals_mismatch": "The accounting provider reported different totals. Review the remote document before skipping this delivery.",
   "accounting.deliveryError.source_review_required": "The source document changed or its first-attempt evidence is missing. Review this delivery before sending.",
 } as const

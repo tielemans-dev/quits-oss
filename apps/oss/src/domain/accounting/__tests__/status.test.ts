@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "../../../../generated/prisma/client"
+import { defaultMappings } from "../mappings"
 import { readAccountingStatus } from "../status"
 
 function fakeDb(connection: object | null, done?: Date, failed: Array<{ id?: string; updatedAt: Date; error: unknown }> = []) {
@@ -31,6 +32,14 @@ describe("readAccountingStatus", () => {
     expect(db.accountingConnection.findFirst.mock.calls[0]![0].select).not.toHaveProperty("credentialEnc")
   })
 
+  it("keeps a malformed mapping visible and reports pending and backoff separately", async () => {
+    const mappings = defaultMappings()
+    const db = fakeDb({ ...dinero, mappings: { ...mappings, rows: [mappings.rows[0], { ...mappings.rows[0], kind: "services", country: "DE", revenueAccount: -1 }] } })
+    db.eventConsumerDelivery.count.mockImplementation(async ({ where }: { where: { status: string; availableAt?: { gt?: Date } } }) => where.status === "failed" ? 0 : where.availableAt?.gt ? 2 : 3)
+    expect((await readAccountingStatus("org", db))[1]).toMatchObject({ status: "connected", invalidMappingRows: [1],
+      mappings: { rows: [mappings.rows[0], expect.objectContaining({ revenueAccount: null })] }, delivery: { pendingCount: 3, backoffCount: 2 } })
+    expect(db.eventConsumerDelivery.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "pending", availableAt: { gt: expect.any(Date) } }) }))
+  })
   it("is an error after a failed delivery and ignores a malformed stored error", async () => {
     const economic = { ...dinero, provider: "economic" }
     const read = async (error: unknown) => (await readAccountingStatus("org", fakeDb(economic, undefined, [{ updatedAt: new Date(), error }])))[0]

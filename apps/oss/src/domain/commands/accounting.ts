@@ -64,12 +64,16 @@ function deliveryCommand(action: "retry" | "skip") {
       const review = reconnectReview.safeParse(row.error)
       if (action === "retry" && review.success && !input.confirmReconnect)
         return yield* Effect.fail(new InvalidState({ code: "reconnect_confirmation_required", message: "Confirm retry on the new connection" }))
-      const previous = review.success && review.data.previousDeliveryId ? yield* Effect.promise(() => db.eventConsumerDelivery.findFirst({
-        where: { organizationId: command.organizationId, id: review.data.previousDeliveryId },
+      // A flattened reconnect pointer can belong to a different account. Recover the latest
+      // attempted row for this account, including requests made after an earlier reconnect.
+      const previous = action === "retry" && review.success ? yield* Effect.promise(() => db.eventConsumerDelivery.findFirst({
+        where: { organizationId: command.organizationId, sequence: row.sequence,
+          consumerKey: { startsWith: `accounting:${connection.provider}:`, not: scope.consumerKey },
+          error: { path: ["accountFingerprint"], equals: accountFingerprint(connection) },
+          OR: [{ evidence: { not: Prisma.DbNull } }, { prepared: { not: Prisma.DbNull } }] },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
       })) : null
-      const previousReview = reconnectReview.safeParse(previous?.error)
-      const keepRequest = previousReview.success && previousReview.data.accountFingerprint === accountFingerprint(connection)
-      const restored = action === "retry" && review.success && previous && keepRequest ? {
+      const restored = action === "retry" && review.success && previous ? {
         prepared: previous.prepared ?? Prisma.DbNull, evidence: previous.evidence ?? Prisma.DbNull,
         externalRef: previous.externalRef, response: previous.response ?? Prisma.DbNull,
       } : {}
