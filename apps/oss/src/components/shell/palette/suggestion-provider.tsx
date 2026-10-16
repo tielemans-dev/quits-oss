@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react'
 
+import { prefetchRequest } from '../../command-bar/request-data'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest, type RequestRecognizer } from '../../command-bar/request-intent'
 import { loadKnown, peekKnown, type Known } from './known'
@@ -84,6 +85,7 @@ export function createSuggestionProvider(recognize: RequestRecognizer = recogniz
             // Choosing it writes it out; the request it reads as then opens as it would typed in full.
             perform: ({ fill }) => fill(text),
             card: texts.length === 1 ? ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} /> : undefined,
+            prefetch: texts.length === 1 ? () => prefetchRequest(intent) : undefined,
           }]
         })
         return items.length ? [{ id: 'suggest', heading: t('shell.palette.groupSuggest'), items }] : []

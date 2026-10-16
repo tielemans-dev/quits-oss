@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react'
 
+import { prefetchRequest } from '../../command-bar/request-data'
 import { suggestRequest } from '../../command-bar/suggest-request'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest, type RequestRecognizer, type RequestIntent } from '../../command-bar/request-intent'
@@ -29,6 +30,7 @@ export function createRequestProvider(recognize: RequestRecognizer = recognizeRe
                 expand(<RequestCardSlot intent={intent} onDismiss={close} />),
               // The cursor stays in the field while it is a preview of what is being typed.
               card: ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} />,
+              prefetch: () => prefetchRequest(intent),
             },
           ],
         },

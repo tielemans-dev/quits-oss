@@ -1,4 +1,4 @@
-import { trpc } from '../../../trpc/client'
+import { readCustomers, readInvoices } from '../../command-bar/request-data'
 
 /** What the palette grounds half-typed requests in: issued invoices and customers, by name. */
 export type Known = {
@@ -12,10 +12,11 @@ let cache: { at: number; promise: Promise<Known>; value: Known | null } | null =
 
 export function loadKnown(): Promise<Known> {
   if (cache && Date.now() - cache.at < FRESH_MS) return cache.promise
-  // Each list needs its own permission; without it that half is simply empty.
+  // The same reads the cards make, so opening the palette starts those too. Each list needs its own
+  // permission; without it that half is simply empty.
   const promise = Promise.all([
-    trpc.invoices.list.query().catch(() => []),
-    trpc.contacts.list.query().catch(() => []),
+    readInvoices().then((value) => value.invoices, () => []),
+    readCustomers().then((value) => value.customers, () => []),
   ]).then(([invoices, contacts]) => ({
     invoices: (invoices as Array<{ number: string | null; contact: { name: string } }>)
       .filter((invoice): invoice is { number: string; contact: { name: string } } => Boolean(invoice.number))

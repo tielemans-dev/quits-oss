@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { formatCurrency } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { remindedInvoiceIds } from "../../lib/jobs/reminder-tracker"
-import { trpc } from "../../trpc/client"
+import { invoicesKey, peekRequestData, readInvoices } from "./request-data"
 import { tCount } from "../dashboard/i18n"
 import { sendReminderBatch, useReminderJobs } from "../jobs/reminder-jobs-store"
 import { Button } from "../ui/button"
@@ -21,7 +21,8 @@ import { handOffToTracker } from "./tracker-handoff"
 export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
   const { t, locale } = useI18n()
   const reminded = remindedInvoiceIds(useReminderJobs())
-  const [loaded, setLoaded] = useState<{ invoices: Invoice[]; timezone: string | null } | null>(null)
+  // Started while the request was typed (see `prefetchRequest`), so it is usually here already.
+  const [loaded, setLoaded] = useState<{ invoices: Invoice[]; timezone: string | null } | null>(() => (peekRequestData(invoicesKey) as { invoices: Invoice[]; timezone: string | null } | undefined) ?? null)
   // Null until the person changes it: every overdue invoice, up to the limit.
   const [chosen, setChosen] = useState<ReadonlySet<string> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,10 +36,10 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([trpc.invoices.list.query(), trpc.settings.get.query().catch(() => ({ timezone: null }))])
-      .then(([invoices, settings]) => {
+    readInvoices()
+      .then(({ invoices, timezone }) => {
         if (cancelled) return
-        setLoaded({ invoices: invoices as unknown as Invoice[], timezone: settings.timezone ?? null })
+        setLoaded({ invoices: invoices as unknown as Invoice[], timezone })
       })
       .catch(() => { if (!cancelled) setError(t("shell.request.overdue.error.load")) })
     return () => { cancelled = true }

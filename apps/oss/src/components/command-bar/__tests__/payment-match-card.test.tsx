@@ -15,6 +15,10 @@ vi.mock("../../shell/use-shell-permissions", () => ({ useShellPermissions: () =>
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { PaymentMatchCard } from "../payment-match-card"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 
 const invoice = (id: string, name: string, balanceDue: number) => ({
   id, number: `F-${id}`, status: "sent", paymentStatus: "unpaid", balanceDue, currency: "DKK", contact: { name },

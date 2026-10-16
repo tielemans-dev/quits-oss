@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi, beforeEach } from "vitest"
 const api = vi.hoisted(() => ({ overview: vi.fn(), save: vi.fn(), can: vi.fn(() => true), export: vi.fn(), handoff: vi.fn() }))
 vi.mock("../../../trpc/client", () => ({ trpc: { exports: { vatOverview: { query: api.overview }, setPurchaseVat: { mutate: api.save } } } }))
 vi.mock("../../shell/use-shell-permissions", () => ({ useShellPermissions: () => ({ can: api.can }) }))
@@ -9,6 +9,10 @@ vi.mock("../tracker-handoff", () => ({ handOffToTracker: api.handoff }))
 import { I18nProvider } from "../../../lib/i18n/react"
 import { VatRequestCard } from "../vat-request-card"
 import { permittedRequest, recognizeRequest } from "../request-intent"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 const open = () => render(<I18nProvider locale="da-DK"><div data-slot="request-card-slot"><VatRequestCard intent={{ kind: "vat", input: "vis moms" }} onDismiss={vi.fn()} /></div></I18nProvider>)
 afterEach(() => { cleanup(); vi.clearAllMocks(); api.can.mockReturnValue(true) })
 it("recognizes a VAT request in either entry point and requires export permission", () => {

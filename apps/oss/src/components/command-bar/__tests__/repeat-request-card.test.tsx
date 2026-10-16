@@ -26,6 +26,10 @@ import { removeUndo } from "../../undo/undo-store"
 import { UndoToaster } from "../../undo/undo-toaster"
 import { InvoiceRequestCard } from "../invoice-request-card"
 import { onRequestDone } from "../request-events"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 
 const ready = { issues: [], recipientVersion: "v1", taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" }
 const lastInvoice = { id: "inv-146", number: "INV-0146", pricesIncludeTax: false, items: [{ description: "Designsparring, september", quantity: 20, displayUnitPrice: 900, vatTreatment: "standard", vatRateInput: null, vatCountry: null, vatReasonCode: null }] }

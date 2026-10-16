@@ -25,6 +25,10 @@ import { I18nProvider } from "../../../lib/i18n/react"
 import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../../lib/request-handoff"
 import { InvoiceRequestCard } from "../invoice-request-card"
 import { onRequestDone } from "../request-events"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 
 const ready = { issues: [], recipientVersion: "v1", taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" }
 const text = () => (document.body.textContent ?? "").replace(/ /g, " ")

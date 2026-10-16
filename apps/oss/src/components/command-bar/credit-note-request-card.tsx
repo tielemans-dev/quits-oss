@@ -5,6 +5,7 @@ import { buildCreditLines } from "../../lib/credit-notes/calculation"
 import { formatCurrency } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
+import { creditNumber, peekCredit, readCredit } from "./request-data"
 import type { CreditNoteAvailability } from "../credit-notes/types"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
@@ -35,7 +36,7 @@ function draftToast(id: string, invoiceId: string, message: string, undo: string
 export function CreditNoteRequestCard({ intent, onDismiss }: RequestCardProps) {
   const { t, locale } = useI18n()
   const fieldId = useId()
-  const [data, setData] = useState<CreditNoteAvailability | null>(null)
+  const [data, setData] = useState<CreditNoteAvailability | null>(() => peekCredit(creditNumber(intent.input)) ?? null)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [category, setCategory] = useState("quantity")
   const [reason, setReason] = useState("")
@@ -45,10 +46,10 @@ export function CreditNoteRequestCard({ intent, onDismiss }: RequestCardProps) {
   const request = useRef({ key: "", id: "" })
   useEffect(() => {
     let cancelled = false
-    setData(null); setError(false); setQuantities({})
-    trpc.creditNotes.findInvoice.query({ number: intent.input.trim().split(/\s+/)[1]! })
-      .then(invoice => { if (!invoice) throw new Error("not_found"); return trpc.creditNotes.availability.query({ invoiceId: invoice.id }) })
-      .then(value => { if (!cancelled) setData(value) })
+    const number = creditNumber(intent.input)
+    setData(peekCredit(number) ?? null); setError(false); setQuantities({})
+    readCredit(number)
+      .then(value => { if (!value) throw new Error("not_found"); if (!cancelled) setData(value) })
       .catch(() => { if (!cancelled) setError(true) })
     return () => { cancelled = true }
   }, [intent.input])
