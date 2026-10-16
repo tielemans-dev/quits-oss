@@ -19,11 +19,9 @@ vi.mock("@tanstack/react-router", () => ({
   Link: () => null,
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) => select({ location: route }),
 }))
-vi.mock("../palette", async () => ({
-  onPaletteOpen: (await import("../palette/palette-events")).onPaletteOpen,
-  returnFromPalette: (await import("../palette/palette-events")).returnFromPalette,
-  CommandPalette: ({ open, initialQuery, onNavigate }: { open: boolean; initialQuery?: string; onNavigate?: () => void }) => (
-    <button type="button" data-testid="palette" data-open={open} data-query={initialQuery} onClick={onNavigate}>
+vi.mock("../palette", () => ({
+  CommandPalette: ({ open, onNavigate }: { open: boolean; onNavigate?: () => void }) => (
+    <button type="button" data-testid="palette" data-open={open} onClick={onNavigate}>
       navigate
     </button>
   ),
@@ -36,7 +34,6 @@ vi.mock("../new-menu", () => ({
 }))
 
 import { AppMain } from "../app-main"
-import { openPaletteFrom } from "../palette/palette-events"
 
 afterEach(() => {
   cleanup()
@@ -103,15 +100,15 @@ describe("app main new menu", () => {
 })
 
 describe("app main on Overblik", () => {
-  it("shows no search of its own, and opens the palette with what the command bar was given", () => {
+  it("shows no search of its own, and ⌘K goes to the field in the page", () => {
     route.pathname = "/"
-    render(<AppMain>page</AppMain>)
+    render(<AppMain><div data-live-sheet=""><input aria-label="felt" /></div></AppMain>)
     expect(screen.queryByTestId("search-field")).toBeNull()
 
-    act(() => openPaletteFrom({ from: document.body, query: "bi" }))
+    fireEvent.keyDown(window, { key: "k", metaKey: true })
 
-    expect(screen.getByTestId("palette").getAttribute("data-open")).toBe("true")
-    expect(screen.getByTestId("palette").getAttribute("data-query")).toBe("bi")
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "felt" }))
+    expect(screen.getByTestId("palette").getAttribute("data-open")).toBe("false")
   })
 
   it("keeps the search field everywhere else", () => {

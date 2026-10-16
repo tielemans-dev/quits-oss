@@ -302,30 +302,25 @@ describe("command palette", () => {
     expect(palette.className).not.toContain("left-1/2")
   })
 
-  it("covers a wide field, opens with what it held, and puts its icon on the field's", () => {
+  it("covers a wide field and puts its icon on the field's", () => {
     const anchor = { top: 152, left: 272, width: 968, height: 58 } as DOMRect
-    render(<CommandPalette open onOpenChange={() => {}} can={everything} billingEnabled={false} anchor={anchor} anchorInset={21} initialQuery="kredit" />)
+    render(<CommandPalette open onOpenChange={() => {}} can={everything} billingEnabled={false} anchor={anchor} anchorInset={21} />)
 
     expect(screen.getByRole("dialog").style.left).toBe("264px")
-    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("kredit")
     expect(screen.getByRole("combobox").parentElement!.style.paddingLeft).toBe("28px")
   })
 
-  it("goes back into the field it grew out of: emptied with Ryd, or put away with Esc and the text kept", () => {
+  it("goes back into the field it grew out of when emptied with Ryd", () => {
     const anchor = { top: 152, left: 272, width: 968, height: 58 } as DOMRect
     const onOpenChange = vi.fn()
-    const onDismiss = vi.fn()
-    render(<CommandPalette open onOpenChange={onOpenChange} onDismiss={onDismiss} can={everything} billingEnabled={false} anchor={anchor} initialQuery="kredit" placeholder="Skriv en opgave" />)
+    render(<CommandPalette open onOpenChange={onOpenChange} can={everything} billingEnabled={false} anchor={anchor} placeholder="Skriv en opgave" />)
 
     expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Skriv en opgave")
     expect(screen.getByRole("dialog").className).toContain("palette-into-field")
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "kredit" } })
     fireEvent.click(screen.getByRole("button", { name: "Ryd" }))
     expect(onOpenChange).toHaveBeenLastCalledWith(false)
-    expect(onDismiss).not.toHaveBeenCalled()
     expect(screen.getByRole("dialog").style.getPropertyValue("--palette-field")).toContain("inset(")
-
-    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Escape" })
-    expect(onDismiss).toHaveBeenCalledWith("kredit")
   })
 
   it("tells the shell when an item navigates, besides closing", () => {

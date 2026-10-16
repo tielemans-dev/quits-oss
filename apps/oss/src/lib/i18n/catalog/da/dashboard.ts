@@ -22,9 +22,7 @@ export const daDashboardMessages = {
   "dashboard.morning.vat.title.other": "Moms for {period} skal indberettes om {count} dage",
   "dashboard.morning.vat.today": "Moms for {period} skal indberettes i dag",
   "dashboard.morning.vat.detail": "Frist {date}",
-  "dashboard.commandBar.label": "Skriv en opgave til quits",
   "dashboard.commandBar.placeholder": "Søg, spørg quits eller skriv en opgave …",
-  "dashboard.commandBar.submit": "Bed quits",
 
   "dashboard.error.title": "Overblikket kunne ikke indlæses",
   "dashboard.error.description": "Vi kunne ikke hente dine tal lige nu. Dine fakturaer er ikke berørt.",

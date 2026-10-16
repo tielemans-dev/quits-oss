@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import { SidebarTrigger, useSidebar } from '../ui/sidebar'
 import { NewMenu } from './new-menu'
-import { CommandPalette, onPaletteOpen, returnFromPalette } from './palette'
+import { CommandPalette } from './palette'
 import { createActions } from './palette/builtin-providers'
 import { SearchField } from './search-field'
 import { useShellHotkeys } from './use-shell-hotkeys'
@@ -28,44 +28,38 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
   const { setOpenMobile } = useSidebar()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
-  // Overblik has one field, its command bar, and the top bar shows no search of its own there.
+  // Overblik has one field, the palette in the page, and the top bar shows no search of its own there.
   const overview = useRouterState({ select: (state) => state.location.pathname }) === '/'
   // Where the search field is when the palette opens: on a wide screen the palette grows out of it.
   const searchRef = useRef<HTMLButtonElement>(null)
   const [paletteAnchor, setPaletteAnchor] = useState<DOMRect | null>(null)
   const [paletteInset, setPaletteInset] = useState(8)
-  const [paletteQuery, setPaletteQuery] = useState('')
   const measure = useCallback((field: Element | null) => {
     const rect = field && window.matchMedia?.('(min-width: 768px)').matches ? field.getBoundingClientRect() : null
     setPaletteAnchor(rect)
     const icon = field?.querySelector('svg')
     if (rect && icon) setPaletteInset(icon.getBoundingClientRect().left - rect.left)
   }, [])
-  const measureSearch = useCallback(() => {
-    setPaletteQuery('')
-    measure(overview ? document.querySelector('[data-slot=command-bar]') : searchRef.current)
-  }, [measure, overview])
+  const measureSearch = useCallback(() => measure(searchRef.current), [measure])
+  // On Overblik the palette is already in the page: ⌘K and / go to it there.
+  const focusField = useCallback(() => {
+    const field = overview ? document.querySelector<HTMLInputElement>('[data-live-sheet] input') : null
+    field?.focus()
+    return field !== null
+  }, [overview])
 
   const openPalette = useCallback(() => {
     setNewMenuOpen(false)
+    if (focusField()) return
     measureSearch()
     setPaletteOpen(true)
-  }, [measureSearch])
+  }, [measureSearch, focusField])
   const togglePalette = useCallback(() => {
     setNewMenuOpen(false)
+    if (focusField()) return
     measureSearch()
     setPaletteOpen((open) => !open)
-  }, [measureSearch])
-  useEffect(
-    () =>
-      onPaletteOpen(({ from, query }) => {
-        setNewMenuOpen(false)
-        measure(from)
-        setPaletteQuery(query)
-        setPaletteOpen(true)
-      }),
-    [measure]
-  )
+  }, [measureSearch, focusField])
   // The menu exists once the role is known and lets the member create something. Until then an
   // `N` must not be remembered: the menu would open by itself the moment it becomes available.
   const newMenuAvailable = ready && !readOnly && createActions.some((action) => can(action.capability))
@@ -110,9 +104,6 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
         onOpenChange={setPaletteOpen}
         anchor={paletteAnchor}
         anchorInset={paletteInset}
-        initialQuery={paletteQuery}
-        placeholder={overview ? t('dashboard.commandBar.placeholder') : undefined}
-        onDismiss={overview ? returnFromPalette : undefined}
         can={can}
         billingEnabled={billingEnabled}
         // ⌘K works over the mobile drawer; going to a page must not leave the drawer over it.
