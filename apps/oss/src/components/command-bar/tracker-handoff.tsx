@@ -38,13 +38,23 @@ function fly(el: HTMLElement, from: DOMRect, done: () => void) {
   animation.finished.then(done, done)
 }
 
+/** The landed square takes the toast's shape and fades out over it, so the toast grows out of it. */
+function settle(el: HTMLElement, into: Element | null, done: () => void) {
+  if (typeof el.animate !== "function" || prefersReducedMotion()) return done()
+  const from = el.getBoundingClientRect()
+  const to = into?.getBoundingClientRect() ?? from
+  const box = (r: DOMRect) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` })
+  el.animate([{ ...box(from), opacity: 1 }, { ...box(to), opacity: 0 }], { duration: DURATION.base, easing: EASE_ENTER, fill: "forwards" })
+    .finished.then(done, done)
+}
+
 function Square({ from, send, labels, release }: { from: DOMRect; send: () => Promise<unknown>; labels: HandoffLabels; release: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [failed, setFailed] = useState(false)
   const [queued, setQueued] = useState(false)
   const [landed, setLanded] = useState(false)
-  // The toast that was already there is not the one this square waits for.
-  const stale = useRef(document.querySelector(TOAST)?.getAttribute("data-job-id") ?? null)
+  // Toasts that were already there are not the one this square waits for.
+  const [stale] = useState(() => new Set([...document.querySelectorAll(TOAST)].map((el) => el.getAttribute("data-job-id"))))
 
   function attempt() {
     setFailed(false)
@@ -61,16 +71,20 @@ function Square({ from, send, labels, release }: { from: DOMRect; send: () => Pr
   // Let go once the toast has taken over the same square, or soon after the job was queued without one.
   useEffect(() => {
     if (!landed || failed) return
+    let settling = false
     const taken = () => {
-      const toast = document.querySelector(TOAST)
-      if (toast && toast.getAttribute("data-job-id") !== stale.current) release()
+      // Older toasts can still be showing; the one to hand over to is the one that is not stale.
+      const toast = [...document.querySelectorAll(TOAST)].find((el) => !stale.has(el.getAttribute("data-job-id")))
+      if (settling || !toast) return
+      settling = true
+      settle(ref.current!, toast, release)
     }
     taken()
     const observer = new MutationObserver(taken)
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-job-id"] })
-    const fallback = queued ? setTimeout(release, SETTLE_MS) : undefined
+    const fallback = queued ? setTimeout(() => settle(ref.current!, null, release), SETTLE_MS) : undefined
     return () => { observer.disconnect(); clearTimeout(fallback) }
-  }, [landed, failed, queued, release])
+  }, [landed, failed, queued, release, stale])
 
   return (
     <div

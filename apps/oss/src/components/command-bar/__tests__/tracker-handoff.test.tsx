@@ -38,6 +38,16 @@ describe("tracker hand-off", () => {
     await waitFor(() => expect(square()).toBeNull())
   })
 
+  it("hands over to the new job's toast while an older toast is still showing", async () => {
+    toast("old")
+    handOffToTracker(from, vi.fn().mockResolvedValue({ jobId: "j3" }), labels)
+
+    await waitFor(() => expect(square()).not.toBeNull())
+    act(() => toast("j3"))
+    await waitFor(() => expect(square()).toBeNull())
+    document.querySelectorAll("[data-slot=reminder-tracker]").forEach((el) => el.remove())
+  })
+
   it("lets go soon after the job was queued even if no toast comes", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     handOffToTracker(from, vi.fn().mockResolvedValue({}), labels)
