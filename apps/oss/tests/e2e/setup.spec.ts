@@ -48,6 +48,6 @@ test("completes the setup wizard and lands on login", async ({ page }) => {
   await page.goto("/settings")
   await waitForClientReady(page)
 
-  await expect(page.getByLabel("Virksomhedsnavn")).toHaveValue("Setup Billing")
-  await expect(page.getByLabel("Virksomheds-e-mail")).toHaveValue("billing@example.com")
+  await expect(page.getByLabel("Virksomhedsnavn", { exact: true })).toHaveValue("Setup Billing")
+  await expect(page.getByLabel("Virksomheds-e-mail", { exact: true })).toHaveValue("billing@example.com")
 })
