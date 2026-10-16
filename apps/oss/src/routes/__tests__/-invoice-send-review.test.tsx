@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { handledMutationError } from "../../lib/query-refresh"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType, ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -115,7 +116,7 @@ describe("new invoice send review", () => {
     fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" }))
     const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
     await act(async () => { fireEvent.click(confirm) })
-    await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate: sendSupplyDate })))
+    await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate: sendSupplyDate }), handledMutationError))
     await waitFor(() => expect(screen.getByRole("button", { name: "invoices.detail.action.send" }).hasAttribute("disabled")).toBe(false))
     fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.edit" }))
     expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(supplyDate ?? "")
@@ -207,7 +208,7 @@ describe("new invoice send review", () => {
     await act(async () => { fireEvent.click(proceed) })
     expect(api.create).toHaveBeenCalledTimes(1)
     expect(api.send).toHaveBeenCalledTimes(1)
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id }), handledMutationError)
     expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/invoices/$invoiceId" }))
   })
   it("keeps the form when persistence fails and never opens the bank nudge", async () => {
@@ -375,7 +376,7 @@ describe("new invoice send review", () => {
     expect(api.create).not.toHaveBeenCalled()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: "0.134", rateDate: "2026-10-12" }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: "0.134", rateDate: "2026-10-12" }), handledMutationError)
   })
   it("validates the fresh readiness currency before confirmation", async () => {
     api.readiness.mockResolvedValueOnce({ issues: [], recipientVersion: RECIPIENT_VERSION, nextNumber: "INV-0001", taxRate: "25", pricesIncludeTax: false })
@@ -518,14 +519,14 @@ describe("invoice detail send review", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
     api.get.mockResolvedValue({ ...draft, total: 250, reviewedVersion: "22222222222222222222222222222222" })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ reviewedVersion: draft.reviewedVersion }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ reviewedVersion: draft.reviewedVersion }), handledMutationError)
     expect(await screen.findByText("invoiceValidation.changedSinceReview")).toBeTruthy()
     expect(api.send).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.trigger" }))
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.email.degraded.confirm" })) })
     expect(api.send).toHaveBeenCalledTimes(1)
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ reviewedVersion: "22222222222222222222222222222222" }))
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ reviewedVersion: "22222222222222222222222222222222" }), handledMutationError)
   })
   it("never confirms a send without a review version after an edit response lacked one", async () => {
     const draft = { ...invoice, status: "draft", number: null, reviewedVersion: undefined }
@@ -551,7 +552,7 @@ describe("invoice detail send review", () => {
     expect(api.send).not.toHaveBeenCalled()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     expect(api.send).toHaveBeenCalledTimes(1)
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, allowSendWithoutEmail: true, reviewedVersion: invoice.reviewedVersion }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, allowSendWithoutEmail: true, reviewedVersion: invoice.reviewedVersion }), handledMutationError)
   })
   it.each(["", "0", "-1", "NaN", "1e2", "1.1234567890123"])("blocks foreign-currency detail confirmation for rate %j", async exchangeRate => {
     api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR", number: null })
@@ -577,7 +578,7 @@ describe("invoice detail send review", () => {
     expect(screen.getByRole("dialog")).toBeTruthy()
     expect(api.send).not.toHaveBeenCalled()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.45", rateDate: "2026-10-12" }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.45", rateDate: "2026-10-12" }), handledMutationError)
   })
   it("reads the readiness fresh before confirming, so a gap that appeared since the page loaded blocks the dialog", async () => {
     api.readiness.mockResolvedValueOnce({ issues: [], warnings: [], taxRate: "25", baseCurrency: "DKK" })
@@ -685,7 +686,7 @@ describe("new invoice valuation across the bank nudge", () => {
     } else {
       api.send.mockRejectedValueOnce(new Error("Synthetic send failure"))
       await act(async () => { fireEvent.click(screen.getByRole("button", { name: "onboardingV2.bankNudge.continue" })) })
-      expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: "7.456789", rateDate: "2026-10-02" }))
+      expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ exchangeRate: "7.456789", rateDate: "2026-10-02" }), handledMutationError)
     }
     await waitFor(() => expect(api.navigate).toHaveBeenCalled())
     expect(api.create).toHaveBeenCalledOnce()
@@ -698,7 +699,7 @@ describe("new invoice valuation across the bank nudge", () => {
     expect((screen.getByLabelText("invoices.issuance.rateDate") as HTMLInputElement).value).toBe("2026-10-02")
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.456789", rateDate: "2026-10-02" }))
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.456789", rateDate: "2026-10-02" }), handledMutationError)
     expect(api.send).toHaveBeenCalledTimes(outcome === "failed send" ? 2 : 1)
     expect(api.create).toHaveBeenCalledOnce()
   })
@@ -717,7 +718,7 @@ describe("new invoice valuation across the bank nudge", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "onboardingV2.bankNudge.continue" })) })
     expect(api.send).toHaveBeenCalledOnce()
-    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.456789", rateDate: "2026-10-02" }))
+    expect(api.send).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.456789", rateDate: "2026-10-02" }), handledMutationError)
     expect(api.create).toHaveBeenCalledOnce()
     expect(sessionStorage.length).toBe(0)
   })
@@ -761,7 +762,7 @@ describe("invoice detail valuation across the bank nudge", () => {
     expect((screen.getByLabelText("invoices.issuance.rateDate") as HTMLInputElement).value).toBe("2026-09-30")
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.123456", rateDate: "2026-09-30" }))
+    expect(api.send).toHaveBeenLastCalledWith(expect.objectContaining({ id: invoice.id, exchangeRate: "7.123456", rateDate: "2026-09-30" }), handledMutationError)
     expect(api.send).toHaveBeenCalledTimes(outcome === "failed send" ? 2 : 1)
     expect(api.create).not.toHaveBeenCalled()
     expect(sessionStorage.length).toBe(0)

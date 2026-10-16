@@ -1,4 +1,8 @@
 export const enUiMessages = {
+  "ui.queryError": "Couldn't load the data",
+  "ui.retry": "Try again",
+  "ui.loading": "Loading…",
+  "ui.mutationError": "Couldn't save your changes. Try again.",
   "ui.close": "Close",
   "ui.sidebar.title": "Sidebar",
   "ui.sidebar.mobileDescription": "Displays the mobile sidebar.",

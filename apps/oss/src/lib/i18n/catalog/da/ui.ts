@@ -1,4 +1,8 @@
 export const daUiMessages = {
+  "ui.queryError": "Dataene kunne ikke hentes",
+  "ui.retry": "Prøv igen",
+  "ui.loading": "Indlæser…",
+  "ui.mutationError": "Dine ændringer kunne ikke gemmes. Prøv igen.",
   "ui.close": "Luk",
   "ui.sidebar.title": "Sidepanel",
   "ui.sidebar.mobileDescription": "Viser sidepanelet på mobil.",
