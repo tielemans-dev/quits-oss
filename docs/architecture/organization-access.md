@@ -12,6 +12,15 @@ billing with neutral read-only copy, ignoring legacy trial dates. The app shares
 the banner, form gates, read-only indicator and billing page, refreshing every minute and on
 window focus. The server remains authoritative between refreshes. A missing decision refuses
 writes. Self-hosters use the noop provider and have unlimited access without hosted gates.
+Refresh failures retain the last successful snapshot, including form edits. Only an initial
+failure blocks the UI; every mutation still checks current server access.
+
+Providers must return `access.checkoutAvailable` and `access.portalAvailable` explicitly.
+The noop provider disables both. Billing controls follow these capabilities, never legacy
+payment status or subscription presence, and report a missing redirect URL as an error.
+Subscription-gated managed AI and company research use `hasSubscriptionAccess`: subscribed,
+complimentary and unlimited self-hosted states qualify; trial and read-only states do not.
+Other feature flags and the organization's AI Settings still apply.
 
 Successful onboarding invokes the transactional trial hook even during registry outages,
 passing `cvrVerified: false`. Hosted providers must persist one organization trial and preserve

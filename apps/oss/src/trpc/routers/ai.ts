@@ -23,6 +23,7 @@ import { decryptSecret } from "../../lib/secrets"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { usesStripeConnectCheckout } from "../../lib/payments/stripe"
 import { getBillingProvider } from "../../lib/runtime/services"
+import { hasSubscriptionAccess } from "../../lib/billing/organization-access"
 import { authorizedProcedure, router } from "../init"
 
 const aiGenerateInvoiceDraftInputSchema = z.object({
@@ -211,7 +212,7 @@ export const aiRouter = router({
         }
         if (capabilities.aiInvoiceDraft.managedRequiresSubscription) {
           const subscription = await getBillingProvider().getSubscription(ctx.organizationId)
-          if (subscription.status !== "active") {
+          if (!hasSubscriptionAccess(subscription.organizationAccess)) {
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
               message: "Managed AI needs an active subscription",

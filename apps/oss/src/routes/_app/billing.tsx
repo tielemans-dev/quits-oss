@@ -6,12 +6,11 @@ import { useTrialAccess } from "../../components/billing/trial-access"
 import { Button } from "../../components/ui/button"
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
 } from "../../components/ui/card"
-import { AlertTriangle, CreditCard } from "lucide-react"
+import { CreditCard } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
 import type { BillingSubscription } from "../../lib/billing/types"
 import { formatPlanAmount, formatPlanPrice, formatTrialDate } from "../../lib/billing/trial-format"
@@ -58,9 +57,8 @@ function BillingPage() {
     setError(null)
     try {
       const result = await trpc.billing.createCheckoutSession.mutate()
-      if (result.url) {
-        window.location.href = result.url
-      }
+      if (!result.url) throw new Error(t("billing.error.checkout"))
+      window.location.href = result.url
     } catch (err) {
       setError(
         err instanceof Error
@@ -77,9 +75,8 @@ function BillingPage() {
     setError(null)
     try {
       const result = await trpc.billing.createPortalSession.mutate()
-      if (result.url) {
-        window.location.href = result.url
-      }
+      if (!result.url) throw new Error(t("billing.error.portal"))
+      window.location.href = result.url
     } catch (err) {
       setError(
         err instanceof Error
@@ -90,8 +87,6 @@ function BillingPage() {
       setActionLoading(false)
     }
   }
-
-  if (trial?.error || (!loading && billingEnabled && !subscription?.organizationAccess)) return <p role="alert">{t("billing.error.loadSubscription")}</p>
 
   if (loading) {
     return (
@@ -105,141 +100,10 @@ function BillingPage() {
     )
   }
 
-  const status = subscription?.organizationAccess.state ?? "self_hosted"
-
-  const statusLabels: Record<string, { label: string; className: string }> = {
-    self_hosted: { label: t("billing.status.free"), className: "text-muted-foreground" },
-    subscribed: { label: t("billing.status.active"), className: "text-tone-success" },
-    read_only: { label: t("billing.status.canceled"), className: "text-tone-warning" },
-    trial: { label: t("trial.status.active"), className: "text-tone-success" },
-  }
-
-  const statusInfo = statusLabels[status] ?? {
-    label: status,
-    className: "text-muted-foreground",
-  }
-
-  if (subscription?.organizationAccess) {
-    return <HostedBillingPage subscription={subscription} actionLoading={actionLoading} error={error}
-      success={search.success} canceled={search.canceled}
-      onUpgrade={subscription.access?.hasSubscription ? handleManage : handleUpgrade} onManage={handleManage} />
-  }
-
-  return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center gap-2 mb-6">
-        <CreditCard className="size-6" />
-        <h1 className="text-2xl font-bold">{t("billing.title")}</h1>
-      </div>
-
-      {search.success && subscription?.organizationAccess.state === "subscribed" && (
-        <div className="mb-4 rounded-md border border-tone-success/30 bg-tone-success/10 p-3 text-sm text-foreground">
-          {t("billing.flash.success")}
-        </div>
-      )}
-      {search.canceled && (
-        <div className="mb-4 flex items-start gap-2 rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
-          <span>{t("billing.flash.canceled")}</span>
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 rounded-md border border-tone-danger/30 bg-tone-danger/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("billing.subscription.title")}</CardTitle>
-          <CardDescription>
-            {t("billing.subscription.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">{t("billing.currentPlan")}</p>
-              {(!subscription?.access?.paidOnly || subscription.access.hasSubscription) && <p className={`text-lg font-semibold ${statusInfo.className}`}>
-                {statusInfo.label}
-              </p>}
-            </div>
-          </div>
-
-          {subscription?.access?.paidOnly && (
-            <div className="grid gap-2">
-              {subscription.access.checkoutAvailable && <Button onClick={handleUpgrade} disabled={actionLoading}>
-                {actionLoading ? t("billing.action.redirecting") : t("billing.action.upgrade")}
-              </Button>}
-              {subscription.access.portalAvailable && <Button variant="outline" onClick={handleManage} disabled={actionLoading}>
-                {actionLoading ? t("billing.action.redirecting") : t("billing.action.manage")}
-              </Button>}
-            </div>
-          )}
-
-          {!subscription?.access?.paidOnly && status === "self_hosted" && (
-            <div className="grid gap-2">
-              <p className="text-sm text-muted-foreground">
-                {t("billing.free.description")}
-              </p>
-              <Button onClick={handleUpgrade} disabled={actionLoading}>
-                {actionLoading
-                  ? t("billing.action.redirecting")
-                  : t("billing.action.upgrade")}
-              </Button>
-            </div>
-          )}
-
-          {!subscription?.access?.paidOnly && status === "subscribed" && (
-            <div className="grid gap-2">
-              <p className="text-sm text-muted-foreground">
-                {t("billing.active.description")}
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleManage}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? t("billing.action.redirecting")
-                  : t("billing.action.manage")}
-              </Button>
-            </div>
-          )}
-
-          {!subscription?.access?.paidOnly && status === "read_only" && (
-            <div className="grid gap-2">
-              <p className="text-sm text-muted-foreground">
-                {t("billing.canceled.description")}
-              </p>
-              <Button onClick={handleUpgrade} disabled={actionLoading}>
-                {actionLoading
-                  ? t("billing.action.redirecting")
-                  : t("billing.action.resubscribe")}
-              </Button>
-            </div>
-          )}
-
-          {!subscription?.access?.paidOnly && status === "read_only" && (
-            <div className="grid gap-2">
-              <p className="text-sm text-muted-foreground">
-                {t("billing.pastDue.description")}
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleManage}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? t("billing.action.redirecting")
-                  : t("billing.action.updatePaymentMethod")}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
+  if (!subscription?.organizationAccess) return <p role="alert">{t("billing.error.loadSubscription")}</p>
+  return <HostedBillingPage subscription={subscription} actionLoading={actionLoading} error={error}
+    success={search.success} canceled={search.canceled}
+    onUpgrade={subscription.access?.portalAvailable ? handleManage : handleUpgrade} onManage={handleManage} />
 }
 
 function HostedBillingPage({ subscription, actionLoading, error, success, canceled, onUpgrade, onManage }: {
@@ -292,10 +156,10 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           {subscription.paymentMethod && <p className="mt-2 text-sm text-muted-foreground">{t("trial.billing.card", {
             brand: subscription.paymentMethod.brand, last4: subscription.paymentMethod.last4,
           })}</p>}
-          <div className="mt-6 grid gap-2">
+          {subscription.access?.portalAvailable && <div className="mt-6 grid gap-2">
             <Button onClick={onManage} disabled={actionLoading}>{t("trial.billing.manage")}</Button>
             <Button variant="outline" onClick={onManage} disabled={actionLoading}>{t("trial.billing.cancel")}</Button>
-          </div>
+          </div>}
         </>}
       </section>
       {!isComped && <section className="rounded-lg border border-border bg-card p-6">
@@ -306,7 +170,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
         <ul className="mt-6 grid gap-3 text-sm">
           {([1, 2, 3, 4, 5] as const).map(number => <li key={number} className="flex gap-2.5"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 bg-settled" />{t(`trial.billing.include${number}`)}</li>)}
         </ul>
-        {!isPaid && !isComped && <>
+        {!isPaid && !isComped && (subscription.access?.portalAvailable || subscription.access?.checkoutAvailable) && <>
           <Button className="mt-7 h-11 w-full rounded-md bg-foreground text-background hover:bg-foreground/90" onClick={onUpgrade} disabled={actionLoading}>
             {actionLoading ? t("billing.action.redirecting") : subscription.access?.portalAvailable
               ? t("trial.billing.manage") : price ? t("trial.billing.cta", { price }) : t("trial.action.upgradeNow")}

@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client"
 
+/** Legacy payment metadata, never an entitlement or access decision. */
 export type SubscriptionStatus = "free" | "trialing" | "expired" | "active" | "canceled" | "past_due"
 export type ReadOnlyReason = "trial_ended" | "payment_failed" | "canceled"
 
@@ -19,8 +20,8 @@ export type BillingSubscription = {
   invoiceHistory?: Array<{ id: string; amountPaid: number; created: number; url: string | null }>
   paymentMethod?: { brand: string; last4: string } | null
   plan?: { name: string; unitAmount: number; currency: string; interval: "month"; taxBehavior: "inclusive" | "exclusive" } | null
-  /** Optional distribution presentation. Access decisions always remain server-side. */
-  access?: {
+  /** Required billing action capabilities. These never grant organization access. */
+  access: {
     paidOnly: boolean
     hasSubscription: boolean
     checkoutAvailable: boolean

@@ -6,6 +6,7 @@ export class NoopBillingProvider implements Required<BillingProvider> {
       status: "free",
       organizationAccess: { state: "self_hosted" },
       priceId: null,
+      access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false },
     }
   }
 

@@ -3,6 +3,7 @@ import { FALLBACK_AI_MODELS } from "../../../lib/ai/invoice-draft"
 import { aiRouter } from "../ai"
 import { settingsRouter } from "../settings"
 import { resetRuntimeServices, setRuntimeServices } from "../../../lib/runtime/services"
+import type { OrganizationAccess } from "../../../lib/billing/types"
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
@@ -133,9 +134,33 @@ describe("ai router provider handling", () => {
 })
 
 describe("managed AI", () => {
+  afterEach(() => resetRuntimeServices())
   beforeEach(() => {
     vi.clearAllMocks()
     resetRuntimeServices()
+  })
+
+  it.each([
+    [{ state: "subscribed" }, "canceled", true],
+    [{ state: "complimentary" }, "expired", true],
+    [{ state: "self_hosted" }, "free", true],
+    [{ state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, "active", false],
+    [{ state: "read_only", reason: "payment_failed" }, "active", false],
+    [undefined, "active", false],
+  ] as const)("uses canonical access %j for subscription-gated managed AI", async (organizationAccess, status, allowed) => {
+    const complete = vi.fn(async () => '{"items":[{"description":"Consulting","quantity":3}]}')
+    mocks.aiCapabilities = { ...defaultAiCapabilities, byok: false, managed: true, managedRequiresSubscription: true }
+    mocks.findUnique.mockResolvedValue({ aiModel: null })
+    mocks.findMany.mockResolvedValue([])
+    setRuntimeServices({ managedAiProvider: { id: "managed", complete }, billingProvider: {
+      getSubscription: async () => ({ status, priceId: null, organizationAccess: organizationAccess as OrganizationAccess,
+        access: { paidOnly: true, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }),
+      assertInvoiceCreationAllowed: async () => {},
+    } })
+    const result = aiRouter.createCaller(createContext()).generateInvoiceDraft({ prompt: "Invoice Acme for consulting", mode: "managed" })
+    if (allowed) await expect(result).resolves.toMatchObject({ provider: "managed" })
+    else await expect(result).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+    expect(complete).toHaveBeenCalledTimes(allowed ? 1 : 0)
   })
 
   it("refuses managed drafting without an active subscription when one is required", async () => {
@@ -150,7 +175,7 @@ describe("managed AI", () => {
     setRuntimeServices({
       managedAiProvider: { id: "managed", complete },
       billingProvider: {
-        getSubscription: async () => ({ status: "past_due", organizationAccess: { state: "read_only", reason: "payment_failed", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null }),
+        getSubscription: async () => ({ status: "past_due", organizationAccess: { state: "read_only", reason: "payment_failed", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }),
         assertInvoiceCreationAllowed: async () => {},
       },
     })

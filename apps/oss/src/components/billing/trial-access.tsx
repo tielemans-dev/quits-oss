@@ -31,7 +31,7 @@ export function TrialAccessProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", refresh)
     return () => { canceled = true; clearInterval(timer); window.removeEventListener("focus", refresh) }
   }, [billingEnabled])
-  return <TrialContext.Provider value={{ subscription, loading, error }}>{children}</TrialContext.Provider>
+  return <TrialContext.Provider value={{ subscription, loading, error: error && !subscription }}>{children}</TrialContext.Provider>
 }
 
 export function useTrialAccess() {
@@ -91,7 +91,7 @@ export function TrialRouteGate({ pathname, children }: { pathname: string; child
   const resource = blockedResource(pathname)
   if (!billingEnabled || !resource) return <>{children}</>
   if (state?.loading) return <div aria-busy="true" className="p-6" />
-  if (state?.error || !state?.subscription) return <div role="alert" className="p-6">Billing status is unavailable. Reload this page.</div>
+  if (!state?.subscription) return <div role="alert" className="p-6">Billing status is unavailable. Reload this page.</div>
   if (isReadOnly(state.subscription)) return <PaywallBlock resource={resource} access={state.subscription.organizationAccess} />
   return <>{children}</>
 }

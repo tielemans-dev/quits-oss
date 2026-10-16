@@ -47,7 +47,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const get = vi.fn().mockRejectedValue(new Error("synthetic outage"))
     services.setRuntimeServices({ cvrLookupProvider: { get, search: async () => [] } })
     const startTrial = vi.fn()
-    services.setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null }), assertInvoiceCreationAllowed: async () => {}, startTrial } })
+    services.setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {}, startTrial } })
     const input = { ...summary(), source: "manual" as const }
     const result = await api.onboarding.confirmV2(input)
     expect(result.status).toBe("complete")
@@ -278,7 +278,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const before = await prisma.orgSettings.findUnique({ where: { organizationId: id } })
     const failureError = failure === "timeout" ? new DOMException("Trial unavailable", "TimeoutError") : new Error("Trial unavailable")
     const startTrial = vi.fn().mockRejectedValueOnce(failureError).mockResolvedValue(undefined)
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const input = summary()
     await expect(api.onboarding.confirmV2(input)).rejects.toThrow("Trial unavailable")
     expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toEqual(before)
@@ -309,7 +309,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const before = await prisma.orgSettings.findUnique({ where: { organizationId: id } })
     const failureError = failure === "timeout" ? new DOMException("Trial unavailable", "TimeoutError") : new Error("Trial unavailable")
     const startTrial = vi.fn().mockRejectedValueOnce(failureError).mockResolvedValue(undefined)
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const input = summary()
     await expect(api.onboarding.confirmV2(input)).rejects.toThrow("Trial unavailable")
     expect(await prisma.orgSettings.findUnique({ where: { organizationId: id } })).toEqual(before)
@@ -343,7 +343,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
   ] as const)("does not start a trial for a %s confirmation token and leaves onboarding incomplete", async (kind, token) => {
     const id = await organization()
     const startTrial = vi.fn()
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     setRuntimeExtensions([{ id: "reject-token", resolveCapabilities: () => ({ sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
       prepare: async () => ({ token: "signed" }),
       confirm: async () => { throw new TRPCError({ code: "BAD_REQUEST", message: kind }) },
@@ -360,7 +360,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const id = await organization()
     await prisma.catalogItem.create({ data: { organizationId: id, name: "Designarbejde", defaultUnitPrice: 1 } })
     const startTrial = vi.fn()
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const input = confirmOnboardingV2Schema.parse({ ...summary(), catalogSuggestions: [{ name: "Designarbejde", defaultUnitPrice: 850 }] })
     await expect(confirmOnboardingV2(id, input, "signup@example.test")).rejects.toMatchObject({ code: "P2002" })
     expect(startTrial).not.toHaveBeenCalled()
@@ -374,7 +374,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     const { setRuntimeExtensions } = await import("../../../lib/runtime/extensions")
     const startTrial = vi.fn()
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     setRuntimeExtensions([{ id: "accept-token", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true }, sellerVatConfirmation: { enabled: true } }), sellerVatConfirmation: {
       prepare: async () => ({ token: "signed" }), confirm: async () => {},
     } }])
@@ -396,7 +396,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const startTrial = vi.fn(async (organizationId: string) => {
       if (!provisioned.has(organizationId)) { provisioned.add(organizationId); provision(organizationId) }
     })
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const input = summary()
     const constraint = `qui56_trial_${id.replaceAll("-", "")}`
     await prisma.$executeRawUnsafe(`ALTER TABLE organization_tax_id ADD CONSTRAINT "${constraint}" CHECK ("organizationId" <> '${id}') NOT VALID`)
@@ -425,7 +425,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
         await new Promise(resolve => setTimeout(resolve, 60_050))
       }
     })
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const input = summary()
     await expect(api.onboarding.confirmV2(input)).rejects.toThrow(/expired|closed|timeout/i)
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toEqual(before)
@@ -446,7 +446,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const blocked = new Promise<void>(resolve => { release = resolve })
     // MOCK: test-only lifecycle barrier holds the real confirmation transaction open.
     const startTrial = vi.fn(async () => { entered(); await blocked })
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const v2 = api.onboarding.confirmV2({ ...summary(), source: "manual", companyEmail: null })
     await started
     const mutate = () => mutation === "saveDraft"
@@ -560,7 +560,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const id = await organization()
     const api = await caller(id)
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
-    setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { getSubscription: async () => ({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     expect(await api.onboarding.confirmV2(summary())).toMatchObject({ status: "complete" })
   })
   it("rejects hosted non-VAT confirmation and settings changes until the runtime opts in", async () => {
@@ -597,7 +597,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const blocked = new Promise<void>(resolve => { release = resolve })
     // MOCK: hold the legacy trial hook inside the real serialized transaction.
     const startTrial = vi.fn(async () => { entered(); await blocked })
-    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const legacy = api.onboarding.completeManual({ method: "manual" })
     await started
     const v2 = api.onboarding.confirmV2(summary())
@@ -634,7 +634,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     let release!: () => void
     const started = new Promise<void>(resolve => { entered = resolve })
     const blocked = new Promise<void>(resolve => { release = resolve })
-    setRuntimeServices({ billingProvider: { startTrial: async () => { entered(); await blocked }, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+    setRuntimeServices({ billingProvider: { startTrial: async () => { entered(); await blocked }, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     const v2 = api.onboarding.confirmV2(summary())
     await started
     const patch = { source: "ai" as const, patch: { companyName: "Stale AI", primaryTaxId: "24256790" } }

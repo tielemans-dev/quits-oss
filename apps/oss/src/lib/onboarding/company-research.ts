@@ -9,6 +9,7 @@ import { getRuntimeCapabilities } from "../runtime/extensions"
 import { getRuntimeEnv } from "../runtime/platform"
 import { getBillingProvider, type CvrLookupContext, type CvrLookupProvider } from "../runtime/services"
 import { companyStarters } from "./company-starters"
+import { hasSubscriptionAccess } from "../billing/organization-access"
 
 /** Optional enrichment only. No writes, arbitrary URL fetching, or dependency on model availability. */
 export async function researchCompany(company: CvrCompany, lookup: CvrLookupProvider, context: CvrLookupContext) {
@@ -22,7 +23,7 @@ export async function researchCompany(company: CvrCompany, lookup: CvrLookupProv
       select: { aiDraftsEnabled: true, aiProvider: true, aiBaseUrl: true, aiApiKeyEnc: true, aiModel: true } })
     if (hosted && settings?.aiDraftsEnabled === false) return defaults
     if (hosted && getRuntimeCapabilities().aiInvoiceDraft.managedRequiresSubscription &&
-      (await getBillingProvider().getSubscription(context.organizationId)).status !== "active") return defaults
+      !hasSubscriptionAccess((await getBillingProvider().getSubscription(context.organizationId)).organizationAccess)) return defaults
     const provider = hosted ? resolveManagedAiProvider() : resolveOrgAiProvider({
       provider: isAiProviderKind(settings?.aiProvider) ? settings.aiProvider : "openrouter",
       baseUrl: settings?.aiBaseUrl ?? null,
