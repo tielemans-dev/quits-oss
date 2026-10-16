@@ -4,7 +4,9 @@ import { formatCurrency } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { remindedInvoiceIds } from "../../lib/jobs/reminder-tracker"
 import { invoicesKey, peekRequestData, readInvoices } from "./request-data"
+import { trpc } from "../../trpc/client"
 import { tCount } from "../dashboard/i18n"
+import { ReminderFailureNote } from "../dashboard/remind-action"
 import { sendReminderBatch, useReminderJobs } from "../jobs/reminder-jobs-store"
 import { Button } from "../ui/button"
 import { syncHeldJobs } from "../undo/undo-store"
@@ -27,6 +29,8 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
   const [chosen, setChosen] = useState<ReadonlySet<string> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // Without email delivery a reminder can only fail, so the card says what to set up instead.
+  const [emailMissing, setEmailMissing] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const sending = useRef(false)
   // One id per selection: a retry of the same click is the same request to the server.
@@ -45,6 +49,15 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
     return () => { cancelled = true }
   }, [t])
 
+  useEffect(() => {
+    let cancelled = false
+    Promise.resolve()
+      .then(() => trpc.runtime.capabilities.query())
+      .then((capabilities) => { if (!cancelled) setEmailMissing(capabilities.emailDelivery.configured === false) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   const overdue = useMemo(
     () => (loaded ? overdueInvoices(loaded.invoices, loaded.timezone, reminded) : null),
     [loaded, reminded]
@@ -62,7 +75,7 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
   }
 
   function send() {
-    if (sending.current || !ticked.length) return
+    if (sending.current || emailMissing || !ticked.length) return
     sending.current = true
     setPending(true)
     const ids = ticked.map(({ invoice }) => invoice.id)
@@ -123,10 +136,11 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
           {overdue.length > MAX_BATCH && <p className="text-muted-foreground text-sm">{t("shell.request.overdue.limit")}</p>}
         </>
       )}
-            <div {...stagger(3)} className="flex justify-end gap-2">
+      <div {...stagger(3)} className="flex items-center justify-end gap-2">
+        {emailMissing && overdue && overdue.length > 0 && <ReminderFailureNote failure="emailUnavailable" className="mr-auto" />}
         {/* The shadcn default animates every property; name the ones that change. */}
         <Button type="button" variant="outline" onClick={onDismiss} disabled={pending} className={button}>{t("shell.request.dismiss")}</Button>
-        {overdue && overdue.length > 0 && (
+        {overdue && overdue.length > 0 && !emailMissing && (
           <Button type="button" disabled={pending || !ticked.length} onClick={send} className={button}>
             {pending ? t("reminders.tracker.step.sending") : t("reminders.batch.send", { count: ticked.length })}
           </Button>
