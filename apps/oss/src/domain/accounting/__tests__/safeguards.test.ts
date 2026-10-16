@@ -18,7 +18,7 @@ function setup(providerId = "dinero", credit = false, prices = ["1"]) {
   const document = { subtotalNet: "1", totalTax: "0.25", totalGross: "1.25" }
   const updateMany = vi.fn(async ({ data }: { data: Partial<EventConsumerDelivery> }) => { Object.assign(row, structuredClone(data)); return { count: 1 } })
   const db = { domainEvent: { findUniqueOrThrow: async () => event }, invoice: { findFirst: async () => document },
-    creditNote: { findFirst: async () => document }, eventConsumerDelivery: { findFirst: async () => row, updateMany } } as unknown as PrismaClient
+    creditNote: { findFirst: async () => document }, eventConsumerDelivery: { findFirst: async () => row, findMany: async () => [], updateMany } } as unknown as PrismaClient
   vi.mocked(claim).mockImplementation(async () => { row.attempts++; row.status = "claimed"; row.claimToken = "lease"; return [structuredClone(row)] as Awaited<ReturnType<typeof claim>> })
   vi.mocked(fail).mockImplementation(async input => { row.status = "failed"; row.error = input.error as Prisma.JsonValue; return { fenced: false } })
   vi.mocked(complete).mockImplementation(async input => { row.status = "done"; row.externalRef = input.externalRef!; return { fenced: false } })
@@ -27,7 +27,7 @@ function setup(providerId = "dinero", credit = false, prices = ["1"]) {
   type Connection = NonNullable<Awaited<ReturnType<AccountingConnections<void, Payload>["find"]>>>
   const connection: Connection = {
     key: "generation", mappingRevision: "1", settings: vi.fn(), request: vi.fn((mapped: Parameters<Connection["request"]>[0]) => mapped.payload),
-    provider: { id: providerId, map: e => {
+    provider: { id: providerId, supportsDelivery: dineroProvider.supportsDelivery, map: e => {
       if (providerId === "dinero") return dineroProvider.map(e, { contactGuid: guid, documentGuid: guid,
         invoiceLinks: { invoice: guid }, vatMappings: { [key]: { accountNumber: 1000 } } })
       const mapped = economicProvider.map(e, { customerNumber: 1, layoutNumber: 1, paymentTermsNumber: 1,
@@ -41,6 +41,14 @@ function setup(providerId = "dinero", credit = false, prices = ["1"]) {
   return { event, row, document, connection, transport, run, updateMany }
 }
 describe("delivery safeguards with fake transport", () => {
+  it.each(["pending", "failed"] as const)("clears a legacy %s unsupported payment from the queue", async status => {
+    const f = setup()
+    f.event.type = "payment.recorded"; f.row.status = status
+    expect(await f.run()).toBe("skipped")
+    expect(f.row).toMatchObject({ status: "skipped", error: { code: "event_not_applicable" } })
+    expect(claim).not.toHaveBeenCalled()
+    expect(f.transport.send).not.toHaveBeenCalled()
+  })
   it.each(["economic", "dinero"])("checks %s invoice and credit totals and records the remote voucher", async provider => {
     for (const credit of [false, true]) {
       const f = setup(provider, credit)

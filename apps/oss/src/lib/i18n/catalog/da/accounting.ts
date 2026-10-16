@@ -26,6 +26,9 @@ export const daAccountingMessages = {
   "accounting.mappings.invalid": "Brug hele positive kontonumre og landekoder på to bogstaver. Fjern dobbelte momsgrupper.",
 
   "activity.event.accounting.action_recorded": "Regnskabshandling registreret",
+  "activity.event.accounting.action_recorded.connect": "Tilsluttede regnskab ({provider})",
+  "activity.event.accounting.action_recorded.reconnect": "Tilsluttede regnskab igen ({provider})",
+  "activity.event.accounting.action_recorded.reconnect_hold": "Satte regnskabslevering {deliveryId} på pause til gennemgang efter gentilslutning ({provider})",
   "activity.event.accounting.action_recorded.disconnect": "Afbrød regnskabsforbindelsen ({provider})",
   "activity.event.accounting.action_recorded.retry": "Prøvede regnskabslevering {deliveryId} igen ({provider})",
   "activity.event.accounting.action_recorded.skip": "Sprang regnskabslevering {deliveryId} over ({provider}): {reason}",

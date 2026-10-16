@@ -46,8 +46,11 @@ from the entry accounts and their VAT types. Resolve deposit accounts separately
 services map to an EU services sales account with the corresponding zero-tax
 reporting treatment and VAT zone, backed by frozen VAT-ID/VIES evidence. EU goods
 need their own mapping. Domestic reverse charge and other zero-tax classifications
-remain subject to the ledger's existing refusals. Credits retain the original
-mapping revision. Fees, refunds, overpayments and FX need separate posting policy;
+remain subject to the ledger's existing refusals. Credits resolve against the mapping
+revision and chart configuration pinned with the original invoice request, including
+across reconnects to the same provider account. Missing historical mapping evidence
+requires review; current mappings are never substituted. Fees, refunds, overpayments
+and FX need separate posting policy;
 never treat a net settlement as a gross customer payment.
 
 Slice 1 accepts same-currency DKK v2 sales/credits with 25% or intra-community VAT.
@@ -108,7 +111,9 @@ Do not blindly repeat payment creation after an uncertain response.
 
 Claim with leases and fence completion with `claimToken`. Retry transient network,
 429 and server failures with bounded exponential backoff and jitter, respecting
-Retry-After. Stop for authorization, mapping or validation failures. Existing failed
+Retry-After up to 24 hours. Invalid retry values fall back to bounded backoff,
+and retry timestamps stay within the valid date range. Stop for authorization, mapping
+or validation failures. Existing failed
 rows require an explicit requeue policy. Keep invoice-before-credit/payment
 dependencies; claiming by sequence alone does not enforce them. Only done/skipped
 deliveries advance the contiguous acknowledgement cursor. A refusal stays visible
@@ -164,7 +169,11 @@ resending. Lease tokens fence persistence and completion.
 Delivered means the single prepared draft/payment request was accepted, not that
 sales were booked. Remote draft validation before booking, booking, remote relationship validation
 and provider-specific reconciliation are required before enabling a live worker.
-Legacy payments without immutable evidence remain refused. Admins can retry failed
+Both providers declare automatic delivery capabilities. `payment.recorded` v1 is
+not applicable to either provider and is recorded as skipped with
+`event_not_applicable`, including legacy pending/failed queue rows. Dinero's pure
+payment preparation remains available only with explicit immutable evidence.
+Admins can retry failed
 deliveries with a fresh send budget and cleared backoff, retaining pinned requests
 and reconciliation. Skip requires an audit reason and advances the contiguous cursor
 so later documents can continue. Both actions target the current connection generation.
@@ -179,10 +188,15 @@ Original delivery evidence stays in its old generation, including through repeat
 `AccountingConnection` stores one provider, remote account ID, generation, status,
 mapping revision and encrypted credential per organization. `connectAccounting`
 encrypts before writing with the existing server secret helper and starts a new
-generation on each authorization. The first authorization accepts an optional
+generation on each authorization. Connect requires an authorized actor and atomically
+records `accounting.action_recorded` for connect/reconnect and each delivery held
+for reconnect review, without credentials or remote account identifiers. The first
+authorization accepts an optional
 `syncStartAt`, defaulting to its connection time. Reconnect preserves that boundary.
 The unfiltered outbox scan records earlier events as skipped so the cursor can advance,
-and holds unscanned history before reconnect for an admin decision. Settings shows the
+and holds unscanned history before reconnect for an admin decision. A later payment
+on an invoice issued before the start is also skipped with `invoice_before_sync_start`,
+so it cannot fail for a missing remote invoice link. Settings shows the
 saved start date. The date picker belongs to the future authorization flow.
 `disconnectAccounting` pauses delivery and clears local credentials idempotently. The lookup selects the pure provider and
 returns metadata without reading credentials. Remote revocation remains OAuth work.

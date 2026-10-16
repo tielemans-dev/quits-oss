@@ -4,6 +4,7 @@ import { prisma } from "../../lib/db"
 import { advance, claim, complete, fail, scan } from "../events/consumers"
 import type { AccountingEvent, AccountingProvider } from "./provider"
 import { accountingDispositions } from "./sync-position"
+import { mappingContextSchema, type MappingContext } from "./mappings"
 import { equalTotals, fingerprint, payloadTotalsMatch, totalsSchema, type Totals } from "./safeguards"
 
 const safeguardMessages: Record<string, string> = {
@@ -12,8 +13,8 @@ const safeguardMessages: Record<string, string> = {
   source_review_required: "The source document changed or its first-attempt evidence is missing. Review this delivery before sending.",
 }
 
-const requestSchema = z.object({
-  eventId: z.string(), providerId: z.string(), mappingRevision: z.string(),
+const requestSchema = mappingContextSchema.extend({
+  eventId: z.string(), providerId: z.string(),
   idempotencyKey: z.string(), method: z.literal("POST"), path: z.string().startsWith("/"), body: z.json(),
   expectedTotals: z.object({ net: z.string(), tax: z.string(), gross: z.string() }),
 })
@@ -36,7 +37,8 @@ export interface AccountingConnections<S, P> {
     isCurrent?(): Promise<boolean>
     mappingRevision: string
     provider: AccountingProvider<S, P>
-    settings(event: AccountingEvent & { id: string }): Promise<S> // Frozen, event-specific evidence.
+    resolveMapping?(event: AccountingEvent & { id: string }): Promise<MappingContext>
+    settings(event: AccountingEvent & { id: string }, mapping?: MappingContext): Promise<S> // Frozen, event-specific evidence.
     request(prepared: Prepared<S, P>): { path: string; body: Prisma.InputJsonValue }
   } | null>
 }
@@ -57,6 +59,12 @@ async function bounded<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T>
   } finally {
     clearTimeout(timer)
   }
+}
+
+export function retryAvailableAt(now: Date, retryAfterMs: number, backoffMs: number) {
+  const base = Number.isFinite(now.getTime()) ? now.getTime() : Date.now()
+  const delay = Math.max(backoffMs, Number.isFinite(retryAfterMs) ? Math.max(0, Math.min(86_400_000, retryAfterMs)) : 0)
+  return new Date(Math.min(8.64e15, base + delay))
 }
 
 /** One prepared request per event. Delivered means accepted draft/payment, never booked sales. */
@@ -83,6 +91,16 @@ export async function deliverAccounting<S, P>(input: {
     orderBy: { sequence: "asc" },
   })
   if (!first) return "idle"
+  const firstEvent = await db.domainEvent.findUniqueOrThrow({ where: { organizationId_sequence: { organizationId: scope.organizationId, sequence: first.sequence } } })
+  if (!connection.provider.supportsDelivery(firstEvent.type) || firstEvent.type === "payment.recorded") {
+    const disposition = (await accountingDispositions(scope, connection, [firstEvent], db)).get(first.sequence)
+    if (disposition?.status === "skipped") {
+      await db.eventConsumerDelivery.updateMany({ where: { id: first.id, status: first.status, claimToken: first.claimToken },
+        data: { ...disposition, claimToken: null, leaseUntil: null } })
+      await advance(scope, db)
+      return "skipped"
+    }
+  }
   if (first.status === "failed") return "failed"
   const [row] = await claim({ ...scope, sequence: first.sequence, now, limit: 1, leaseMs: 120_000 }, db)
   if (!row) return "idle"
@@ -94,11 +112,10 @@ export async function deliverAccounting<S, P>(input: {
       return result.fenced ? "stale" : "failed"
     }
     const backoff = Math.min(60_000, 1000 * 2 ** (row.attempts - 1)) * (1 + Math.random())
-    const delay = Math.max(backoff, Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0)
     const result = await db.eventConsumerDelivery.updateMany({
       where: fence,
       data: {
-        status: "pending", availableAt: new Date(clock().getTime() + delay),
+        status: "pending", availableAt: retryAvailableAt(clock(), retryAfterMs, backoff),
         error: { code }, claimToken: null, leaseUntil: null,
       },
     })
@@ -140,11 +157,12 @@ export async function deliverAccounting<S, P>(input: {
     if (row.prepared) request = requestSchema.parse(row.prepared)
     else {
       const accountingEvent = { ...event, deliveryId: row.id }
-      const mapped = connection.provider.map(accountingEvent, await connection.settings(accountingEvent))
+      const mapping = await connection.resolveMapping?.(accountingEvent) ?? { mappingRevision: connection.mappingRevision }
+      const mapped = connection.provider.map(accountingEvent, await connection.settings(accountingEvent, mapping))
       if (mapped.status === "refused") return failure(mapped.code)
       request = requestSchema.parse({
         eventId: event.id, providerId: connection.provider.id, method: "POST",
-        mappingRevision: connection.mappingRevision, idempotencyKey: `${row.id}:request`,
+        ...mapping, idempotencyKey: `${row.id}:request`,
         expectedTotals: mapped.expectedTotals, ...connection.request(mapped),
       })
       const pinned = await db.eventConsumerDelivery.updateMany({

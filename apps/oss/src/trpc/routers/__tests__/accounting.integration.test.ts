@@ -101,7 +101,7 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     expect(await f.run()).toBe("failed")
     const pinned = await prisma.eventConsumerDelivery.findUniqueOrThrow({ where: { id: f.first.id } })
     vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-accounting-test-encryption-key")
-    await connectAccounting({ organizationId: f.org.organizationId, provider: "dinero", remoteAccountId, credential: "synthetic", mappingRevision: "1" })
+    await connectAccounting({ actor: f.org.actors.admin, organizationId: f.org.organizationId, provider: "dinero", remoteAccountId, credential: "synthetic", mappingRevision: "1" })
     expect(await f.run()).toBe("failed")
     const deliveryId = (await f.admin.accounting.status()).providers[1]!.delivery!.failedDeliveryId!
     await f.admin.accounting.retry({ deliveryId, confirmReconnect: true })
@@ -120,7 +120,7 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     const f = await failedDelivery()
     await prisma.eventConsumerDelivery.update({ where: { id: f.first.id }, data: { status: "pending" } })
     vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-accounting-test-encryption-key")
-    await connectAccounting({ organizationId: f.org.organizationId, provider: "dinero", remoteAccountId: "another-account", credential: "synthetic", mappingRevision: "1" })
+    await connectAccounting({ actor: f.org.actors.admin, organizationId: f.org.organizationId, provider: "dinero", remoteAccountId: "another-account", credential: "synthetic", mappingRevision: "1" })
     expect(await f.run()).toBe("failed")
     const state = await f.admin.accounting.status(), delivery = state.providers[1]!.delivery!
     expect(delivery.lastErrorCode).toBe("reconnect_review_required")
@@ -130,7 +130,7 @@ const callerFor = (organizationId: string, userId: string) => appRouter.createCa
     expect(await prisma.eventConsumerDelivery.findUnique({ where: { id: input.deliveryId } })).toMatchObject({ status: action === "retry" ? "pending" : "skipped" })
     // The original record remains as evidence; the decision belongs to the new generation.
     expect(await prisma.eventConsumerDelivery.findUnique({ where: { id: f.first.id } })).toMatchObject({ status: "failed" })
-    const audit = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: f.org.organizationId, type: "accounting.action_recorded" } })
+    const audit = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: f.org.organizationId, type: "accounting.action_recorded", payload: { path: ["action"], equals: action } } })
     expect(audit).toMatchObject({ actorId: f.org.actors.admin.userId, payload: { action, deliveryId: input.deliveryId } })
   })
 

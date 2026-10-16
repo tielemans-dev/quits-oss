@@ -7,7 +7,7 @@ import { moneyEmitterState } from "./money-emitter-state"
 import { acceptanceRecord } from "../../agreements/fulfillment"
 
 export const emitterFiles = [
-  "commands/accounting.ts",
+  "commands/accounting.ts", "accounting/connections.ts",
   ...["base-valuation", "invoices", "quotes", "credit-notes", "payments", "paid-moment", "settlements", "contacts", "recurring", "reminders", "agreements", "agreement-templates", "agreement-lifecycle", "deliverables", "public-deliverables", "invoices-from-deliverables", "billing-allocation", "payment-details"].map((name) => `commands/${name}.ts`),
   "agreements/billing.ts", "agreements/linked-invoice.ts", "documents/artifacts.ts", "documents/numbering.ts", "features/artifact-sweep.ts", "agreements/issuance.ts", "features/agreement-expiry.ts", "features/overdue.ts", "execute.ts", "approvals.ts", "agent-keys.ts", "documents/document-delivery.ts",
 ]
@@ -63,6 +63,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
   const optional = variant !== "no_optional"
   const line = { ...record, status: "delivered", ...(variant === "no_previous_acceptance" ? { acceptedAt: null } : {}) }
   const scope = {
+    previous: variant === "no_optional" && !expression.payloadExpression.includes("previous.provider") ? null : { provider: "dinero", generation: "old-generation" },
     revision: "revision-2",
     connection: { provider: "dinero", generation: "generation-1" }, row: { id: "delivery-1" }, action: variant === "decline" ? "skip" : "retry",
     receipt: { ...record, id: "receipt-1", method: "bank_transfer", reference: "BANK-1" },
@@ -79,7 +80,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     item: { invoiceId: "invoice-1" }, credit: { id: "credit-note-1" }, creditNoteIds: ["credit-note-1"], generation: 1,
     candidate: record, existing: line, line: { ...line, status: variant === "in_progress" ? "in_progress" : "delivered" },
     delivered: { deliveryRevision: 2 }, accepted: record, updated: expression.source === "commands/public-deliverables.ts" ? { ...record, acceptedVia: "customer_link", acceptanceEvidenceNote: null } : record,
-    input: { ...(expression.typeExpression.includes("accounting.mappings_updated") ? { provider: "dinero", generation: "generation-1", mappingRevision: "revision-1" } : {}), ...(expression.source === "commands/billing-allocation.ts" ? { creditNoteId: "credit-note-1" } : {}), ...(expression.source === "commands/settlements.ts" ? { evidence: "https://evidence.example.test/statement/1", feeEvidence: { reason: "Processor fee", evidence: "https://evidence.example.test/fees/1" }, action: variant === "user" ? "customer_credit" : variant === "decline" ? "reverse_allocation" : variant === "no_optional" ? "reverse_refund" : variant === "completed" ? "reverse_receipt" : "refund" } : {}), ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
+    input: { ...((expression.typeExpression.includes("accounting.mappings_updated") || expression.source === "accounting/connections.ts") ? { provider: "dinero", generation: "generation-1", mappingRevision: "revision-1" } : {}), ...(expression.source === "commands/billing-allocation.ts" ? { creditNoteId: "credit-note-1" } : {}), ...(expression.source === "commands/settlements.ts" ? { evidence: "https://evidence.example.test/statement/1", feeEvidence: { reason: "Processor fee", evidence: "https://evidence.example.test/fees/1" }, action: variant === "user" ? "customer_credit" : variant === "decline" ? "reverse_allocation" : variant === "no_optional" ? "reverse_refund" : variant === "completed" ? "reverse_receipt" : "refund" } : {}), ...(expression.typeExpression.includes("agreement.completed") ? { disposition: variant === "completed" ? "completed" : "cancelled" } : {}), checkoutSessionId: "checkout-1", method: "bank_transfer", id: "document-1", mode: "full", reason: "Correction", acceptedByName: "Customer", evidenceNote: "Written confirmation", ...(expression.source === "commands/public-deliverables.ts" ? { note: "Please revise" } : {}), decision: variant === "decline" ? "rejected" : "accepted", runDate: "2026-01-15", invoiceId: "invoice-1", error: commandError, notes: "Changed" },
     decision: { decision: variant === "decline" ? "decline" : "accept", acceptedByName: "Customer", reason: optional ? "Not needed" : undefined },
     next: { publicRejectionReason: optional ? "Not needed" : null },
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },
@@ -89,7 +90,7 @@ export function reconstruct(expression: { source: string; typeExpression: string
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",
     reason: expression.source === "commands/accounting.ts" ? variant === "decline" ? "Already entered manually" : null : "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",
     name: "Customer", method: manual ? "manual" : "email", unchanged: variant === "unchanged_retry", hash: "hash-1", policy: { enabled: true, offsetsDays: [-1, 0, 7] },
-    data: expression.source === "commands/agreement-templates.ts" ? { name: "Updated" } : { name: "Updated", email: "customer@example.test" }, id: "deliverable-1", url: "https://example.test/read",
+    data: expression.source === "accounting/connections.ts" ? { generation: "new-generation" } : expression.source === "commands/agreement-templates.ts" ? { name: "Updated" } : { name: "Updated", email: "customer@example.test" }, id: "deliverable-1", url: "https://example.test/read",
     runDate: instant, formatCalendarDate: () => "2026-01-15", balanceDue: money, paused: optional,
     reminder: { id: "reminder-1" }, skipReason: "not_open", manual: optional,
     // The email_failed return is reached only after the unconfirmed early return.

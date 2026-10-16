@@ -10,7 +10,7 @@ const da = (key: Parameters<typeof translate>[0], vars?: Record<string, string |
   translate(key, "da-DK", vars)
 
 describe("activity descriptions", () => {
-  it.each(["disconnect", "retry", "skip"])("localizes accounting %s in the audit log", action => {
+  it.each(["connect", "reconnect", "reconnect_hold", "disconnect", "retry", "skip"])("localizes accounting %s in the audit log", action => {
     const event = { type: "accounting.action_recorded", aggregateType: "organization", payload: { action, provider: "dinero", deliveryId: "delivery-1", reason: "Entered manually" } }
     expect(describeActivity(event, en)).not.toBe("Activity recorded")
     expect(describeActivity(event, da)).not.toBe(describeActivity(event, en))

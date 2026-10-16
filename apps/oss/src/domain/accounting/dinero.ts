@@ -5,6 +5,7 @@ import { eventRegistry } from "../events/registry"
 import { apiAmount } from "./api-amount"
 import { postingsFor } from "./postings"
 import type { AccountingEvent, AccountingProvider, AccountingRefusal } from "./provider"
+import { supportsDocumentDelivery } from "./provider"
 
 const account = z.number().int().positive().max(2147483647)
 // Caller-supplied immutable evidence, pinned to this payment. Never derive from today's rows/date.
@@ -50,6 +51,7 @@ function preparePayment(event: AccountingEvent, settings: DineroSettings) {
 /** Pure request preparation. Official request models are linked in docs/accounting-integrations.md. */
 export const dineroProvider: AccountingProvider<DineroSettings, DineroPayload> = {
   id: "dinero",
+  supportsDelivery: supportsDocumentDelivery,
   map(event, settings) {
     if (!event.deliveryId || event.deliveryId.length > 128) return refuse("missing_mapping", "Delivery reference must fit ExternalReference")
     if (event.type === "payment.recorded") return preparePayment(event, settings)

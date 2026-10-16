@@ -10,10 +10,20 @@ export function accountFingerprint(account: { provider: string; remoteAccountId:
 
 /** Prior successes and skips are terminal across providers and account generations. */
 export async function accountingDispositions(scope: { organizationId: string; consumerKey: string },
-  connection: { syncStartAt?: Date; reviewBefore?: Date | null }, events: Array<{ sequence: number; occurredAt: Date }>, db: Prisma.TransactionClient) {
+  connection: { syncStartAt?: Date; reviewBefore?: Date | null; provider?: { supportsDelivery(type: string): boolean } },
+  events: Array<{ sequence: number; occurredAt: Date; type: string; aggregateId: string }>, db: Prisma.TransactionClient) {
+  const payments = events.filter(event => event.type === "payment.recorded")
+  const excludedInvoices = new Set(payments.length && connection.syncStartAt ? (await db.domainEvent.findMany({
+    where: { organizationId: scope.organizationId, type: "invoice.issued", occurredAt: { lt: connection.syncStartAt },
+      aggregateId: { in: payments.map(event => event.aggregateId) } }, select: { aggregateId: true },
+  })).map(event => event.aggregateId) : [])
   const previous = await db.eventConsumerDelivery.findMany({ where: { organizationId: scope.organizationId,
     consumerKey: { startsWith: "accounting:", not: scope.consumerKey }, sequence: { in: events.map(event => event.sequence) } }, orderBy: { updatedAt: "desc" } })
   return new Map<number, ScanDisposition>(events.map(event => {
+    if (excludedInvoices.has(event.aggregateId) && event.type === "payment.recorded")
+      return [event.sequence, { status: "skipped", error: { code: "invoice_before_sync_start" } }]
+    if (connection.provider && !connection.provider.supportsDelivery(event.type))
+      return [event.sequence, { status: "skipped", error: { code: "event_not_applicable" } }]
     const history = previous.filter(row => row.sequence === event.sequence)
     if (history.some(row => row.status === "done" || row.status === "skipped") ||
         connection.syncStartAt && event.occurredAt < connection.syncStartAt) return [event.sequence, { status: "skipped" }]

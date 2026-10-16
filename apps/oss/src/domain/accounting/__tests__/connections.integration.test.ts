@@ -7,7 +7,7 @@ import { runSchedulerTick } from "../../scheduler"
 import { accountingConnections, connectAccounting, disconnectAccounting, type AccountingDeliveryRuntime } from "../connections"
 import { deliverAccounting } from "../delivery"
 import { runAccountingTick } from "../scheduled-delivery"
-import { invoiceFixture } from "./fixtures"
+import { creditFixture, invoiceFixture } from "./fixtures"
 import { defaultMappings } from "../mappings"
 
 const describeDb = process.env.DATABASE_URL ? describe : describe.skip
@@ -29,7 +29,9 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     await prisma.organization.create({ data: { id: organizationId, name: "Accounting test", slug: organizationId, createdAt: new Date() } })
     const event = await prisma.domainEvent.create({ data: { organizationId, sequence: 1, aggregateType: "invoice",
       aggregateId: "invoice", type: "invoice.issued", schemaVersion: 1, payload: invoice, actorKind: "system" } })
-    const input = { organizationId, provider, remoteAccountId: "synthetic-remote", mappingRevision: "1", credential: "synthetic-token", syncStartAt: event.occurredAt }
+    await prisma.orgSettings.upsert({ where: { organizationId }, create: { organizationId, eventSequence: 1 }, update: { eventSequence: 1 } })
+    const actor = { kind: "user" as const, organizationId, userId: "synthetic-admin", roles: ["admin" as const], label: "Accounting admin" }
+    const input = { actor, organizationId, provider, remoteAccountId: "synthetic-remote", mappingRevision: "1", credential: "synthetic-token", syncStartAt: event.occurredAt }
     await connectAccounting(input)
     const send = vi.fn(async () => ({ status: 201, externalRef: "synthetic-draft", totals: { net: "1", tax: "0.25", gross: "1.25" } }))
     const transport = vi.fn(() => ({ send, reconcile: vi.fn(async () => ({ status: "unknown" as const })) }))
@@ -74,6 +76,26 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
       transport: f.runtime.transport({ organizationId: f.organizationId, generation: "unused", provider: "economic", remoteAccountId: "unused", mappingRevision: "1" }) })).toBe("paused")
     expect(await prisma.eventConsumerDelivery.count({ where: { organizationId: f.organizationId } })).toBe(0)
     expect(f.send).not.toHaveBeenCalled()
+  })
+
+  it("keeps the invoice mapping revision and account on a later credit", async () => {
+    const f = await setup("dinero"), mappings = defaultMappings(), key = invoiceFixture().vatGroups[0]!.key
+    mappings.rows[0]!.revenueAccount = 1000
+    await prisma.accountingConnection.update({ where: { organizationId: f.organizationId }, data: { mappings } })
+    f.runtime.settings = vi.fn(async (connection) => ({ provider: "dinero" as const, value: {
+      contactGuid: "11111111-1111-4111-8111-111111111111", documentGuid: "22222222-2222-4222-8222-222222222222",
+      invoiceLinks: { invoice: "11111111-1111-4111-8111-111111111111" }, vatMappings: { [key]: { accountNumber: connection.mappings!.rows[0]!.revenueAccount! } },
+    } }))
+    expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport: f.transport() })).toBe("delivered")
+    mappings.rows[0]!.revenueAccount = 2000
+    await prisma.accountingConnection.update({ where: { organizationId: f.organizationId }, data: { mappings, mappingRevision: "2" } })
+    const invoice = invoiceFixture(); invoice.buyer = { name: "Buyer", country: "DK" }
+    await prisma.domainEvent.create({ data: { organizationId: f.organizationId, sequence: 3, aggregateType: "credit_note", aggregateId: "credit",
+      type: "credit_note.issued", schemaVersion: 2, payload: creditFixture(invoice), actorKind: "system" } })
+    f.send.mockResolvedValueOnce({ status: 201, externalRef: "credit-draft", totals: { net: "-1.00", tax: "-0.25", gross: "-1.25" } })
+    expect(await deliverAccounting({ organizationId: f.organizationId, connections: f.connections, transport: f.transport() })).toBe("delivered")
+    expect(await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId, sequence: 3 } }))
+      .toMatchObject({ prepared: { mappingRevision: "1", body: { ProductLines: [{ AccountNumber: 1000 }] } } })
   })
 
   it("refuses settings for another provider without sending", async () => {
