@@ -24,15 +24,22 @@ type Props = {
   onNavigate?: () => void
   /** The search field it opened from. The palette then sits over it and grows out of its outline. */
   anchor?: DOMRect | null
+  /** How far into that field its icon sits; the palette's icon lands on it. */
+  anchorInset?: number
+  /** What was already typed in that field; the palette opens with it. */
+  initialQuery?: string
 }
 
-/** Over the field: the input row centred on the field's, the icon over the field's icon. */
+/**
+ * Over the field: the input row centred on the field's, the icon over the field's icon. It is at
+ * least as wide as the field, so the command bar on Overblik is covered edge to edge.
+ */
 function anchoredStyle(anchor: DOMRect): CSSProperties {
   const left = Math.max(12, anchor.left - 8)
   return {
     top: Math.max(4, anchor.top + anchor.height / 2 - 28),
     left,
-    width: `min(600px, calc(100vw - ${left + 12}px))`,
+    width: `min(${Math.max(600, anchor.width + 16)}px, calc(100vw - ${left + 12}px))`,
   }
 }
 
@@ -117,11 +124,11 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null }: Props) {
+export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '' }: Props) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(open ? initialQuery : '')
   const [activeId, setActiveId] = useState<string | null>(null)
   // A card the palette has grown into, in place of the list.
   const [card, setCard] = useState<ReactNode>(null)
@@ -157,11 +164,15 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   // A new query, or new results, start on the first item; keep the choice while it still exists.
   const effectiveActiveId = items.some((item) => item.id === activeId) ? activeId : (items[0]?.id ?? null)
 
-  useEffect(() => {
-    if (!open) return
-    setQuery('')
-    setCard(null)
-  }, [open])
+  // Opening starts over, with what the field held.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setQuery(initialQuery)
+      setCard(null)
+    }
+  }
 
   // Opening over the field: the panel starts as the field's outline and grows to its own.
   const growFromAnchor = useCallback(() => {
@@ -265,7 +276,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           </VisuallyHidden.Root>
           {/* The panel follows this: list to card, and the card again when its data arrives. */}
           <div ref={follow}>
-            <div className="flex items-center gap-3 border-b border-hairline px-4">
+            {/* Over a field, the icon lands on the field's: its inset plus the 8px overhang, less the palette's border. */}
+            <div className="flex items-center gap-3 border-b border-hairline px-4" style={anchor ? { paddingLeft: anchorInset + 7 } : undefined}>
               <Search className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
               <input
                 type="text"
@@ -281,6 +293,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
                 value={query}
                 readOnly={card !== null}
                 onChange={(event) => setQuery(event.target.value)}
+                // Opened with text from the field, typing goes on after it.
+                onFocus={(event) => event.currentTarget.setSelectionRange(query.length, query.length)}
                 onKeyDown={onKeyDown}
                 className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
               />

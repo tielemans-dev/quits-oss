@@ -14,8 +14,10 @@ async function capture(page: Page, name: string) {
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: resolve(captureDir, `${name}-${variant}.png`), fullPage: true })
 }
-async function searchAligned(page: Page) {
-  const search = await page.getByRole("button", { name: /Open search|Åbn søgning/ }).boundingBox()
+async function searchAligned(page: Page, screen: string) {
+  // Overblik has no search in the top bar: its command bar is the search field.
+  const field = screen === "dashboard" ? page.locator("[data-slot=command-bar]") : page.getByRole("button", { name: /Open search|Åbn søgning/ })
+  const search = await field.boundingBox()
   const content = await page.locator("[data-slot=app-content]").evaluate(el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft))
   expect(search).not.toBeNull()
   expect(Math.abs(search!.x - content)).toBeLessThanOrEqual(1)
@@ -62,7 +64,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       if (screen === "dashboard") await expect(page.getByRole("heading", { name: da ? /^God (morgen|formiddag|eftermiddag|aften)/ : /^Good (morning|afternoon|evening)/ })).toBeVisible()
       if (screen === "settings") await expect(page.getByRole("heading", { name: da ? "Betalinger" : "Payments", exact: true })).toBeVisible()
       if (screen === "invoice") await expect(page.getByRole("heading", { name: da ? "Faktura INV-0002" : "Invoice INV-0002", exact: true })).toBeVisible()
-      if (variant === "after") await searchAligned(page)
+      if (variant === "after") await searchAligned(page, screen!)
       if (screen === "invoice" && variant === "after") {
         await expect(page.getByText(da ? "Faktura INV-0002 udstedt" : "Invoice INV-0002 issued", { exact: true })).toBeVisible()
         await expect(page.getByText(da ? "11. okt. 2026" : "Oct 11, 2026", { exact: false }).first()).toBeVisible()
@@ -72,7 +74,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await capture(page, `${screen}-${locale.locale}-desktop`)
       if (variant === "after") {
         await page.setViewportSize({ width: 390, height: 844 })
-        await searchAligned(page)
+        await searchAligned(page, screen!)
         await page.setViewportSize({ width: 1440, height: 1000 })
       }
       if (screen === "settings") {

@@ -302,6 +302,15 @@ describe("command palette", () => {
     expect(palette.className).not.toContain("left-1/2")
   })
 
+  it("covers a wide field, opens with what it held, and puts its icon on the field's", () => {
+    const anchor = { top: 152, left: 272, width: 968, height: 58 } as DOMRect
+    render(<CommandPalette open onOpenChange={() => {}} can={everything} billingEnabled={false} anchor={anchor} anchorInset={21} initialQuery="kredit" />)
+
+    expect(screen.getByRole("dialog").style.left).toBe("264px")
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("kredit")
+    expect(screen.getByRole("combobox").parentElement!.style.paddingLeft).toBe("28px")
+  })
+
   it("tells the shell when an item navigates, besides closing", () => {
     const onNavigate = vi.fn()
     render(<Harness can={everything} onNavigate={onNavigate} />)
