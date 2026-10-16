@@ -10,7 +10,8 @@ test("fresh frozen install leaves hooks opt-in", (t) => {
   const source = fileURLToPath(new URL("../../", import.meta.url))
   const root = mkdtempSync(join(tmpdir(), "quits-hook-install-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  const manifests = execFileSync("git", ["ls-files", "-z", "--", "package.json", "*/package.json"], {
+  // Dependency patches are part of the install: a frozen install fails without them.
+  const manifests = execFileSync("git", ["ls-files", "-z", "--", "package.json", "*/package.json", "patches/*.patch"], {
     cwd: source, encoding: "utf8",
   }).split("\0").filter(Boolean)
   for (const path of [...manifests, "bun.lock", "lefthook.yml", "scripts/lefthook.sh"]) {

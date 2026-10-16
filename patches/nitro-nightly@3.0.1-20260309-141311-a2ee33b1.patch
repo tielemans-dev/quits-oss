@@ -1,0 +1,13 @@
+diff --git a/dist/runtime/internal/vite/node-runner.mjs b/dist/runtime/internal/vite/node-runner.mjs
+index 3e2e33eafdd79ca998d45ae4665e87c03462c11c..1d06364f86b1c5c2c3edb250229453a61c220385 100644
+--- a/dist/runtime/internal/vite/node-runner.mjs
++++ b/dist/runtime/internal/vite/node-runner.mjs
+@@ -64,7 +64,7 @@ class EnvRunner {
+       return renderError(req, this.entryError);
+     }
+     if (!this.entry) {
+-      throw httpError(503, `Vite environment "${this.name}" is unavailable`);
++      return renderError(req, httpError(503, `Vite environment "${this.name}" is unavailable`));
+     }
+     try {
+       const entryFetch = this.entry.fetch || this.entry.default?.fetch;

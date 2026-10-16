@@ -131,6 +131,9 @@
     "@prisma/engines",
     "prisma",
   ],
+  "patchedDependencies": {
+    "nitro-nightly@3.0.1-20260309-141311-a2ee33b1": "patches/nitro-nightly@3.0.1-20260309-141311-a2ee33b1.patch",
+  },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0",
     "vitest": "5.0.1",
