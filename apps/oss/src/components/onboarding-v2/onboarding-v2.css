@@ -460,13 +460,13 @@
   .ob-spin {
     animation: none;
   }
-  /* The app-wide reduced-motion reset is !important; the one fade that survives it must be too. */
+  /* Fade only: no blur, rise or scale. */
   .ob-slot[data-filled] .ob-slot-value,
   .ob-check {
-    animation: ob-fade var(--duration-fade) var(--ease-enter) both !important;
+    animation: ob-fade var(--duration-fade) var(--ease-enter) both;
   }
   .ob-slot-skeleton {
-    transition: opacity var(--duration-fade) var(--ease-enter) !important;
+    transition: opacity var(--duration-fade) var(--ease-enter);
   }
 }
 @media (max-width: 520px) {
