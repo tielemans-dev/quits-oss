@@ -27,6 +27,8 @@ export function createRequestProvider(recognize: RequestRecognizer = recognizeRe
               icon: Sparkles,
               perform: ({ expand, close }) =>
                 expand(<RequestCardSlot intent={intent} onDismiss={close} />),
+              // The cursor stays in the field while it is a preview of what is being typed.
+              card: ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} />,
             },
           ],
         },

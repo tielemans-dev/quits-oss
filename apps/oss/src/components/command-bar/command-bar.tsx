@@ -1,4 +1,4 @@
-import { ArrowUp, Sparkles } from "lucide-react"
+import { ArrowUp, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
@@ -84,10 +84,13 @@ export function CommandBar({ recognize, suggest, onSearch, className }: { recogn
             ref={inputRef}
             type="text"
             value={value}
-            readOnly={intent !== null}
             onChange={(event) => {
-              if (onSearch && event.currentTarget.form) onSearch(event.currentTarget.form, event.target.value)
-              else setValue(event.target.value)
+              // The text is always editable; changing it lets go of the card it opened.
+              setIntent(null)
+              if (onSearch && event.currentTarget.form) {
+                setValue("")
+                onSearch(event.currentTarget.form, event.target.value)
+              } else setValue(event.target.value)
             }}
             aria-label={t("dashboard.commandBar.label")}
             placeholder={t("dashboard.commandBar.placeholder")}
@@ -95,6 +98,16 @@ export function CommandBar({ recognize, suggest, onSearch, className }: { recogn
             spellCheck={false}
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
           />
+          {value && (
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label={t("shell.palette.clear")}
+              className="text-muted-foreground hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md outline-none transition-colors duration-(--duration-fade) hover:bg-(--neutral-6) focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
           {/* The shadcn default animates every property; name the ones that change. */}
           <Button
             type="submit"

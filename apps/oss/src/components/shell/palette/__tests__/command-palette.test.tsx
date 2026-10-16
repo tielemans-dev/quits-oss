@@ -382,6 +382,46 @@ describe("request mode", () => {
     expect(router.navigate).not.toHaveBeenCalled()
   })
 
+  it("becomes the card once typing pauses, follows the text, and goes back to the list without Enter", () => {
+    vi.useFakeTimers()
+    try {
+      render(<Harness can={everything} />)
+      const input = screen.getByRole("combobox") as HTMLInputElement
+      fireEvent.change(input, { target: { value: "vis forfaldne" } })
+      expect(screen.queryByRole("region", { name: "Opgave" })).toBeNull()
+
+      act(() => vi.advanceTimersByTime(300))
+      const slot = screen.getByRole("region", { name: "Opgave" })
+      // A preview: the cursor stays in the field, which stays editable.
+      expect(document.activeElement).toBe(input)
+      expect(input.readOnly).toBe(false)
+      expect(screen.getByRole("listbox", { hidden: true }).className).toContain("hidden")
+
+      fireEvent.change(input, { target: { value: "vis forfaldne fakturaer" } })
+      expect(screen.getByRole("region", { name: "Opgave" })).toBe(slot)
+
+      fireEvent.change(input, { target: { value: "vis" } })
+      expect(screen.queryByRole("region", { name: "Opgave" })).toBeNull()
+      expect(screen.getByRole("listbox").className).not.toContain("hidden")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("empties the field with Ryd, also from a card, and keeps the cursor there", () => {
+    render(<Harness can={everything} />)
+    const input = screen.getByRole("combobox") as HTMLInputElement
+    expect(screen.queryByRole("button", { name: "Ryd" })).toBeNull()
+    fireEvent.change(input, { target: { value: "vis forfaldne" } })
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(screen.getByRole("region", { name: "Opgave" })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole("button", { name: "Ryd" }))
+    expect(input.value).toBe("")
+    expect(screen.queryByRole("region", { name: "Opgave" })).toBeNull()
+    expect(document.activeElement).toBe(input)
+  })
+
   it("closes from the card's Annuller button", () => {
     render(<Harness can={everything} />)
     const input = screen.getByRole("combobox")
