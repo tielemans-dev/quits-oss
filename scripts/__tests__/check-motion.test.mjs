@@ -38,7 +38,7 @@ test("motion guard passes on the app's tokens and reduced-motion rules", () => {
 })
 
 test("motion guard fails when a spatial duration token passes 350ms, but not a non-spatial one", () => {
-  for (const [from, to] of [["--duration-card: 300ms", "--duration-card: 400ms"], ["--duration-palette: 300ms", "--duration-palette: 0.42s"], ["--duration-base: 300ms", "--duration-base: 351ms"]]) {
+  for (const [from, to] of [["--duration-card: 300ms", "--duration-card: 400ms"], ["--duration-palette: 200ms", "--duration-palette: 0.42s"], ["--duration-base: 300ms", "--duration-base: 351ms"]]) {
     const run = guard(TOKENS, from, to)
     assert.equal(run.status, 1, to)
     assert.match(run.output, /capped at 350ms/)
