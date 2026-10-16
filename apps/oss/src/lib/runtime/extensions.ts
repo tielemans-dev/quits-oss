@@ -136,6 +136,7 @@ function readDefaultCapabilities(
       customEndpoint,
       localAgent,
       requestFallbackEnabled: readBooleanEnv(readProductEnv(env, "AI_REQUEST_FALLBACK_ENABLED"), false),
+      requestDecisionsEnabled: Boolean(readProductEnv(env, "TYPESAFE_API_KEY")?.trim()),
       maxPromptChars: DEFAULT_MAX_PROMPT_CHARS,
     },
     onboardingAi: {

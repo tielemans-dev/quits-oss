@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { actorCan } from "../../domain/actor"
+import { decideRequest } from "../../lib/ai/decide-request"
 import { fillRequest } from "../../lib/ai/request-fallback"
 import { FALLBACK_AI_MODELS, generateInvoiceDraft } from "../../lib/ai/invoice-draft"
 import {
@@ -21,6 +22,8 @@ import { resolveDraftItemUnitPrice } from "../../lib/ai/pricing"
 import { prisma } from "../../lib/db"
 import { decryptSecret } from "../../lib/secrets"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
+import { getRuntimeEnv } from "../../lib/runtime/platform"
+import { readProductEnv } from "@quits/shared/runtimeEnv"
 import { usesStripeConnectCheckout } from "../../lib/payments/stripe"
 import { getBillingProvider } from "../../lib/runtime/services"
 import { hasSubscriptionAccess } from "../../lib/billing/organization-access"
@@ -108,6 +111,18 @@ function toTrpcAiError(error: AiProviderError) {
 }
 
 export const aiRouter = router({
+  /** What the decision model makes of palette text; null when it is off or has nothing to say. */
+  decideRequest: authorizedProcedure("contact:read")
+    .input(z.object({ text: z.string().trim().min(4).max(500) }))
+    .query(async ({ ctx, input, signal }) => {
+      const apiKey = readProductEnv(getRuntimeEnv(), "TYPESAFE_API_KEY")?.trim()
+      if (!apiKey) return null
+      const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { aiDraftsEnabled: true } })
+      if (settings?.aiDraftsEnabled === false) return null
+      const customers = await prisma.contact.findMany({ where: { organizationId: ctx.organizationId }, select: { name: true }, orderBy: { name: "asc" }, take: 254 })
+      return decideRequest({ apiKey, text: input.text, customers: customers.map((customer) => customer.name), signal })
+    }),
+
   fillRequest: authorizedProcedure("contact:read")
     .input(z.object({ prompt: z.string().trim().min(10).max(4000) }))
     .mutation(async ({ ctx, input }) => {
