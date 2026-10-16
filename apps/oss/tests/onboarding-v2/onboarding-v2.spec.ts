@@ -238,6 +238,9 @@ test("hosted VAT-only setup requires an explicit answer and finishes with keyboa
   await expect(page.getByRole("heading", { name: "Tjek dine indstillinger" })).toBeVisible()
   expect(payloads).toHaveLength(0)
   await expect(page.getByText("Bekræft, om du er momsregistreret.", { exact: true })).toBeVisible()
+  const summary = page.getByRole("alert", { name: "1 ting mangler, før du kan fortsætte" })
+  await expect(summary).toBeFocused()
+  await summary.getByRole("link", { name: /^Momsregistreret\?:/ }).click()
   await expect(choice).toBeFocused()
   // Native keyboard input must change the actual answer, without dispatching an event.
   await choice.press("ArrowDown")
@@ -286,8 +289,11 @@ test("manual review requires a CVR and keeps the VAT choice", async ({ page }) =
   await expect(cvr).toHaveAttribute("aria-invalid", "true")
   expect(payload).toEqual({})
   await cvr.fill("24256790")
-  // Clicking without a VAT answer explains and focuses it instead of a silent native block.
+  // The summary explains a missing VAT answer and links to the choice.
   await create.click()
+  const summary = page.getByRole("alert", { name: "1 ting mangler, før du kan fortsætte" })
+  await expect(summary).toBeFocused()
+  await summary.getByRole("link", { name: /^Momsregistreret\?:/ }).click()
   await expect(page.getByRole("radio", { name: "Jeg er momsregistreret" })).toBeFocused()
   expect(payload).toEqual({})
   await page.getByRole("radio", { name: "Jeg er momsregistreret" }).check()
@@ -385,10 +391,16 @@ for (const locale of ["da-DK", "en-GB"]) test(`QUI-39 inline email and required 
   await expect(email).toHaveAttribute("aria-invalid", "true")
   await expect(page.locator("#ob-companyEmail-error")).toHaveText(locale === "da-DK"
     ? "Indtast en gyldig e-mail, fx navn@firma.dk" : "Enter a valid email, like name@company.com")
-  await expect(page.locator(".ob-review > .ob-danger")).toBeVisible()
+  const summary = page.getByRole("alert", { name: locale === "da-DK"
+    ? /ting mangler, før du kan fortsætte/ : /to fix before you can continue/ })
+  await expect(summary).toBeFocused()
+  await expect(summary.getByRole("link")).toHaveCount(2)
+  await summary.getByRole("link", { name: /^(Navn|Name):/ }).click()
+  await expect(name).toBeFocused()
   await name.fill("Corrected company")
+  await expect(summary.getByRole("link")).toHaveCount(1)
   await email.fill("billing@example.test")
   await expect(name).not.toHaveAttribute("aria-invalid", "true")
   await expect(email).not.toHaveAttribute("aria-invalid", "true")
-  await expect(page.locator(".ob-review > .ob-danger")).toHaveCount(0)
+  await expect(summary).toHaveCount(0)
 })

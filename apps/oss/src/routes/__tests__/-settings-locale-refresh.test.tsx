@@ -56,6 +56,7 @@ vi.mock("../../components/settings/agent-keys-card", () => ({ AgentKeysCard: () 
 vi.mock("../_app/-settings.helpers", () => ({ shouldAutoLoadAiModels: () => false }))
 vi.mock("../../trpc/client", () => ({
   trpc: {
+    accounting: { status: { query: vi.fn(async () => ({ providers: [], canDisconnect: false })) } },
     settings: { get: { query: state.getSettings }, update: { mutate: state.updateSettings } },
     runtime: { capabilities: { query: vi.fn(async () => ({
       sellerVatConfirmation: { enabled: false },

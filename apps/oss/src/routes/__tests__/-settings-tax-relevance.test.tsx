@@ -128,6 +128,7 @@ vi.mock("../_app/-settings.helpers", () => ({
 
 vi.mock("../../trpc/client", () => ({
   trpc: {
+    accounting: { status: { query: vi.fn(async () => ({ providers: [], canDisconnect: false })) } },
     settings: {
       get: {
         query: settingsGetQuery,
