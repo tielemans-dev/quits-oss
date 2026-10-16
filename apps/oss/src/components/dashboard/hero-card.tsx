@@ -73,7 +73,7 @@ export function HeroCard({
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-28 -right-16 -z-10 size-80 rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/10%),transparent)]"
+        className="pointer-events-none absolute -top-28 -right-16 -z-10 size-80 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--brand-foreground)_10%,transparent),transparent)]"
       />
       <MonoLabel as="h2" className="text-hero-foreground/90">
         {t("dashboard.hero.label")}
@@ -88,7 +88,7 @@ export function HeroCard({
           precision={precision}
           // A rule is money asked for or settled; when nothing valued is owed here it has no figure to sit under.
           rule={kvit ? "double" : hero.outstanding ? "single" : "none"}
-          className="text-[2.4rem] sm:text-6xl"
+          className="text-4xl sm:text-6xl"
         />
       </div>
 

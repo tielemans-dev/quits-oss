@@ -18,8 +18,8 @@ const sizes: Record<
   AmountSize,
   { text: string; fraction: number; stroke: number; first: number; second: number; height: number; gap: number }
 > = {
-  sm: { text: "text-[14.5px] font-bold", fraction: 0.68, stroke: 1, first: 0.5, second: 3.5, height: 4, gap: 3 },
-  md: { text: "text-[28px] font-extrabold tracking-[-0.025em]", fraction: 0.58, stroke: 2, first: 1, second: 5, height: 6, gap: 4 },
+  sm: { text: "text-sm font-bold", fraction: 0.68, stroke: 1, first: 0.5, second: 3.5, height: 4, gap: 3 },
+  md: { text: "text-3xl font-extrabold tracking-[-0.025em]", fraction: 0.58, stroke: 2, first: 1, second: 5, height: 6, gap: 4 },
   hero: { text: "figure text-5xl sm:text-6xl", fraction: 0.45, stroke: 3, first: 1.5, second: 8.5, height: 10, gap: 8 },
 }
 

@@ -40,15 +40,15 @@ export function NewMenu({ open, onOpenChange, can, ready, readOnly = false }: Pr
         aria-label={t('shell.new.menuLabel')}
         className={cn(
           // A secondary button: the page's own call to action stays the only filled primary.
-          'inline-flex h-9 shrink-0 items-center gap-2 rounded-[9px] border border-foreground/20 bg-panel px-3 text-[13px] font-semibold text-foreground shadow-ink outline-hidden',
+          'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-foreground/20 bg-panel px-3 text-sm font-semibold text-foreground shadow-ink outline-hidden',
           'transition-colors hover:border-foreground/35 hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           'data-[state=open]:border-foreground/35 data-[state=open]:bg-sidebar-accent disabled:opacity-60'
         )}
       >
         <Plus className="size-4" aria-hidden="true" />
         <span className="max-sm:sr-only">{t('shell.new')}</span>
-        {readOnly && <span className="font-mono text-[10px] tracking-wide">{t('trial.lock')}</span>}
-        <kbd className="rounded-[5px] border border-hairline px-1 font-mono text-[10px] font-medium text-muted-foreground max-md:hidden" aria-hidden="true">
+        {readOnly && <span className="font-mono text-2xs tracking-wide">{t('trial.lock')}</span>}
+        <kbd className="rounded-sm border border-hairline px-1 font-mono text-2xs font-medium text-muted-foreground max-md:hidden" aria-hidden="true">
           N
         </kbd>
       </DropdownMenuTrigger>

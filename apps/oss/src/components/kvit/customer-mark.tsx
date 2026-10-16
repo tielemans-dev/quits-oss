@@ -4,8 +4,8 @@ import { cn } from "../../lib/utils"
 import { deriveMarkColour, markInitials } from "./mark-colour"
 
 const sizeClass = {
-  sm: "size-5 rounded-[6px] text-[9.5px]",
-  md: "size-7 rounded-lg text-[11px]",
+  sm: "size-5 rounded-sm text-2xs",
+  md: "size-7 rounded-lg text-2xs",
 } as const
 
 /**

@@ -3,6 +3,7 @@ import { withoutNonVatStatement } from "./documents/non-vat-presentation"
 import { nonVatStatement } from "./documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "./documents/seller-vat"
 import { documentColors as C, EMAIL_FONT_STACK } from "./brand/document-colors"
+import { EMAIL_DARK_COLORS as D } from "./brand/surface-colors"
 import { invoicePaymentReferenceHint, invoicePaymentRows } from "./documents/invoice-payment-rows"
 import { buyerAddress, sellerPresentationTaxIds } from "./documents/invoice-identity"
 import { hasPaymentDetails, type BankAccountSnapshot } from "@quits/contracts/payment-details"
@@ -217,7 +218,7 @@ export function totalsBlock(
 
 /** The quits. wordmark as text: images are often blocked in mail clients. The stop is Settled green. */
 export function emailWordmark() {
-  return `<span style="font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:${C.ink};">quits<span style="color:${C.settled};">.</span></span>`
+  return `<span style="font-size:24px;font-weight:700;letter-spacing:-0.03em;line-height:1;color:${C.ink};">quits<span style="color:${C.settled};">.</span></span>`
 }
 
 /** The button every email uses for its one action: ink, like the app's primary button. */
@@ -243,13 +244,13 @@ ${invoicePresentation ? `<meta name="color-scheme" content="light dark"><meta na
     .invoice-items td[data-label]::before { content:attr(data-label); float:left; font-size:12px; color:${C.muted}; }
   }
   @media (prefers-color-scheme:dark) {
-    body { background:#111112 !important; color:#f2f2f0 !important; }
-    .email-panel { background:#1a1b1e !important; }
-    .invoice-email [style*="background:${C.paper}"] { background:#111112 !important; }
-    .invoice-email [style*="color:${C.ink}"] { color:#f2f2f0 !important; }
-    .invoice-email [style*="color:${C.muted}"], .invoice-items td[data-label]::before { color:#a6abb2 !important; }
-    .invoice-email [style*="${C.hairline}"] { border-color:#36383d !important; }
-    .invoice-email .email-button { background:#f2f2f0 !important; color:#111112 !important; }
+    body { background:${D.paper} !important; color:${D.ink} !important; }
+    .email-panel { background:${D.panel} !important; }
+    .invoice-email [style*="background:${C.paper}"] { background:${D.paper} !important; }
+    .invoice-email [style*="color:${C.ink}"] { color:${D.ink} !important; }
+    .invoice-email [style*="color:${C.muted}"], .invoice-items td[data-label]::before { color:${D.muted} !important; }
+    .invoice-email [style*="${C.hairline}"] { border-color:${D.hairline} !important; }
+    .invoice-email .email-button { background:${D.ink} !important; color:${D.paper} !important; }
   }
 </style>` : ""}</head>
 <body class="${invoicePresentation ? "invoice-email" : ""}" style="margin:0;padding:0;background:${C.paper};font-family:${EMAIL_FONT_STACK};color:${C.ink};">
@@ -356,7 +357,7 @@ export function buildInvoiceEmailContent({
   const hasTransferDetails = hasPaymentDetails({ bankAccount: invoice.bankAccount, note: invoice.paymentNote })
   const showPaymentInstructions = balanceDue > 0 && (hasTransferDetails || Boolean(publicPaymentUrl))
   const html = layout(`
-    <h2 style="margin:0 0 4px;font-size:22px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
+    <h2 style="margin:0 0 4px;font-size:24px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
 
     <div class="invoice-parties" style="display:flex;gap:24px;justify-content:space-between;margin-bottom:8px;">
@@ -474,7 +475,7 @@ export function buildQuoteEmailContent({
   const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
   const html = layout(`
-    <h2 style="margin:0 0 4px;font-size:22px;">${t("email.quote.title", locale)} ${safeQuoteNumber}</h2>
+    <h2 style="margin:0 0 4px;font-size:24px;">${t("email.quote.title", locale)} ${safeQuoteNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.quote.greeting", locale, { name: safeContactName })}</p>
 
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
@@ -540,7 +541,7 @@ export function buildInvitationEmailContent({
   const safeOrgName = escapeHtml(orgName)
   const safeInvitationUrl = escapeAttribute(invitationUrl)
   const html = layout(`
-    <h2 style="margin:0 0 8px;font-size:22px;">${t("email.invitation.title", locale, { orgName: safeOrgName })}</h2>
+    <h2 style="margin:0 0 8px;font-size:24px;">${t("email.invitation.title", locale, { orgName: safeOrgName })}</h2>
     <p style="color:${C.muted};margin-bottom:32px;">${t("email.invitation.body", locale, { inviterName: safeInviterName })}</p>
     <a href="${safeInvitationUrl}"
        style="${emailButtonStyle()}">

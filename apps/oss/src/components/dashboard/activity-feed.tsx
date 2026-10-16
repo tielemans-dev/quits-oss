@@ -47,7 +47,7 @@ export function ActivityFeed({
           {lines.map((line) => (
             <li key={line.id} className="flex items-start justify-between gap-3 py-1.5 text-sm">
               <span className="text-muted-foreground flex min-w-0 items-start gap-2.5">
-                <span aria-hidden="true" className="bg-foreground/25 mt-[7px] size-1.5 shrink-0 rounded-full" />
+                <span aria-hidden="true" className="bg-foreground/25 mt-1.5 size-1.5 shrink-0 rounded-full" />
                 <span className="min-w-0">
                   <ActivityLabel
                     line={line}

@@ -8,8 +8,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 22px;
-  font-weight: 650;
+  font-size: 24px;
+  font-weight: 700;
   margin-bottom: 48px;
 }
 .ob-square {
@@ -38,7 +38,7 @@
 }
 .ob-steps li[aria-current] {
   color: var(--foreground);
-  font-weight: 600;
+  font-weight: 700;
 }
 .ob-marker {
   display: inline-flex;
@@ -63,7 +63,7 @@
   font-size: clamp(28px, 4vw, 36px);
   line-height: 1.18;
   letter-spacing: -0.025em;
-  font-weight: 600;
+  font-weight: 700;
   text-wrap: balance;
   margin: 0 0 16px;
 }
@@ -75,13 +75,13 @@
   max-width: 65ch;
 }
 .ob-shell h2 {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   margin: 0;
 }
 .ob-shell h3 {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 20px 0 8px;
 }
 .ob-search-input {
@@ -102,7 +102,7 @@
 }
 .ob-shell .ob-error {
   color: var(--destructive);
-  font-size: 13px;
+  font-size: 14px;
 }
 .ob-shell .ob-source {
   font-size: 12px;
@@ -137,7 +137,7 @@
 }
 .ob-continue {
   grid-column: 1 / -1;
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 8px;
 }
 .ob-tag {
@@ -261,9 +261,9 @@
   }
 }
 .ob-notice {
-  background: light-dark(#fffbeb, #32280f);
-  color: light-dark(#713f12, #fde68a);
-  border: 1px solid light-dark(#fcd34d, #80652c);
+  background: color-mix(in srgb, var(--tone-warning) 10%, var(--panel));
+  color: var(--tone-warning);
+  border: 1px solid color-mix(in srgb, var(--tone-warning) 40%, var(--panel));
   border-radius: 8px;
   padding: 20px;
   margin: 24px 0;
@@ -275,9 +275,9 @@
   margin-bottom: 8px;
 }
 .ob-danger {
-  background: light-dark(#fff1f2, #341a20);
-  color: light-dark(#9f1239, #fecdd3);
-  border-color: light-dark(#fda4af, #9f1239);
+  background: color-mix(in srgb, var(--destructive) 10%, var(--panel));
+  color: var(--destructive);
+  border-color: color-mix(in srgb, var(--destructive) 40%, var(--panel));
 }
 .ob-actions {
   display: flex;
@@ -310,10 +310,10 @@
   flex-wrap: wrap;
   gap: 6px 12px;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
 }
 .ob-field .ob-tag {
-  font-size: 9px;
+  font-size: 11px;
 }
 .ob-shell select,
 .ob-shell textarea {
@@ -383,7 +383,7 @@
   gap: 12px;
   min-height: 44px;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 14px;
 }
 .ob-suggestion-row button {
   min-width: 40px;
@@ -414,7 +414,7 @@
   gap: 16px;
 }
 .ob-bank-fields label {
-  font-size: 13px;
+  font-size: 14px;
   display: grid;
   gap: 8px;
   align-content: start;

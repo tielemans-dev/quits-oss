@@ -19,7 +19,7 @@ export function buildPasswordResetEmailContent({ name, resetUrl, fromEmail, loca
   return {
     subject: sanitizeHeader(t("email.passwordReset.subject", locale)),
     html: layout(`
-      <h2 style="margin:0 0 8px;font-size:22px;">${escapeHtml(t("email.passwordReset.title", locale))}</h2>
+      <h2 style="margin:0 0 8px;font-size:24px;">${escapeHtml(t("email.passwordReset.title", locale))}</h2>
       <p style="color:${C.muted};">${escapeHtml(t("email.passwordReset.greeting", locale, { name }))}</p>
       <p style="color:${C.muted};">${escapeHtml(t("email.passwordReset.body", locale, { minutes: PASSWORD_RESET_EXPIRES_IN / 60 }))}</p>
       ${actionBlock({ href: resetUrl, label: t("email.passwordReset.action", locale), fallbackLabel: t("email.passwordReset.fallback", locale) })}

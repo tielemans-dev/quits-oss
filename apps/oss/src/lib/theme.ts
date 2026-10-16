@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react"
+import { THEME_CHROME_COLORS } from "./brand/surface-colors"
 
 /**
  * Colour theme preference: `system | light | dark`, kept in localStorage and applied as the `dark`
@@ -25,10 +26,7 @@ const DARK_QUERY = "(prefers-color-scheme: dark)"
  * styles.css). One `<meta name="theme-color">` carries it, so it follows the resolved theme rather
  * than the OS setting.
  */
-export const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#faf9f6",
-  dark: "#0e1018",
-}
+export const THEME_COLORS: Record<ResolvedTheme, string> = THEME_CHROME_COLORS
 
 /**
  * Public document pages show a supplier's document to their customer, not our interface:

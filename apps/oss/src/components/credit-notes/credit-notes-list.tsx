@@ -65,10 +65,10 @@ export function CreditNotesList({ creditNotes }: { creditNotes: CreditNoteListIt
                   </div>
                 </div>
               </ListCell>
-              <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
+              <ListCell className="font-mono text-xs tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                 {creditNote.number}
               </ListCell>
-              <ListCell className="text-muted-foreground font-mono text-[12.5px] tracking-[0.01em] hidden @5xl:block">
+              <ListCell className="text-muted-foreground font-mono text-xs tracking-[0.01em] hidden @5xl:block">
                 {creditNote.invoice.number}
               </ListCell>
               <ListCell className="text-muted-foreground hidden @4xl:block">{date}</ListCell>

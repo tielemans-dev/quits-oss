@@ -81,7 +81,7 @@ export function OrgSwitcher({ className }: { className?: string }) {
       >
         <span
           aria-hidden="true"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-soft text-[13px] font-bold text-brand-text"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-soft text-sm font-bold text-brand-text"
         >
           {name ? initialOf(name) : ''}
         </span>

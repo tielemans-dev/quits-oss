@@ -48,7 +48,7 @@ export function buildPaymentDetailsChangedEmailContent({
       <tr>
         <td style="${cell}color:${C.muted};">${escapeHtml(t(PAYMENT_DETAIL_LABEL_KEYS[change.field], locale))}</td>
         <td style="${cell}font-family:ui-monospace,monospace;">${value(change.before)}</td>
-        <td style="${cell}font-family:ui-monospace,monospace;font-weight:600;">${value(change.after)}</td>
+        <td style="${cell}font-family:ui-monospace,monospace;font-weight:700;">${value(change.after)}</td>
       </tr>`
     )
     .join("")
@@ -57,7 +57,7 @@ export function buildPaymentDetailsChangedEmailContent({
     subject: sanitizeHeader(t("email.paymentDetailsChanged.subject", locale)),
     html: layout(
       `
-      <h2 style="margin:0 0 8px;font-size:22px;">${escapeHtml(t("email.paymentDetailsChanged.title", locale))}</h2>
+      <h2 style="margin:0 0 8px;font-size:24px;">${escapeHtml(t("email.paymentDetailsChanged.title", locale))}</h2>
       <p style="margin:0 0 16px;color:${C.body};">${escapeHtml(t("email.paymentDetailsChanged.intro", locale, { name: changedBy }))}</p>
       <p style="margin:0 0 4px;color:${C.muted};">${escapeHtml(t("email.paymentDetailsChanged.organization", locale))}: <span style="color:${C.ink};">${escapeHtml(organizationName)}</span></p>
       <p style="margin:0 0 16px;color:${C.muted};">${escapeHtml(t("email.paymentDetailsChanged.changedAt", locale))}: <span style="color:${C.ink};">${escapeHtml(formatDateTime(changedAt, locale, timezone))}</span></p>
@@ -72,7 +72,7 @@ export function buildPaymentDetailsChangedEmailContent({
         <tbody>${rows}</tbody>
       </table>
       <p style="margin:24px 0 0;padding:12px 16px;background:${C.tones.danger.tint};border-radius:8px;color:${C.tones.danger.text};font-weight:500;">${escapeHtml(t("email.paymentDetailsChanged.warning", locale))}</p>
-      <p style="margin-top:16px;font-size:13px;color:${C.muted};">${escapeHtml(t("email.paymentDetailsChanged.sentBecause", locale, { organization: organizationName }))}</p>
+      <p style="margin-top:16px;font-size:12px;color:${C.muted};">${escapeHtml(t("email.paymentDetailsChanged.sentBecause", locale, { organization: organizationName }))}</p>
     `,
       locale
     ),

@@ -160,7 +160,7 @@ function QuotesListPage() {
                       </div>
                     </div>
                   </ListCell>
-                  <ListCell className="font-mono text-[12.5px] tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
+                  <ListCell className="font-mono text-xs tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
                     {quote.number ?? (
                       <>
                         <span aria-hidden="true" className="text-muted-foreground">

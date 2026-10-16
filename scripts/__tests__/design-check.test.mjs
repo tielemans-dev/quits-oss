@@ -21,3 +21,8 @@ test('reports open Tailwind categories without flagging theme palette declaratio
   assert.deepEqual(checkDesign('borderRadius: 8', 'card.tsx'), [])
   assert.equal(checkDesign('borderRadius: 3', 'card.tsx')[0].rule, 'radius')
 })
+test('lets token-built backgrounds through and does not read top-[50%] as p-[50%]', () => {
+  const source = 'top-[50%] -top-[12vh] bg-[length:100%_1px] bg-[color-mix(in_srgb,var(--panel),var(--foreground)_4%)]'
+  assert.deepEqual(checkDesign(source, 'card.tsx'), [])
+  assert.deepEqual(checkDesign('-mt-[7px] sm:p-[50%]', 'card.tsx').map(({ value }) => value), ['mt-[7px]', 'p-[50%]'])
+})

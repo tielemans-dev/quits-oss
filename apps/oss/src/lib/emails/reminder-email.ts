@@ -48,7 +48,7 @@ export function buildReminderEmailContent({
 
   const html = layout(
     `
-    <h2 style="margin:0 0 16px;font-size:22px;">${t(`reminders.email.title.${stage}`, locale)}</h2>
+    <h2 style="margin:0 0 16px;font-size:24px;">${t(`reminders.email.title.${stage}`, locale)}</h2>
     <p style="margin:0 0 8px;">${t("reminders.email.greeting", locale, { name: escapeHtml(contactName) })}</p>
     <p style="margin:0 0 24px;color:${C.body};">${t(`reminders.email.body.${stage}`, locale, {
       number: escapeHtml(invoice.number),

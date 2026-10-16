@@ -77,7 +77,7 @@ export function TrialBanner() {
           <div className={`h-full ${warning ? "bg-tone-warning" : "bg-settled"}`} style={{ width: `${progress}%` }} />
         </div>}
       </div>
-      <Link to="/billing" search={{ success: undefined, canceled: undefined }} className={`inline-flex min-h-9 items-center justify-center self-start rounded-[7px] px-4 text-sm font-semibold sm:self-auto ${ended
+      <Link to="/billing" search={{ success: undefined, canceled: undefined }} className={`inline-flex min-h-9 items-center justify-center self-start rounded-md px-4 text-sm font-semibold sm:self-auto ${ended
         ? "bg-settled text-foreground" : warning ? "bg-foreground text-background" : "border border-border bg-card text-foreground"}`}>
         {ended ? t("trial.action.upgradeNow") : warning ? t("trial.action.upgrade") : t("trial.action.plans")}
       </Link>
@@ -100,19 +100,19 @@ export function PaywallBlock({ resource, endDate }: { resource: "contacts" | "in
   const { t, locale } = useI18n()
   const date = endDate ? formatTrialDate(endDate, locale) : ""
   return <section className="mx-auto max-w-2xl px-2 py-8 sm:py-14">
-    <div className="rounded-[10px] border border-border bg-card p-6 sm:p-10">
+    <div className="rounded-lg border border-border bg-card p-6 sm:p-10">
       <span className="inline-flex rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">{t("trial.paywall.pill")}</span>
       <h1 className="mt-5 max-w-lg text-3xl font-semibold tracking-tight text-foreground">{t("trial.paywall.heading", { resource: t(`trial.resource.${resource}`) })}</h1>
       <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">{endDate ? t("trial.paywall.body", { date }) : t("trial.paywall.bodyNoDate")}</p>
       <div className="mt-7 flex flex-wrap gap-3">
-        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] bg-foreground px-5 text-sm font-semibold text-background">{t("trial.action.upgradeNow")}</Link>
-        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] border border-border px-5 text-sm font-semibold text-foreground">{t("trial.action.plans")}</Link>
+        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-md bg-foreground px-5 text-sm font-semibold text-background">{t("trial.action.upgradeNow")}</Link>
+        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-md border border-border px-5 text-sm font-semibold text-foreground">{t("trial.action.plans")}</Link>
       </div>
     </div>
-    <div aria-hidden="true" className="pointer-events-none mt-7 rounded-[10px] border border-border bg-canvas p-6 opacity-55 grayscale">
-      <p className="font-mono text-[11px] font-semibold tracking-widest text-muted-foreground">{t("trial.lock")} · {t("trial.paywall.preview")}</p>
-      <div className="mt-5 h-9 rounded-[7px] border border-border bg-card" />
-      <div className="mt-3 h-9 rounded-[7px] border border-border bg-card" />
+    <div aria-hidden="true" className="pointer-events-none mt-7 rounded-lg border border-border bg-canvas p-6 opacity-55 grayscale">
+      <p className="font-mono text-2xs font-semibold tracking-widest text-muted-foreground">{t("trial.lock")} · {t("trial.paywall.preview")}</p>
+      <div className="mt-5 h-9 rounded-md border border-border bg-card" />
+      <div className="mt-3 h-9 rounded-md border border-border bg-card" />
     </div>
   </section>
 }

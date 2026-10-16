@@ -46,7 +46,7 @@ function GhostDashboard() {
         {[30, 55, 40, 70, 45, 85].map((height, index) => (
           <span
             key={index}
-            className={cn("flex-1 rounded-[3px]", index === 5 ? "bg-settled" : "bg-brand/25")}
+            className={cn("flex-1 rounded-sm", index === 5 ? "bg-settled" : "bg-brand/25")}
             style={{ height: `${height}%` }}
           />
         ))}
@@ -57,7 +57,7 @@ function GhostDashboard() {
           className="border-hairline bg-panel flex items-center gap-3 rounded-lg border px-3 py-2.5"
           style={{ opacity: 0.85 - row * 0.3 }}
         >
-          <span className="bg-brand-soft size-5 shrink-0 rounded-[6px]" />
+          <span className="bg-brand-soft size-5 shrink-0 rounded-sm" />
           <span className="bg-foreground/10 h-2.5 w-24 rounded-full" />
           <span className="bg-foreground/10 ml-auto h-2.5 w-14 rounded-full" />
         </div>
