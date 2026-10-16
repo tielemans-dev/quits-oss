@@ -2,11 +2,14 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-// Proposed scales recorded by Ines on QUI-66. Report only until policy approval.
-const sizes = new Set([11, 12, 14, 16, 18, 20, 24, 30])
+// App restyle scales. Existing documents keep their own scale until their review.
+const sizes = new Set([11, 12, 14, 16, 20, 24, 32])
+const documentSizes = new Set([11, 12, 14, 16, 18, 20, 24, 30])
 const spacing = new Set([0, 1, 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80])
-const weights = new Set([400, 500, 700, 800])
+const weights = new Set([400, 500])
+const documentWeights = new Set([400, 500, 700, 800])
 export function checkDesign(source, file) {
+  const document = /(?:^|\/)(?:[^/]*-)?pdf\.tsx?$|(?:^|\/)emails?(?:\/|\.)/.test(file)
   const findings = []
   const report = (match, rule) => findings.push({ file, line: source.slice(0, match.index).split('\n').length, rule, value: match[0] })
   if (file === 'styles.css') {
@@ -16,16 +19,16 @@ export function checkDesign(source, file) {
     return findings
   }
   for (const match of source.matchAll(/(?:fontSize\s*:\s*|font-size\s*:\s*)(\d+(?:\.\d+)?)(?:px|pt)?\b/g)) {
-    if (!sizes.has(Number(match[1]))) report(match, 'font-size')
+    if (!(document ? documentSizes : sizes).has(Number(match[1]))) report(match, 'font-size')
   }
   for (const match of source.matchAll(/(?:fontWeight|font-weight)\s*:\s*["']?(\d{3})/g)) {
-    if (!weights.has(Number(match[1]))) report(match, 'font-weight')
+    if (!(document ? documentWeights : weights).has(Number(match[1]))) report(match, 'font-weight')
   }
   for (const match of source.matchAll(/(?:padding|margin)(?:Top|Right|Bottom|Left)?\s*:\s*(\d+)\b/g)) {
     if (!spacing.has(Number(match[1]))) report(match, 'spacing')
   }
   for (const match of source.matchAll(/borderRadius\s*:\s*(\d+)\b/g)) {
-    if (![0, 6, 8, 10, 12, 9999].includes(Number(match[1]))) report(match, 'radius')
+    if (!(document ? [0, 6, 8, 10, 12, 9999] : [0, 4, 8, 12, 16, 9999]).includes(Number(match[1]))) report(match, 'radius')
   }
   // Grid templates are intentionally allowed. Tokens remain the colour authority. A value built from
   // theme custom properties (`var(--…)`) follows the tokens, and `bg-[length:…]`/`bg-[position:…]`

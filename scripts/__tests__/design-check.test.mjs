@@ -26,3 +26,10 @@ test('lets token-built backgrounds through and does not read top-[50%] as p-[50%
   assert.deepEqual(checkDesign(source, 'card.tsx'), [])
   assert.deepEqual(checkDesign('-mt-[7px] sm:p-[50%]', 'card.tsx').map(({ value }) => value), ['mt-[7px]', 'p-[50%]'])
 })
+test('uses the app scale while retaining document and email scales', () => {
+  assert.deepEqual(checkDesign('fontSize: 32; fontWeight: 500; borderRadius: 16', 'card.tsx'), [])
+  assert.deepEqual(checkDesign('fontSize: 18; fontSize: 30; fontWeight: 700; fontWeight: 800; borderRadius: 6; borderRadius: 10', 'card.tsx').map(f => f.rule), ['font-size', 'font-size', 'font-weight', 'font-weight', 'radius', 'radius'])
+  for (const file of ['lib/invoice-pdf.tsx', 'lib/emails/reminder-email.ts']) {
+    assert.deepEqual(checkDesign('fontSize: 18; fontSize: 30; fontWeight: 700; borderRadius: 6; borderRadius: 10', file), [])
+  }
+})

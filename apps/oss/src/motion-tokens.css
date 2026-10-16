@@ -20,7 +20,7 @@
  *    they only run in the `icon` collapsible mode, which the app does not use.
  */
 @theme static {
-  --ease-enter: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-enter: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-exit: ease-out;
   --ease-linear: linear;
   --duration-palette: 300ms;
@@ -36,6 +36,8 @@
   --duration-undo-fade: 200ms;
   --duration-undo-tick: 100ms;
   --duration-square-shrink: 200ms;
+  --duration-surface: 200ms;
+  --rise: 8px;
   --duration-leave: 250ms;
   --duration-square-fly: 260ms;
   --duration-base: 300ms;

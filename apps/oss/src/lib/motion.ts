@@ -20,6 +20,7 @@ export const DURATION = {
   undoFade: milliseconds("duration-undo-fade"),
   undoTick: milliseconds("duration-undo-tick"),
   squareShrink: milliseconds("duration-square-shrink"),
+  surface: milliseconds("duration-surface"),
   leave: milliseconds("duration-leave"),
   squareFly: milliseconds("duration-square-fly"),
   base: milliseconds("duration-base"),

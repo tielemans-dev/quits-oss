@@ -4,7 +4,7 @@
  */
 
 /** The hex of `--background` in `:root` and in `.dark` (see styles.css). */
-export const THEME_CHROME_COLORS = { light: "#faf9f6", dark: "#0e1018" } as const
+export const THEME_CHROME_COLORS = { light: "#ffffff", dark: "#0f1019" } as const
 
 /** Dark scheme for invoice email, where clients that honour `prefers-color-scheme` swap these in. */
 export const EMAIL_DARK_COLORS = {

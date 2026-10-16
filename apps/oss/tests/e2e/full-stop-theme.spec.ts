@@ -14,8 +14,8 @@ test("login follows the Full Stop theme and bundles its wordmark", async ({ brow
       brand: getComputedStyle(document.documentElement).getPropertyValue("--brand").trim(),
       theme: document.querySelector('meta[name="theme-color"]')?.getAttribute("content"),
     }))).toEqual(colorScheme === "dark"
-      ? { brand: "#5b5fde", theme: "#0e1018" }
-      : { brand: "#5b5fde", theme: "#faf9f6" })
+      ? { brand: "#5b5fde", theme: "#0f1019" }
+      : { brand: "#5b5fde", theme: "#ffffff" })
     await context.close()
   }
 })

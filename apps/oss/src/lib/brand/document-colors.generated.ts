@@ -1,29 +1,29 @@
 // Generated from the light theme in styles.css.
 // Regenerate with: node scripts/generate-document-colors.mjs
 export const documentColors = {
-  "ink": "#2a2925",
-  "paper": "#faf9f6",
+  "ink": "#16172a",
+  "paper": "#f7f7fb",
   "panel": "#ffffff",
-  "body": "#4f4d47",
-  "muted": "#6f6c64",
-  "hairline": "#ededeb",
-  "rule": "#e4e3e0",
-  "fill": "#efeee9",
+  "body": "#5f6176",
+  "muted": "#5f6176",
+  "hairline": "#eff0f5",
+  "rule": "#8386a0",
+  "fill": "#f6f6f9",
   "settled": "#1f9d5c",
   "settledText": "#0f6e41",
-  "settledSoft": "#ffffff",
+  "settledSoft": "#e9f5ef",
   "tones": {
     "neutral": {
-      "text": "#66635b",
-      "tint": "#eae9e8"
+      "text": "#5f6176",
+      "tint": "#e9e9ec"
     },
     "info": {
-      "text": "#3a3934",
-      "tint": "#e3e3e3"
+      "text": "#5f6176",
+      "tint": "#e9e9ec"
     },
     "success": {
-      "text": "#4b50cc",
-      "tint": "#ffffff"
+      "text": "#0f6e41",
+      "tint": "#e9f5ef"
     },
     "danger": {
       "text": "#b42029",

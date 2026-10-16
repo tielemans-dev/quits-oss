@@ -20,10 +20,11 @@ export function documentPalette(css) {
     // Flatten alpha onto the light panel: older mail clients and PDF engines need solid colors.
     const panel = () => channels(color("panel", [...seen, name]))
     if (value === "transparent") return hex(panel())
-    const rgb = value.match(/^rgb\((\d+)\s+(\d+)\s+(\d+)\s*\/\s*([\d.]+)%\)$/)
-    if (rgb) {
-      const foreground = rgb.slice(1, 4).map(Number)
-      const alpha = Number(rgb[4]) / 100
+    const rgb = value.match(/^rgb\((\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+)%)?\)$/)
+    const relative = value.match(/^rgb\(from var\(--([\w-]+)\) r g b \/ ([\d.]+)%\)$/)
+    if (rgb || relative) {
+      const foreground = relative ? channels(color(relative[1], [...seen, name])) : rgb.slice(1, 4).map(Number)
+      const alpha = Number(relative ? relative[2] : rgb[4] ?? 100) / 100
       if (foreground.some(channel => channel > 255) || alpha > 1) throw new Error(`Invalid color token: --${name}`)
       return hex(panel().map((background, index) => foreground[index] * alpha + background * (1 - alpha)))
     }
