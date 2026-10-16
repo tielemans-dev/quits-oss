@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest"
 import { settingsUpdateSchema } from "../settings"
 
 describe("settingsUpdateSchema", () => {
+  it("accepts an optional eight-digit SE number and allows clearing it", () => {
+    for (const seNumber of ["12345678", "00123456", ""]) expect(settingsUpdateSchema.parse({ seNumber })).toEqual({ seNumber })
+    expect(settingsUpdateSchema.parse({ seNumber: " 12345678 " })).toEqual({ seNumber: "12345678" })
+    expect(settingsUpdateSchema.parse({})).not.toHaveProperty("seNumber")
+    for (const seNumber of ["1234567", "123456789", "DK12345678", "1234 5678", "abcdefgh", 12345678]) {
+      expect(settingsUpdateSchema.safeParse({ seNumber }).success).toBe(false)
+    }
+  })
   it("preserves unknown, registered, and deregistered registration values", () => {
     for (const momsRegistered of [null, false, true]) {
       expect(settingsUpdateSchema.parse({ momsRegistered })).toEqual({ momsRegistered })

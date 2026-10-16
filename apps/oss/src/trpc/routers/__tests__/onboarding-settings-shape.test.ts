@@ -294,6 +294,15 @@ describe("atomic Settings Danish VAT repairs", () => {
     expect(mocks.taxIds.find(id => id.id === "old-dk")).toBeUndefined()
     expect(mocks.taxIds.filter(id => id.countryCode === "DK").map(id => id.value)).toEqual(["24256790", "DK24256790"])
   })
+  it("updates and clears SE independently of the primary tax ID", async () => {
+    const caller = settingsCaller()
+    expect(await caller.update({ seNumber: "00123456" })).toMatchObject({ seNumber: "00123456" })
+    const frozen = buildSellerSnapshot(mocks.settings as never, mocks.taxIds)
+    expect(frozen.taxIds).toContainEqual({ scheme: "se", value: "00123456", countryCode: "DK" })
+    expect(await caller.update({ seNumber: "" })).toMatchObject({ seNumber: "" })
+    expect(buildSellerSnapshot(mocks.settings as never, mocks.taxIds).taxIds?.some(id => id.scheme === "se")).toBe(false)
+    expect(frozen.taxIds).toContainEqual({ scheme: "se", value: "00123456", countryCode: "DK" })
+  })
   it("updates a replaced primary identity's country when moving a self-hosted organization", async () => {
     mocks.cloud = false
     mocks.settings = null

@@ -91,6 +91,42 @@ const sellerOf = async (id: string) =>
   parseSellerSnapshot((await prisma.invoice.findUniqueOrThrow({ where: { id } })).sellerSnapshot)
 
 ;(hasTestDatabase ? describe : describe.skip)("payment details on issued invoices", () => {
+  it("freezes SE at invoice issuance and inherits it on credits after settings change", async () => {
+    const context = await setup()
+    const invoice = await draft(context)
+    const legacy = await draft(context)
+    await issue(context, legacy.id)
+    const legacyRender = await storedRenderInput(context, legacy.id)
+    expect(legacyRender.pdf.org.taxIds?.some(id => id.scheme === "se")).toBe(false)
+    await context.admin.settings.update({ seNumber: "00123456" })
+    await issue(context, invoice.id)
+    const se = { scheme: "se", value: "00123456", countryCode: "DK" }
+    const rendered = await storedRenderInput(context, invoice.id)
+    expect(rendered.pdf.org.taxIds).toContainEqual(se)
+    expect(await storedRenderInput(context, legacy.id)).toEqual(legacyRender)
+    expect((await sellerOf(invoice.id))?.taxIds).toContainEqual(se)
+    const row = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })
+    expect(parseSellerSnapshot((row.issuanceSnapshot as { seller: unknown }).seller)?.taxIds).toContainEqual(se)
+    const event = await prisma.domainEvent.findFirstOrThrow({ where: { aggregateId: invoice.id, type: "invoice.issued" } })
+    expect(invoiceIssuedSchema.parse(event.payload).seller.taxIds).toContainEqual(se)
+
+    await context.admin.settings.update({ seNumber: "87654321" })
+    expect(await storedRenderInput(context, invoice.id)).toEqual(rendered)
+    const credit = await issueDocument({ kind: "creditNote", actor: context.actor,
+      commandInput: { invoiceId: invoice.id, mode: "full", reason: "Correction" } })
+    expect(credit, JSON.stringify(credit)).toMatchObject({ status: "completed" })
+    const note = await prisma.creditNote.findFirstOrThrow({ where: { invoiceId: invoice.id } })
+    expect(parseSellerSnapshot(note.sellerSnapshot)?.taxIds).toContainEqual(se)
+    const creditPdf = await documentPdf("creditNote", note.id, context.org.organizationId)
+    const creditInput = JSON.parse(await creditPdf.text()) as RenderInput & { kind: "creditNote" }
+    expect(parseSellerSnapshot(creditInput.pdf.creditNote.sellerSnapshot)?.taxIds).toContainEqual(se)
+
+    await context.admin.settings.update({ seNumber: "" })
+    const next = await draft(context)
+    await issue(context, next.id)
+    expect((await storedRenderInput(context, next.id)).pdf.org.taxIds?.some(id => id.scheme === "se")).toBe(false)
+    expect(await storedRenderInput(context, invoice.id)).toEqual(rendered)
+  })
   it("freezes the details onto the invoice, its event, its PDF input and its e-invoice input", async () => {
     const context = await setup()
     const invoice = await draft(context)

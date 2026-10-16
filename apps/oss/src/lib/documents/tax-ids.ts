@@ -16,8 +16,9 @@ export function formatTaxIds(ids: readonly DocumentTaxId[] | undefined, locale?:
     const scheme = id.scheme?.trim().toLowerCase() ?? ""
     const label = ["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"].includes(scheme)
       ? translate("pdf.vatNumber", locale) : ["cvr", "dk_cvr"].includes(scheme)
-        ? translate("pdf.cvrNumber", locale) : scheme.replace(/_/g, " ").toUpperCase() || translate("creditNotes.pdf.taxId", locale)
-    return `${label}${["cvr", "dk_cvr", "vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"].includes(scheme) ? "" : ":"} ${id.value.trim()}`
+        ? translate("pdf.cvrNumber", locale) : scheme === "se"
+          ? translate("pdf.seNumber", locale) : scheme.replace(/_/g, " ").toUpperCase() || translate("creditNotes.pdf.taxId", locale)
+    return `${label}${["se", "cvr", "dk_cvr", "vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"].includes(scheme) ? "" : ":"} ${id.value.trim()}`
   })]
 }
 

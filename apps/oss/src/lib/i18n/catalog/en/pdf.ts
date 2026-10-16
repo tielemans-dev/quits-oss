@@ -32,6 +32,7 @@ export const enPdfMessages = {
   "pdf.bankName": "Bank",
   "pdf.paymentReference": "Payment message",
   "pdf.cvrNumber": "CVR no.",
+  "pdf.seNumber": "SE no.",
   "pdf.vatNumber": "VAT no.",
   "pdf.vatOutOfScope": "Outside the scope of VAT",
   "pdf.vatNote.outOfScope": "No VAT is charged. The supply is outside the scope of VAT.",

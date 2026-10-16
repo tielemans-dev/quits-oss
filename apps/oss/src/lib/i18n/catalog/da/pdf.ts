@@ -32,6 +32,7 @@ export const daPdfMessages = {
   "pdf.bankName": "Bank",
   "pdf.paymentReference": "Betalingsbesked",
   "pdf.cvrNumber": "CVR-nr.",
+  "pdf.seNumber": "SE-nr.",
   "pdf.vatNumber": "Momsnr.",
   "pdf.vatOutOfScope": "Uden for momsens anvendelsesområde",
   "pdf.vatNote.outOfScope": "Der er ikke beregnet moms. Leverancen er uden for momsens anvendelsesområde.",

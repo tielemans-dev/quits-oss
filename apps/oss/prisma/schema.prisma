@@ -237,6 +237,7 @@ model OrgSettings {
   currency                           String       @default("DKK")
   taxRate                            Decimal?     @default(25) @db.Decimal(5, 2)
   companyName                        String?
+  seNumber                           String?
   companyAddress                     String?
   companyEmail                       String?
   momsRegistered                     Boolean?

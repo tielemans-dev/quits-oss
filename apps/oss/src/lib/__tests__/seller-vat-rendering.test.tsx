@@ -43,6 +43,21 @@ function outputs(locale: string, momsRegistered?: boolean | null, overrides: Par
   ]
 }
 describe("seller VAT presentation", () => {
+  it.each(["da-DK", "en-US"])("prints optional SE beside CVR across invoice, credit PDF, email and pay in %s", locale => {
+    const label = locale === "da-DK" ? "SE-nr." : "SE no."
+    const cvr = locale === "da-DK" ? "CVR-nr. 24256790" : "CVR no. 24256790"
+    for (const value of ["00123456", "", undefined]) {
+      const taxIds = [{ scheme: "cvr", value: "24256790", countryCode: "DK" }, ...(value === undefined ? [] : [{ scheme: "se", value, countryCode: "DK" }])]
+      const creditPdf = pdfText(CreditNotePdfDocument({ creditNote: { ...credit, sellerSnapshot: { taxIds } }, org: { locale } })).join(" ")
+      for (const output of [...outputs(locale, false, {}, taxIds), creditPdf]) {
+        expect(output).toContain(cvr)
+        if (value) {
+          expect(output).toContain(`${label} ${value}`)
+          expect(output.indexOf(cvr)).toBeLessThan(output.indexOf(`${label} ${value}`))
+        } else expect(output).not.toContain(label)
+      }
+    }
+  })
   it.each(["da-DK", "en-US"])("suppresses legacy VAT claims beside non-registration across PDF/email/public in %s", locale => {
     const taxIds = [{ scheme: "vat", value: "12345678", countryCode: null }, { scheme: "cvr", value: "24256790", countryCode: "DK" }]
     for (const output of outputs(locale, false, {}, [taxIds[0]!])) {

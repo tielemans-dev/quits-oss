@@ -68,6 +68,11 @@ vi.mock("../../components/settings/payment-details-card", () => ({
   PaymentDetailsCard: () => <div>payment-details-card</div>,
 }))
 
+// Accounting loads through a separate API and has its own component tests.
+vi.mock("../../components/settings/accounting-integrations-card", () => ({
+  AccountingIntegrationsCard: () => <div>accounting-integrations-card</div>,
+}))
+
 vi.mock("../../lib/i18n/react", async () => {
   const { translate } = await import("../../lib/i18n/translate")
   const i18n = {
@@ -532,6 +537,23 @@ async function renderDanishSettings(momsRegistered: boolean | null, overrides: R
 }
 
 describe("Settings VAT status after upstream integration", () => {
+  it.each([true, false])("edits and clears optional SE in Settings with self-host=%s", async selfhost => {
+    distribution.selfhost = runtimeState.selfhost = selfhost
+    hostedFlag.enabled = !selfhost
+    await renderDanishSettings(true, { seNumber: "00123456" })
+    const input = screen.getByLabelText("settings.seNumber.label") as HTMLInputElement
+    expect(input.value).toBe("00123456")
+    fireEvent.change(input, { target: { value: "1234567" } })
+    expect(input.checkValidity()).toBe(false)
+    fireEvent.change(input, { target: { value: "87654321" } })
+    submitSettingsForm()
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ seNumber: "87654321" })))
+    await waitFor(() => expect(input.form?.querySelector('[type="submit"]')?.hasAttribute("disabled")).toBe(false))
+    fireEvent.change(input, { target: { value: "" } })
+    expect(input.checkValidity()).toBe(true)
+    submitSettingsForm()
+    await waitFor(() => expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ seNumber: "" })))
+  })
   it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
     await renderDanishSettings(status)
     expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(status === true)
