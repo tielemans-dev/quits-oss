@@ -1,5 +1,7 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import {
@@ -39,30 +41,16 @@ type Contact = {
 function ContactsListPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [loading, setLoading] = useState(true)
+  const list = useAppQuery(["contacts"], () => trpc.contacts.list.query())
+  const contacts = (list.data ?? []) as unknown as Contact[]
+  const loadContacts = list.refresh
+  const loading = list.loading
   const [deleting, setDeleting] = useState<string | null>(null)
-
-  async function loadContacts() {
-    try {
-      const data = await trpc.contacts.list.query()
-      setContacts(data as Contact[])
-    } catch {
-      // Auth or org errors will be caught by the layout
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadContacts()
-  }, [])
 
   async function handleDelete(id: string) {
     setDeleting(id)
     try {
       await trpc.contacts.delete.mutate({ id })
-      setContacts((prev) => prev.filter((c) => c.id !== id))
     } catch {
       // Silently fail — contact may already be deleted
     } finally {
@@ -70,13 +58,15 @@ function ContactsListPage() {
     }
   }
 
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={loadContacts} /></div>
+
   if (loading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">{t("contacts.title")}</h1>
         </div>
-        <p className="text-muted-foreground">{t("contacts.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }

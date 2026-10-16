@@ -9,7 +9,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   createFileRoute: () => (options: unknown) => options,
   useNavigate: () => fixture.navigate,
 }))
-vi.mock("../../lib/active-organization", () => ({ useRequestOrganizationId: () => "synthetic-org" }))
+vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => "synthetic-org" }))
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ paymentTermsDays: 14, timezone: "Europe/Copenhagen", taxRate: 25 }) }))
 vi.mock("../../trpc/client", () => ({ trpc: {
   settings: { get: { query: async () => ({ baseCurrency: "DKK" }) } },

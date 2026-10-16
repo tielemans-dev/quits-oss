@@ -1,5 +1,7 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import { Plus, Repeat } from "lucide-react"
 import { trpc } from "../../../trpc/client"
 import { formatCurrency } from "../../../lib/i18n/format"
@@ -33,25 +35,15 @@ type Message = { kind: "info" | "error"; text: string }
 
 function RecurringInvoicesPage() {
   const { t, locale } = useI18n()
-  const [schedules, setSchedules] = useState<RecurringScheduleListItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const list = useAppQuery(["recurring"], () => trpc.recurring.list.query())
+  const schedules: RecurringScheduleListItem[] = list.data ?? []
+  const loading = list.loading
+  const load = list.refresh
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState<Message | null>(null)
   const { canCreate, canUpdate } = useRecurringCapabilities()
 
-  const load = useCallback(async () => {
-    try {
-      setSchedules(await trpc.recurring.list.query())
-    } catch {
-      // Auth and organization errors are handled by the app layout.
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={load} /></div>
 
   const newButton = canCreate ? (
     <Button onClick={() => setCreating(true)}>
@@ -80,7 +72,7 @@ function RecurringInvoicesPage() {
       )}
 
       {loading ? (
-        <p className="text-muted-foreground">{t("recurring.loading")}</p>
+        <QuerySkeleton />
       ) : schedules.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Repeat className="size-12 text-muted-foreground mb-4" />
@@ -155,7 +147,6 @@ function RecurringInvoicesPage() {
                       <RecurringScheduleActions
                         schedule={schedule}
                         canUpdate={canUpdate}
-                        onChanged={() => void load()}
                         onMessage={setMessage}
                       />
                     </TableCell>
@@ -168,7 +159,7 @@ function RecurringInvoicesPage() {
       )}
 
       {canCreate && (
-        <RecurringScheduleDialog open={creating} onOpenChange={setCreating} onSaved={() => void load()} />
+        <RecurringScheduleDialog open={creating} onOpenChange={setCreating} />
       )}
     </div>
   )

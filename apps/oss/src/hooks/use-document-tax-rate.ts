@@ -1,3 +1,4 @@
+import { useQueryRevision } from "./use-query-refresh"
 import { useEffect, useState } from "react"
 import { useRequestOrganizationId } from "../lib/active-organization"
 import { loadOrganizationSettings } from "../lib/organization-settings-query"
@@ -12,6 +13,7 @@ function defaultRate(settings: { taxRate?: number | null; momsRegistered?: boole
 /** New documents use the saved rate unless the user or an AI draft has chosen one. */
 export function useDocumentTaxRate(): [string, (value: string) => void] {
   const organizationId = useRequestOrganizationId()
+  const query = useQueryRevision(["settings"])
   const [state, setState] = useState({ organizationId, value: "0", edited: false })
   useEffect(() => {
     if (!organizationId) return
@@ -23,7 +25,7 @@ export function useDocumentTaxRate(): [string, (value: string) => void] {
         : { organizationId, value: String(defaultRate(settings)), edited: false })
     }).catch(() => {})
     return () => { cancelled = true }
-  }, [organizationId])
+  }, [organizationId, query.revision])
   return [state.organizationId === organizationId ? state.value : "0", value => {
     setState({ organizationId, value, edited: true })
   }]

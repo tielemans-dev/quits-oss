@@ -1,6 +1,7 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { AgreementTemplateManager } from "../../../components/agreements/template-manager"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
@@ -18,28 +19,9 @@ import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 export const Route = createFileRoute("/_app/agreements/")({ component: AgreementsPage })
 function AgreementsPage() {
   const { t, locale } = useI18n()
-  const [agreements, setAgreements] = useState<
-    Awaited<ReturnType<typeof trpc.agreements.list.query>>
-  >([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    trpc.agreements.list
-      .query()
-      .then((data) => {
-        if (!cancelled) setAgreements(data)
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t("agreements.error"))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [t])
+  const list = useAppQuery(["agreements"], () => trpc.agreements.list.query())
+  const agreements = list.data ?? []
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
   return (
     <div className="p-6 grid gap-6">
       <div className="flex items-center justify-between gap-4">
@@ -53,13 +35,8 @@ function AgreementsPage() {
       </div>
       <AgreementTemplateManager />
       <p className="text-sm text-muted-foreground">{t("agreements.draftOnly")}</p>
-      {error && (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
-      )}
-      {loading ? (
-        <p>{t("agreements.loading")}</p>
+      {list.loading ? (
+        <QuerySkeleton />
       ) : agreements.length === 0 ? (
         <p>{t("agreements.empty")}</p>
       ) : (

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useDocumentTaxRate } from "../use-document-tax-rate"
 
 const fixture = vi.hoisted(() => ({ organizationId: "org-a", load: vi.fn() }))
-vi.mock("../../lib/active-organization", () => ({ useRequestOrganizationId: () => fixture.organizationId }))
+vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => fixture.organizationId }))
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: fixture.load }))
 
 describe("new document tax defaults", () => {

@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   createFileRoute: () => (options: unknown) => options,
   useNavigate: () => vi.fn(),
 }))
-vi.mock("../../lib/active-organization", () => ({ useRequestOrganizationId: () => "synthetic-org" }))
+vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => "synthetic-org" }))
 vi.mock("../../lib/organization-settings-query", () => ({ loadOrganizationSettings: fixture.load }))
 vi.mock("../../trpc/client", () => ({ trpc: {
   settings: { get: { query: fixture.settings } },

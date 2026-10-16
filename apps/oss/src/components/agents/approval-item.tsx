@@ -55,9 +55,11 @@ function DecisionResult({ record }: { record: DecisionRecord }) {
 export function ApprovalItem({
   approval,
   onDecided,
+  onDecisionStart,
 }: {
   approval: ApprovalRow
   onDecided?: (record: DecisionRecord) => void
+  onDecisionStart?: () => void
 }) {
   const { t, locale } = useI18n()
   const [note, setNote] = useState("")
@@ -68,6 +70,7 @@ export function ApprovalItem({
   const isPending = status === "pending" && !result
 
   async function decide(decision: "approve" | "reject") {
+    onDecisionStart?.()
     setDeciding(decision)
     setError(null)
     try {
