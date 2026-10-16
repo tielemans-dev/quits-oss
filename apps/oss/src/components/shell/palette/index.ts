@@ -1,6 +1,6 @@
 export { CommandPalette } from './command-palette'
 export { matchItems } from './match'
-export { onPaletteOpen, openPaletteFrom, type PaletteOpen } from './palette-events'
+export { onPaletteOpen, onPaletteReturn, returnFromPalette, openPaletteFrom, type PaletteOpen } from './palette-events'
 export { registerPaletteProvider, useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
 export type {
   PaletteActions,

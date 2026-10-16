@@ -505,6 +505,23 @@ html { background: var(--background); }
   }
 }
 
+/*
+ * The palette over a field goes back into it as it closes: the clip ends on the field's outline
+ * (`--palette-field`, measured as it closes), so what is left is the field. Reduced motion: a fade.
+ */
+@keyframes palette-into-field {
+  from { clip-path: inset(-16px -16px -48px round 12px); }
+  to { clip-path: var(--palette-field, inset(0 round 12px)); }
+}
+.palette-into-field[data-state="closed"] {
+  animation: palette-into-field var(--duration-palette) var(--ease-exit) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .palette-into-field[data-state="closed"] {
+    animation: pill-out var(--duration-fade) var(--ease-exit) forwards;
+  }
+}
+
 /* Tracker toast: grows out of the 176px spinner square; its parent draws the shadow so the clip keeps it. */
 @keyframes tracker-morph {
   from {

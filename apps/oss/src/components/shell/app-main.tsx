@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import { SidebarTrigger, useSidebar } from '../ui/sidebar'
 import { NewMenu } from './new-menu'
-import { CommandPalette, onPaletteOpen } from './palette'
+import { CommandPalette, onPaletteOpen, returnFromPalette } from './palette'
 import { createActions } from './palette/builtin-providers'
 import { SearchField } from './search-field'
 import { useShellHotkeys } from './use-shell-hotkeys'
@@ -111,6 +111,8 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
         anchor={paletteAnchor}
         anchorInset={paletteInset}
         initialQuery={paletteQuery}
+        placeholder={overview ? t('dashboard.commandBar.placeholder') : undefined}
+        onDismiss={overview ? returnFromPalette : undefined}
         can={can}
         billingEnabled={billingEnabled}
         // ⌘K works over the mobile drawer; going to a page must not leave the drawer over it.
