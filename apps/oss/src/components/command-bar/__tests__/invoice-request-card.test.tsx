@@ -93,11 +93,17 @@ describe("invoice request card", () => {
     expect(readHandoff("form")).toMatchObject({ suggested, items: [{ description: "Rådgivning", quantity: "12", unitPrice: "850" }, { description: "Transport", quantity: "1", unitPrice: "100" }] })
   })
 
-  it("names what is missing and does not offer to send", async () => {
+  it("asks for what the request left out in its place, and only then offers to send", async () => {
     renderCard("faktura til Havbrise Logistik A/S 10 timer konsulent")
 
-    await waitFor(() => expect(text()).toContain("Mangler: Enhedspris"))
-    expect((screen.getByRole("button", { name: "Send faktura" }) as HTMLButtonElement).disabled).toBe(true)
+    const price = await screen.findByRole("spinbutton", { name: "Enhedspris" })
+    const sendButton = () => screen.getByRole("button", { name: "Send faktura" }) as HTMLButtonElement
+    await waitFor(() => expect(text()).toContain("Subtotal"))
+    expect(sendButton().disabled).toBe(true)
+    expect(text()).not.toContain("Mangler")
+
+    fireEvent.change(price, { target: { value: "850" } })
+    await waitFor(() => expect(sendButton().disabled).toBe(false))
   })
 
   it("creates the draft, holds the send for the undo window, shows the check, then lets go without telling the page it is sent", async () => {

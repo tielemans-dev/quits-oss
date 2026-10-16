@@ -1,9 +1,9 @@
-import { Sparkles } from 'lucide-react'
-
 import { prefetchRequest } from '../../command-bar/request-data'
 import { suggestRequest } from '../../command-bar/suggest-request'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest, type RequestRecognizer, type RequestIntent } from '../../command-bar/request-intent'
+import { peekKnown } from './known'
+import { REQUEST_ICONS, RequestRow } from './request-row'
 import type { PaletteProvider, PaletteSection } from './types'
 
 /**
@@ -25,7 +25,8 @@ export function createRequestProvider(recognize: RequestRecognizer = recognizeRe
             {
               id: 'request:ask',
               label: t('shell.palette.request.ask', { request: intent.input }),
-              icon: Sparkles,
+              icon: REQUEST_ICONS[intent.kind],
+              content: <RequestRow intent={intent} known={peekKnown()} t={t} />,
               perform: ({ expand, close }) =>
                 expand(<RequestCardSlot intent={intent} onDismiss={close} />),
               // The cursor stays in the field while it is a preview of what is being typed.

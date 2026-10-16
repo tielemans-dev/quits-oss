@@ -1,11 +1,10 @@
-import { Sparkles } from 'lucide-react'
-
 import { near, normalize } from '../../../lib/request-parser'
 import { trpc } from '../../../trpc/client'
 import { prefetchRequest } from '../../command-bar/request-data'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest } from '../../command-bar/request-intent'
 import { loadKnown, peekKnown, type Known } from './known'
+import { REQUEST_ICONS, RequestRow } from './request-row'
 import { suggestions } from './suggestion-provider'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
@@ -162,7 +161,8 @@ function offer(text: string, decision: Decision | null, known: Known, { can, t }
     return [{
       id: `decide:${written}`,
       label: written,
-      icon: Sparkles,
+      icon: REQUEST_ICONS[intent.kind],
+      content: <RequestRow intent={intent} known={known} t={t} />,
       perform: ({ fill }) => fill(written),
       card: lone ? ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} /> : undefined,
     }]
@@ -172,7 +172,8 @@ function offer(text: string, decision: Decision | null, known: Known, { can, t }
     items.push({
       id: `decide:${start}`,
       label: `${start}…`,
-      icon: Sparkles,
+      icon: REQUEST_ICONS[startKind],
+      content: <span className="flex items-baseline gap-2"><span className="font-medium">{t(`shell.request.title.${startKind}`)}</span><span className="text-muted-foreground">{start}…</span></span>,
       perform: ({ fill }) => fill(start),
     })
   }
