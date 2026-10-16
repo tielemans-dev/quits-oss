@@ -214,7 +214,11 @@ function OnboardingPageContent() {
   >(null)
   const legacyOnboardingReady = v2Availability !== null && runtimeCapabilities !== null && !v2Availability.enabled &&
     !(runtimeCapabilities.onboardingV2?.enabled && runtimeCapabilities.sellerVatConfirmation?.enabled)
-  const v2Client = useMemo(() => createOnboardingV2Client(v2Availability?.suggestions ?? false, runtimeCapabilities?.sellerVatConfirmation?.enabled === true, runtimeCapabilities?.payments?.managed === true), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled, runtimeCapabilities?.payments?.managed])
+  const v2Client = useMemo(() => createOnboardingV2Client(
+    v2Availability?.suggestions ?? false,
+    runtimeCapabilities?.sellerVatConfirmation?.enabled === true,
+    runtimeCapabilities?.payments?.managed === true && runtimeCapabilities?.payments?.enabled === true,
+  ), [v2Availability?.suggestions, runtimeCapabilities?.sellerVatConfirmation?.enabled, runtimeCapabilities?.payments?.managed, runtimeCapabilities?.payments?.enabled])
   const [values, setValues] = useState<CloudOnboardingValues>(() => ({ ...DEFAULT_CLOUD_ONBOARDING_VALUES, locale: organizationLocaleForUi(uiLocale) }))
   const localeChoice = useRef<string | null>(null)
   const [manualOverrides, setManualOverrides] = useState<Record<AutoFillField, boolean>>({
