@@ -15,8 +15,8 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: resolve(captureDir, `${name}-${variant}.png`), fullPage: true })
 }
 async function searchAligned(page: Page, screen: string) {
-  // Overblik has no search in the top bar: its command bar is the search field.
-  const field = screen === "dashboard" ? page.locator("[data-slot=command-bar]") : page.getByRole("button", { name: /Open search|Åbn søgning/ })
+  // Overblik has no search in the top bar: its field is the palette itself.
+  const field = screen === "dashboard" ? page.locator("[data-live-sheet]") : page.getByRole("button", { name: /Open search|Åbn søgning/ })
   const search = await field.boundingBox()
   const content = await page.locator("[data-slot=app-content]").evaluate(el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft))
   expect(search).not.toBeNull()
