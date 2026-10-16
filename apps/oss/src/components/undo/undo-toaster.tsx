@@ -105,7 +105,7 @@ function UndoToast({ item }: { item: UndoItem }) {
       </div>
       {!note && (
         <div aria-hidden className="bg-foreground/10 h-0.5 motion-reduce:hidden">
-          <div className="bg-tone-progress h-full transition-[width] duration-(--duration-undo-tick) ease-(--ease-linear)" style={{ width: `${(left / UNDO_WINDOW_MS) * 100}%` }} />
+          <div className="bg-tone-progress h-full transition-[transform] duration-(--duration-undo-tick) ease-(--ease-linear)" style={{ transform: `translateX(${(left / UNDO_WINDOW_MS) * 100 - 100}%)` }} />
         </div>
       )}
     </div>

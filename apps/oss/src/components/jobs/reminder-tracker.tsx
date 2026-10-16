@@ -135,8 +135,8 @@ export function TrackerToast({
             className="bg-foreground/10 h-1 overflow-hidden rounded-full"
           >
             <div
-              className={cn("bg-tone-progress h-full rounded-full transition-[width] duration-(--duration-base) motion-reduce:transition-none", ease)}
-              style={{ width: `${view.percent}%` }}
+              className={cn("bg-tone-progress h-full rounded-full transition-[transform] duration-(--duration-base) motion-reduce:transition-none", ease)}
+              style={{ transform: `translateX(${view.percent - 100}%)` }}
             />
           </div>
         </div>

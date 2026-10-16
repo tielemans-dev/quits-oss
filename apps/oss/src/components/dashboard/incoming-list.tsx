@@ -81,61 +81,63 @@ export function IncomingList({
             return (
               <li
                 key={item.documentId}
-                className={cn("group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 border-t px-4 py-3 transition-colors duration-(--duration-fade) first:border-t-0", item.documentId === newInvoiceId && "incoming-new")}
+                className={cn("group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative border-t transition-colors duration-(--duration-fade) first:border-t-0", item.documentId === newInvoiceId && "incoming-new")}
               >
-                <CustomerMark name={item.customerName} className="mt-0.5" />
-                <div className="min-w-0">
-                  <DocLink
-                    kind="invoice"
-                    id={item.documentId}
-                    aria-label={
-                      item.number
-                        ? t("dashboard.incoming.rowLink", { number: item.number, customer: item.customerName })
-                        : t("dashboard.incoming.rowLinkDraft", { customer: item.customerName })
-                    }
-                    className={cn(listRowLinkClass, "block truncate text-sm font-semibold")}
-                  >
-                    {item.customerName}
-                  </DocLink>
-                  <div className="relative">
-                    <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
-                      {item.number ? <span className="font-mono tracking-[0.01em]">{item.number}</span> : null}
-                      <span className={cn(late && "text-tone-danger font-semibold")}>{dueText(due, t)}</span>
-                    </p>
-                    {offerReminder || reminderState ? (
-                      <div
-                        className={cn(
-                          "relative z-10 mt-1",
-                          // With a pointer the action takes the place of the number and due date while
-                          // the row is hovered or focused, so no row is taller for an action it hides.
-                          // Without one (touch) it sits under them. Once it has something to say, it stays.
-                          !reminderState &&
-                            "[@media(hover:hover)]:absolute [@media(hover:hover)]:inset-0 [@media(hover:hover)]:mt-0 [@media(hover:hover)]:flex [@media(hover:hover)]:items-center [@media(hover:hover)]:bg-[color-mix(in_srgb,var(--panel),var(--foreground)_3.5%)] [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-focus-within/row:pointer-events-auto [@media(hover:hover)]:group-hover/row:pointer-events-auto transition-opacity duration-(--duration-fade)"
-                        )}
-                      >
-                        {finalRefusal ? (
-                          <ReminderFailureNote failure={reminderState.failure} />
-                        ) : (
-                          <RemindAction
-                            state={reminderState}
-                            onRemind={() => onRemind(item.documentId)}
-                            size="xs"
-                            variant="link"
-                          />
-                        )}
-                      </div>
-                    ) : null}
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-3">
+                  <CustomerMark name={item.customerName} className="mt-0.5" />
+                  <div className="min-w-0">
+                    <DocLink
+                      kind="invoice"
+                      id={item.documentId}
+                      aria-label={
+                        item.number
+                          ? t("dashboard.incoming.rowLink", { number: item.number, customer: item.customerName })
+                          : t("dashboard.incoming.rowLinkDraft", { customer: item.customerName })
+                      }
+                      className={cn(listRowLinkClass, "block truncate text-sm font-semibold")}
+                    >
+                      {item.customerName}
+                    </DocLink>
+                    <div className="relative">
+                      <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
+                        {item.number ? <span className="font-mono tracking-[0.01em]">{item.number}</span> : null}
+                        <span className={cn(late && "text-tone-danger font-semibold")}>{dueText(due, t)}</span>
+                      </p>
+                      {offerReminder || reminderState ? (
+                        <div
+                          className={cn(
+                            "relative z-10 mt-1",
+                            // With a pointer the action takes the place of the number and due date while
+                            // the row is hovered or focused, so no row is taller for an action it hides.
+                            // Without one (touch) it sits under them. Once it has something to say, it stays.
+                            !reminderState &&
+                              "[@media(hover:hover)]:absolute [@media(hover:hover)]:inset-0 [@media(hover:hover)]:mt-0 [@media(hover:hover)]:flex [@media(hover:hover)]:items-center [@media(hover:hover)]:bg-[color-mix(in_srgb,var(--panel),var(--foreground)_3.5%)] [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-focus-within/row:pointer-events-auto [@media(hover:hover)]:group-hover/row:pointer-events-auto transition-opacity duration-(--duration-fade)"
+                          )}
+                        >
+                          {finalRefusal ? (
+                            <ReminderFailureNote failure={reminderState.failure} />
+                          ) : (
+                            <RemindAction
+                              state={reminderState}
+                              onRemind={() => onRemind(item.documentId)}
+                              size="xs"
+                              variant="link"
+                            />
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
+                  <Amount
+                    value={item.amount.amount}
+                    currency={item.amount.currency}
+                    locale={locale}
+                    size="sm"
+                    precision={precisionOf(item.amount)}
+                    {...incomingRule(item)}
+                    className="-mt-0.5"
+                  />
                 </div>
-                <Amount
-                  value={item.amount.amount}
-                  currency={item.amount.currency}
-                  locale={locale}
-                  size="sm"
-                  precision={precisionOf(item.amount)}
-                  {...incomingRule(item)}
-                  className="-mt-0.5"
-                />
               </li>
             )
           })}

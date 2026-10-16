@@ -5,13 +5,25 @@
  *
  * Entrances use `--ease-enter`; exits use `--ease-exit`. Durations are named for the motion they
  * time, so changing one moves only that motion. Name transitioned properties (`transition-[opacity]`),
- * avoid catch-all transitions. Reduced motion disables CSS motion globally.
+ * avoid catch-all transitions. Reduced motion (styles.css) keeps fades and drops movement.
+ *
+ * Spec: micro 120-180ms, morphs 220-300ms, 350ms ceiling for anything spatial (palette, card,
+ * toast, row, sheet). `--duration-count` (count-up), `--duration-highlight` (tint fade),
+ * `--duration-spin` and `--duration-pulse` are non-spatial: they move nothing, so they are exempt.
+ *
+ * Layout properties are not compositor-only, so animate transform and opacity instead. The
+ * exceptions that remain, each because the surrounding layout has to follow the change:
+ *  - `.incoming-new` animates `grid-template-rows` 0fr to 1fr so the rows below it slide down.
+ *  - `tracker-morph` animates `clip-path` (a paint property, no layout) to grow out of the spinner.
+ *  - ui/sidebar.tsx `transition-[width]` on the gap element, so the page content reflows with it.
+ *  - ui/sidebar.tsx `transition-[...width...]` on the container, menu button and group label:
+ *    they only run in the `icon` collapsible mode, which the app does not use.
  */
 @theme static {
   --ease-enter: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-exit: ease-out;
   --ease-linear: linear;
-  --duration-palette: 420ms;
+  --duration-palette: 300ms;
   --duration-list-fade: 90ms;
   --duration-spin: 1000ms;
   --duration-pulse: 2000ms;
@@ -27,9 +39,9 @@
   --duration-leave: 250ms;
   --duration-square-fly: 260ms;
   --duration-base: 300ms;
-  --duration-row: 320ms;
-  --duration-toast: 380ms;
-  --duration-card: 400ms;
+  --duration-row: 300ms;
+  --duration-toast: 300ms;
+  --duration-card: 300ms;
   --duration-count: 700ms;
   --duration-highlight: 2400ms;
 
