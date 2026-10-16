@@ -16,8 +16,8 @@ export type RequestDecision = {
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 /** It answers in about 250ms; past this the person has typed on, and the answer is of no use. */
 const TIMEOUT_MS = 2000
-/** Calls per organization a minute, in this instance: typing makes a few, a script makes many. */
-const PER_MINUTE = 60
+/** Calls per organization a minute, in this instance: typing asks on nearly every key, a script asks far more. */
+const PER_MINUTE = 300
 const recent = new Map<string, number[]>()
 
 /** Whether `organizationId` may make another call now; counts the call when it may. */

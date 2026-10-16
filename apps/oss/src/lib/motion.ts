@@ -29,6 +29,7 @@ export const DURATION = {
   card: milliseconds("duration-card"),
   count: milliseconds("duration-count"),
   highlight: milliseconds("duration-highlight"),
+  requestPart: milliseconds("duration-request-part"),
 } as const
 
 export const STAGGER_STEP = milliseconds("stagger-step")

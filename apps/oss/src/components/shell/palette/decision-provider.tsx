@@ -9,7 +9,7 @@ import { suggestions } from './suggestion-provider'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
 /** Waits this long after the last key. A call costs next to nothing; a late card costs the moment. */
-const DEBOUNCE_MS = 100
+const DEBOUNCE_MS = 30
 /** How sure the model has to be before its answer is offered at all, and before it opens a card by itself. */
 const OFFER = 0.6
 const OPEN = 0.85
