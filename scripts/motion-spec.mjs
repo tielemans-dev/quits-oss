@@ -1,7 +1,5 @@
 // Motion spec rules that check-motion enforces on the app's CSS. Each function returns failure messages.
-
 export const SPATIAL_MAX_MS = 350
-// Tokens that time something other than movement: a count-up, a tint fade, a spinner, a pulse.
 export const NON_SPATIAL = new Set(["count", "highlight", "spin", "pulse"])
 
 const FADE = "var(--duration-fade)"
@@ -19,7 +17,6 @@ const UNIVERSAL_VALUES = {
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "")
 const squash = (value) => value.replace(/!important/g, "").replace(/\s+/g, " ").trim()
 
-/** Bodies of the `head { ... }` blocks, matched by braces. */
 function blocks(css, head) {
   const found = []
   for (const match of css.matchAll(head)) {
@@ -32,7 +29,6 @@ function blocks(css, head) {
   return found
 }
 
-/** Flat `selector { declarations }` rules of a block that holds no nested blocks. */
 function rules(body) {
   return [...body.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, declarations]) => ({
     selector: selector.trim(),

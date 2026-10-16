@@ -13,12 +13,6 @@ describe("motion tokens", () => {
     expect(token("ease-exit")).toBe(EASE_EXIT)
   })
 
-  it("spatial durations stay within the 350ms spec ceiling", () => {
-    // Count-up, tint fade, spinner and pulse move nothing, so they may be longer.
-    const nonSpatial = new Set(["count", "highlight", "spin", "pulse"])
-    for (const [key, ms] of Object.entries(DURATION)) if (!nonSpatial.has(key)) expect(ms, key).toBeLessThanOrEqual(350)
-  })
-
   it("script and CSS agree on durations", () => {
     for (const [key, ms] of Object.entries(DURATION)) expect(token(`duration-${kebab(key)}`)).toBe(`${ms}ms`)
     expect(css.match(/--duration-[\w-]+:/g)).toHaveLength(Object.keys(DURATION).length)

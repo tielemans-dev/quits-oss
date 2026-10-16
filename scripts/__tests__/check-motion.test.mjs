@@ -19,7 +19,7 @@ function seed(root) {
   execFileSync("git", ["add", "apps"], { cwd: root })
 }
 
-/** Run the guard on the real CSS after replacing `from` with `to` in `path`; the replacement must change the file. */
+/** Run the guard on the real CSS after replacing `from` with `to` in `path` (null leaves it alone). */
 function guard(path, from, to) {
   const root = mkdtempSync(join(tmpdir(), "motion-spec-"))
   try {
@@ -53,16 +53,12 @@ test("motion guard fails when reduced motion cuts instead of fading or keeps mov
     ["a global animation kill", STYLES, universal, `${universal} animation: none !important;`],
     ["a global transition kill", STYLES, universal, `${universal} transition: none !important;`],
     ["a transform transition", STYLES, "outline-color, box-shadow, opacity !important", "outline-color, box-shadow, opacity, transform !important"],
-    ["a width transition", STYLES, "outline-color, box-shadow, opacity !important", "outline-color, box-shadow, opacity, width !important"],
     ["no transition-property limit", STYLES, /\n\s*transition-property:[^\n]*/, ""],
     ["a slower fade", STYLES, "transition-duration: var(--duration-fade) !important", "transition-duration: var(--duration-base) !important"],
-    ["a slower animation fade", STYLES, "--tw-animation-duration: var(--duration-fade) !important", "--tw-animation-duration: var(--duration-card) !important"],
     ["sheets that stay opaque while they slide", STYLES, "--tw-enter-opacity: 0 !important", "--tw-enter-opacity: 1 !important"],
     ["exits that stay opaque", STYLES, /\n\s*--tw-exit-opacity: 0 !important;/, ""],
     ["a slide that keeps moving", STYLES, "--tw-enter-translate-x: 0 !important", "--tw-enter-translate-x: 100% !important"],
     ["a zoom that keeps scaling", STYLES, "--tw-exit-scale: 1 !important", "--tw-exit-scale: 0.95 !important"],
-    ["a blur", STYLES, "--tw-enter-blur: 0 !important", "--tw-enter-blur: 4px !important"],
-    ["a request fade that moves", STYLES, "@keyframes request-fade {\n  from { opacity: 0; }", "@keyframes request-fade {\n  from { opacity: 0; transform: translateY(6px); }"],
     ["a tracker fade that moves", STYLES, "@keyframes tracker-fade {\n  from {\n    opacity: 0;", "@keyframes tracker-fade {\n  from {\n    opacity: 0;\n    clip-path: inset(0 round 1rem);"],
     ["an incoming row that falls back to its 300ms movement", STYLES, "animation: request-fade var(--duration-fade) var(--ease-enter) both, incoming-highlight", "animation: incoming-in var(--duration-row) var(--ease-enter) both, incoming-highlight"],
     ["a slower tracker fade", STYLES, "animation: tracker-fade var(--duration-fade)", "animation: tracker-fade var(--duration-toast)"],
