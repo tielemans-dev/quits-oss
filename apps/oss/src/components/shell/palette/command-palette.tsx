@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSPrope
 import { trpc } from '../../../trpc/client'
 import { DURATION, EASE_ENTER, prefersReducedMotion } from '../../../lib/motion'
 import { cn } from '../../../lib/utils'
+import { onRequestOpen } from '../../command-bar/request-events'
 import { useFollowHeight } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
 import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
@@ -36,6 +37,12 @@ type Props = {
   placeholder?: string
   /** Closed by Esc or a click outside, with what the field held: the field it grew out of keeps it. */
   onDismiss?: (query: string) => void
+  /**
+   * In the page instead of over it: the field itself, with no dimming, that unfolds into results
+   * and cards as it is typed in, and folds back into a field when it loses focus. Cards come at
+   * once, without waiting for typing to pause, and ⌘↵ presses the card's own button.
+   */
+  inline?: boolean
 }
 
 /**
@@ -134,7 +141,10 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '', placeholder, onDismiss }: Props) {
+export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '', placeholder, onDismiss, inline = false }: Props) {
+  // Inline it is always there; it unfolds while it has focus or holds a card.
+  const open = openProp || inline
+  const [focused, setFocused] = useState(false)
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
@@ -172,7 +182,9 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     [query, can, billingEnabled, t, requestFallbackEnabled]
   )
   const { sections, pending } = useSections(providers, context, open)
-  const items = useMemo(() => sections.flatMap((section) => section.items), [sections])
+  // Inline and empty, only what is probably next: the page around it already shows the rest.
+  const offered = useMemo(() => (inline && !query.trim() ? sections.filter((section) => section.id.startsWith('next:')) : sections), [inline, query, sections])
+  const items = useMemo(() => offered.flatMap((section) => section.items), [offered])
 
   // A new query, or new results, start on the first item; keep the choice while it still exists.
   const effectiveActiveId = items.some((item) => item.id === activeId) ? activeId : (items[0]?.id ?? null)
@@ -208,6 +220,13 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   // Over a field the palette closes back into it: the clip ends on the field's outline, measured
   // now, since the panel may have grown into a card since it opened.
   const close = useCallback(() => {
+    if (inline) {
+      setQuery('')
+      setCard(null)
+      input.current?.blur()
+      setFocused(false)
+      return
+    }
     const el = panel.current
     if (anchor && el) {
       const box = el.getBoundingClientRect()
@@ -216,7 +235,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
       el.style.setProperty('--palette-field', `inset(${top}px ${box.width - left - anchor.width}px ${box.height - top - anchor.height}px ${left}px round 29px)`)
     }
     onOpenChange(false)
-  }, [anchor, onOpenChange])
+  }, [anchor, onOpenChange, inline])
   const actions = useMemo<PaletteActions>(
     () => ({
       navigate: (to) => {
@@ -240,7 +259,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   // waiting for Enter; typing on updates it, and text that stops reading as one brings the list back.
   // Readings that each have a card: the chosen one shows, the others wait beside it (↑↓ switch).
   const carded = useMemo(() => items.filter((item) => item.card), [items])
-  const first = items[0]?.card ? items[0] : null
+  const first = items[0]?.card && (!inline || query.trim()) ? items[0] : null
   const lead = first ? (carded.find((item) => item.id === effectiveActiveId) ?? first) : null
   if (!lead && paused) setPaused(false)
   // Its reads start well before the pause ends, so the card opens with its data instead of filling
@@ -252,15 +271,15 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   }, [lead])
   useEffect(() => {
     if (!lead || paused) return
-    const timer = setTimeout(() => setPaused(true), LIVE_PAUSE_MS)
+    const timer = setTimeout(() => setPaused(true), inline ? 0 : LIVE_PAUSE_MS)
     return () => clearTimeout(timer)
-  }, [lead, paused])
+  }, [lead, paused, inline])
   const shown = card ?? (paused && lead?.card ? lead.card(actions) : null)
   if ((shown !== null) !== morph.current.shown) morph.current = { shown: shown !== null, changedAt: performance.now() }
 
   function clear() {
     // Emptied over the field it grew out of, the palette goes back to being that field.
-    if (anchor) return close()
+    if (anchor && !inline) return close()
     setQuery('')
     setCard(null)
     input.current?.focus()
@@ -322,11 +341,33 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     }
   }
 
+  // A summary row asks for a card ("Send rykker"): the field takes the request and becomes its card.
+  useEffect(() => {
+    if (!inline) return
+    return onRequestOpen((request) => {
+      setQuery(request.input)
+      setCard(null)
+      setFocused(true)
+      input.current?.focus({ preventScroll: true })
+    })
+  }, [inline])
+  // It folds on a press outside, not on blur: a card's own menus open in portals of their own.
+  useEffect(() => {
+    if (!inline) return
+    const fold = (event: PointerEvent) => {
+      const target = event.target as Element | null
+      if (panel.current?.contains(target) || target?.closest?.('[data-radix-popper-content-wrapper]')) return
+      setFocused(false)
+    }
+    document.addEventListener('pointerdown', fold)
+    return () => document.removeEventListener('pointerdown', fold)
+  }, [inline])
+  const unfolded = !inline || (focused && (query.trim() !== '' || shown !== null || offered.length > 0)) || card !== null
   // The panel follows this: list to card, and the card again when its data arrives.
   const body = (
     <div ref={follow}>
       {/* Over a field, the icon lands on the field's: its inset plus the 8px overhang, less the palette's border. */}
-      <div className={cn('flex items-center gap-3 border-b border-hairline px-4')} style={anchor ? { paddingLeft: anchorInset + 7 } : undefined}>
+      <div className={cn('flex items-center gap-3 border-hairline px-4', unfolded && 'border-b', inline && 'pl-5')} style={anchor && !inline ? { paddingLeft: anchorInset + 7 } : undefined}>
         <Search className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
         <input
           type="text"
@@ -359,7 +400,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             <X className="size-3.5" aria-hidden="true" />
           </button>
         )}
-        <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>
+        {!inline && <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>}
       </div>
       <div
         id={listboxId}
@@ -370,10 +411,10 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           'max-h-[min(380px,55vh)] overflow-y-auto p-2',
           // A card takes the list's place; the panel eases from the list's height to the card's.
           // Coming back, the list fades in (an animation restarts when `hidden` comes off).
-          shown !== null ? 'hidden' : 'animate-in fade-in-0 duration-(--duration-fade)'
+          shown !== null || !unfolded ? 'hidden' : 'animate-in fade-in-0 duration-(--duration-fade)'
         )}
       >
-        {sections.length === 0 &&
+        {offered.length === 0 &&
           (pending ? (
             // Nothing has matched yet, but a provider is still answering: not "no results" yet.
             <p className="mono-label px-3 py-8 text-center">{t('shell.palette.searching')}</p>
@@ -382,7 +423,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               {t('shell.palette.empty', { query: query.trim() })}
             </p>
           ))}
-        {sections.map((section) => (
+        {offered.map((section) => (
           <div
             key={section.id}
             role="group"
@@ -421,7 +462,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           </div>
         ))}
       </div>
-      {shown && !card && carded.length > 1 && (
+      {unfolded && shown && !card && carded.length > 1 && (
         <div role="radiogroup" aria-label={t('shell.palette.groupSuggest')} className="flex gap-1.5 overflow-x-auto border-b border-hairline px-3 py-2">
           {carded.slice(0, 5).map((item) => {
             const Icon = item.icon
@@ -441,14 +482,42 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           })}
         </div>
       )}
-      {shown}
-      <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', shown !== null && 'hidden')} aria-hidden="true">
+      {unfolded && shown}
+      <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', (shown !== null || !unfolded) && 'hidden')} aria-hidden="true">
         <span>↑↓ {t('shell.palette.hint.select')}</span>
         <span>↵ {t('shell.palette.hint.open')}</span>
         <span>esc {t('shell.palette.hint.close')}</span>
       </div>
     </div>
   )
+
+  if (inline) {
+    return (
+      // The field keeps its place in the page; what it unfolds into floats over what follows.
+      <div className="relative h-14" data-live-sheet="">
+        <div
+          ref={panel}
+          data-slot="command-palette"
+          data-unfolded={unfolded}
+          onFocus={() => setFocused(true)}
+          onKeyDown={(event) => {
+            // Esc anywhere in it, the card included: empty it first, then fold it. A menu that took Esc keeps it.
+            if (event.key !== 'Escape' || event.defaultPrevented) return
+            event.preventDefault()
+            if (query || card) clear()
+            else close()
+          }}
+          className={cn(
+            'absolute inset-x-0 top-0 z-40 overflow-hidden border border-hairline bg-panel text-foreground',
+            '[transition:border-radius_var(--duration-palette)_var(--ease-enter),box-shadow_var(--duration-palette)_var(--ease-enter)]',
+            unfolded ? 'rounded-2xl shadow-2xl shadow-black/15 dark:border-white/10 dark:shadow-black/60' : 'rounded-[29px] shadow-xs'
+          )}
+        >
+          {body}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <DialogPrimitive.Root

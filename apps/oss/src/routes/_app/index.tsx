@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
-import { suggestRequest } from "../../components/command-bar/suggest-request"
-import { CommandBar } from "../../components/command-bar/command-bar"
 import { onRequestDone } from "../../components/command-bar/request-events"
-import { permittedRequest, recognizeRequest } from "../../components/command-bar/request-intent"
 import { sendReminderBatch } from "../../components/jobs/reminder-jobs-store"
-import { openPaletteFrom } from "../../components/shell/palette"
+import { CommandPalette } from "../../components/shell/palette"
+import { useI18n } from "../../lib/i18n/react"
 import { useShellPermissions } from "../../components/shell/use-shell-permissions"
 import { useSession } from "../../lib/auth-client"
 import { trpc } from "../../trpc/client"
@@ -25,7 +23,8 @@ async function sendReminder(invoiceId: string) {
 }
 
 function DashboardPage() {
-  const { isCloud } = useRuntimeDistribution()
+  const { isCloud, billingEnabled } = useRuntimeDistribution()
+  const { t } = useI18n()
   const [readyCompany, setReadyCompany] = useState<string>()
   useEffect(() => {
     if (!isCloud) return
@@ -38,8 +37,6 @@ function DashboardPage() {
   const { load, retry } = useDashboardSummary()
   const { data: session } = useSession()
   const { can } = useShellPermissions()
-  const suggest = useCallback((input: string, signal: AbortSignal) => suggestRequest(input, can, signal), [can])
-  const recognize = useCallback(permittedRequest(recognizeRequest, can), [can])
   const [newInvoiceId, setNewInvoiceId] = useState<string>()
   // Retain the completed invoice highlight; the mutation subscription refreshes figures.
   useEffect(() => onRequestDone(done => { if (done.kind !== "invoice") return; setNewInvoiceId(done.invoiceId) }), [])
@@ -72,7 +69,7 @@ function DashboardPage() {
       sendReminderBatch={sendReminderBatch}
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
-      commandBar={<CommandBar recognize={recognize} suggest={suggest} onSearch={(from, query) => openPaletteFrom({ from, query })} />}
+      commandBar={<CommandPalette inline open onOpenChange={() => {}} can={can} billingEnabled={billingEnabled} placeholder={t("dashboard.commandBar.placeholder")} />}
     />
   )
 }
