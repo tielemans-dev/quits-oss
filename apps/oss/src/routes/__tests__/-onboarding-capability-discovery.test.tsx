@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
 
-const { useSessionMock, isCloudDistributionMock, onboardingStatusQuery, runtimeCapabilitiesQuery, availableQuery, setupAvailableQuery, listOrganizations } = vi.hoisted(() => ({
+const { useSessionMock, isCloudDistributionMock, onboardingStatusQuery, runtimeCapabilitiesQuery, availableQuery, setupAvailableQuery, listOrganizations, paymentsFlow } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   isCloudDistributionMock: vi.fn(() => true),
   onboardingStatusQuery: vi.fn(),
@@ -12,11 +12,12 @@ const { useSessionMock, isCloudDistributionMock, onboardingStatusQuery, runtimeC
   availableQuery: vi.fn(),
   setupAvailableQuery: vi.fn(),
   listOrganizations: vi.fn(),
+  paymentsFlow: { render: false, settings: vi.fn(), confirm: vi.fn(), navigate: vi.fn() },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useSearch: () => ({}) }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => paymentsFlow.navigate,
   useRouter: () => ({ invalidate: vi.fn() }),
 }))
 
@@ -38,10 +39,15 @@ vi.mock("../../lib/auth-client", () => ({
   useSession: useSessionMock,
 }))
 
-// The flows are tested elsewhere; here they only report that they mounted and with which flag.
-vi.mock("../../components/onboarding-v2/onboarding-v2", () => ({
-  OnboardingV2: (props: { confirmationEnabled: boolean }) => <div data-testid="v2" data-confirmation={String(props.confirmationEnabled)} />,
-}))
+// Discovery tests report which flow mounted; the payments regression uses the real form.
+vi.mock("../../components/onboarding-v2/onboarding-v2", async (importOriginal) => {
+  const { OnboardingV2 } = await importOriginal<typeof import("../../components/onboarding-v2/onboarding-v2")>()
+  return {
+    OnboardingV2: (props: React.ComponentProps<typeof OnboardingV2>) => paymentsFlow.render
+      ? <OnboardingV2 {...props} />
+      : <div data-testid="v2" data-confirmation={String(props.confirmationEnabled)} />,
+  }
+})
 vi.mock("../../components/onboarding/company-setup", () => ({
   CompanySetup: () => <input data-testid="company-setup" aria-label="Setup company" />,
 }))
@@ -49,8 +55,9 @@ vi.mock("../../components/onboarding/company-setup", () => ({
 vi.mock("../../trpc/client", () => ({
   trpc: {
     cvr: { available: { query: availableQuery }, setupAvailable: { query: setupAvailableQuery } },
-    onboarding: { getStatus: { query: onboardingStatusQuery }, saveDraft: { mutate: vi.fn() }, completeManual: { mutate: vi.fn() } },
+    onboarding: { getStatus: { query: onboardingStatusQuery }, saveDraft: { mutate: vi.fn() }, completeManual: { mutate: vi.fn() }, confirmV2: { mutate: paymentsFlow.confirm } },
     runtime: { capabilities: { query: runtimeCapabilitiesQuery } },
+    settings: { get: { query: paymentsFlow.settings } },
   },
 }))
 
@@ -82,11 +89,44 @@ const noFlow = () => {
 
 afterEach(() => {
   cleanup()
+  sessionStorage.clear()
+  paymentsFlow.render = false
+  paymentsFlow.settings.mockReset()
+  paymentsFlow.confirm.mockReset()
+  paymentsFlow.navigate.mockReset()
   for (const mock of [useSessionMock, isCloudDistributionMock, onboardingStatusQuery, runtimeCapabilitiesQuery, availableQuery, setupAvailableQuery, listOrganizations]) mock.mockReset()
   isCloudDistributionMock.mockReturnValue(true)
 })
 
 describe("onboarding capability discovery", () => {
+  it.each([false, true])("offers payments only when enabled=%s, with a Connect handler registered", async (enabled) => {
+    hostedWithOrganization()
+    paymentsFlow.render = true
+    availableQuery.mockResolvedValue({ enabled: true, suggestions: false })
+    runtimeCapabilitiesQuery.mockResolvedValue({
+      ...v2Capabilities,
+      sellerVatConfirmation: { enabled: false },
+      payments: { enabled, managed: true, provider: "stripe" },
+    })
+    paymentsFlow.settings.mockResolvedValue({ stripeAccount: { mode: "connect", status: "none" }, stripeConnectActions: true })
+    paymentsFlow.confirm.mockResolvedValue({ status: "complete" })
+    render(<RouteComponent />)
+    fireEvent.click(await screen.findByRole("button", { name: "Set up manually instead" }))
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }))
+    await waitFor(() => expect(paymentsFlow.confirm).toHaveBeenCalledOnce())
+    if (enabled) {
+      expect(await screen.findByRole("heading", { name: "Get paid by card and MobilePay" })).toBeTruthy()
+      expect(paymentsFlow.settings).toHaveBeenCalledOnce()
+      expect(paymentsFlow.navigate).not.toHaveBeenCalled()
+    } else {
+      await waitFor(() => expect(paymentsFlow.navigate).toHaveBeenCalledWith({ to: "/" }))
+      expect(screen.queryByRole("heading", { name: "Get paid by card and MobilePay" })).toBeNull()
+      expect(paymentsFlow.settings).not.toHaveBeenCalled()
+    }
+  })
+
   it.each([
     ["availability first", true],
     ["capabilities first", false],

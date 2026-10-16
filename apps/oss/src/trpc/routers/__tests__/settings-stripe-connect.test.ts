@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   txFindUnique: vi.fn(),
   txUpsert: vi.fn(),
   paymentsManaged: false,
+  paymentsEnabled: true,
   canUpdateSettings: true,
 }))
 
@@ -60,7 +61,7 @@ vi.mock("../../../lib/runtime/extensions", async (importOriginal) => {
     getRuntimeCapabilities: () => ({
       ...original.getRuntimeCapabilities({}),
       payments: {
-        enabled: mocks.paymentsManaged,
+        enabled: mocks.paymentsManaged && mocks.paymentsEnabled,
         managed: mocks.paymentsManaged,
         provider: mocks.paymentsManaged ? "stripe" : null,
       },
@@ -141,6 +142,7 @@ describe("settings stripe account contract", () => {
     vi.stubEnv("BETTER_AUTH_SECRET", "test-secret-at-least-16")
     vi.stubEnv("QUITS_DISTRIBUTION", "selfhost")
     mocks.paymentsManaged = false
+    mocks.paymentsEnabled = true
     mocks.canUpdateSettings = true
     mocks.findFirst.mockResolvedValue(null)
     mocks.txFindUnique.mockResolvedValue({
@@ -313,6 +315,18 @@ describe("settings stripe account contract", () => {
     expect(result.stripeCheckoutUnavailable).toBe(true)
     expect(warn).toHaveBeenCalledWith("settings.stripe_checkout_target_unavailable", { organizationId: "org-1", error: expect.any(Error) })
     warn.mockRestore()
+  })
+
+  it.each([false, true])("allows disconnect with a registered handler when payments enabled=%s", async (enabled) => {
+    mocks.paymentsManaged = true
+    mocks.paymentsEnabled = enabled
+    mocks.findUnique.mockResolvedValue(settingsRow({ stripeAccountId: "acct_test", stripeAccountStatus: "active" }))
+    const run = vi.fn(async () => {})
+    setRuntimeServices({ stripeConnectSettings: { run } })
+
+    expect((await createCaller().get()).stripeConnectActions).toBe(true)
+    await expect(createCaller().runStripeConnectAction({ action: "disconnect" })).resolves.toEqual({ url: null })
+    expect(run).toHaveBeenCalledWith("disconnect", { organizationId: "org-1" })
   })
 
   it("warns and reports payments unavailable when stored keys cannot be decrypted", async () => {
