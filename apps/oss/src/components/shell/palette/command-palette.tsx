@@ -9,6 +9,7 @@ import { cn } from '../../../lib/utils'
 import { onRequestOpen } from '../../command-bar/request-events'
 import { useFollowHeight } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
+import { LINE_BREAK } from './bank-provider'
 import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
 import { useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
 import type { PaletteActions, PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
@@ -383,6 +384,14 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
             setCard(null)
           }}
           onKeyDown={onKeyDown}
+          onPaste={(event) => {
+            // A pasted block (bank lines) keeps its lines apart in the one-line field.
+            const pasted = event.clipboardData.getData('text')
+            if (!pasted.includes('\n')) return
+            event.preventDefault()
+            setQuery(pasted.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join(LINE_BREAK))
+            setCard(null)
+          }}
           className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
         />
         {query && (

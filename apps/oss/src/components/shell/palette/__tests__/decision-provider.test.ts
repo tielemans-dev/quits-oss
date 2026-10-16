@@ -4,9 +4,9 @@ import { customersIn, writtenRequests } from "../decision-provider"
 
 const known = {
   invoices: [
-    { number: "INV-2026-001", customer: "Birk Arkitekter", status: "sent", balanceDue: 12500.5, currency: "DKK" },
-    { number: "INV-2026-002", customer: "Birk Arkitekter", status: "draft", balanceDue: 900, currency: "DKK" },
-    { number: "INV-2026-003", customer: "Studio Vester", status: "paid", balanceDue: 0, currency: "DKK" },
+    { number: "INV-2026-001", customer: "Birk Arkitekter", status: "sent", balanceDue: 12500.5, currency: "DKK", dueDate: "2026-10-01" },
+    { number: "INV-2026-002", customer: "Birk Arkitekter", status: "draft", balanceDue: 900, currency: "DKK", dueDate: "2026-10-01" },
+    { number: "INV-2026-003", customer: "Studio Vester", status: "paid", balanceDue: 0, currency: "DKK", dueDate: "2026-10-01" },
   ],
   customers: [{ name: "Birk Arkitekter" }, { name: "Havblik Design" }, { name: "Studio Vester" }, { name: "Studio Nord" }],
 }
