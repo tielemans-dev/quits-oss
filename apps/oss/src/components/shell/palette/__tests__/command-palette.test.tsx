@@ -292,6 +292,16 @@ describe("command palette", () => {
     expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Søg eller gå til…")
   })
 
+  it("sits over the search field it opened from, instead of in the middle", () => {
+    const anchor = { top: 8, left: 256, width: 360, height: 32 } as DOMRect
+    render(<CommandPalette open onOpenChange={() => {}} can={everything} billingEnabled={false} anchor={anchor} />)
+
+    const palette = screen.getByRole("dialog")
+    expect(palette.style.top).toBe("4px")
+    expect(palette.style.left).toBe("248px")
+    expect(palette.className).not.toContain("left-1/2")
+  })
+
   it("tells the shell when an item navigates, besides closing", () => {
     const onNavigate = vi.fn()
     render(<Harness can={everything} onNavigate={onNavigate} />)

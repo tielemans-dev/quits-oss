@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Settings } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useRuntimeDistribution } from '../../lib/runtime-distribution'
 import { SidebarTrigger, useSidebar } from '../ui/sidebar'
@@ -28,15 +28,24 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
   const { setOpenMobile } = useSidebar()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [newMenuOpen, setNewMenuOpen] = useState(false)
+  // Where the search field is when the palette opens: on a wide screen the palette grows out of it.
+  const searchRef = useRef<HTMLButtonElement>(null)
+  const [paletteAnchor, setPaletteAnchor] = useState<DOMRect | null>(null)
+  const measureSearch = useCallback(
+    () => setPaletteAnchor(window.matchMedia?.('(min-width: 768px)').matches ? (searchRef.current?.getBoundingClientRect() ?? null) : null),
+    []
+  )
 
   const openPalette = useCallback(() => {
     setNewMenuOpen(false)
+    measureSearch()
     setPaletteOpen(true)
-  }, [])
+  }, [measureSearch])
   const togglePalette = useCallback(() => {
     setNewMenuOpen(false)
+    measureSearch()
     setPaletteOpen((open) => !open)
-  }, [])
+  }, [measureSearch])
   // The menu exists once the role is known and lets the member create something. Until then an
   // `N` must not be remembered: the menu would open by itself the moment it becomes available.
   const newMenuAvailable = ready && !readOnly && createActions.some((action) => can(action.capability))
@@ -56,7 +65,7 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
       <header className="sticky top-0 z-20 bg-background">
         {/* The bar shares the content's width, so search starts where the page does. */}
         <div className="mx-auto flex h-(--topbar-height) w-full max-w-[calc(var(--content-width)+2*var(--gutter))] items-center gap-2 px-(--gutter)">
-          <SearchField onOpen={openPalette} className="max-w-[360px]" />
+          <SearchField ref={searchRef} onOpen={openPalette} className="max-w-[360px]" />
           {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:hidden" /> : null}
           <div className="flex-1" />
           <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
@@ -79,6 +88,7 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
+        anchor={paletteAnchor}
         can={can}
         billingEnabled={billingEnabled}
         // ⌘K works over the mobile drawer; going to a page must not leave the drawer over it.

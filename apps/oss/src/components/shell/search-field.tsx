@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react'
+import type { Ref } from 'react'
 
 import { useI18n } from '../../lib/i18n/react'
 import { useSearchPlaceholderKey } from './palette'
@@ -6,13 +7,15 @@ import { cn } from '../../lib/utils'
 
 /**
  * The top bar's entry to the command palette. It looks like a field but is a button: the palette
- * has the real input. Reads "Søg…" on a phone, where the keycap is hidden too.
+ * has the real input, and on a wide screen it grows out of this field (see `CommandPalette`'s
+ * `anchor`). Reads "Søg…" on a phone, where the keycap is hidden too.
  */
-export function SearchField({ onOpen, className }: { onOpen: () => void; className?: string }) {
+export function SearchField({ onOpen, className, ref }: { onOpen: () => void; className?: string; ref?: Ref<HTMLButtonElement> }) {
   const { t } = useI18n()
   const placeholderKey = useSearchPlaceholderKey()
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onOpen}
       aria-label={t('shell.search.open')}

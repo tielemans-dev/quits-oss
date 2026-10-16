@@ -1,9 +1,10 @@
 import { useNavigate } from '@tanstack/react-router'
+import { Search } from 'lucide-react'
 import { Dialog as DialogPrimitive, VisuallyHidden } from 'radix-ui'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { trpc } from '../../../trpc/client'
-import { DURATION } from '../../../lib/motion'
+import { DURATION, EASE_ENTER, prefersReducedMotion } from '../../../lib/motion'
 import { cn } from '../../../lib/utils'
 import { useMorph } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
@@ -22,6 +23,18 @@ type Props = {
   billingEnabled: boolean
   /** Called when an item navigates, besides closing the palette: the shell closes its mobile drawer here. */
   onNavigate?: () => void
+  /** The search field it opened from. The palette then sits over it and grows out of its outline. */
+  anchor?: DOMRect | null
+}
+
+/** Over the field: the input row centred on the field's, the icon over the field's icon. */
+function anchoredStyle(anchor: DOMRect): CSSProperties {
+  const left = Math.max(12, anchor.left - 8)
+  return {
+    top: Math.max(4, anchor.top + anchor.height / 2 - 28),
+    left,
+    width: `min(600px, calc(100vw - ${left + 12}px))`,
+  }
 }
 
 /**
@@ -105,7 +118,7 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate }: Props) {
+export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null }: Props) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
@@ -147,6 +160,18 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     setQuery('')
     setCard(null)
   }, [open])
+
+  // Opening over the field: the panel starts as the field's outline and grows to its own.
+  const growFromAnchor = useCallback(() => {
+    const el = morph.ref.current
+    if (!anchor || !el || typeof el.animate !== 'function' || prefersReducedMotion()) return
+    const box = el.getBoundingClientRect()
+    const top = anchor.top - box.top
+    const left = anchor.left - box.left
+    const from = `inset(${top}px ${box.width - left - anchor.width}px ${box.height - top - anchor.height}px ${left}px round 8px)`
+    // It ends past the panel by as far as its shadow reaches, so the shadow grows with it.
+    el.animate({ clipPath: [from, 'inset(-16px -16px -48px round 12px)'] }, { duration: CARD_MORPH_MS, easing: EASE_ENTER })
+  }, [anchor, morph.ref])
 
   useEffect(() => {
     if (!listLeaving) return
@@ -220,6 +245,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           ref={morph.ref}
           data-slot="command-palette"
           onOpenAutoFocus={() => {
+            // Radix mounts the content a render after `open`; this is the first moment it is laid out.
+            growFromAnchor()
             returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
           }}
           onCloseAutoFocus={(event) => {
@@ -228,12 +255,16 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             returnFocusTo.current?.focus()
             returnFocusTo.current = null
           }}
+          style={anchor ? anchoredStyle(anchor) : undefined}
           className={cn(
-            'fixed top-[12vh] left-1/2 z-50 w-[min(600px,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden',
+            'fixed z-50 overflow-hidden rounded-xl',
             'border border-hairline bg-panel text-foreground shadow-2xl shadow-black/30 outline-none',
-            // Opens and closes with a token-timed fade and scale; reduced motion applies the change immediately.
-            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit motion-reduce:zoom-in-100 motion-reduce:zoom-out-100',
-            'rounded-xl'
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit',
+            anchor
+              ? // Grows out of the field (see the layout effect); with reduced motion it fades in.
+                'motion-reduce:data-[state=open]:animate-in motion-reduce:data-[state=open]:fade-in-0'
+              : // Centred, with a token-timed fade and scale; reduced motion drops the scale.
+                'top-[12vh] left-1/2 w-[min(600px,calc(100vw-1.5rem))] -translate-x-1/2 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 motion-reduce:zoom-in-100 motion-reduce:zoom-out-100'
           )}
         >
           <VisuallyHidden.Root>
@@ -241,6 +272,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             <DialogPrimitive.Description>{t('shell.palette.description')}</DialogPrimitive.Description>
           </VisuallyHidden.Root>
           <div className="flex items-center gap-3 border-b border-hairline px-4">
+            <Search className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
             <input
               type="text"
               role="combobox"
