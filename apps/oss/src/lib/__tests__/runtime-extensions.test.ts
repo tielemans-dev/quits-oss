@@ -18,6 +18,30 @@ describe("runtime extension capabilities", () => {
     vi.resetModules()
   })
 
+  it.each([
+    [{}, false],
+    [{ RESEND_API_KEY: "test-key" }, false],
+    [{ FROM_EMAIL: "sender@example.com" }, false],
+    [{ RESEND_API_KEY: "test-key", FROM_EMAIL: "invalid" }, false],
+    [{ RESEND_API_KEY: "test-key", FROM_EMAIL: "sender@example.com" }, true],
+    [{ EMAIL_PROVIDER: "smtp", SMTP_HOST: "localhost", FROM_EMAIL: "sender@example.com" }, true],
+    [{ EMAIL_PROVIDER: "smtp", FROM_EMAIL: "sender@example.com" }, false],
+    [{ EMAIL_PROVIDER: "smtp", SMTP_HOST: "localhost", SMTP_PORT: "invalid", FROM_EMAIL: "sender@example.com" }, false],
+    [{ EMAIL_PROVIDER: "unknown", RESEND_API_KEY: "test-key", FROM_EMAIL: "sender@example.com" }, false],
+  ] satisfies [Record<string, string>, boolean][])("reports email configuration for %j", async (env, configured) => {
+    const mod = await import("../runtime/extensions")
+    expect(mod.getRuntimeCapabilities(env).emailDelivery).toMatchObject({ configured })
+    mod.setRuntimeExtensions([{ id: "managed-email", resolveCapabilities: () => ({ emailDelivery: { managed: true } }) }])
+    expect(mod.getRuntimeCapabilities(env).emailDelivery).toMatchObject({ managed: true, configured })
+  })
+
+  it("reports SMTP as unconfigured in a worker runtime", async () => {
+    const platform = await import("../runtime/platform")
+    const mod = await import("../runtime/extensions")
+    platform.setRuntimePlatform(createPlatformEnv({}))
+    expect(mod.getRuntimeCapabilities({ EMAIL_PROVIDER: "smtp", SMTP_HOST: "localhost", FROM_EMAIL: "sender@example.com" }).emailDelivery).toMatchObject({ configured: false })
+  })
+
   it("preserves non-VAT onboarding through unrelated and partial patches, with explicit overrides", async () => {
     const mod = await import("../runtime/extensions")
     const optIn = { id: "onboarding", resolveCapabilities: () => ({ onboardingV2: { enabled: true, nonVatEnabled: true } }) }

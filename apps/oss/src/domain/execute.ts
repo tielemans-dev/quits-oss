@@ -545,7 +545,8 @@ async function executeCommandOnce<Input, Result>(
       // A stale document number is not the caller's failure: leaving no receipt lets the same
       // request id prepare the document again with the current number.
       transient: error.domainError._tag === "ExternalFailure" || staleNumber ||
-        (error.domainError._tag === "InvalidState" && error.domainError.code === "operation_not_allowed"),
+        // Configuration refusals must be retryable after setup, including fixed-ID held sends.
+        (error.domainError._tag === "InvalidState" && ["operation_not_allowed", "email_unavailable"].includes(error.domainError.code)),
       staleNumber,
     })
     return winner ?? outcome

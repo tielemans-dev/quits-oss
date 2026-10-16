@@ -35,6 +35,8 @@ export const emailDeliveryCapabilitiesSchema = z
   .object({
     enabled: z.boolean(),
     managed: z.boolean(),
+    /** Runtime always reports this; optional for consumers of older releases. */
+    configured: z.boolean().optional(),
   })
   .strict()
 

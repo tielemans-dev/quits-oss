@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { z } from "zod"
 import type { Job } from "../../generated/prisma/client"
 import { executeIssuanceCommand } from "../application/issuance"
+import { getRuntimeCapabilities } from "../lib/runtime/extensions"
 import { UNDO_HOLD_LEASE_MS, UNDO_WINDOW_MS } from "../lib/undo-window"
 import type { UserActor } from "./actor"
 import { defineCommand } from "./command"
@@ -37,6 +38,9 @@ export const queueDelayedInvoiceSend = defineCommand({
     const db = yield* Db
     const command = yield* Command
     if (command.actor.kind !== "user") return yield* new InvalidState({ code: "user_required", message: "A user must queue a send" })
+    if (!getRuntimeCapabilities().emailDelivery.configured) return yield* new InvalidState({
+      code: "email_unavailable", message: "Configure email delivery before sending emails. Nothing was queued.",
+    })
     const invoice = yield* Effect.promise(() => db.invoice.findFirst({
       where: { id: input.id, organizationId: command.organizationId, status: "draft" }, select: { id: true },
     }))
