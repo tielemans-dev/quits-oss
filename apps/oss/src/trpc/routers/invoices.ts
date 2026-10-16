@@ -194,7 +194,7 @@ export const invoicesRouter = router({
   get: authorizedProcedure("invoice:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const invoice = await prisma.invoice.findFirstOrThrow({
+      const invoice = await prisma.invoice.findFirst({
         where: { id: input.id, organizationId: ctx.organizationId },
         include: {
           contact: { include: { taxIds: true } },
@@ -202,6 +202,7 @@ export const invoicesRouter = router({
           items: { orderBy: { sortOrder: "asc" } },
         },
       })
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" })
 
       // Whether `/pay` offers card for this invoice, so the share-link copy matches the page.
       const paymentState = getInvoicePaymentState(invoice)

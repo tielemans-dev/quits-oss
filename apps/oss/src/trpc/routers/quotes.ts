@@ -109,7 +109,7 @@ export const quotesRouter = router({
   get: authorizedProcedure("quote:read")
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const quote = await prisma.quote.findFirstOrThrow({
+      const quote = await prisma.quote.findFirst({
         where: { id: input.id, organizationId: ctx.organizationId },
         include: {
           contact: true,
@@ -118,6 +118,7 @@ export const quotesRouter = router({
           agreement: { select: { id: true, title: true } },
         },
       })
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" })
 
       return {
         ...sanitizeDocumentEmailAttempt(quote),

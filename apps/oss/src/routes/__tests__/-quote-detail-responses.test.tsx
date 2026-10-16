@@ -105,6 +105,12 @@ afterEach(() => {
 })
 
 describe("quote detail page responses", () => {
+  it("keeps the list exit for a confirmed missing quote", async () => {
+    state.get.mockRejectedValue(Object.assign(new Error("Missing"), { data: { code: "NOT_FOUND" } }))
+    render(<RouteComponent />)
+    expect(await screen.findByRole("button", { name: catalogTranslate("quotes.detail.action.back", state.locale) })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
+  })
   it("downloads the quote PDF and lets the user retry a failed download", async () => {
     state.get.mockResolvedValue(quote("q_1", "Q-0001"))
     const download = deferred<void>()

@@ -39,6 +39,7 @@ vi.mock("../../lib/i18n/react", () => ({
   useI18n: () => ({ locale: "en-US", t: translate }),
 }))
 
+import { notifyMutation } from "../../lib/query-refresh"
 import { Route } from "../_app/credit-notes/$creditNoteId"
 
 /** The key, followed by the document number where one is shown (to tell credit notes apart). */
@@ -90,6 +91,12 @@ afterEach(() => {
 })
 
 describe("credit note detail while the email is being delivered", () => {
+  it("keeps the list exit for a confirmed missing credit note", async () => {
+    api.get.mockRejectedValue(Object.assign(new Error("Missing"), { data: { code: "NOT_FOUND" } }))
+    render(<RouteComponent />)
+    expect(await screen.findByText("creditNotes.action.back")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "ui.retry" })).toBeNull()
+  })
   // MOCK: request failures below reproduce the loader defect without production access.
   it("keeps an existing credit note and PDF available when organization settings fail", async () => {
     api.get.mockResolvedValue(base)
@@ -113,7 +120,7 @@ describe("credit note detail while the email is being delivered", () => {
   it("does not report a lookup outage as a missing credit note", async () => {
     api.get.mockRejectedValue(new Error("Database unavailable"))
     render(<RouteComponent />)
-    expect(await screen.findByText("creditNotes.error.generic")).toBeTruthy()
+    expect(await screen.findByText("Database unavailable")).toBeTruthy()
     expect(screen.queryByText("creditNotes.detail.notFound")).toBeNull()
   })
 
@@ -153,12 +160,12 @@ describe("credit note detail while the email is being delivered", () => {
   it("does not report a queued send as emailed", async () => {
     api.get.mockResolvedValueOnce({ ...base, lastEmailAttemptAt: null, lastEmailAttemptOutcome: null })
     api.get.mockResolvedValue(sending)
-    api.send.mockResolvedValue({
+    api.send.mockImplementation(async () => { notifyMutation("creditNotes.send", null); return {
       id: "cn_1",
       recipient: "acme@example.com",
       attemptedAt: new Date("2026-10-02T00:00:00.000Z"),
       delivery: "pending",
-    })
+    } })
     render(<RouteComponent />)
 
     const button = await screen.findByRole("button", { name: "creditNotes.action.send" })

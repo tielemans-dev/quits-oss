@@ -1,3 +1,5 @@
+import { useQueryRevision } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { useBusinessBuyersOnly } from "../../../hooks/use-business-buyers-only"
 import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -45,6 +47,8 @@ type ContactData = {
 function EditContactPage() {
   const { t } = useI18n()
   const { contactId } = Route.useParams()
+  const query = useQueryRevision(["contacts"])
+  const [loadError, setLoadError] = useState<unknown>(null)
   const navigate = useNavigate()
   const [contact, setContact] = useState<ContactData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,12 +58,15 @@ function EditContactPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let current = true
+    setLoadError(null)
     trpc.contacts.get
       .query({ id: contactId })
-      .then((data) => setContact(data as ContactData))
-      .catch(() => setError(t("contacts.edit.error.notFound")))
-      .finally(() => setLoading(false))
-  }, [contactId])
+      .then((data) => { if (current) setContact(data as ContactData) })
+      .catch((failure: unknown) => { if (current) { if ((failure as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND") { setContact(null); setError(null) } else setLoadError(failure) } })
+      .finally(() => { if (current) setLoading(false) })
+    return () => { current = false }
+  }, [contactId, query.revision])
 
   async function resumeReminders() {
     setResuming(true)
@@ -116,10 +123,12 @@ function EditContactPage() {
     }
   }
 
-  if (loading) {
+  if (loadError && (!contact || contact.id !== contactId)) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+
+  if (loading || (contact && contact.id !== contactId)) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">{t("contacts.loading")}</p>
+        <QuerySkeleton />
       </div>
     )
   }
@@ -149,6 +158,7 @@ function EditContactPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="grid gap-4">
+            {loadError ? <QueryError error={loadError} retry={query.refresh} /> : null}
             {error && (
               <p className="text-sm text-destructive" role="alert">
                 {error}
