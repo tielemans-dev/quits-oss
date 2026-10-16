@@ -5,8 +5,8 @@ import type { FieldIssue } from "@quits/contracts/agent"
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { isSelfHostDistribution } from "../../lib/distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
-import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -55,9 +55,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog"
-import { Settings, UserPlus, X, Crown, User, Eye } from "lucide-react"
+import { UserPlus, X, Crown, User, Eye } from "lucide-react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
+import { DEFAULT_SETTINGS_SECTION, isSettingsSection, type SettingsSection } from "../../components/shell/settings-nav"
 import { translateCvrError } from "../../lib/i18n/cvr-error"
 import type { OrgStripeAccount } from "@quits/contracts/payments"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
@@ -88,9 +89,26 @@ const settingsValidationMessages: Record<SettingsFormValidationError, Translatio
   invalid_credit_note_prefix: "settings.validation.invalidCreditNotePrefix",
 }
 
-export const Route = createFileRoute("/_app/settings")({
+export const Route = createFileRoute("/_app/settings/$section")({
+  // Unknown pages, including the old /settings/organization, open the company profile.
+  beforeLoad: ({ params }) => {
+    if (!isSettingsSection(params.section)) {
+      throw redirect({ to: "/settings/$section", params: { section: DEFAULT_SETTINGS_SECTION }, replace: true })
+    }
+  },
   component: SettingsPage,
 })
+
+/**
+ * One settings page. All pages stay mounted so the shared form keeps unsaved values while you move
+ * between them, and Save sends every field; only the open page shows.
+ */
+function SettingsPane({ id, open, children }: { id: SettingsSection; open: SettingsSection; children: ReactNode }) {
+  return <div className={id === open ? "grid grid-cols-[minmax(0,1fr)] gap-6" : "hidden"}>{children}</div>
+}
+
+/** The pages with fields in the shared form, which need its Save button. */
+const FORM_SECTIONS: readonly SettingsSection[] = ["company", "invoicing", "payments", "ai"]
 
 type OrgMember = {
   id: string
@@ -220,6 +238,8 @@ function isHttpLogoUrl(value: string) {
 function SettingsPage() {
   const router = useRouter()
   const layoutContext = Route.useRouteContext()
+  const { section: sectionParam } = Route.useParams()
+  const section = isSettingsSection(sectionParam) ? sectionParam : DEFAULT_SETTINGS_SECTION
   const { t, locale: displayLocale } = useI18n()
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
@@ -931,10 +951,7 @@ function SettingsPage() {
   if (loading) {
     return (
       <div>
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="size-6" />
-          <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
-        </div>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
         <QuerySkeleton />
       </div>
     )
@@ -943,10 +960,7 @@ function SettingsPage() {
   if (!settings) {
     return (
       <div>
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="size-6" />
-          <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
-        </div>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
         <p className="text-destructive">
           {error ?? t("settings.error.loadFailed")}
         </p>
@@ -955,13 +969,10 @@ function SettingsPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="size-6" />
-        <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
-      </div>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
 
-      {!isSelfHostDistribution && capabilitiesFailed && <div role="alert" className="mb-4 grid gap-2">
+      {!isSelfHostDistribution && capabilitiesFailed && <div role="alert" className="grid gap-2">
         <p className="text-sm text-destructive">{t("settings.capabilities.failed")}</p>
         <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
       </div>}
@@ -983,6 +994,7 @@ function SettingsPage() {
           </p>
         )}
 
+        <SettingsPane id="company" open={section}>
         {/* Company Information */}
         <Card>
           <CardHeader>
@@ -1120,8 +1132,10 @@ function SettingsPage() {
             locale={displayLocale}
           />
         )}
+        </SettingsPane>
 
         <form id={settingsFormId} onSubmit={handleSubmit} className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <SettingsPane id="invoicing" open={section}>
         {/* Billing Defaults */}
         <Card>
           <CardHeader>
@@ -1405,6 +1419,9 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
+        </SettingsPane>
+
+        <SettingsPane id="email" open={section}>
         <EmailDeliveryCard emailDelivery={settings.emailDelivery} />
 
         {settings.documentSending.managed ? (
@@ -1420,7 +1437,9 @@ function SettingsPage() {
             onDisable={handleDisableDocumentSendingDomain}
           />
         ) : null}
+        </SettingsPane>
 
+        <SettingsPane id="payments" open={section}>
         <StripePaymentsSection
           account={settings.stripeAccount}
           stripeByokConfigured={settings.stripeByokConfigured}
@@ -1527,12 +1546,16 @@ function SettingsPage() {
           </CardContent>
         </Card>
         </StripePaymentsSection>
+        </SettingsPane>
 
         {/* The moms period behind the Overblik deadline; only for a moms-registered Danish seller. */}
         {settings.momsRegistered === true && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat" ? (
-          <VatPeriodCard value={settings.vatPeriod ?? null} busy={savingVatPeriod} onChange={(period) => { void saveVatPeriod(period) }} />
+          <SettingsPane id="invoicing" open={section}>
+            <VatPeriodCard value={settings.vatPeriod ?? null} busy={savingVatPeriod} onChange={(period) => { void saveVatPeriod(period) }} />
+          </SettingsPane>
         ) : null}
 
+        <SettingsPane id="ai" open={section}>
         {/* AI invoice drafting */}
         {settings.aiDrafts?.managed ? (
           settings.aiDrafts.available ? (
@@ -1748,9 +1771,10 @@ function SettingsPage() {
           </CardContent>
         </Card>
         )}
+        </SettingsPane>
 
         {/* Save */}
-        <div className="flex justify-end">
+        <div className={FORM_SECTIONS.includes(section) ? "flex justify-end" : "hidden"}>
           <Button type="submit" disabled={saving}>
             {saving ? t("settings.action.saving") : t("settings.action.save")}
           </Button>
@@ -1759,7 +1783,8 @@ function SettingsPage() {
       </div>
 
       {/* Team Members — outside the settings form */}
-      <Card className="mt-6">
+      <SettingsPane id="team" open={section}>
+      <Card>
         <CardHeader>
           <CardTitle>{t("settings.section.team.title")}</CardTitle>
           <CardDescription>
@@ -1912,14 +1937,13 @@ function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      </SettingsPane>
 
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6">
-        <PaymentDetailsCard locale={settings?.locale} />
-        <ReminderPolicyCard />
-        <AccountingIntegrationsCard />
-        <AgentKeysCard />
-        <AuditLogCard />
-      </div>
+      <SettingsPane id="payments" open={section}><PaymentDetailsCard locale={settings?.locale} /></SettingsPane>
+      <SettingsPane id="reminders" open={section}><ReminderPolicyCard /></SettingsPane>
+      <SettingsPane id="accounting" open={section}><AccountingIntegrationsCard /></SettingsPane>
+      <SettingsPane id="ai" open={section}><AgentKeysCard /></SettingsPane>
+      <SettingsPane id="audit" open={section}><AuditLogCard /></SettingsPane>
     </div>
   )
 }

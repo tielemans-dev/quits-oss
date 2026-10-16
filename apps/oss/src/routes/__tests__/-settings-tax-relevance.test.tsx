@@ -35,6 +35,7 @@ vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
+    useParams: () => ({ section: "invoicing" }),
     useRouteContext: () => ({
       user: { id: "user_1" },
       activeOrganizationId: "org_1",
@@ -178,7 +179,7 @@ vi.mock("../../trpc/client", () => ({
   },
 }))
 
-import { Route } from "../_app/settings"
+import { Route } from "../_app/settings.$section"
 import { RuntimeUiProvider, type SettingsCompanyDetailsProps } from "../../lib/runtime/ui"
 import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 
@@ -788,7 +789,9 @@ describe("Settings UI extension", () => {
     fireEvent.submit(extension)
     expect(settingsUpdate).not.toHaveBeenCalled()
     expect(extension.previousElementSibling?.textContent).toContain("Company description")
-    const saveForm = extension.nextElementSibling as HTMLFormElement
+    // The extension closes the company page; the save form follows it.
+    expect(extension.nextElementSibling).toBeNull()
+    const saveForm = extension.parentElement?.nextElementSibling as HTMLFormElement
     expect(saveForm.tagName).toBe("FORM")
     expect(new FormData(saveForm).has("adopterField")).toBe(false)
     expect(new FormData(saveForm).get("companyAddress")).toBe("Main St 1")

@@ -7,7 +7,7 @@ const aiFixture = vi.hoisted(() => ({ enabled: false }))
 const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), readiness: vi.fn(), create: vi.fn(), send: vi.fn(), resend: vi.fn(), get: vi.fn(), update: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), currency: "DKK" }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ invoiceId: "synthetic-invoice" }), useSearch: () => ({}) }),
-  Link: ({ children, to, onClick }: { children: ReactNode; to: string; onClick?: () => void }) => <a href={to} onClick={event => { event.preventDefault(); onClick?.(); api.navigate({ to }) }}>{children}</a>,
+  Link: ({ children, to, params, onClick }: { children: ReactNode; to: string; params?: Record<string, string>; onClick?: () => void }) => <a href={to} onClick={event => { event.preventDefault(); onClick?.(); api.navigate(params ? { to, params } : { to }) }}>{children}</a>,
   useNavigate: () => api.navigate,
 }))
 vi.mock("../../trpc/client", () => ({ trpc: {
@@ -191,7 +191,7 @@ describe("new invoice send review", () => {
     expect(api.send).not.toHaveBeenCalled()
     expect(api.resend).not.toHaveBeenCalled()
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/settings" }))
+    expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/settings/$section", params: { section: "payments" } }))
   })
   it("sends the saved draft once only after continuing the bank nudge", async () => {
     api.bankReadiness.mockResolvedValue({ bankMissing: true })
@@ -680,7 +680,7 @@ describe("new invoice valuation across the bank nudge", () => {
     await screen.findByRole("dialog")
     if (outcome === "settings") {
       await act(async () => { fireEvent.click(screen.getByText("onboardingV2.bankNudge.settings")) })
-      expect(api.navigate).toHaveBeenLastCalledWith({ to: "/settings" })
+      expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/settings/$section", params: { section: "payments" } }))
     } else if (outcome === "cancel") {
       await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     } else {
