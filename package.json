@@ -59,5 +59,8 @@
   },
   "engines": {
     "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+  },
+  "patchedDependencies": {
+    "nitro-nightly@3.0.1-20260309-141311-a2ee33b1": "patches/nitro-nightly@3.0.1-20260309-141311-a2ee33b1.patch"
   }
 }
