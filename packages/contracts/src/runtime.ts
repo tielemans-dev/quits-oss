@@ -12,6 +12,8 @@ export const aiInvoiceDraftCapabilitiesSchema = z
     localAgent: z.boolean(),
     /** Optional model fills for command-bar requests; disabled unless explicitly enabled. */
     requestFallbackEnabled: z.boolean().optional(),
+    /** A decision model reads palette text the parser cannot; on when the operator sets its key. */
+    requestDecisionsEnabled: z.boolean().optional(),
     maxPromptChars: z.number().int().positive(),
   })
   .strict()
