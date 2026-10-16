@@ -6,6 +6,7 @@ import { DURATION } from "../../lib/motion"
 import { readHandoff } from "../../lib/request-handoff"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
+import { onPaletteReturn } from "../shell/palette/palette-events"
 import { onRequestOpen } from "./request-events"
 import { RequestCardSlot } from "./request-card-slot"
 import type { RequestIntent, RequestRecognizer } from "./request-intent"
@@ -35,6 +36,9 @@ export function CommandBar({ recognize, suggest, onSearch, className }: { recogn
   }, [value, intent, recognize, suggest])
   const open = useRef(intent !== null)
   open.current = intent !== null
+
+  // The palette that grew out of the pill hands back what it held when it is put away.
+  useEffect(() => (onSearch ? onPaletteReturn(setValue) : undefined), [onSearch])
 
   // A summary row can ask for a card; it never replaces one the person is working in.
   useEffect(

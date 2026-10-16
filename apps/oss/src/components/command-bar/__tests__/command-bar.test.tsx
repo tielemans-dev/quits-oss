@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { CommandBar } from "../command-bar"
+import { returnFromPalette } from "../../shell/palette/palette-events"
 import { announceRequestOpen } from "../request-events"
 import { permittedRequest, recognizeRequest } from "../request-intent"
 
@@ -35,6 +36,10 @@ describe("command bar", () => {
 
     expect(onSearch).toHaveBeenCalledWith(input.form, "k")
     expect(input.value).toBe("")
+
+    // The palette put away with Esc hands the text back, so the pill is what it grew out of.
+    act(() => returnFromPalette("kredit"))
+    expect(input.value).toBe("kredit")
   })
 
   it("does nothing for text that is not a request", () => {

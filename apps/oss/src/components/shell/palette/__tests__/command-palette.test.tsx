@@ -311,6 +311,23 @@ describe("command palette", () => {
     expect(screen.getByRole("combobox").parentElement!.style.paddingLeft).toBe("28px")
   })
 
+  it("goes back into the field it grew out of: emptied with Ryd, or put away with Esc and the text kept", () => {
+    const anchor = { top: 152, left: 272, width: 968, height: 58 } as DOMRect
+    const onOpenChange = vi.fn()
+    const onDismiss = vi.fn()
+    render(<CommandPalette open onOpenChange={onOpenChange} onDismiss={onDismiss} can={everything} billingEnabled={false} anchor={anchor} initialQuery="kredit" placeholder="Skriv en opgave" />)
+
+    expect(screen.getByRole("combobox").getAttribute("placeholder")).toBe("Skriv en opgave")
+    expect(screen.getByRole("dialog").className).toContain("palette-into-field")
+    fireEvent.click(screen.getByRole("button", { name: "Ryd" }))
+    expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    expect(onDismiss).not.toHaveBeenCalled()
+    expect(screen.getByRole("dialog").style.getPropertyValue("--palette-field")).toContain("inset(")
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Escape" })
+    expect(onDismiss).toHaveBeenCalledWith("kredit")
+  })
+
   it("tells the shell when an item navigates, besides closing", () => {
     const onNavigate = vi.fn()
     render(<Harness can={everything} onNavigate={onNavigate} />)

@@ -32,6 +32,10 @@ type Props = {
   anchorInset?: number
   /** What was already typed in that field; the palette opens with it. */
   initialQuery?: string
+  /** The field's own placeholder, so the text does not change as the palette takes its place. */
+  placeholder?: string
+  /** Closed by Esc or a click outside, with what the field held: the field it grew out of keeps it. */
+  onDismiss?: (query: string) => void
 }
 
 /**
@@ -130,7 +134,7 @@ function useSections(
  * (arrows, Home/End, Enter, Esc), focus (trapped while open, returned to where it came from) and
  * closing. What it offers comes from providers; see `types.ts`.
  */
-export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '' }: Props) {
+export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavigate, anchor = null, anchorInset = 8, initialQuery = '', placeholder, onDismiss }: Props) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const listboxId = useId()
@@ -201,7 +205,18 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     document.getElementById(`${listboxId}-${effectiveActiveId}`)?.scrollIntoView?.({ block: 'nearest' })
   }, [effectiveActiveId, listboxId])
 
-  const close = useCallback(() => onOpenChange(false), [onOpenChange])
+  // Over a field the palette closes back into it: the clip ends on the field's outline, measured
+  // now, since the panel may have grown into a card since it opened.
+  const close = useCallback(() => {
+    const el = panel.current
+    if (anchor && el) {
+      const box = el.getBoundingClientRect()
+      const top = anchor.top - box.top
+      const left = anchor.left - box.left
+      el.style.setProperty('--palette-field', `inset(${top}px ${box.width - left - anchor.width}px ${box.height - top - anchor.height}px ${left}px round 29px)`)
+    }
+    onOpenChange(false)
+  }, [anchor, onOpenChange])
   const actions = useMemo<PaletteActions>(
     () => ({
       navigate: (to) => {
@@ -241,6 +256,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   if ((shown !== null) !== morph.current.shown) morph.current = { shown: shown !== null, changedAt: performance.now() }
 
   function clear() {
+    // Emptied over the field it grew out of, the palette goes back to being that field.
+    if (anchor) return close()
     setQuery('')
     setCard(null)
     input.current?.focus()
@@ -286,7 +303,14 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   }
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (next) return onOpenChange(true)
+        onDismiss?.(query)
+        close()
+      }}
+    >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/55 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
@@ -313,7 +337,9 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
           className={cn(
             'fixed z-50 overflow-hidden rounded-xl',
             'border border-hairline bg-panel text-foreground shadow-2xl shadow-black/30 outline-none',
-            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit',
+            anchor
+              ? 'palette-into-field'
+              : 'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit',
             anchor
               ? // Grows out of the field (see the layout effect); with reduced motion it fades in.
                 'motion-reduce:data-[state=open]:animate-in motion-reduce:data-[state=open]:fade-in-0'
@@ -339,7 +365,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
                 aria-autocomplete="list"
                 aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
                 aria-label={t('shell.palette.inputLabel')}
-                placeholder={t(placeholderKey)}
+                placeholder={placeholder ?? t(placeholderKey)}
                 autoComplete="off"
                 spellCheck={false}
                 value={query}

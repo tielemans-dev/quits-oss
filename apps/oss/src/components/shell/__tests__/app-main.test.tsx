@@ -21,6 +21,7 @@ vi.mock("@tanstack/react-router", () => ({
 }))
 vi.mock("../palette", async () => ({
   onPaletteOpen: (await import("../palette/palette-events")).onPaletteOpen,
+  returnFromPalette: (await import("../palette/palette-events")).returnFromPalette,
   CommandPalette: ({ open, initialQuery, onNavigate }: { open: boolean; initialQuery?: string; onNavigate?: () => void }) => (
     <button type="button" data-testid="palette" data-open={open} data-query={initialQuery} onClick={onNavigate}>
       navigate
