@@ -6,11 +6,17 @@ export function fold(text: string): string {
 /**
  * Items whose label or keywords contain every word of the query, items whose label starts with
  * the query first. A longer word may lose an ending (-er, -en, -et, -ne), so the verb finds the noun:
- * "fakturer" finds "Ny faktura". An empty query matches everything and keeps the order.
+ * "fakturer" finds "Ny faktura". Words that only ask ("vis", "mine", "gå til") are left out when
+ * others remain. An empty query matches everything and keeps the order.
  */
+// Words a sentence asks with ("vis mine kunder", "gå til indstillinger") that name no page.
+const FILLER = new Set(['vis', 'se', 'min', 'mit', 'mine', 'alle', 'ga', 'til', 'abn', 'find', 'show', 'my', 'all', 'go', 'to', 'open', 'the'])
+
 export function matchItems<T extends { label: string; keywords?: string[] }>(items: T[], query: string): T[] {
-  const words = fold(query).split(/\s+/).filter(Boolean)
-  if (words.length === 0) return items
+  const typed = fold(query).split(/\s+/).filter(Boolean)
+  if (typed.length === 0) return items
+  const named = typed.filter((word) => !FILLER.has(word))
+  const words = named.length ? named : typed
 
   const scored: Array<{ item: T; score: number; index: number }> = []
   items.forEach((item, index) => {

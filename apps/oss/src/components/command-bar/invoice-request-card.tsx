@@ -120,7 +120,9 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   const parsed = draft?.items[0]
   const suggested = intent.suggested?.items.map(line => ({ description: line.description, quantity: line.quantity ?? "1", unitPrice: line.unitPrice ?? "" }))
   const base: InvoiceHandoff["items"] = back?.items ?? (repeat ? last?.items ?? [] : suggested ?? (parsed ? [{ description: (parsed.description || draft?.remainder || "").trim(), quantity: parsed.quantity ?? "1", unitPrice: parsed.unitPrice ?? "" }] : []))
-  const items = editedItems ?? base.map((item, index) => quantities[index] === undefined ? item : { ...item, quantity: quantities[index] })
+  // What was filled in on the card stays as the request is typed on; the rest follows the request.
+  const [filled, setFilled] = useState<Record<number, Partial<Pick<InvoiceHandoff["items"][number], "description" | "unitPrice">>>>({})
+  const items = editedItems ?? base.map((item, index) => ({ ...item, ...filled[index], ...(quantities[index] !== undefined && { quantity: quantities[index] }) }))
   const lines = items.map(item => normalizeInvoiceQuantity(item, locale))
   const taxRate = back?.taxRate ?? (readiness ? defaultDocumentTaxRate(readiness) : "0")
   const pricesIncludeTax = back?.pricesIncludeTax ?? last?.pricesIncludeTax ?? (readiness && readiness.standardVatRate == null ? readiness.pricesIncludeTax : false)
@@ -130,18 +132,25 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   const total = money(preview.result?.gross)
 
   const gapIn = (item: InvoiceHandoff["items"][number]) =>
-    !item.description.trim() || !documentLineV2InputSchema.shape.description.safeParse(item.description).success ? t("docForm.column.description")
-    : !quantityDecimalSchema.safeParse(item.quantity).success ? t("docForm.column.qty")
-    : !documentLineV2InputSchema.shape.unitPrice.safeParse(item.unitPrice).success ? t("docForm.column.unitPrice") : null
+    !item.description.trim() || !documentLineV2InputSchema.shape.description.safeParse(item.description).success ? "description" as const
+    : !quantityDecimalSchema.safeParse(item.quantity).success ? "quantity" as const
+    : !documentLineV2InputSchema.shape.unitPrice.safeParse(item.unitPrice).success ? "unitPrice" as const : null
+  const columns = { description: t("docForm.column.description"), quantity: t("docForm.column.qty"), unitPrice: t("docForm.column.unitPrice") }
+  // What the request left out is asked for in its place in the line, rather than named below it.
+  const asked = base.map(item => ({ description: !item.description.trim(), unitPrice: item.unitPrice === "" }))
+  const gap = lines.map((line, index) => ({ index, field: gapIn(line) })).find(entry => entry.field)
   const missing = !contactId ? t("docForm.contact")
     : !lines.length ? t("docForm.lineItems")
-    : lines.map(gapIn).find(Boolean) ?? (!dueDate ? t("invoices.new.field.dueDate") : null)
+    : gap?.field ? columns[gap.field] : !dueDate ? t("invoices.new.field.dueDate") : null
+  const askedInPlace = !intent.suggested && !!gap?.field && gap.field !== "quantity" && !!asked[gap.index]?.[gap.field]
   const foreign = !!readiness?.baseCurrency && readiness.baseCurrency !== currency
   const blocker = readiness?.issues[0]
   const blockedBy = missing ? t("shell.request.invoice.gap", { field: missing })
     : foreign ? t("shell.request.invoice.foreignCurrency")
     : blocker ? t(invoiceIssueKey(blocker.code), blocker.params) : null
-  const note = error ?? (repeat && last === null && !back ? t("shell.request.repeat.none") : blockedBy)
+  const note = error ?? (repeat && last === null && !back ? t("shell.request.repeat.none") : askedInPlace ? null : blockedBy)
+  const fill = (index: number, field: "description" | "unitPrice", value: string) =>
+    setFilled(current => ({ ...current, [index]: { ...current[index], [field]: value } }))
 
   async function send() {
     if (sending.current || blockedBy) return
@@ -233,14 +242,16 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       </div>
       {lines.map((line, index) => (
         <div key={index} {...stagger(1)} className="flex items-baseline justify-between gap-3 text-sm">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {intent.suggested ? <div className="grid grid-cols-2 gap-2">
               {(["description", "quantity", "unitPrice"] as const).map(field => <label key={field} className={cn("grid min-w-0 gap-1", field === "description" && "col-span-2")}>
                 <span className="text-muted-foreground text-xs">{t(field === "description" ? "docForm.column.description" : field === "quantity" ? "docForm.column.qty" : "docForm.column.unitPrice")}</span>
                 <Input type={field === "unitPrice" ? "number" : "text"} inputMode={field === "quantity" ? "decimal" : undefined} min={field === "unitPrice" ? "0" : undefined} step={field === "unitPrice" ? "0.0001" : undefined} value={items[index]![field]} onChange={event => setEditedItems(items.map((item, i) => i === index ? { ...item, [field]: event.target.value } : item))} />
               </label>)}
             </div> : <>
-              <p className="truncate font-semibold">{line.description}</p>
+              {asked[index]?.description && !repeat
+                ? <Input aria-label={columns.description} placeholder={columns.description} value={items[index]!.description} onChange={event => fill(index, "description", event.target.value)} className="mb-1.5 h-8 max-w-md" />
+                : <p className="truncate font-semibold">{line.description}</p>}
               <p className="text-muted-foreground tabular-nums">
                 {repeat ? (
                   <Input
@@ -251,7 +262,9 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
                     onChange={event => { const typed = event.target.value; setQuantities(current => ({ ...current, [index]: typed })) }}
                     className={cn("mr-1 inline-block h-7 w-16 px-2 text-right tabular-nums", index === 0 && "border-ring ring-ring/50 ring-[3px]")}
                   />
-                ) : localizeInvoiceQuantity(line.quantity, locale)} × {line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
+                ) : localizeInvoiceQuantity(line.quantity, locale)} × {asked[index]?.unitPrice && !repeat
+                  ? <Input aria-label={columns.unitPrice} placeholder={columns.unitPrice} type="number" min="0" step="0.0001" value={items[index]!.unitPrice} onChange={event => fill(index, "unitPrice", event.target.value)} className="inline-block h-7 w-28 px-2 text-right tabular-nums" />
+                  : line.unitPrice === "" ? "—" : formatCurrency(Number(line.unitPrice), currency, locale)}</p>
             </>}
           </div>
           <span className="tabular-nums">{money(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"])}</span>

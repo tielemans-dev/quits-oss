@@ -362,11 +362,13 @@ describe("request mode", () => {
 
     fireEvent.change(input, { target: { value: "vis forfaldne" } })
     expect(screen.getByRole("group", { name: "Opgave" })).toBeTruthy()
-    expect(optionLabels()[0]).toBe("Bed quits: vis forfaldne")
+    // Shown as what it is and what it is about; read out as the request typed.
+    expect(optionLabels()[0]).toBe("Forfaldne fakturaer")
+    expect(screen.getAllByRole("option")[0].getAttribute("aria-label")).toBe("Bed quits: vis forfaldne")
     expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true")
 
     fireEvent.change(input, { target: { value: "faktura til Nordlys 10 timer à 850" } })
-    expect(optionLabels()[0]).toBe("Bed quits: faktura til Nordlys 10 timer à 850")
+    expect(optionLabels()[0]).toBe("FakturaNordlys 10 timer à 850")
   })
 
   it("does not offer an invoice request to someone who may not create invoices", () => {

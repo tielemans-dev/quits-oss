@@ -1,10 +1,9 @@
-import { Sparkles } from 'lucide-react'
-
 import { prefetchRequest } from '../../command-bar/request-data'
 import { RequestCardSlot } from '../../command-bar/request-card-slot'
 import { permittedRequest, recognizeRequest, type RequestRecognizer } from '../../command-bar/request-intent'
 import { loadKnown, peekKnown, type Known } from './known'
 import { fold } from './match'
+import { REQUEST_ICONS } from './request-row'
 import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
 /** Requests that read the same every time; typing any start of one offers the whole of it. */
@@ -56,14 +55,19 @@ export function suggestions(query: string, known: Known | null): string[] {
 }
 
 /** The suggestion with what was typed in plain text and the rest of it muted. */
-function Completion({ text, typed }: { text: string; typed: number }) {
+function Completion({ text, typed, detail }: { text: string; typed: number; detail?: string }) {
   return (
     <>
       {text.slice(0, typed)}
       <span className="text-muted-foreground">{text.slice(typed)}</span>
+      {detail && <span className="text-muted-foreground"> · {detail}</span>}
     </>
   )
 }
+
+/** Whose invoice a credit note completion is for, since its number alone says little. */
+const detailOf = (text: string, known: Known | null) =>
+  /^kreditnota\s/.test(text) ? known?.invoices.find((invoice) => `kreditnota ${invoice.number}` === text)?.customer : undefined
 
 export function createSuggestionProvider(recognize: RequestRecognizer = recognizeRequest): PaletteProvider {
   return {
@@ -80,8 +84,8 @@ export function createSuggestionProvider(recognize: RequestRecognizer = recogniz
           return [{
             id: `suggest:${text}`,
             label: text,
-            icon: Sparkles,
-            content: <Completion text={text} typed={fold(query).trimStart().length} />,
+            icon: REQUEST_ICONS[intent.kind],
+            content: <Completion text={text} typed={fold(query).trimStart().length} detail={detailOf(text, known)} />,
             // Choosing it writes it out; the request it reads as then opens as it would typed in full.
             perform: ({ fill }) => fill(text),
             card: texts.length === 1 ? ({ close }) => <RequestCardSlot intent={intent} onDismiss={close} autoFocus={false} /> : undefined,
