@@ -51,6 +51,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.getByRole("button", { name: da ? "Rediger" : "Edit", exact: true }).click()
       const descriptionInput = page.getByRole("textbox", { name: descriptionLabel, exact: true })
       const quantity = page.getByRole("textbox", { name: quantityLabel, exact: true })
+      const quantityError = page.locator('p[role="alert"]').filter({ hasText: invalidMessage })
       await assertMobileLabels()
       await descriptionInput.fill(description)
       // Test rendered geometry, including one long unbroken token, rather than CSS class names.
@@ -70,7 +71,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
         await save.click()
         await expect(quantity).toHaveValue(invalid)
         await expect(quantity).toHaveAttribute("aria-invalid", "true")
-        await expect(page.getByText(invalidMessage, { exact: false })).toBeVisible()
+        await expect(quantityError).toBeVisible()
         expect(mutations).toHaveLength(0)
         expect((await prisma.invoiceItem.findFirstOrThrow({ where: { invoiceId: seeded.id } })).quantityInput).toBeNull()
       }
@@ -105,7 +106,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await assertMobileLabels()
       await quantity.fill("1e3")
       await page.getByRole("button", { name: da ? "Gem som kladde" : "Save as Draft", exact: true }).click()
-      await expect(page.getByText(invalidMessage, { exact: false })).toBeVisible()
+      await expect(quantityError).toBeVisible()
       await expect(quantity).toHaveValue("1e3")
       expect(mutations).toHaveLength(1)
       await quantity.fill(da ? "1,5" : "1.5")

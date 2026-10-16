@@ -60,7 +60,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     expect(f.runtime.settings).toHaveBeenCalledWith(connection!.record, expect.objectContaining({ id: f.event.id }))
     expect(f.send).toHaveBeenCalledWith(expect.objectContaining({ providerId: provider,
       path: provider === "economic" ? "/invoices/drafts" : "/invoices" }), expect.any(AbortSignal))
-    const delivery = await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId } })
+    const delivery = await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId, sequence: f.event.sequence } })
     expect(JSON.stringify(delivery.prepared)).not.toContain("synthetic-token")
   })
 
@@ -104,7 +104,7 @@ describeDb("persisted accounting connections and scheduled delivery", () => {
     setRuntimeServices({ accountingDelivery: { ...f.runtime, settings: other.runtime.settings } })
     expect(await runAccountingTick(new Date(), { organizationIds: [f.organizationId] })).toMatchObject({ failed: 1 })
     expect(f.send).not.toHaveBeenCalled()
-    expect(await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId } }))
+    expect(await prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId: f.organizationId, sequence: f.event.sequence } }))
       .toMatchObject({ error: { code: "provider_mismatch" } })
   })
 

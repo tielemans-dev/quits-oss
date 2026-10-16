@@ -299,6 +299,9 @@ class CiPathsTest
           assert status.success?, stderr
         end
         git.call('init', '-q')
+        # Detached maintenance can still write .git/objects while mktmpdir removes it.
+        # This disposable fixture needs no maintenance, including on newer Git versions.
+        git.call('config', 'maintenance.auto', 'false')
         git.call('config', 'user.name', 'Fixture')
         git.call('config', 'user.email', 'fixture@example.test')
         File.write("#{dir}/runtime.ts", 'runtime')
