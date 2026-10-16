@@ -141,7 +141,7 @@ export function OverdueRequestCard({ onDismiss }: RequestCardProps) {
         {/* The shadcn default animates every property; name the ones that change. */}
         <Button type="button" variant="outline" onClick={onDismiss} disabled={pending} className={button}>{t("shell.request.dismiss")}</Button>
         {overdue && overdue.length > 0 && !emailMissing && (
-          <Button type="button" disabled={pending || !ticked.length} onClick={send} className={button}>
+          <Button data-primary type="button" disabled={pending || !ticked.length} onClick={send} className={button}>
             {pending ? t("reminders.tracker.step.sending") : t("reminders.batch.send", { count: ticked.length })}
           </Button>
         )}

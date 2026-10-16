@@ -88,7 +88,7 @@ export function CustomerRequestCard({ intent, onDismiss }: RequestCardProps) {
       </div>
       <div {...stagger(1)} className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" disabled={pending} onClick={onDismiss} className={transition}>{t("shell.request.dismiss")}</Button>
-        {company && <Button type="button" disabled={pending} onClick={() => void confirm()} className={transition}>{t(company.id ? "shell.request.customer.use" : "shell.request.customer.create")}</Button>}
+        {company && <Button data-primary type="button" disabled={pending} onClick={() => void confirm()} className={transition}>{t(company.id ? "shell.request.customer.use" : "shell.request.customer.create")}</Button>}
         {!company && error && <Button type="button" variant="outline" onClick={() => setAttempt(value => value + 1)} className={transition}>{t("shell.request.customer.retry")}</Button>}
       </div>
       {!company && error && <a href="/contacts/new" className="text-sm underline underline-offset-4">{t("shell.request.customer.manual")}</a>}

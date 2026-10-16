@@ -158,7 +158,7 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
         {/* The shadcn default animates every property; name the ones that change. */}
         <Button type="button" variant="outline" onClick={onDismiss} disabled={pending} className={button}>{t("shell.request.dismiss")}</Button>
         {candidates.length > 0 && (
-          <Button type="button" disabled={pending || !chosen} onClick={() => void markPaid()} className={button}>
+          <Button data-primary type="button" disabled={pending || !chosen} onClick={() => void markPaid()} className={button}>
             {t(chosen && chosen.shortMinor > 0 ? "shell.request.payment.recordPartial" : "shell.request.payment.markPaid")}
           </Button>
         )}
