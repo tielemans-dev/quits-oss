@@ -39,6 +39,17 @@ export type ManagedDocumentDomainResult = {
   verifiedAt: Date | null
 }
 
+export type ManagedDomainRejectionReason = "invalid_domain" | "not_found" | "conflict"
+
+/** Expected domain rejection. Providers translate their errors into these core-owned reasons. */
+export class ManagedDomainRejectedError extends Error {
+  constructor(public readonly reason: ManagedDomainRejectionReason) {
+    super("Managed domain request rejected")
+    this.name = "ManagedDomainRejectedError"
+  }
+}
+
+/** Methods may throw ManagedDomainRejectedError; all other failures remain server errors. */
 export type ManagedDocumentDomainProvider = {
   supported: boolean
   createDomain: (input: { domain: string }) => Promise<ManagedDocumentDomainResult>

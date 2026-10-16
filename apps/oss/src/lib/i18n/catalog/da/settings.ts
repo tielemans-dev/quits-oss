@@ -153,6 +153,12 @@ export const daSettingsMessages = {
     "Kunne ikke opdatere status for brandet afsendelse.",
   "settings.documentSending.error.disableFailed":
     "Kunne ikke deaktivere brandet afsendelse.",
+  "settings.documentSending.error.invalid_domain":
+    "Afsenderdomænet blev afvist. Kontrollér domænet, og prøv igen.",
+  "settings.documentSending.error.not_found":
+    "Afsenderdomænet blev ikke fundet. Kontrollér domæneopsætningen, og prøv igen.",
+  "settings.documentSending.error.conflict":
+    "Afsenderdomænet er i konflikt med en eksisterende opsætning. Kontrollér domæneopsætningen, og prøv igen.",
   "settings.section.payments.title": "Betalinger (Stripe BYOK)",
   "settings.section.payments.description":
     "Konfigurer din egen Stripe-konto til hostede betalingslinks for fakturaer.",

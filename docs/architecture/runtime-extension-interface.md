@@ -20,6 +20,23 @@ Each extension provides a stable `id` and optional `resolveCapabilities(base)` p
 
 The OSS baseline exposes capabilities via `trpc.runtime.capabilities`.
 
+## Managed sending-domain rejections
+
+`@quits/oss/runtime/services` exports `ManagedDomainRejectedError` and
+`ManagedDomainRejectionReason` alongside `ManagedDocumentDomainProvider`.
+Providers may throw `new ManagedDomainRejectedError(reason)` from `createDomain`,
+`refreshDomain`, or `deleteDomain` for expected request rejections:
+
+- `invalid_domain` becomes tRPC `BAD_REQUEST` with HTTP 400.
+- `not_found` becomes tRPC `NOT_FOUND` with HTTP 404.
+- `conflict` becomes tRPC `CONFLICT` with HTTP 409.
+
+Configure, refresh, and disable translate these rejections using the organization's
+saved locale, with Danish and English messages owned by core. Provider messages
+and diagnostic causes are never forwarded for these rejections. All other errors
+remain server failures. Providers must keep outages and configuration failures
+outside this rejection contract. Self-hosted defaults require no provider.
+
 ## Stripe Connect webhooks
 
 `RuntimeExtension.resolveStripeConnectWebhook` may return a

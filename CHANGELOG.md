@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Return safe, localized client errors for expected managed sending-domain rejections in the source available, self-hostable app. Export the typed rejection contract for runtime providers; unexpected failures remain server errors.
+
 ## [0.13.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.13.0)
 
 Changes since the published v0.12.4 tag, covering 39 merged PRs.
