@@ -20,6 +20,7 @@ import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../l
 import { submitInvoice } from "../../lib/submit-invoice"
 import { cn } from "../../lib/utils"
 import { trpc } from "../../trpc/client"
+import { customersKey, peekRequestData, readCustomers } from "./request-data"
 import { tCount } from "../dashboard/i18n"
 import { initialIssuanceValues } from "../invoices/issuance-fields"
 import { LocalizedDateField } from "../localized-date-field"
@@ -54,7 +55,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   // A date typed on the card wins over what was learned, which wins over the organization's terms.
   const [typedDueDate, setTypedDueDate] = useState<string | null>(null)
   const [issuance] = useState(() => back?.issuance ?? initialIssuanceValues())
-  const [known, setKnown] = useState<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] } | null>(null)
+  const [known, setKnown] = useState<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] } | null>(() => peekRequestData<{ customers: RequestCustomer[]; catalogItems: CatalogItemOption[] }>(customersKey) ?? null)
   const [picked, setPicked] = useState(initialContactId ?? "")
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -73,8 +74,8 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([trpc.contacts.list.query(), trpc.catalog.list.query().catch(() => [])])
-      .then(([customers, catalogItems]) => { if (!cancelled) setKnown({ customers: customers as RequestCustomer[], catalogItems: catalogItems as CatalogItemOption[] }) })
+    readCustomers()
+      .then(value => { if (!cancelled) setKnown(value) })
       .catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
     return () => { cancelled = true }
   }, [t])

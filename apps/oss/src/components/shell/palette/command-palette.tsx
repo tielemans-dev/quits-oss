@@ -16,6 +16,8 @@ import type { PaletteActions, PaletteContext, PaletteItem, PaletteProvider, Pale
 const CARD_MORPH_MS = DURATION.palette
 /** How long typing has to pause before the palette becomes the card for what was typed. */
 const LIVE_PAUSE_MS = 250
+/** How long typing has to pause before the leading item's card starts reading what it shows. */
+const PREFETCH_PAUSE_MS = 100
 
 type Props = {
   open: boolean
@@ -223,6 +225,13 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   // waiting for Enter; typing on updates it, and text that stops reading as one brings the list back.
   const lead = items[0]?.card ? items[0] : null
   if (!lead && paused) setPaused(false)
+  // Its reads start well before the pause ends, so the card opens with its data instead of filling
+  // in as it grows. Not on every key: a half-typed invoice number is not worth looking up.
+  useEffect(() => {
+    if (!lead?.prefetch) return
+    const timer = setTimeout(lead.prefetch, PREFETCH_PAUSE_MS)
+    return () => clearTimeout(timer)
+  }, [lead])
   useEffect(() => {
     if (!lead || paused) return
     const timer = setTimeout(() => setPaused(true), LIVE_PAUSE_MS)

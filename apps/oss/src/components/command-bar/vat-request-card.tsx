@@ -3,6 +3,7 @@ import type { VatOverview } from "../../lib/exports/vat-overview"
 import { formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
+import { peekRequestData, readVat, vatKey } from "./request-data"
 import { exportVat } from "../jobs/reminder-jobs-store"
 import { Amount } from "../kvit/amount"
 import { minorToDecimal } from "../kvit/amount-format"
@@ -18,7 +19,7 @@ export function VatRequestCard({ onDismiss }: RequestCardProps) {
   const { t, locale } = useI18n()
   const { can } = useShellPermissions()
   const inputId = useId()
-  const [overview, setOverview] = useState<VatOverview | null>(null)
+  const [overview, setOverview] = useState<VatOverview | null>(() => (peekRequestData(vatKey) as VatOverview | undefined) ?? null)
   const [error, setError] = useState(false)
   const [editing, setEditing] = useState(false)
   const [amount, setAmount] = useState("")
@@ -29,7 +30,7 @@ export function VatRequestCard({ onDismiss }: RequestCardProps) {
   const requestId = useRef(crypto.randomUUID())
   useEffect(() => {
     let cancelled = false
-    trpc.exports.vatOverview.query().then(result => { if (!cancelled) setOverview(result) })
+    readVat().then(result => { if (!cancelled) setOverview(result) })
       .catch(() => { if (!cancelled) setError(true) })
     return () => { cancelled = true }
   }, [])

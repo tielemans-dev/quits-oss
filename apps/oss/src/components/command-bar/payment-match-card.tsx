@@ -8,6 +8,7 @@ import { DURATION, EASE_ENTER } from "../../lib/motion"
 import { matchPayment, parsePaymentRequest, type Candidate, type MatchInvoice } from "../../lib/payments/payment-match"
 import { cn } from "../../lib/utils"
 import { trpc } from "../../trpc/client"
+import { invoicesKey, peekRequestData, readInvoices } from "./request-data"
 import { useShellPermissions } from "../shell/use-shell-permissions"
 import { Button } from "../ui/button"
 import { stagger } from "./request-card-slot"
@@ -27,7 +28,7 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
   const { t, locale } = useI18n()
   const { can } = useShellPermissions()
   const payment = useMemo(() => parsePaymentRequest(intent.input), [intent.input])
-  const [loaded, setLoaded] = useState<{ invoices: MatchInvoice[]; timezone: string | null } | null>(null)
+  const [loaded, setLoaded] = useState<{ invoices: MatchInvoice[]; timezone: string | null } | null>(() => (peekRequestData(invoicesKey) as { invoices: MatchInvoice[]; timezone: string | null } | undefined) ?? null)
   const [picked, setPicked] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -40,8 +41,8 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([trpc.invoices.list.query(), trpc.settings.get.query().catch(() => ({ timezone: null }))])
-      .then(([invoices, settings]) => { if (!cancelled) setLoaded({ invoices: invoices as unknown as MatchInvoice[], timezone: settings.timezone ?? null }) })
+    readInvoices()
+      .then(({ invoices, timezone }) => { if (!cancelled) setLoaded({ invoices: invoices as unknown as MatchInvoice[], timezone }) })
       .catch(() => { if (!cancelled) setError(t("shell.request.payment.error.load")) })
     return () => { cancelled = true }
   }, [t])

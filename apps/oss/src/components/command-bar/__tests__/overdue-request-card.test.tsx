@@ -12,6 +12,10 @@ vi.mock("../../jobs/reminder-jobs-store", () => ({ sendReminderBatch: api.batch,
 
 import { I18nProvider } from "../../../lib/i18n/react"
 import { OverdueRequestCard } from "../overdue-request-card"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 
 const invoice = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
   id, number: `F-${id}`, status: "overdue", paymentStatus: "unpaid", dueDate: "2020-01-10T00:00:00.000Z",

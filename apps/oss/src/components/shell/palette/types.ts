@@ -69,6 +69,8 @@ export type PaletteItem = {
    * as this item, the palette goes back to the list.
    */
   card?: (actions: PaletteActions) => ReactNode
+  /** Starts what `card` will read, while this item leads and before typing has paused. */
+  prefetch?: () => void
 }
 
 export type PaletteSection = {

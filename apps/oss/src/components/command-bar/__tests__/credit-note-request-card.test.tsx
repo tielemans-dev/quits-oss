@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { afterEach, expect, it, vi } from "vitest"
+import { afterEach, expect, it, vi, beforeEach } from "vitest"
 const api = vi.hoisted(() => ({ find: vi.fn(), availability: vi.fn(), create: vi.fn(), discard: vi.fn() }))
 vi.mock("../../../trpc/client", () => ({ trpc: { creditNotes: {
   findInvoice: { query: api.find }, availability: { query: api.availability }, createDraft: { mutate: api.create }, discardDraft: { mutate: api.discard },
@@ -9,6 +9,10 @@ import { I18nProvider } from "../../../lib/i18n/react"
 import { CreditNoteRequestCard } from "../credit-note-request-card"
 import { recognizeRequest, permittedRequest } from "../request-intent"
 import { computeCreditAvailability } from "../../../lib/credit-notes/calculation"
+import { resetRequestDataForTesting } from "../request-data"
+
+// Cards share their reads for a few seconds; every test starts without them.
+beforeEach(() => resetRequestDataForTesting())
 
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 it("recognizes invoice numbers without replacing ordinary search or bypassing permissions", () => {
