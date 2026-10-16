@@ -1,5 +1,7 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError } from "../../../components/query-state"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { formatShortDate } from "../../../lib/i18n/format"
 import { Button } from "../../../components/ui/button"
@@ -58,36 +60,24 @@ function formatDate(dateStr: string, locale?: string, timezone = "UTC") {
 
 function QuotesListPage() {
   const { t, locale } = useI18n()
-  const [quotes, setQuotes] = useState<Quote[]>([])
-  const [loading, setLoading] = useState(true)
+  const list = useAppQuery(["quotes"], () => trpc.quotes.list.query())
+  const quotes = (list.data ?? []) as unknown as Quote[]
+  const loadQuotes = list.refresh
+  const loading = list.loading
   const [deleting, setDeleting] = useState<string | null>(null)
-
-  async function loadQuotes() {
-    try {
-      const data = await trpc.quotes.list.query()
-      setQuotes(data as unknown as Quote[])
-    } catch {
-      // Auth or org errors handled by layout
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadQuotes()
-  }, [])
 
   async function handleDelete(id: string) {
     setDeleting(id)
     try {
       await trpc.quotes.delete.mutate({ id })
-      setQuotes((prev) => prev.filter((q) => q.id !== id))
     } catch {
       // Silently fail
     } finally {
       setDeleting(null)
     }
   }
+
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={loadQuotes} /></div>
 
   if (loading) {
     return (

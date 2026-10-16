@@ -1,9 +1,11 @@
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError } from "../../../components/query-state"
 import { EMAIL_SEND_FAILED_PARAM } from "../../../lib/email-send-failure"
 import { InvoiceFlow, InvoiceDetailPanel, useInvoiceMorph } from "../../../components/invoices/flow"
 import type { CreatedDocumentTarget } from "../../../lib/create-and-send"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { InvoiceListSummary } from "../../../components/invoices/list-summary"
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import { useCalendarDate } from "../../../hooks/use-calendar-date"
 import { trpc } from "../../../trpc/client"
 import { formatDate as formatDateIntl } from "../../../lib/i18n/format"
@@ -45,7 +47,6 @@ import {
   invoiceAmountRule,
   invoiceDisplayStatus,
 } from "../../../lib/payments/invoice-display-status"
-import { loadInvoicesListData } from "./-index.helpers"
 import { PILL_STAGGER_MS, SwappingStatusBadge } from "../../../components/jobs/swapping-status-badge"
 import { useReminderJobs } from "../../../components/jobs/reminder-jobs-store"
 import { remindedInvoiceIds } from "../../../lib/jobs/reminder-tracker"
@@ -75,24 +76,28 @@ function formatDate(dateStr: string, locale?: string) {
 
 function InvoicesListPage() {
   const { t, locale } = useI18n()
-  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const list = useAppQuery(["invoices", "settings"], async () => {
+    const [invoices, settings] = await Promise.all([trpc.invoices.list.query(), trpc.settings.get.query().catch(() => ({ timezone: null }))])
+    return { invoices: invoices as unknown as Invoice[], timezone: settings.timezone }
+  })
+  const invoices = list.data?.invoices ?? []
+  const loadInvoices = list.refresh
   const origin = useRef<DOMRect | undefined>(undefined)
   const [flowOpen, setFlowOpen] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [notice, setNotice] = useState<CreatedDocumentTarget | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   const toast = useInvoiceMorph(notice, origin.current)
-  async function completed(target: CreatedDocumentTarget) {
+  function completed(target: CreatedDocumentTarget) {
     origin.current = document.querySelector(".invoice-preview-side")?.getBoundingClientRect()
     setFlowOpen(false)
     setNotice(target)
     setFresh(target.id)
-    await loadInvoices()
-    void trpc.dashboard.summary.query().then(setSummary).catch(() => {})
   }
-  const [summary, setSummary] = useState<Awaited<ReturnType<typeof trpc.dashboard.summary.query>> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [timezone, setTimezone] = useState<string | null>(null)
+  const summaryQuery = useAppQuery(["dashboard"], () => trpc.dashboard.summary.query())
+  const summary = summaryQuery.data
+  const loading = list.loading
+  const timezone = list.data?.timezone ?? null
   const today = useCalendarDate(timezone)
   const [deleting, setDeleting] = useState<string | null>(null)
   const reminded = remindedInvoiceIds(useReminderJobs())
@@ -100,40 +105,19 @@ function InvoicesListPage() {
   const stagger = new Map<string, number>()
   for (const invoice of invoices) if (reminded.has(invoice.id)) stagger.set(invoice.id, stagger.size)
 
-  async function loadInvoices() {
-    try {
-      const [data, settings] = await Promise.all([
-        loadInvoicesListData({
-          list: () => trpc.invoices.list.query(),
-          markOverdue: () => trpc.invoices.markOverdue.mutate(),
-        }),
-        trpc.settings.get.query().catch(() => ({ timezone: null })),
-      ])
-      setTimezone(settings.timezone)
-      setInvoices(data as unknown as Invoice[])
-    } catch {
-      // Auth or org errors handled by layout
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadInvoices()
-    void trpc.dashboard.summary.query().then(setSummary).catch(() => {})
-  }, [])
-
   async function handleDelete(id: string) {
     setDeleting(id)
     try {
       await trpc.invoices.delete.mutate({ id })
-      setInvoices((prev) => prev.filter((inv) => inv.id !== id))
+
     } catch {
       // Silently fail
     } finally {
       setDeleting(null)
     }
   }
+
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={loadInvoices} /></div>
 
   if (loading) {
     return (
@@ -158,7 +142,7 @@ function InvoicesListPage() {
   return (
     <div className="p-6">
       {flowOpen && <InvoiceFlow open origin={origin.current} onClose={() => setFlowOpen(false)} onComplete={target => { void completed(target) }} />}
-      {selected && <InvoiceDetailPanel key={selected} id={selected} origin={origin.current} onClose={() => setSelected(null)} onChanged={() => { void loadInvoices() }} />}
+      {selected && <InvoiceDetailPanel key={selected} id={selected} origin={origin.current} onClose={() => setSelected(null)} />}
       {notice && <div ref={toast} role="status" className="invoice-toast fixed bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)] rounded-lg border bg-panel p-4 shadow-lg">
         <p>{noticeText}</p>
         {noticeInvoice && <Amount value={decimalFromNumber(noticeInvoice.total, noticeInvoice.currency)} currency={noticeInvoice.currency} locale={locale} />}
@@ -167,7 +151,7 @@ function InvoicesListPage() {
       </div>}
       <PageHeader title={t("invoices.title")} actions={invoices.length ? newInvoice(t("invoices.action.new")) : null} />
 
-      {summary ? <InvoiceListSummary summary={summary} /> : null}
+      {summaryQuery.error ? <QueryError error={summaryQuery.error} retry={summaryQuery.refresh} /> : summary ? <InvoiceListSummary summary={summary} /> : null}
       {invoices.length === 0 ? (
         <ListEmpty
           title={t("invoices.empty.title")}

@@ -1,5 +1,7 @@
+import { useAppQuery } from "../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../components/query-state"
 import { createFileRoute } from "@tanstack/react-router"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { Package, Pencil, Trash2 } from "lucide-react"
 import { trpc } from "../../trpc/client"
 import { formatCurrency } from "../../lib/i18n/format"
@@ -26,8 +28,9 @@ type CatalogItem = {
 function CatalogPage() {
   const { t, locale } = useI18n()
   const currency = useOrgCurrency()
-  const [items, setItems] = useState<CatalogItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const list = useAppQuery(["catalog"], () => trpc.catalog.list.query())
+  const items = (list.data ?? []) as CatalogItem[]
+  const loading = list.loading
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,23 +42,6 @@ function CatalogPage() {
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [editPrice, setEditPrice] = useState("")
-
-  async function loadItems() {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await trpc.catalog.list.query()
-      setItems(data as CatalogItem[])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("catalog.loading"))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadItems()
-  }, [])
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => a.name.localeCompare(b.name)),
@@ -71,12 +57,11 @@ function CatalogPage() {
     setSaving(true)
     setError(null)
     try {
-      const created = await trpc.catalog.create.mutate({
+      await trpc.catalog.create.mutate({
         name: newName.trim(),
         description: newDescription.trim() || undefined,
         defaultUnitPrice: parsedPrice,
       })
-      setItems((prev) => [...prev, created as CatalogItem])
       setNewName("")
       setNewDescription("")
       setNewPrice("")
@@ -103,15 +88,12 @@ function CatalogPage() {
     setSaving(true)
     setError(null)
     try {
-      const updated = await trpc.catalog.update.mutate({
+      await trpc.catalog.update.mutate({
         id: editingId,
         name: editName.trim(),
         description: editDescription.trim() || undefined,
         defaultUnitPrice: parsedPrice,
       })
-      setItems((prev) =>
-        prev.map((item) => (item.id === editingId ? (updated as CatalogItem) : item))
-      )
       setEditingId(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t("catalog.save"))
@@ -125,13 +107,14 @@ function CatalogPage() {
     setError(null)
     try {
       await trpc.catalog.archive.mutate({ id })
-      setItems((prev) => prev.filter((item) => item.id !== id))
     } catch (err) {
       setError(err instanceof Error ? err.message : t("catalog.actions"))
     } finally {
       setSaving(false)
     }
   }
+
+  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
 
   return (
     <div className="p-6 max-w-4xl">
@@ -199,7 +182,7 @@ function CatalogPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("catalog.loading")}</p>
+            <QuerySkeleton />
           ) : sortedItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t("catalog.empty")}

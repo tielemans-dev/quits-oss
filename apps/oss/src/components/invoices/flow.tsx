@@ -50,13 +50,13 @@ export function InvoiceFlow({ open, origin, onClose, onComplete }: { origin?: DO
   </DialogContent></Dialog>
 }
 
-export function InvoiceDetailPanel({ id, origin, onClose, onChanged }: { origin?: DOMRect; id: string; onClose: () => void; onChanged: () => void }) {
+export function InvoiceDetailPanel({ id, origin, onClose, onChanged }: { origin?: DOMRect; id: string; onClose: () => void; onChanged?: () => void }) {
   const { t, locale } = useI18n()
   const [invoice, setInvoice] = useState<Awaited<ReturnType<typeof trpc.invoices.get.query>> | null>(null)
   const surface = useInvoiceMorph(id, origin)
   const [error, setError] = useState(false)
   useEffect(() => { let current = true; trpc.invoices.get.query({ id }).then(result => { if (current) setInvoice(result) }).catch(() => { if (current) setError(true) }); return () => { current = false } }, [id])
-  const reload = async () => { setInvoice(await trpc.invoices.get.query({ id })); onChanged() }
+  const reload = async () => { setInvoice(await trpc.invoices.get.query({ id })); onChanged?.() }
   return <Dialog open onOpenChange={value => { if (!value) onClose() }}><DialogContent ref={surface} onCloseAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLAnchorElement>(`[data-invoice-id="${id}"] a`)?.focus() }} className="invoice-flow invoice-detail-panel">
     <DialogTitle>{invoice?.number ?? t("invoices.flow.detail")}</DialogTitle><DialogDescription>{invoice?.contact.name}</DialogDescription>
     {error ? <p role="alert">{t("invoiceValidation.unknown")}</p> : invoice ? <>

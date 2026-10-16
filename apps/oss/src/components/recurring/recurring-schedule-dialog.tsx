@@ -75,7 +75,7 @@ export function RecurringScheduleDialog({
   onOpenChange: (open: boolean) => void
   /** Omit to create a new schedule. */
   schedule?: EditableSchedule
-  onSaved: () => void
+  onSaved?: () => void
 }) {
   const { t, locale } = useI18n()
   const orgCurrency = useOrgCurrency()
@@ -197,7 +197,7 @@ export function RecurringScheduleDialog({
         await trpc.recurring.createV2.mutate({ ...fields, notes: notes.trim() || undefined })
       }
       onOpenChange(false)
-      onSaved()
+      onSaved?.()
     } catch (err) {
       const issues = readableIssues(err)
       setServerErrors((issues ?? []).flatMap(issue => {

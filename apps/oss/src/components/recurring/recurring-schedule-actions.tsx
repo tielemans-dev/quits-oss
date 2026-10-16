@@ -43,7 +43,7 @@ export function RecurringScheduleActions({
 }: {
   schedule: ActionSchedule
   canUpdate: boolean
-  onChanged: () => void
+  onChanged?: () => void
   onMessage: (message: { kind: "info" | "error"; text: string }) => void
   /** `menu` renders a compact dropdown for table rows; `buttons` renders a toolbar. */
   variant?: "menu" | "buttons"
@@ -59,7 +59,7 @@ export function RecurringScheduleActions({
     try {
       const info = await action()
       if (info) onMessage({ kind: "info", text: info })
-      onChanged()
+      onChanged?.()
     } catch (error) {
       onMessage({
         kind: "error",

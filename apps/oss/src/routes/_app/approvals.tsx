@@ -1,8 +1,10 @@
+import { useAppQuery } from "../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../components/query-state"
 import { createFileRoute } from "@tanstack/react-router"
 import { ShieldCheck } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
-import { ApprovalItem } from "../../components/agents/approval-item"
+import { useState } from "react"
 import type { ApprovalRow } from "../../components/agents/types"
+import { ApprovalItem } from "../../components/agents/approval-item"
 import { Button } from "../../components/ui/button"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
@@ -16,22 +18,9 @@ type View = "pending" | "history"
 function ApprovalsPage() {
   const { t } = useI18n()
   const [view, setView] = useState<View>("pending")
-  const [approvals, setApprovals] = useState<ApprovalRow[] | null>(null)
-  const [error, setError] = useState(false)
-
-  const load = useCallback(async (nextView: View) => {
-    setApprovals(null)
-    setError(false)
-    try {
-      setApprovals(await trpc.agents.approvals.query({ view: nextView }))
-    } catch {
-      setError(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load(view)
-  }, [load, view])
+  const list = useAppQuery(["agents"], () => trpc.agents.approvals.query({ view }), [view])
+  const [retained, setRetained] = useState<ApprovalRow[]>([])
+  const approvals = list.data ? [...list.data, ...retained.filter(row => !list.data?.some(current => current.id === row.id))] : null
 
   return (
     <div className="p-6">
@@ -49,17 +38,18 @@ function ApprovalsPage() {
             size="sm"
             variant={view === option ? "secondary" : "ghost"}
             className={view === option ? "bg-background shadow-sm" : undefined}
-            onClick={() => setView(option)}
+            onClick={() => { setRetained([]); setView(option) }}
           >
             {t(`agents.approvals.tab.${option}`)}
           </Button>
         ))}
       </div>
 
-      {error ? (
-        <p className="text-sm text-destructive">{t("agents.approvals.error.load")}</p>
+      {list.error && approvals?.length ? <QueryError error={list.error} retry={list.refresh} /> : null}
+      {list.error && !approvals?.length ? (
+        <QueryError error={list.error} retry={list.refresh} />
       ) : approvals === null ? (
-        <p className="text-muted-foreground">{t("agents.approvals.loading")}</p>
+        <QuerySkeleton />
       ) : approvals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <ShieldCheck className="mb-4 size-12 text-muted-foreground" />
@@ -68,8 +58,7 @@ function ApprovalsPage() {
       ) : (
         <div className="grid max-w-3xl gap-3">
           {approvals.map((approval) => (
-            // Decided items stay in place with their result until the user switches tabs.
-            <ApprovalItem key={approval.id} approval={approval} />
+            <ApprovalItem key={approval.id} approval={approval} onDecisionStart={() => setRetained(rows => rows.some(row => row.id === approval.id) ? rows : [...rows, approval])} />
           ))}
         </div>
       )}

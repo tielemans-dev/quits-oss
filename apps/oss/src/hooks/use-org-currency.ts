@@ -1,3 +1,4 @@
+import { useQueryRevision } from "./use-query-refresh"
 import { useEffect, useState } from "react"
 import { normalizeCurrency } from "../lib/i18n/locale"
 import { loadOrganizationSettings } from "../lib/organization-settings-query"
@@ -16,6 +17,7 @@ export function useOrgCurrency() {
   const [currency, setCurrency] = useState<string>("USD")
 
   const organizationId = useRequestOrganizationId()
+  const query = useQueryRevision(["settings"])
   useEffect(() => {
     if (!organizationId) return
     let cancelled = false
@@ -32,7 +34,7 @@ export function useOrgCurrency() {
     return () => {
       cancelled = true
     }
-  }, [organizationId])
+  }, [organizationId, query.revision])
 
   return currency
 }
