@@ -408,6 +408,31 @@ describe("request mode", () => {
     }
   })
 
+  it("completes a half-typed request instead of finding nothing, and becomes its card when it is the only one", () => {
+    vi.useFakeTimers()
+    try {
+      render(<Harness can={everything} />)
+      const input = screen.getByRole("combobox") as HTMLInputElement
+      fireEvent.change(input, { target: { value: "vis" } })
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["vis forfaldne fakturaer", "vis moms"])
+      // Two ways to go: the list stays for the person to choose.
+      act(() => vi.advanceTimersByTime(300))
+      expect(screen.queryByRole("region", { name: "Opgave" })).toBeNull()
+
+      fireEvent.change(input, { target: { value: "vis forf" } })
+      act(() => vi.advanceTimersByTime(300))
+      expect(screen.getByRole("region", { name: "Opgave" })).toBeTruthy()
+      expect(document.activeElement).toBe(input)
+
+      fireEvent.change(input, { target: { value: "vis" } })
+      fireEvent.click(screen.getByRole("option", { name: /vis moms/ }))
+      expect(input.value).toBe("vis moms")
+      expect(document.activeElement).toBe(input)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("empties the field with Ryd, also from a card, and keeps the cursor there", () => {
     render(<Harness can={everything} />)
     const input = screen.getByRole("combobox") as HTMLInputElement

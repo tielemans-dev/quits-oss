@@ -19,6 +19,11 @@ describe("matchItems", () => {
     expect(matchItems(items, "Fakturæ").map((item) => item.label)).toEqual([])
   })
 
+  it("lets a verb find its noun by dropping a Danish ending", () => {
+    expect(matchItems(items, "fakturer").map((item) => item.label)).toEqual(["Fakturaer", "Gentagne fakturaer"])
+    expect(matchItems(items, "faktuxer").map((item) => item.label)).toEqual([])
+  })
+
   it("puts labels that start with the query first", () => {
     expect(matchItems(items, "fakt").map((item) => item.label)).toEqual(["Fakturaer", "Gentagne fakturaer"])
     expect(matchItems(items, "aer").map((item) => item.label)).toEqual([

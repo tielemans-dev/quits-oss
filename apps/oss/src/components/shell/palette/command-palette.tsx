@@ -97,7 +97,9 @@ function useSections(
         )
       }
     }
-    setResolved(next)
+    // A provider still answering keeps what it said for the last query, so its rows do not blink
+    // out and back with every key.
+    setResolved((current) => ({ ...Object.fromEntries([...waiting].filter((id) => id in current).map((id) => [id, current[id]])), ...next }))
     setPendingIds(waiting)
     return () => run.abort()
     // `context` is rebuilt every render; its parts that matter are listed.
@@ -207,6 +209,11 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
       },
       close,
       expand: setCard,
+      fill: (text) => {
+        setQuery(text)
+        setCard(null)
+        input.current?.focus()
+      },
     }),
     [close, navigate, onNavigate]
   )

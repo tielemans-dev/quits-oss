@@ -22,6 +22,8 @@ export type PaletteActions = {
   close: () => void
   /** Grows the palette into `content` in place of the list, for items that answer with a card. */
   expand: (content: ReactNode) => void
+  /** Writes `query` into the field, for items that complete what is being typed. */
+  fill: (query: string) => void
 }
 
 /** What a provider may look at to decide what to offer. */
