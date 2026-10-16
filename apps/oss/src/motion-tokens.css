@@ -36,7 +36,7 @@
   --duration-undo-fade: 200ms;
   --duration-undo-tick: 100ms;
   --duration-square-shrink: 200ms;
-  --duration-surface: var(--duration-square-shrink);
+  --duration-surface: 200ms;
   --rise: 8px;
   --duration-leave: 250ms;
   --duration-square-fly: 260ms;

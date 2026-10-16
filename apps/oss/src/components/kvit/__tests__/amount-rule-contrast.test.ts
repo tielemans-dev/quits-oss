@@ -6,9 +6,21 @@ const themeTokens = (selector: string) => {
   const start = css.indexOf(`${selector} {`)
   return css.slice(start, css.indexOf("}", start))
 }
-const token = (theme: string, name: string) => {
-  const value = theme.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1]
-  if (!value) throw new Error(`Missing hex token --${name}`)
+const token = (theme: string, name: string): string => {
+  const value = (theme + themeTokens(":root")).match(new RegExp(`--${name}:\\s*([^;]+);`, "i"))?.[1]
+  if (!value) throw new Error(`Missing token --${name}`)
+  const alias = value.match(/^var\(--([\w-]+)\)$/)
+  if (alias) return token(theme, alias[1])
+  const relative = value.match(/^rgb\(from var\(--([\w-]+)\) r g b \/ (\d+)%\)$/)
+  const rgb = value.match(/^rgb\((\d+) (\d+) (\d+)\)$/)
+  const hex = (channels: number[]) => "#" + channels.map(c => Math.round(c).toString(16).padStart(2, "0")).join("")
+  const channels = (color: string) => [1, 3, 5].map(i => Number.parseInt(color.slice(i, i + 2), 16))
+  if (rgb) return hex(rgb.slice(1).map(Number))
+  if (relative) {
+    const foreground = channels(token(theme, relative[1])), alpha = Number(relative[2]) / 100
+    return hex(channels(token(theme, "panel")).map((c, i) => c * (1 - alpha) + foreground[i] * alpha))
+  }
+  if (!/^#[0-9a-f]{6}$/i.test(value)) throw new Error(`Unsupported token --${name}: ${value}`)
   return value
 }
 function luminance(hex: string) {
@@ -40,10 +52,11 @@ describe("Papir and Blæk text contrast", () => {
   it.each([":root", ".dark"])("keeps text AA on %s surfaces", selector => {
     const theme = themeTokens(selector)
     for (const surface of ["canvas", "panel", "panel-raised", "secondary", "main-bg"]) {
-      for (const text of ["foreground", "muted-foreground", "brand-text", "settled-text", "tone-warning"]) {
+      for (const text of ["foreground", "muted-foreground", "brand-text", "settled-text", "tone-warning", "tone-danger"]) {
         expect(contrast(token(theme, text), token(theme, surface)), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5)
       }
     }
+    for (const surface of ["canvas", "panel"]) expect(contrast(token(theme, "input"), token(theme, surface))).toBeGreaterThanOrEqual(3)
     expect(contrast(token(theme, "brand-foreground"), token(theme, "brand"))).toBeGreaterThanOrEqual(4.5)
   })
 })

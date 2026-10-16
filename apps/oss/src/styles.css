@@ -91,13 +91,9 @@ code {
   --shadow-float: 0 0 0 1px var(--neutral-10), 0 2px 6px rgb(22 23 42 / 6%), 0 12px 32px -6px rgb(22 23 42 / 16%);
   --shadow-menu: 0 0 0 1px var(--neutral-10), 0 4px 12px -2px rgb(22 23 42 / 12%);
   --scrim: rgb(22 23 42 / 22%);
-  --sidebar-width: 232px;
-  --topbar-height: 48px;
-  --content-width: 968px;
-  --content-wide: 1200px;
-  --gutter: 24px;
-  --row-height: 52px;
-  --control-height: 32px;
+  --sidebar-width: 232px; --topbar-height: 48px;
+  --content-width: 968px; --content-wide: 1200px;
+  --gutter: 24px; --row-height: 52px; --control-height: 32px;
 
   /* Cool slate sidebar, white page and panels. */
   --canvas: #f7f7fb;
@@ -191,12 +187,12 @@ code {
   --paper-caret: #5b5fde;
   --paper-shadow: rgb(40 34 60/16%);
   --glow-paper: none;
-  --toast: var(--panel);
-  --toast-tx: var(--foreground);
-  --toast-mu: var(--muted-foreground);
-  --toast-track: var(--neutral-22);
-  --toast-ring: var(--neutral-10);
-  --toast-shadow: var(--shadow-float);
+  --toast: #ffffff;
+  --toast-tx: #2a2925;
+  --toast-mu: #6f6c64;
+  --toast-track: rgb(120 114 100/16%);
+  --toast-ring: rgb(120 114 100/16%);
+  --toast-shadow: rgb(40 34 60/14%);
   --fresh: var(--neutral-6);
   --fresh-0: rgb(from var(--neutral) r g b / 0%);
   --dim: var(--scrim);
@@ -288,6 +284,12 @@ code {
   --paper-caret: #5b5fde;
   --paper-shadow: rgb(4 5 14/70%);
   --glow-paper: none;
+  --toast: #252937;
+  --toast-tx: #e9ebf3;
+  --toast-mu: #9da1b3;
+  --toast-track: rgb(180 188 216/20%);
+  --toast-ring: rgb(180 188 216/14%);
+  --toast-shadow: rgb(4 5 14/55%);
   --dot: none;
   --dec-fs: .74em;
   --dec-top: -.3em;
