@@ -640,7 +640,7 @@ export const settingsRouter = router({
           const pending = await tx.organizationCvrVerification.findUnique({ where: { organizationId: ctx.organizationId } })
           await recordCvrVerification(tx, ctx.organizationId, verifiedCvr, true)
           if (pending?.status === "pending" && current?.onboardingCompletedAt) {
-            await billingProvider.startTrial?.(ctx.organizationId, { cvr: verifiedCvr, tx })
+            await billingProvider.startTrial?.(ctx.organizationId, { cvr: verifiedCvr, cvrVerified: true, tx })
           }
         }
         await confirmSellerVatStatus({ tx, organizationId: ctx.organizationId, userId: ctx.user.id, sessionId: ctx.session.session.id, request: ctx.request, registered: settingsInput.momsRegistered, token: sellerVatConfirmationToken, previousSettings: current, previousSeller })

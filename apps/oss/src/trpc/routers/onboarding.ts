@@ -400,7 +400,7 @@ export const onboardingRouter = router({
           userId: ctx.user.id, organizationId: ctx.organizationId, tx,
         })
         // The provider owns durable eligibility and retries across transaction rollback.
-        if (company) await billingProvider.startTrial?.(ctx.organizationId, { cvr: company.cvr, tx })
+        await billingProvider.startTrial?.(ctx.organizationId, { cvr: snapshot.values.primaryTaxId!.replace(/^DK/, ""), cvrVerified: Boolean(company), tx })
         await tx.orgSettings.update({
           where: { organizationId: ctx.organizationId },
           data: {

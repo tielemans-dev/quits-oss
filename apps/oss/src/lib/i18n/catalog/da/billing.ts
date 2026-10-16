@@ -13,6 +13,9 @@ export const daBillingMessages = {
   "billing.subscription.description":
     "Administrer dit abonnement og betalingsoplysninger.",
   "billing.currentPlan": "Nuværende plan",
+  "billing.readOnly.title": "Din organisation er skrivebeskyttet",
+  "billing.readOnly.body": "Du kan stadig se og downloade dine data. Gå til Abonnement for at få fuld adgang igen.",
+  "billing.readOnly.action": "Gå til abonnement",
   "billing.status.free": "Gratis",
   "billing.status.active": "Aktiv",
   "billing.status.canceled": "Opsagt",

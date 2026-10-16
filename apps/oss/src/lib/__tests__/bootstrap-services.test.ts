@@ -15,7 +15,7 @@ describe("runtime service registration", () => {
     const mod = await loadModule()
 
     const subscription = await mod.getBillingProvider().getSubscription("org-1")
-    expect(subscription).toEqual({ status: "free", priceId: null })
+    expect(subscription).toEqual({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } })
   })
 
   it("allows overriding billing provider at runtime", async () => {
@@ -23,13 +23,13 @@ describe("runtime service registration", () => {
 
     mod.setRuntimeServices({
       billingProvider: {
-        getSubscription: async () => ({ status: "active", priceId: "price_123" }),
+        getSubscription: async () => ({ status: "active", organizationAccess: { state: "subscribed" }, priceId: "price_123", access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }),
         assertInvoiceCreationAllowed: async () => {},
       },
     })
 
     const subscription = await mod.getBillingProvider().getSubscription("org-1")
-    expect(subscription).toEqual({ status: "active", priceId: "price_123" })
+    expect(subscription).toEqual({ status: "active", organizationAccess: { state: "subscribed" }, priceId: "price_123", access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } })
   })
 
   it("provides a default onboarding ai service and supports override", async () => {

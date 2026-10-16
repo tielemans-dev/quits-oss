@@ -214,12 +214,12 @@ describeIfDatabase("onboarding router integration", () => {
     }
   })
 
-  it("completes legacy manual setup during an outage without starting a trial", async () => {
+  it("provisions the legacy manual trial during an outage", async () => {
     const { orgId, caller } = await createCloudCaller()
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
     const startTrial = vi.fn()
     setRuntimeServices({ cvrLookupProvider: { search: async () => [], get: async () => { throw new Error("Synthetic outage") } },
-      billingProvider: { startTrial, getSubscription: async () => ({ status: "free", priceId: null }), assertInvoiceCreationAllowed: async () => {} } })
+      billingProvider: { startTrial, getSubscription: async () => ({ status: "free", organizationAccess: { state: "self_hosted" }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
     try {
       await caller.onboarding.saveDraft({ companyName: "Manual ApS", companyAddress: "Testvej 1", companyEmail: "billing@example.test",
         countryCode: "DK", invoicingIdentity: "registered_business", locale: "da-DK", timezone: "Europe/Copenhagen",
@@ -227,7 +227,7 @@ describeIfDatabase("onboarding router integration", () => {
         primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" })
       expect(await caller.onboarding.completeManual({ method: "manual" })).toMatchObject({ isComplete: true })
       expect(await prisma.organizationCvrVerification.findUniqueOrThrow({ where: { organizationId: orgId } })).toMatchObject({ status: "pending", cvr: "24256790" })
-      expect(startTrial).not.toHaveBeenCalled()
+      expect(startTrial).toHaveBeenCalledWith(orgId, expect.objectContaining({ cvr: "24256790", cvrVerified: false, tx: expect.anything() }))
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
   it("requires a CVR for Danish sole traders", async () => {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
 
 const {
@@ -86,13 +86,21 @@ import { stageSelectedCompany, readSelectedCompany } from "../../lib/onboarding/
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+
 afterEach(() => {
-  uiLocale.value = "en-US"
+  // Unmount and flush component effects before discarding their storage and mocks.
+  cleanup()
   sessionStorage.clear()
+  uiLocale.value = "en-US"
   vi.mocked(trpc.cvr.get.query).mockReset()
   vi.mocked(trpc.onboarding.saveDraft.mutate).mockReset()
   vi.mocked(trpc.onboarding.completeManual.mutate).mockReset()
-  cleanup()
+  vi.mocked(trpc.cvr.available.query).mockReset().mockResolvedValue({ enabled: false, suggestions: false })
   invalidateAppLayoutSession()
   navigate.mockReset()
   invalidate.mockReset()
@@ -120,23 +128,32 @@ describe("OnboardingPage cloud flow", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "owner@example.com" }, session: { activeOrganizationId: "org_1" } } })
     const capabilities = { onboardingAi: { enabled: false }, onboardingV2: { enabled: true }, sellerVatConfirmation: { enabled: true } }
     const availability = { enabled: true, suggestions: false }
-    let resolvePending!: () => void
-    const pending = new Promise<void>(resolve => { resolvePending = resolve })
-    runtimeCapabilitiesQuery.mockImplementation(async () => { if (delayed === "capabilities") await pending; return capabilities })
-    vi.mocked(trpc.cvr.available.query).mockImplementationOnce(async () => { if (delayed === "availability") await pending; return availability })
-    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale: "en-US" }, missing: [] })
+    const pending = deferred<void>()
+    const status = deferred<{ isComplete: boolean; values: { locale: string }; missing: [] }>()
+    const company = { cvr: "24256790", name: "Selected ApS", address: "Selected street 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: false } as const
+    const lookup = deferred<typeof company>()
+    runtimeCapabilitiesQuery.mockImplementation(async () => { if (delayed === "capabilities") await pending.promise; return capabilities })
+    vi.mocked(trpc.cvr.available.query).mockImplementationOnce(async () => { if (delayed === "availability") await pending.promise; return availability })
+    onboardingStatusQuery.mockReturnValue(status.promise)
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS" }, missing: [] } as never)
     stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Selected street 1", cvr: "24256790" })
-    vi.mocked(trpc.cvr.get.query).mockResolvedValue({ cvr: "24256790", name: "Selected ApS", address: "Selected street 1", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: false } as never)
+    vi.mocked(trpc.cvr.get.query).mockReturnValue(lookup.promise as never)
     render(<RouteComponent />)
-    await waitFor(() => expect(onboardingStatusQuery).toHaveBeenCalled())
+    await act(async () => { status.resolve({ isComplete: false, values: { locale: "en-US" }, missing: [] }) })
+    expect(screen.getByRole("status")).toBeTruthy()
     expect(readSelectedCompany("user_1", "org_1")?.cvr).toBe("24256790")
+    expect(trpc.cvr.get.query).not.toHaveBeenCalled()
     expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
-    resolvePending()
-    expect(await screen.findByDisplayValue("Selected ApS")).toBeTruthy()
-    expect(screen.getByDisplayValue("Selected street 1")).toBeTruthy()
+    await act(async () => { pending.resolve() })
+    await waitFor(() => expect(trpc.cvr.get.query).toHaveBeenCalledWith({ cvr: "24256790" }, { signal: expect.any(AbortSignal) }))
+    expect(readSelectedCompany("user_1", "org_1")?.cvr).toBe("24256790")
+    await act(async () => { lookup.resolve(company) })
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Selected ApS")).toBeTruthy()
+      expect(screen.getByDisplayValue("Selected street 1")).toBeTruthy()
+      expect(readSelectedCompany("user_1", "org_1")).toBeNull()
+    })
     expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
-    expect(readSelectedCompany("user_1", "org_1")).toBeNull()
   })
   it("disables setup fields until the initial status response has loaded", async () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
@@ -468,11 +485,15 @@ describe.each([
   async function renderIncomplete() {
     uiLocale.value = locale
     useSessionMock.mockReturnValue({ data: { session: { activeOrganizationId: "org_1" } } })
-    onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { locale }, missing: [] })
+    const status = deferred<{ isComplete: boolean; values: { locale: string }; missing: [] }>()
+    onboardingStatusQuery.mockReturnValue(status.promise)
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
     render(<RouteComponent />)
-    await waitFor(() => expect((screen.getByLabelText(label.name) as HTMLInputElement)).toBeTruthy())
+    const name = await screen.findByLabelText(label.name)
+    expect(name.matches(":disabled")).toBe(true)
+    await act(async () => { status.resolve({ isComplete: false, values: { locale }, missing: [] }) })
+    await waitFor(() => expect(name.matches(":disabled")).toBe(false))
   }
   const submit = () => fireEvent.submit(screen.getByRole("button", { name: label.finish }).closest("form")!)
 
@@ -511,12 +532,17 @@ describe.each([
 
   it("clears the banner for a server-reported missing field once it is filled", async () => {
     await renderIncomplete()
-    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: ["primaryTaxId"] } as never)
+    const saved = deferred<{ missing: ["primaryTaxId"] }>()
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockReturnValue(saved.promise as never)
     fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
     fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
     fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
     submit()
-    expect((await screen.findByRole("alert")).textContent).toBe(banner)
+    expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledOnce()
+    expect(screen.queryByRole("alert")).toBeNull()
+    await act(async () => { saved.resolve({ missing: ["primaryTaxId"] }) })
+    expect(screen.getByRole("alert").textContent).toBe(banner)
+    expect(screen.getByRole("button", { name: label.finish }).matches(":disabled")).toBe(false)
     fireEvent.change(document.getElementById("primaryTaxId")!, { target: { value: "12345678" } })
     expect(screen.queryByRole("alert")).toBeNull()
   })

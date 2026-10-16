@@ -25,7 +25,7 @@ beforeEach(() => {
   vi.stubEnv("QUITS_COMPANY_RESEARCH_AI_ENABLED", "true")
   fake.hosted = false; fake.enabled = true; fake.requiresSubscription = false
   fake.settings.mockResolvedValue({ aiDraftsEnabled: true, aiProvider: "openai_compatible", aiModel: "saved-model" })
-  fake.subscription.mockResolvedValue({ status: "active" })
+  fake.subscription.mockResolvedValue({ status: "active", organizationAccess: { state: "subscribed" } })
   fake.byok.mockReturnValue({ id: "openai_compatible", complete: fake.complete })
   fake.managed.mockReturnValue({ id: "managed", complete: fake.complete, defaultModel: "managed-model" })
   fake.complete.mockResolvedValue(JSON.stringify(extra))
@@ -56,11 +56,25 @@ it("respects hosted drafts settings and subscription eligibility before research
   fake.hosted = true
   fake.settings.mockResolvedValueOnce({ aiDraftsEnabled: false })
   await researchCompany(company, lookup, context)
-  fake.requiresSubscription = true; fake.subscription.mockResolvedValueOnce({ status: "inactive" })
+  fake.requiresSubscription = true; fake.subscription.mockResolvedValueOnce({ status: "active", organizationAccess: { state: "read_only", reason: "canceled" } })
   await researchCompany(company, lookup, context)
   expect(sources).not.toHaveBeenCalled(); expect(fake.complete).not.toHaveBeenCalled()
   await researchCompany(company, lookup, context)
   expect(fake.complete.mock.calls[0][0].model).toBe("managed-model")
+})
+it.each([
+  [{ state: "subscribed" }, "canceled", true],
+  [{ state: "complimentary" }, "expired", true],
+  [{ state: "self_hosted" }, "free", true],
+  [{ state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, "active", false],
+  [{ state: "read_only", reason: "payment_failed" }, "active", false],
+  [undefined, "active", false],
+] as const)("uses canonical access %j before fetching research sources", async (organizationAccess, status, allowed) => {
+  fake.hosted = true; fake.requiresSubscription = true
+  fake.subscription.mockResolvedValue({ status, organizationAccess })
+  await researchCompany(company, lookup, context)
+  expect(sources).toHaveBeenCalledTimes(allowed ? 1 : 0)
+  expect(fake.complete).toHaveBeenCalledTimes(allowed ? 1 : 0)
 })
 it("silently falls back for disabled AI, missing sources, blocked companies, cancellation and failures", async () => {
   fake.enabled = false; await researchCompany(company, lookup, context); fake.enabled = true

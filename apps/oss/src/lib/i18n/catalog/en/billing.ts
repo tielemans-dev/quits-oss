@@ -13,6 +13,9 @@ export const enBillingMessages = {
   "billing.subscription.description":
     "Manage your subscription and billing details.",
   "billing.currentPlan": "Current Plan",
+  "billing.readOnly.title": "Your organization is read-only",
+  "billing.readOnly.body": "You can still view and download your data. Go to Billing to restore full access.",
+  "billing.readOnly.action": "Go to billing",
   "billing.status.free": "Free",
   "billing.status.active": "Active",
   "billing.status.canceled": "Canceled",
