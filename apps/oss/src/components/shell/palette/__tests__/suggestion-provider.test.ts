@@ -4,8 +4,8 @@ import { suggestions } from "../suggestion-provider"
 
 const known = {
   invoices: [
-    { number: "INV-2026-001", customer: "Birk Arkitekter", status: "sent", balanceDue: 12500, currency: "DKK" },
-    { number: "INV-2026-002", customer: "Studio Vester", status: "paid", balanceDue: 0, currency: "DKK" },
+    { number: "INV-2026-001", customer: "Birk Arkitekter", status: "sent", balanceDue: 12500, currency: "DKK", dueDate: "2026-10-01" },
+    { number: "INV-2026-002", customer: "Studio Vester", status: "paid", balanceDue: 0, currency: "DKK", dueDate: "2026-10-01" },
   ],
   customers: [{ name: "Birk Arkitekter" }, { name: "Studio Vester" }],
 }

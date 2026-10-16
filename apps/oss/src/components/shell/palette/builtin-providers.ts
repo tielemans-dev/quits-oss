@@ -5,6 +5,7 @@ import { matchItems } from './match'
 import { requestProvider } from './request-provider'
 import { decisionProvider } from './decision-provider'
 import { nextProvider } from './next-provider'
+import { customerProvider } from './customer-provider'
 import { suggestionProvider } from './suggestion-provider'
 import type { PaletteCapability, PaletteContext, PaletteItem, PaletteProvider } from './types'
 import type { TranslationKey } from '../../../lib/i18n/messages'
@@ -104,7 +105,7 @@ export const createProvider: PaletteProvider = {
   },
 }
 
-export const builtinPaletteProviders: PaletteProvider[] = [nextProvider, suggestionProvider, decisionProvider, requestProvider, createProvider, navigationProvider]
+export const builtinPaletteProviders: PaletteProvider[] = [nextProvider, customerProvider, suggestionProvider, decisionProvider, requestProvider, createProvider, navigationProvider]
 
 /** Ids an extension may not take: its sections would duplicate the built-in ones. */
 export const reservedProviderIds: ReadonlySet<string> = new Set(builtinPaletteProviders.map((provider) => provider.id))
