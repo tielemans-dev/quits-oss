@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
 
+import { formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
+import { useRequestPreview } from "../command-bar/request-preview"
 import { cn } from "../../lib/utils"
 import { Amount } from "../kvit/amount"
 import { CustomerMark } from "../kvit/customer-mark"
@@ -50,6 +52,22 @@ export function IncomingList({
   newInvoiceId?: string
 }) {
   const { t, locale } = useI18n()
+  // While a card on the page is looked at, the list shows what it would do: the invoice it would
+  // add, the invoices it would settle or remind.
+  const preview = useRequestPreview()
+  const marked = preview && preview.kind !== "invoice" ? new Set(preview.invoiceIds) : null
+  const ghost = preview?.kind === "invoice" ? (
+    <li key="ghost" className="incoming-ghost border-hairline relative border-t first:border-t-0">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-3">
+        <CustomerMark name={preview.customer} className="mt-0.5" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{preview.customer}</p>
+          <p className="text-brand-text text-xs">{t("dashboard.incoming.ghost", { date: formatDate(preview.dueDate, locale) })}</p>
+        </div>
+        <Amount value={preview.amount.toFixed(2)} currency={preview.currency} locale={locale} size="sm" className="-mt-0.5" />
+      </div>
+    </li>
+  ) : null
 
   return (
     <Panel
@@ -65,10 +83,11 @@ export function IncomingList({
         </Link>
       }
     >
-      {items.length === 0 ? (
+      {items.length === 0 && !ghost ? (
         <p className="text-muted-foreground px-4 pt-1 pb-5 text-sm">{t("dashboard.incoming.empty")}</p>
       ) : (
         <ul>
+          {ghost}
           {items.map((item) => {
             const due = dueLabel(item, today)
             const late = due.kind === "overdue"
@@ -81,6 +100,7 @@ export function IncomingList({
             return (
               <li
                 key={item.documentId}
+                data-preview={marked?.has(item.documentId) ? preview!.kind : undefined}
                 className={cn("group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative border-t transition-colors duration-(--duration-fade) first:border-t-0", item.documentId === newInvoiceId && "incoming-new")}
               >
                 <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-3">
@@ -101,7 +121,9 @@ export function IncomingList({
                     <div className="relative">
                       <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
                         {item.number ? <span className="font-mono tracking-[0.01em]">{item.number}</span> : null}
-                        <span className={cn(late && "text-tone-danger font-semibold")}>{dueText(due, t)}</span>
+                        {marked?.has(item.documentId)
+                          ? <span className={cn("font-semibold", preview!.kind === "paid" ? "text-tone-success" : "text-brand-text")}>{t(preview!.kind === "paid" ? "dashboard.incoming.paying" : "dashboard.incoming.reminding")}</span>
+                          : <span className={cn(late && "text-tone-danger font-semibold")}>{dueText(due, t)}</span>}
                       </p>
                       {offerReminder || reminderState ? (
                         <div

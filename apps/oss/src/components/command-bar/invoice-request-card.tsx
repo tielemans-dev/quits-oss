@@ -28,6 +28,7 @@ import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { syncHeldJobs } from "../undo/undo-store"
+import { previewRequest } from "./request-preview"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
 
@@ -151,6 +152,13 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   const note = error ?? (repeat && last === null && !back ? t("shell.request.repeat.none") : askedInPlace ? null : blockedBy)
   const fill = (index: number, field: "description" | "unitPrice", value: string) =>
     setFilled(current => ({ ...current, [index]: { ...current[index], [field]: value } }))
+
+  // The page shows the invoice this would add, while the card is looked at.
+  const gross = preview.result?.gross
+  useEffect(() => {
+    previewRequest(!sent && customerName && gross !== undefined && Number(gross) > 0 ? { kind: "invoice", customer: customerName, amount: Number(gross), currency, dueDate } : null)
+  }, [sent, customerName, gross, currency, dueDate])
+  useEffect(() => () => previewRequest(null), [])
 
   async function send() {
     if (sending.current || blockedBy) return

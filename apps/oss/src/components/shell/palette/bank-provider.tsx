@@ -1,5 +1,5 @@
 import { Check, Landmark } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { formatCurrency } from '../../../lib/i18n/format'
 import { useI18n } from '../../../lib/i18n/react'
@@ -8,6 +8,7 @@ import { cn } from '../../../lib/utils'
 import { trpc } from '../../../trpc/client'
 import { readInvoices } from '../../command-bar/request-data'
 import { stagger } from '../../command-bar/request-card-slot'
+import { previewRequest } from '../../command-bar/request-preview'
 import { recognizeRequest } from '../../command-bar/request-intent'
 import { Button } from '../../ui/button'
 import type { PaletteContext, PaletteProvider, PaletteSection } from './types'
@@ -81,6 +82,9 @@ export function BankCard({ lines, onDismiss }: { lines: Line[]; onDismiss: () =>
   const [undone, setUndone] = useState(false)
   const chosen = useMemo(() => lines.filter((line, index) => line.match && ticked.has(index)), [lines, ticked])
   const today = new Date().toISOString().slice(0, 10)
+  const paying = recorded ? '' : chosen.map((line) => line.match!.invoice.id).join(',')
+  useEffect(() => { previewRequest(paying ? { kind: 'paid', invoiceIds: paying.split(',') } : null) }, [paying])
+  useEffect(() => () => previewRequest(null), [])
 
   async function record() {
     if (pending || !chosen.length) return

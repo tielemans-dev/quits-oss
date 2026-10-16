@@ -12,6 +12,7 @@ import { invoicesKey, peekRequestData, readInvoices } from "./request-data"
 import { useShellPermissions } from "../shell/use-shell-permissions"
 import { Button } from "../ui/button"
 import { stagger } from "./request-card-slot"
+import { previewRequest } from "./request-preview"
 import type { RequestCardProps } from "./request-intent"
 
 /** How long Fortryd stays after the payment is recorded (the check holds for the same time). */
@@ -52,6 +53,9 @@ export function PaymentMatchCard({ intent, onDismiss }: RequestCardProps) {
   const candidates = match?.kind === "exact" ? [match.candidate] : match?.kind === "shortlist" ? match.candidates : []
   const chosen = match?.kind === "exact" ? match.candidate : candidates.find(c => c.invoice.id === picked)
   const money = (minor: number, currency: string) => formatCurrency(minor / 100, currency, locale)
+  const paying = done ? null : chosen?.invoice.id
+  useEffect(() => { previewRequest(paying ? { kind: "paid", invoiceIds: [paying] } : null) }, [paying])
+  useEffect(() => () => previewRequest(null), [])
 
   async function markPaid() {
     if (sending.current || !payment || !chosen || !today) return
