@@ -726,3 +726,17 @@ body { caret-color: var(--caret); }
   font-size: 0.6875rem;
   opacity: 0.7;
 }
+
+/* What the card being looked at would do to the list: a ghost of the invoice it adds, and the rows it settles or reminds. */
+.incoming-ghost {
+  display: grid;
+  animation: incoming-in var(--duration-row) var(--ease-enter) both;
+  background: color-mix(in srgb, var(--brand-text) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--brand-text);
+}
+.incoming-ghost > * { min-height: 0; overflow: hidden; }
+[data-preview] { transition: background-color var(--duration-fade) var(--ease-enter); }
+[data-preview="paid"] { background: color-mix(in srgb, var(--tone-success) 8%, transparent); box-shadow: inset 2px 0 0 var(--tone-success); }
+[data-preview="paid"] [data-slot="amount"], [data-preview="paid"] .tabular-nums { text-decoration: line-through; opacity: 0.6; }
+[data-preview="reminded"] { background: color-mix(in srgb, var(--brand-text) 6%, transparent); box-shadow: inset 2px 0 0 var(--brand-text); }
+@media (prefers-reduced-motion: reduce) { .incoming-ghost { animation: none; } }
