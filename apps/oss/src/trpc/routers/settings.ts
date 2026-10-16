@@ -138,15 +138,18 @@ async function runManagedDomainOperation<T>(
     return await execute()
   } catch (error) {
     if (!isManagedDomainRejection(error)) throw error
+    const { reason } = error
+    const alreadyDeleted = operation === "deleteDomain" && reason === "not_found"
     appLogger.warn("settings.managed_domain_rejected", {
-      organizationId: context.organizationId, operation, reason: error.reason,
+      organizationId: context.organizationId, operation, reason,
+      outcome: alreadyDeleted ? "treated_as_deleted" : "rejected",
     })
     // A previous replacement attempt may already have removed the saved provider domain.
-    if (operation === "deleteDomain" && error.reason === "not_found") return
+    if (alreadyDeleted) return
     const codes = { invalid_domain: "BAD_REQUEST", not_found: "NOT_FOUND", conflict: "CONFLICT" } as const
     throw new TRPCError({
-      code: codes[error.reason],
-      message: translate(`settings.documentSending.error.${error.reason}`, context.locale),
+      code: codes[reason],
+      message: translate(`settings.documentSending.error.${reason}`, context.locale),
     })
   }
 }

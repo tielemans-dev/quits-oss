@@ -43,7 +43,9 @@ saved locale, with Danish and English messages owned by core. Provider messages
 and diagnostic causes are never forwarded for these rejections. All other errors
 remain server failures. Providers must keep outages and configuration failures
 outside this rejection contract. Self-hosted defaults require no provider.
-Rejections log only the organization ID, provider operation, and validated reason.
+Rejections log only the organization ID, provider operation, validated reason, and
+outcome. The outcome is `treated_as_deleted` for an already-missing domain during
+deletion and `rejected` for a rejection returned to the client.
 
 ## Stripe Connect webhooks
 

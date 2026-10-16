@@ -68,7 +68,7 @@ async function request(operation: typeof operations[number]) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  vi.spyOn(appLogger, "warn").mockImplementation(() => {})
+  vi.spyOn(appLogger, "warn")
   db.upsert.mockResolvedValue({ ...stored })
   db.update.mockImplementation(async ({ data }) => ({ ...stored, ...data }))
   const result = {
@@ -105,7 +105,7 @@ describe.each(operations)("$path via $method", (operation) => {
     expect(provider[operation.method]).toHaveBeenCalledOnce()
     expect(db.update).not.toHaveBeenCalled()
     expect(appLogger.warn).toHaveBeenCalledExactlyOnceWith("settings.managed_domain_rejected", {
-      organizationId: "org", operation: operation.method, reason: rejection.reason,
+      organizationId: "org", operation: operation.method, reason: rejection.reason, outcome: "rejected",
     })
     if (operation.method === "deleteDomain") expect(provider.createDomain).not.toHaveBeenCalled()
   })
@@ -174,6 +174,9 @@ it.each(["configure", "disable"])("recovers via %s after deleting the old domain
   expect((await response.json()).result.data.json.requestedDomain).toBe(action === "configure" ? "new.example.com" : null)
   expect(provider.deleteDomain).toHaveBeenNthCalledWith(2, { providerId: "domain-1", domain: stored.documentSendingDomain })
   expect(db.update).toHaveBeenCalledOnce()
+  expect(appLogger.warn).toHaveBeenLastCalledWith("settings.managed_domain_rejected", {
+    organizationId: "org", operation: "deleteDomain", reason: "not_found", outcome: "treated_as_deleted",
+  })
 })
 
 it.each(operations.filter(operation => operation.method !== "deleteDomain"))(
