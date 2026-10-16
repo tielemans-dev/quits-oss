@@ -67,7 +67,7 @@ vi.mock("../../trpc/client", () => ({
 }))
 
 import { Route as AppRoute } from "../_app"
-import { Route as SettingsRoute } from "../_app/settings"
+import { Route as SettingsRoute } from "../_app/settings.$section"
 import { I18nProvider, useI18n } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
 import { notifyMutation } from "../../lib/query-refresh"
@@ -124,13 +124,13 @@ async function renderSettings() {
   const root = createRootRoute()
   // Attach the production file routes to a small real router, retaining their loaders and hooks.
   const app = AppRoute.update({ id: "_app", getParentRoute: () => root } as never)
-  const settings = SettingsRoute.update({ path: "/settings", getParentRoute: () => app } as never)
+  const settings = SettingsRoute.update({ path: "/settings/$section", getParentRoute: () => app } as never)
   const elsewhere = createRoute({ getParentRoute: () => app, path: "elsewhere", component: LocaleProbe })
   const onboarding = createRoute({ getParentRoute: () => app, path: "onboarding", component: () => <p>Onboarding required</p> })
   const login = createRoute({ getParentRoute: () => root, path: "login", component: () => <p>Sign in required</p> })
   const router = createRouter({
     routeTree: root.addChildren([app.addChildren([settings, elsewhere, onboarding]), login]),
-    history: createMemoryHistory({ initialEntries: ["/settings"] }),
+    history: createMemoryHistory({ initialEntries: ["/settings/invoicing"] }),
   })
   await router.load()
   const view = render(<I18nProvider><RouterProvider router={router} /></I18nProvider>)
@@ -215,7 +215,7 @@ describe("saving the Settings language", () => {
     fireEvent.change(container.querySelector("#primaryTaxId")!, { target: { value: taxId } })
     fireEvent.submit(container.querySelector("form")!)
     await screen.findByText(translate("settings.success.saved", "da"))
-    expect(router.state.location.pathname).toBe("/settings")
+    expect(router.state.location.pathname).toBe("/settings/invoicing")
     expect(router.state.matches.find(match => match.routeId === "/_app")?.context.cloudOnboardingComplete).toBe(true)
     expect(state.getLayout).toHaveBeenCalledTimes(1)
   })
@@ -235,14 +235,14 @@ describe("saving the Settings language", () => {
       await waitFor(() => expectLanguage(locale))
       expect(state.savedLocale).toBe(locale)
       expect(router.state.matches.find(match => match.routeId === "/_app")?.context.locale).toBe(locale)
-      expect(router.state.location.pathname).toBe("/settings")
+      expect(router.state.location.pathname).toBe("/settings/invoicing")
       expect(screen.getByRole("navigation")).toBe(navigation)
       expect(container.querySelector("form")).toBe(initialForm)
       // Ordinary navigation during the five-second reuse window must keep the saved locale.
       await act(async () => { await router.navigate({ to: "/elsewhere" } as never) })
       expect(screen.getByTestId("current-locale").textContent).toBe(locale)
       expect(screen.getByRole("navigation")).toBe(navigation)
-      await act(async () => { await router.navigate({ to: "/settings" }) })
+      await act(async () => { await router.navigate({ to: "/settings/invoicing" } as never) })
       await screen.findByRole("button", { name: translate("settings.action.save", locale) })
       previousLocale = locale
     }

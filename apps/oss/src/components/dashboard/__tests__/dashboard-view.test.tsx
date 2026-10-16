@@ -462,7 +462,7 @@ describe("reminder refusals from the email provider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(text))
     expect(screen.queryByText(/Provider English/)).toBeNull()
-    expect(within(screen.getByRole("alert")).getByRole("link", { name: "Åbn indstillinger" }).getAttribute("href")).toBe("/settings")
+    expect(within(screen.getByRole("alert")).getByRole("link", { name: "Åbn indstillinger" }).getAttribute("href")).toBe("/settings/email")
   })
 
   it("offers no settings link for a refusal settings cannot fix", async () => {

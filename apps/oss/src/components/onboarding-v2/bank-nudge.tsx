@@ -57,7 +57,7 @@ export function useFirstInvoiceBankNudge() {
               {t("onboardingV2.bankNudge.continue")}
             </Button>
             <Button asChild>
-              <Link to="/settings" onClick={() => { onSettings.current?.(); finish(false) }}>
+              <Link to="/settings/$section" params={{ section: "payments" }} onClick={() => { onSettings.current?.(); finish(false) }}>
                 {t("onboardingV2.bankNudge.settings")}
               </Link>
             </Button>

@@ -73,7 +73,7 @@ for (const locale of ["da-DK", "en-US"]) {
     await prisma.organizationTaxId.create({ data: { organizationId: setup.organizationId, scheme: "cvr", value: "12345674", countryCode: "DK" } })
     await loginAsAdmin(page)
     await page.goto("/settings/organization")
-    await expect(page).toHaveURL(/\/settings$/)
+    await expect(page).toHaveURL(/\/settings\/company$/)
     await waitForClientReady(page)
     for (const [countryCode, taxRegime] of [["US", "us_sales_tax"], ["DE", "eu_vat"], ["DK", "custom"]] as const) {
       await prisma.orgSettings.update({ where: { organizationId: setup.organizationId }, data: { countryCode, taxRegime } })
@@ -218,7 +218,7 @@ for (const { source, locale } of choiceScenarios) {
         organizationId = await captureHostedOnboarding(page, setup.organizationId, locale, registered)
       } else {
         await page.goto("/settings/organization")
-        await expect(page).toHaveURL(/\/settings$/)
+        await expect(page).toHaveURL(/\/settings\/company$/)
         await waitForClientReady(page)
         await page.getByRole("radio", { name: translate(registered ? "vatStatus.yes" : "vatStatus.no", locale), exact: true }).check()
         await page.getByRole("button", { name: translate("settings.action.save", locale), exact: true }).click()

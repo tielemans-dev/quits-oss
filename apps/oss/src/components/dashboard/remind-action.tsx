@@ -35,7 +35,7 @@ export function ReminderFailureNote({ failure, className }: { failure: ReminderF
       {SETTINGS_FIXES.has(failure) ? (
         <>
           {" "}
-          <Link to="/settings" className="font-semibold underline underline-offset-2">
+          <Link to="/settings/$section" params={{ section: "email" }} className="font-semibold underline underline-offset-2">
             {t("dashboard.remind.settingsLink")}
           </Link>
         </>

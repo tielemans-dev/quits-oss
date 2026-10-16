@@ -104,6 +104,17 @@ describe("sidebar navigation", () => {
     expect(current.map((link) => link.getAttribute("href"))).toEqual(["/invoices"])
   })
 
+  it("swaps the pages for the settings pages on a settings page, with a way back", () => {
+    router.pathname = "/settings/team"
+    render(<AppSidebar />)
+
+    expect(screen.getByRole("navigation", { name: "settings.nav.label" })).toBeTruthy()
+    expect(screen.queryByText("nav.invoices")).toBeNull()
+    expect(screen.getByRole("link", { name: "settings.nav.backLabel" }).getAttribute("href")).toBe("/")
+    const current = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page")
+    expect(current.map((link) => link.getAttribute("href"))).toEqual(["/settings/team"])
+  })
+
   it("closes the mobile drawer when a page is chosen", () => {
     render(<AppSidebar />)
 

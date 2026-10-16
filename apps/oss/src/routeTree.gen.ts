@@ -26,12 +26,12 @@ import { Route as DemoInvoiceEditorRouteImport } from './routes/demo/invoice-edi
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as ATokenRouteImport } from './routes/a.$token'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppCatalogRouteImport } from './routes/_app/catalog'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings.index'
 import { Route as AppRecurringIndexRouteImport } from './routes/_app/recurring/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppInvoicesIndexRouteImport } from './routes/_app/invoices/index'
@@ -49,7 +49,7 @@ import { Route as ApiCronMarkOverdueRouteImport } from './routes/api/cron/mark-o
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ATokenPdfRouteImport } from './routes/a.$token_.pdf'
 import { Route as ATokenLogoRouteImport } from './routes/a.$token_.logo'
-import { Route as AppSettingsOrganizationRouteImport } from './routes/_app/settings_.organization'
+import { Route as AppSettingsSectionRouteImport } from './routes/_app/settings.$section'
 import { Route as AppRecurringScheduleIdRouteImport } from './routes/_app/recurring/$scheduleId'
 import { Route as AppQuotesNewRouteImport } from './routes/_app/quotes/new'
 import { Route as AppQuotesQuoteIdRouteImport } from './routes/_app/quotes/$quoteId'
@@ -150,11 +150,6 @@ const ATokenRoute = ATokenRouteImport.update({
   path: '/a/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppOnboardingRoute = AppOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -178,6 +173,11 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRecurringIndexRoute = AppRecurringIndexRouteImport.update({
@@ -266,9 +266,9 @@ const ATokenLogoRoute = ATokenLogoRouteImport.update({
   path: '/a/$token/logo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSettingsOrganizationRoute = AppSettingsOrganizationRouteImport.update({
-  id: '/settings_/organization',
-  path: '/settings/organization',
+const AppSettingsSectionRoute = AppSettingsSectionRouteImport.update({
+  id: '/settings/$section',
+  path: '/settings/$section',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRecurringScheduleIdRoute = AppRecurringScheduleIdRouteImport.update({
@@ -361,7 +361,6 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AppBillingRoute
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
-  '/settings': typeof AppSettingsRoute
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -381,7 +380,7 @@ export interface FileRoutesByFullPath {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
-  '/settings/organization': typeof AppSettingsOrganizationRoute
+  '/settings/$section': typeof AppSettingsSectionRoute
   '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -399,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/invoices/': typeof AppInvoicesIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
   '/recurring/': typeof AppRecurringIndexRoute
+  '/settings/': typeof AppSettingsIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
@@ -415,7 +415,6 @@ export interface FileRoutesByTo {
   '/billing': typeof AppBillingRoute
   '/catalog': typeof AppCatalogRoute
   '/onboarding': typeof AppOnboardingRoute
-  '/settings': typeof AppSettingsRoute
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -436,7 +435,7 @@ export interface FileRoutesByTo {
   '/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/quotes/new': typeof AppQuotesNewRoute
   '/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
-  '/settings/organization': typeof AppSettingsOrganizationRoute
+  '/settings/$section': typeof AppSettingsSectionRoute
   '/a/$token/logo': typeof ATokenLogoRoute
   '/a/$token/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -454,6 +453,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AppInvoicesIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
   '/recurring': typeof AppRecurringIndexRoute
+  '/settings': typeof AppSettingsIndexRoute
   '/agreements/$agreementId/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
@@ -473,7 +473,6 @@ export interface FileRoutesById {
   '/_app/billing': typeof AppBillingRoute
   '/_app/catalog': typeof AppCatalogRoute
   '/_app/onboarding': typeof AppOnboardingRoute
-  '/_app/settings': typeof AppSettingsRoute
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
@@ -494,7 +493,7 @@ export interface FileRoutesById {
   '/_app/quotes/$quoteId': typeof AppQuotesQuoteIdRoute
   '/_app/quotes/new': typeof AppQuotesNewRoute
   '/_app/recurring/$scheduleId': typeof AppRecurringScheduleIdRoute
-  '/_app/settings_/organization': typeof AppSettingsOrganizationRoute
+  '/_app/settings/$section': typeof AppSettingsSectionRoute
   '/a/$token_/logo': typeof ATokenLogoRoute
   '/a/$token_/pdf': typeof ATokenPdfRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -512,6 +511,7 @@ export interface FileRoutesById {
   '/_app/invoices/': typeof AppInvoicesIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/recurring/': typeof AppRecurringIndexRoute
+  '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/agreements/$agreementId_/edit': typeof AppAgreementsAgreementIdEditRoute
   '/api/agreements/$agreementId/pdf': typeof ApiAgreementsAgreementIdPdfRoute
   '/app/approvals/$approvalId/preview.pdf': typeof AppApprovalsApprovalIdPreviewDotpdfRoute
@@ -532,7 +532,6 @@ export interface FileRouteTypes {
     | '/billing'
     | '/catalog'
     | '/onboarding'
-    | '/settings'
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
@@ -552,7 +551,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
-    | '/settings/organization'
+    | '/settings/$section'
     | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
@@ -570,6 +569,7 @@ export interface FileRouteTypes {
     | '/invoices/'
     | '/quotes/'
     | '/recurring/'
+    | '/settings/'
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
@@ -586,7 +586,6 @@ export interface FileRouteTypes {
     | '/billing'
     | '/catalog'
     | '/onboarding'
-    | '/settings'
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
@@ -607,7 +606,7 @@ export interface FileRouteTypes {
     | '/quotes/$quoteId'
     | '/quotes/new'
     | '/recurring/$scheduleId'
-    | '/settings/organization'
+    | '/settings/$section'
     | '/a/$token/logo'
     | '/a/$token/pdf'
     | '/api/auth/$'
@@ -625,6 +624,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/quotes'
     | '/recurring'
+    | '/settings'
     | '/agreements/$agreementId/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
@@ -643,7 +643,6 @@ export interface FileRouteTypes {
     | '/_app/billing'
     | '/_app/catalog'
     | '/_app/onboarding'
-    | '/_app/settings'
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
@@ -664,7 +663,7 @@ export interface FileRouteTypes {
     | '/_app/quotes/$quoteId'
     | '/_app/quotes/new'
     | '/_app/recurring/$scheduleId'
-    | '/_app/settings_/organization'
+    | '/_app/settings/$section'
     | '/a/$token_/logo'
     | '/a/$token_/pdf'
     | '/api/auth/$'
@@ -682,6 +681,7 @@ export interface FileRouteTypes {
     | '/_app/invoices/'
     | '/_app/quotes/'
     | '/_app/recurring/'
+    | '/_app/settings/'
     | '/_app/agreements/$agreementId_/edit'
     | '/api/agreements/$agreementId/pdf'
     | '/app/approvals/$approvalId/preview.pdf'
@@ -839,13 +839,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ATokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/onboarding': {
       id: '/_app/onboarding'
       path: '/onboarding'
@@ -879,6 +872,13 @@ declare module '@tanstack/react-router' {
       path: '/activity'
       fullPath: '/activity'
       preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/recurring/': {
@@ -1000,11 +1000,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ATokenLogoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/settings_/organization': {
-      id: '/_app/settings_/organization'
-      path: '/settings/organization'
-      fullPath: '/settings/organization'
-      preLoaderRoute: typeof AppSettingsOrganizationRouteImport
+    '/_app/settings/$section': {
+      id: '/_app/settings/$section'
+      path: '/settings/$section'
+      fullPath: '/settings/$section'
+      preLoaderRoute: typeof AppSettingsSectionRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/recurring/$scheduleId': {
@@ -1114,7 +1114,6 @@ interface AppRouteChildren {
   AppBillingRoute: typeof AppBillingRoute
   AppCatalogRoute: typeof AppCatalogRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAgreementsAgreementIdRoute: typeof AppAgreementsAgreementIdRoute
   AppAgreementsNewRoute: typeof AppAgreementsNewRoute
@@ -1126,13 +1125,14 @@ interface AppRouteChildren {
   AppQuotesQuoteIdRoute: typeof AppQuotesQuoteIdRoute
   AppQuotesNewRoute: typeof AppQuotesNewRoute
   AppRecurringScheduleIdRoute: typeof AppRecurringScheduleIdRoute
-  AppSettingsOrganizationRoute: typeof AppSettingsOrganizationRoute
+  AppSettingsSectionRoute: typeof AppSettingsSectionRoute
   AppAgreementsIndexRoute: typeof AppAgreementsIndexRoute
   AppContactsIndexRoute: typeof AppContactsIndexRoute
   AppCreditNotesIndexRoute: typeof AppCreditNotesIndexRoute
   AppInvoicesIndexRoute: typeof AppInvoicesIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppRecurringIndexRoute: typeof AppRecurringIndexRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppAgreementsAgreementIdEditRoute: typeof AppAgreementsAgreementIdEditRoute
 }
 
@@ -1142,7 +1142,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppBillingRoute: AppBillingRoute,
   AppCatalogRoute: AppCatalogRoute,
   AppOnboardingRoute: AppOnboardingRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppAgreementsAgreementIdRoute: AppAgreementsAgreementIdRoute,
   AppAgreementsNewRoute: AppAgreementsNewRoute,
@@ -1154,13 +1153,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppQuotesQuoteIdRoute: AppQuotesQuoteIdRoute,
   AppQuotesNewRoute: AppQuotesNewRoute,
   AppRecurringScheduleIdRoute: AppRecurringScheduleIdRoute,
-  AppSettingsOrganizationRoute: AppSettingsOrganizationRoute,
+  AppSettingsSectionRoute: AppSettingsSectionRoute,
   AppAgreementsIndexRoute: AppAgreementsIndexRoute,
   AppContactsIndexRoute: AppContactsIndexRoute,
   AppCreditNotesIndexRoute: AppCreditNotesIndexRoute,
   AppInvoicesIndexRoute: AppInvoicesIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppRecurringIndexRoute: AppRecurringIndexRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppAgreementsAgreementIdEditRoute: AppAgreementsAgreementIdEditRoute,
 }
 

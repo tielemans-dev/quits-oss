@@ -55,12 +55,12 @@ for (const locale of [danishLocale, usEnglishLocale]) {
     }
     const response = await page.request.post("/api/auth/sign-in/email", { data: { email: adminCredentials.email, password: adminCredentials.password }, headers: { origin: new URL(page.url()).origin } })
     expect(response.ok()).toBe(true)
-    for (const [screen, url] of [["dashboard", "/"], ["invoice", `/invoices/${invoice.id}`], ["settings", "/settings"]]) {
+    for (const [screen, url] of [["dashboard", "/"], ["invoice", `/invoices/${invoice.id}`], ["settings", "/settings/payments"]]) {
       await page.goto(url!)
       await waitForClientReady(page)
       await expect(page.locator("[data-slot=app-content]")).toBeVisible()
       if (screen === "dashboard") await expect(page.getByRole("heading", { name: da ? /^God (morgen|formiddag|eftermiddag|aften)/ : /^Good (morning|afternoon|evening)/ })).toBeVisible()
-      if (screen === "settings") await expect(page.getByRole("heading", { name: da ? "Indstillinger" : "Settings", exact: true })).toBeVisible()
+      if (screen === "settings") await expect(page.getByRole("heading", { name: da ? "Betalinger" : "Payments", exact: true })).toBeVisible()
       if (screen === "invoice") await expect(page.getByRole("heading", { name: da ? "Faktura INV-0002" : "Invoice INV-0002", exact: true })).toBeVisible()
       if (variant === "after") await searchAligned(page)
       if (screen === "invoice" && variant === "after") {
