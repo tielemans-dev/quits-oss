@@ -61,3 +61,12 @@ test("documentation and GitHub metadata PRs skip browsers while other jobs must 
   }
   assert.equal(accepts("pull_request", "true", mixed, "success", "unknown"), false)
 })
+
+test("browser-control and nested Markdown PRs cannot pass with skipped browser workers", () => {
+  for (const browser of ["true", "false"]) {
+    const skipped = { ...results("success"), "shared-browser-worker": "skipped" }
+    assert.equal(accepts("pull_request", "true", skipped, "success", browser), browser === "false")
+    const ran = results("success")
+    assert.equal(accepts("pull_request", "true", ran, "success", browser), browser === "true")
+  }
+})
