@@ -35,9 +35,9 @@ describe("decideRequest", () => {
 })
 
 describe("allowDecision", () => {
-  it("allows 60 calls a minute per organization", () => {
+  it("allows 300 calls a minute per organization", () => {
     const now = 1_000_000
-    for (let call = 0; call < 60; call++) expect(allowDecision("org-limit", now)).toBe(true)
+    for (let call = 0; call < 300; call++) expect(allowDecision("org-limit", now)).toBe(true)
     expect(allowDecision("org-limit", now)).toBe(false)
     expect(allowDecision("org-other", now)).toBe(true)
     expect(allowDecision("org-limit", now + 60_000)).toBe(true)

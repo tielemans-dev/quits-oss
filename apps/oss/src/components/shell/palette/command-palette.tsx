@@ -15,9 +15,9 @@ import type { PaletteActions, PaletteContext, PaletteItem, PaletteProvider, Pale
 /** Growing out of the field and into a card: the palette takes this long to change shape. */
 const CARD_MORPH_MS = DURATION.palette
 /** How long typing has to pause before the palette becomes the card for what was typed. */
-const LIVE_PAUSE_MS = 250
+const LIVE_PAUSE_MS = 120
 /** How long typing has to pause before the leading item's card starts reading what it shows. */
-const PREFETCH_PAUSE_MS = 100
+const PREFETCH_PAUSE_MS = 40
 
 type Props = {
   open: boolean
