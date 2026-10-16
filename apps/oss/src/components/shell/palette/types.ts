@@ -61,6 +61,12 @@ export type PaletteItem = {
   content?: ReactNode
   /** Run when the item is chosen. */
   perform: (actions: PaletteActions) => void
+  /**
+   * A card the palette grows into by itself, without waiting for Enter, while this item leads the
+   * results and the person has paused typing. Typing on updates it; once the text no longer reads
+   * as this item, the palette goes back to the list.
+   */
+  card?: (actions: PaletteActions) => ReactNode
 }
 
 export type PaletteSection = {

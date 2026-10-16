@@ -32,6 +32,7 @@ export const enNavMessages = {
   "shell.palette.title": "Search and commands",
   "shell.palette.description": "Search pages and actions. Use the arrow keys and Enter.",
   "shell.palette.inputLabel": "Search pages and actions",
+  "shell.palette.clear": "Clear",
   "shell.palette.empty": "No results for “{query}”",
   "shell.palette.searching": "Searching…",
   "shell.palette.groupNavigate": "Go to",

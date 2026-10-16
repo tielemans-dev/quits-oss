@@ -20,16 +20,20 @@ export function RequestCardSlot({
   intent,
   onDismiss,
   delay = 0,
+  autoFocus = true,
   className,
 }: {
   intent: RequestIntent
   onDismiss: () => void
   delay?: number
+  /** Off while the card follows what is being typed: the cursor stays in the field. */
+  autoFocus?: boolean
   className?: string
 }) {
   const { t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => ref.current?.focus({ preventScroll: true }), [])
+  // Only on mount: a card that is already showing keeps focus where it is.
+  useEffect(() => { if (autoFocus) ref.current?.focus({ preventScroll: true }) }, [])
   const Card = requestCardFor(intent.kind)
 
   return (

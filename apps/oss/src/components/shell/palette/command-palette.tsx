@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Dialog as DialogPrimitive, VisuallyHidden } from 'radix-ui'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
@@ -10,10 +10,12 @@ import { useFollowHeight } from '../../command-bar/use-morph'
 import { useI18n } from '../../../lib/i18n/react'
 import { builtinPaletteProviders, reservedProviderIds } from './builtin-providers'
 import { useRegisteredPaletteProviders, useSearchPlaceholderKey } from './registry'
-import type { PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
+import type { PaletteActions, PaletteContext, PaletteItem, PaletteProvider, PaletteSection } from './types'
 
 /** Growing out of the field and into a card: the palette takes this long to change shape. */
 const CARD_MORPH_MS = DURATION.palette
+/** How long typing has to pause before the palette becomes the card for what was typed. */
+const LIVE_PAUSE_MS = 250
 
 type Props = {
   open: boolean
@@ -130,13 +132,16 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   const listboxId = useId()
   const [query, setQuery] = useState(open ? initialQuery : '')
   const [activeId, setActiveId] = useState<string | null>(null)
-  // A card the palette has grown into, in place of the list.
+  // A card the palette has grown into, in place of the list: one chosen with Enter, or else the
+  // leading item's own card once typing has paused (see `lead` below).
   const [card, setCard] = useState<ReactNode>(null)
+  const [paused, setPaused] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
-  // Typing resizes the list at once; growing into a card, and the card's own changes, ease.
-  const cardOpen = useRef(false)
-  cardOpen.current = card !== null
-  const follow = useFollowHeight(CARD_MORPH_MS, () => cardOpen.current)
+  const input = useRef<HTMLInputElement>(null)
+  // Typing resizes the list at once. Every change to or from a card eases: list to card, one card
+  // to another, a card as its data arrives, and back to the list when the text stops reading as one.
+  const morph = useRef({ shown: false, changedAt: 0 })
+  const follow = useFollowHeight(CARD_MORPH_MS, () => morph.current.shown || performance.now() - morph.current.changedAt < CARD_MORPH_MS * 2)
   // Where focus was before the palette opened, and goes back to when it closes.
   const returnFocusTo = useRef<HTMLElement | null>(null)
 
@@ -171,6 +176,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     if (open) {
       setQuery(initialQuery)
       setCard(null)
+      setPaused(false)
     }
   }
 
@@ -192,20 +198,37 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   }, [effectiveActiveId, listboxId])
 
   const close = useCallback(() => onOpenChange(false), [onOpenChange])
-  const choose = useCallback(
-    (item: PaletteItem) => {
-      item.perform({
-        navigate: (to) => {
-          close()
-          onNavigate?.()
-          void navigate({ to } as Parameters<typeof navigate>[0])
-        },
-        close,
-        expand: setCard,
-      })
-    },
+  const actions = useMemo<PaletteActions>(
+    () => ({
+      navigate: (to) => {
+        close()
+        onNavigate?.()
+        void navigate({ to } as Parameters<typeof navigate>[0])
+      },
+      close,
+      expand: setCard,
+    }),
     [close, navigate, onNavigate]
   )
+  const choose = useCallback((item: PaletteItem) => item.perform(actions), [actions])
+
+  // The leading item can answer with a card. Once typing pauses the palette becomes it, without
+  // waiting for Enter; typing on updates it, and text that stops reading as one brings the list back.
+  const lead = items[0]?.card ? items[0] : null
+  if (!lead && paused) setPaused(false)
+  useEffect(() => {
+    if (!lead || paused) return
+    const timer = setTimeout(() => setPaused(true), LIVE_PAUSE_MS)
+    return () => clearTimeout(timer)
+  }, [lead, paused])
+  const shown = card ?? (paused && lead?.card ? lead.card(actions) : null)
+  if ((shown !== null) !== morph.current.shown) morph.current = { shown: shown !== null, changedAt: performance.now() }
+
+  function clear() {
+    setQuery('')
+    setCard(null)
+    input.current?.focus()
+  }
 
   function move(delta: number | 'first' | 'last') {
     if (items.length === 0) return
@@ -216,8 +239,14 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    // With a card open the request is settled; the card owns the keys.
-    if (card) return
+    // With a card showing, the arrows are the card's; Enter steps into it, to its fields and buttons.
+    if (shown) {
+      if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+        event.preventDefault()
+        panel.current?.querySelector<HTMLElement>('[data-slot=request-card-slot]')?.focus()
+      }
+      return
+    }
     // Esc is Radix's: it closes and returns focus. Everything else is the list's.
     if (event.key === 'ArrowDown') {
       event.preventDefault()
@@ -247,10 +276,16 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
         <DialogPrimitive.Content
           ref={panel}
           data-slot="command-palette"
-          onOpenAutoFocus={() => {
+          onOpenAutoFocus={(event) => {
             // Radix mounts the content a render after `open`; this is the first moment it is laid out.
             growFromAnchor()
             returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+            // Radix would select the text it focuses, and the next key would replace what the field
+            // handed over. The cursor goes after it instead, so typing carries on.
+            event.preventDefault()
+            const field = input.current
+            field?.focus()
+            field?.setSelectionRange(field.value.length, field.value.length)
           }}
           onCloseAutoFocus={(event) => {
             // The palette has no trigger of its own, so Radix has nowhere to send focus back to.
@@ -282,7 +317,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               <input
                 type="text"
                 role="combobox"
-                aria-expanded={!card}
+                ref={input}
+                aria-expanded={!shown}
                 aria-controls={listboxId}
                 aria-autocomplete="list"
                 aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
@@ -291,13 +327,24 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
                 autoComplete="off"
                 spellCheck={false}
                 value={query}
-                readOnly={card !== null}
-                onChange={(event) => setQuery(event.target.value)}
-                // Opened with text from the field, typing goes on after it.
-                onFocus={(event) => event.currentTarget.setSelectionRange(query.length, query.length)}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  // Editing what a chosen card answers drops it; the text decides again.
+                  setCard(null)
+                }}
                 onKeyDown={onKeyDown}
                 className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
               />
+              {query && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  aria-label={t('shell.palette.clear')}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-(--duration-fade) hover:bg-(--neutral-6) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              )}
               <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>
             </div>
             <div
@@ -308,7 +355,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               className={cn(
                 'max-h-[min(380px,55vh)] overflow-y-auto p-2',
                 // A card takes the list's place; the panel eases from the list's height to the card's.
-                card !== null && 'hidden'
+                // Coming back, the list fades in (an animation restarts when `hidden` comes off).
+                shown !== null ? 'hidden' : 'animate-in fade-in-0 duration-(--duration-fade)'
               )}
             >
               {sections.length === 0 &&
@@ -359,8 +407,8 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
                 </div>
               ))}
             </div>
-            {card}
-            <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', card !== null && 'hidden')} aria-hidden="true">
+            {shown}
+            <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', shown !== null && 'hidden')} aria-hidden="true">
               <span>↑↓ {t('shell.palette.hint.select')}</span>
               <span>↵ {t('shell.palette.hint.open')}</span>
               <span>esc {t('shell.palette.hint.close')}</span>

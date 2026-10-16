@@ -67,12 +67,24 @@ describe("command bar", () => {
     fireEvent.click(submit)
     const slot = screen.getByRole("region", { name: "Opgave" })
     expect(slot.textContent).toContain("vis forfaldne")
-    expect(input.readOnly).toBe(true)
     expect(document.activeElement).toBe(slot)
 
     fireEvent.click(screen.getByRole("button", { name: "Annuller" }))
     expect(screen.queryByRole("region")).toBeNull()
+    expect(input.value).toBe("")
+    expect(document.activeElement).toBe(input)
+  })
+
+  it("keeps the text editable with a card open: editing lets go of the card, and Ryd empties it", () => {
+    const { input, submit } = renderBar()
+    fireEvent.change(input, { target: { value: "vis forfaldne" } })
+    fireEvent.click(submit)
     expect(input.readOnly).toBe(false)
+
+    fireEvent.change(input, { target: { value: "vis forfald" } })
+    expect(screen.queryByRole("region")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Ryd" }))
     expect(input.value).toBe("")
     expect(document.activeElement).toBe(input)
   })

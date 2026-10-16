@@ -32,6 +32,7 @@ export const daNavMessages = {
   "shell.palette.title": "Søg og kommandoer",
   "shell.palette.description": "Søg efter sider og handlinger. Brug piletasterne og Enter.",
   "shell.palette.inputLabel": "Søg efter sider og handlinger",
+  "shell.palette.clear": "Ryd",
   "shell.palette.empty": "Ingen resultater for “{query}”",
   "shell.palette.searching": "Søger…",
   "shell.palette.groupNavigate": "Gå til",
