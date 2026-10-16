@@ -199,6 +199,16 @@ class CiPathsTest
     assert_equal 'test "$CI_RESULT" = success', verify['run']
   end
 
+  def test_docs_check_runs_before_classification
+    steps = WORKFLOWS.fetch('ci').fetch('jobs').fetch('paths').fetch('steps')
+    index = steps.index { |step| step['run'] == 'node scripts/check-docs' }
+    assert index, 'Documentation versions must be checked in the paths job'
+    step = steps.fetch(index)
+    refute step.key?('if')
+    refute step.key?('continue-on-error')
+    assert index < steps.index { |candidate| candidate['id'] == 'classify' }
+  end
+
   def classify(workflow, event, paths, diff_failure: false)
     Dir.mktmpdir('ci-paths-') do |dir|
       File.binwrite("#{dir}/fixture", paths.map { |path| "#{path}\0" }.join)

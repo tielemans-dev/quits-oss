@@ -33,8 +33,8 @@ or browser scenario is skipped. Development and production Docker configuration 
   assigned these tags to that source revision at verification time.
 
 The ECR and Docker Hub raw `16-alpine` indexes matched byte for byte after removing the command's
-trailing newline, and hashed to the pinned digest. Local execution reported PostgreSQL 16.15 and
-Alpine 3.24.2. A disposable fixture verified committed rows and rollback. Browser preparation checks
+trailing newline, and hashed to the pinned digest. Local execution reported `PostgreSQL 16.15` and
+`Alpine 3.24.2`. A disposable fixture verified committed rows and rollback. Browser preparation checks
 local image ID equality and the exact PostgreSQL version before the shared runner starts.
 
 ## Updating

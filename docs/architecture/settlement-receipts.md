@@ -85,7 +85,7 @@ time, type, actor kind/ID, command ID and the exact JSON payload. The receipt's 
 inside its original event. Consumers deduplicate by event ID, retain consumed versions, and follow
 the existing event-consumer acknowledgement protocol for incremental delivery.
 
-| Event, version 1 | Meaning |
+| Event, `schemaVersion: 1` | Meaning |
 | --- | --- |
 | `settlement.receipt_recorded` | Gross customer funding, net receipt and processor fee, each separately named in receipt currency. Includes customer, payment date, reference and fee evidence. |
 | `settlement.allocated` | Apply receipt funding to invoice debt. Includes receipt ID, payment ID, both currency quantities, remaining debt and conversion evidence. No cash receipt or invoice revenue is created again. |

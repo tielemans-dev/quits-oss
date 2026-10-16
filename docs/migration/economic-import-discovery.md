@@ -28,8 +28,8 @@ No single API holds everything. A full read needs three.
 | Surface | Version (8 Oct 2026) | Used for | Notes |
 | --- | --- | --- | --- |
 | REST, `restapi.e-conomic.com` | none; the vendor says it offers no versioning | customers, booked invoices and credit notes, original PDFs, accounting years, control totals | Hypermedia JSON. Follow the links the API returns instead of building URLs. |
-| BookedEntries, `apis.e-conomic.com/bookedEntriesapi/v6.0.0/` | 6.0.0 | customer ledger lines with `remainder`, and matched pairs | Matched-pair retrieval arrived in 4.0.0 (February 2026); `remainder` in 3.2.0 and filterable in 3.3.0. |
-| Documents, `apis.e-conomic.com/documentsapi/v4.0.1/` | 4.0.1 | documents attached to vouchers | Keyed on accounting year and voucher number. |
+| BookedEntries, `apis.e-conomic.com/bookedEntriesapi/v6.0.0/` | `6.0.0` | customer ledger lines with `remainder`, and matched pairs | Matched-pair retrieval arrived in `4.0.0` (February 2026); `remainder` in `3.2.0` and filterable in `3.3.0`. |
+| Documents, `apis.e-conomic.com/documentsapi/v4.0.1/` | `4.0.1` | documents attached to vouchers | Keyed on accounting year and voucher number. |
 
 The version is part of the OpenAPI URL path and the vendor reserves the right to deprecate versions. The extractor must pin the three versions, record them in the import provenance (the draft contract does), and stop on a response that does not match the pinned shape rather than tolerate drift.
 
@@ -48,8 +48,8 @@ All **documented**, except where marked.
 | Customers | `/customers` | SuperUser, Sales |
 | Booked invoices and credit notes | `/invoices/booked`, `/invoices/booked/:n` | SuperUser, Sales |
 | Accounting years | `/accounting-years` | SuperUser, Bookkeeping |
-| Ledger entries and matched pairs | BookedEntries v6 | SuperUser, Bookkeeping |
-| Attached documents | Documents v4 | SuperUser, Bookkeeping |
+| Ledger entries and matched pairs | BookedEntries `v6` | SuperUser, Bookkeeping |
+| Attached documents | Documents `v4` | SuperUser, Bookkeeping |
 | Booked-invoice PDF | `/invoices/booked/:n/pdf` | **not listed** on the permissions page; unverified for Sales |
 
 Consequences:
@@ -106,7 +106,7 @@ Derivation dependencies may reference mapped output fields or explicit input row
 | Document: kind (invoice or credit note) | sign of `grossAmount` | derived: the vendor documents negative totals for credit notes; there is no type field |
 | Document: voucher, ledger line | BookedEntries `voucherNumber`, `entryNumber` | executed (demo) |
 | Document: accounting year | entry date inside `/accounting-years` bounds | derived; BookedEntries has no year field; assumption: a voucher sits in the year of its date |
-| Document: attached files | Documents v4 `/AttachedDocuments` | executed (demo); supplementary evidence, not the invoice PDF |
+| Document: attached files | Documents `v4` `/AttachedDocuments` | executed (demo); supplementary evidence, not the invoice PDF |
 | Document: residual | REST `remainder`, cross-checked with the ledger line's `remainder` | executed (demo) |
 | Ledger item: payments, opening balances, manual invoices | BookedEntries `type`, `amount`, `amountInBaseCurrency`, `currencyCode`, `date`, `remainder` | executed (demo) |
 | Unapplied cash | a payment entry whose `remainder` is non-zero | derived; no separate resource |

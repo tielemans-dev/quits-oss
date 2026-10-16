@@ -34,6 +34,8 @@ jobs:
       # Cheap and dependency-free, so it also covers PRs that only change COPY.md or the copy rules.
       - name: Copy gates
         run: node scripts/i18n-copy-check.mjs
+      - name: Documentation versions
+        run: node scripts/check-docs
       - name: Classify documentation-only PRs
         id: classify
         env:

@@ -30,8 +30,8 @@ Phase A emits no FX or customer-credit lines. Those policies need position event
 
 | Event | Posting |
 | --- | --- |
-| `invoice.issued` v1, sale | Debit debtor at gross base. Credit revenue at net base and output VAT at tax base per group. Credit payable rounding for positive rounding, debit it for negative rounding. |
-| `credit_note.issued` v2, postable sale correction | Debit each historical revenue, VAT and rounding component per group when positive, credit it when negative. Credit debtor at `debtorDischarge.carryingBase`. No FX line. |
+| `invoice.issued` `v1`, sale | Debit debtor at gross base. Credit revenue at net base and output VAT at tax base per group. Credit payable rounding for positive rounding, debit it for negative rounding. |
+| `credit_note.issued` `v2`, postable sale correction | Debit each historical revenue, VAT and rounding component per group when positive, credit it when negative. Credit debtor at `debtorDischarge.carryingBase`. No FX line. |
 
 Every component is signed. An intended debit of a negative amount becomes a credit of its
 absolute value; an intended credit of a negative amount becomes a debit. No signed component
@@ -47,7 +47,7 @@ The named cases all have fixtures in `domain/accounting/__tests__/fixtures.ts` a
 | Code | Cases |
 | --- | --- |
 | `base_valuation_unknown` | Missing or unknown valuation; unknown frozen base components or debtor carrying value. |
-| `not_postable` | Sparse v1 credit, unsupported version or currency, invalid/incomplete payload, `postable: false`, or any `incompleteReason`. |
+| `not_postable` | Sparse `v1` credit, unsupported version or currency, invalid/incomplete payload, `postable: false`, or any `incompleteReason`. |
 | `tax_point_review_required` | Earlier or null invoice supply date, inherited review, `assessment_required`, `none`, or an `invoice_issued` tax point date different from issue date. |
 | `unsupported_treatment_combination` | Mixed out-of-scope; unclassified zero without explicit frozen non-registration, zero-rated or domestic reverse charge; standard at rate zero; nonstandard at nonzero rate; missing or invalid evidence, identifiers or statement; invalid/unavailable VIES; export without reference or outside-EU buyer country; exemption without reason text. |
 | `purpose_not_supported` | Prepayment invoice or a credit correcting a purpose other than sale. |
