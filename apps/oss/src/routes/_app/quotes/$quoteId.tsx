@@ -1,3 +1,4 @@
+import { handledMutationError } from "../../../lib/query-refresh"
 import { previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { draftVatEvidenceSchema, type DraftVatEvidence } from "@quits/contracts/vat"
@@ -332,7 +333,7 @@ function QuoteDetailPage() {
       const result = await trpc.quotes.send.mutate({
         id: quote.id,
         allowSendWithoutEmail,
-      })
+      }, handledMutationError)
       await reloadQuote()
       setSendWithoutEmailOpen(false)
       if (result.emailSkipReason) {
@@ -359,7 +360,7 @@ function QuoteDetailPage() {
     setError(null)
     setActing(true)
     try {
-      await trpc.quotes.resendEmail.mutate({ id: quote.id })
+      await trpc.quotes.resendEmail.mutate({ id: quote.id }, handledMutationError)
       await reloadQuote()
     } catch (err) {
       setError(

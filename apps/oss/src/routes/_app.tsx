@@ -1,3 +1,4 @@
+import { MutationErrors } from "../components/query-state"
 import { createFileRoute, redirect, Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect } from 'react'
 import { getAppLayoutSession } from '../lib/auth-session'
@@ -111,7 +112,7 @@ function AppLayoutContent() {
       {hasOrganization ? <AppSidebar /> : null}
       <TrialAccessProvider>
         <AppMain sidebar={hasOrganization} banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
-          {organizationReady ? <TrialRouteGate pathname={pathname}><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
+          {organizationReady ? <TrialRouteGate pathname={pathname}><MutationErrors /><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
         </AppMain>
       </TrialAccessProvider>
       {hasOrganization && organizationReady ? <><ReminderTracker /><UndoToaster /></> : null}

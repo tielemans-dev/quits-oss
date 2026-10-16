@@ -1,3 +1,4 @@
+import { handledMutationError } from "../../../lib/query-refresh"
 import { FormErrorSummary } from "../../../components/form-error-summary"
 import { invoiceQuantityInput, localizeInvoiceQuantity, normalizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { retainDraftValuation, readDraftValuation, clearDraftValuation } from "../../../lib/invoice-issuance-draft"
@@ -563,7 +564,7 @@ function InvoiceDetailPage() {
         allowSendWithoutEmail,
         acknowledgeDisputed,
         ...issuanceInput(issuance, invoice.currency, orgSettings.baseCurrency),
-      })
+      }, handledMutationError)
       clearDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency)
       await reloadInvoice()
       setSendWithoutEmailOpen(false)
@@ -593,7 +594,7 @@ function InvoiceDetailPage() {
     setFieldIssues([])
     setActing(true)
     try {
-      await trpc.invoices.resendEmail.mutate({ id: invoice.id, reviewedRecipient: invoice.recipientVersion })
+      await trpc.invoices.resendEmail.mutate({ id: invoice.id, reviewedRecipient: invoice.recipientVersion }, handledMutationError)
       await reloadInvoice()
     } catch (err) {
       const issues = invoiceFieldIssues(err)

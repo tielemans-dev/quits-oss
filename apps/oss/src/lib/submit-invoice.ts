@@ -1,3 +1,4 @@
+import { handledMutationError } from "./query-refresh"
 import type { DocumentLineInput } from "@quits/contracts/invoices"
 import type { DraftVatEvidence } from "@quits/contracts/vat"
 
@@ -68,7 +69,7 @@ export function submitInvoice(
     beforeSend: options.beforeSend,
     send: async (id) => {
       const input = { id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) }
-      const result = options.holdSend ? await trpc.jobs.sendInvoiceLater.mutate(input).then(() => ({})) : await trpc.invoices.send.mutate(input)
+      const result = options.holdSend ? await trpc.jobs.sendInvoiceLater.mutate(input).then(() => ({})) : await trpc.invoices.send.mutate(input, handledMutationError)
       clearDraftValuation(id, currency, baseCurrency)
       return result
     },

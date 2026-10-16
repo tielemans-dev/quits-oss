@@ -35,14 +35,14 @@ function DashboardPage() {
     }).catch(() => {})
     return () => { cancelled = true }
   }, [isCloud])
-  const { load, refresh, retry } = useDashboardSummary()
+  const { load, retry } = useDashboardSummary()
   const { data: session } = useSession()
   const { can } = useShellPermissions()
   const suggest = useCallback((input: string, signal: AbortSignal) => suggestRequest(input, can, signal), [can])
   const recognize = useCallback(permittedRequest(recognizeRequest, can), [can])
   const [newInvoiceId, setNewInvoiceId] = useState<string>()
-  // A card finished something over this page (an invoice was sent): show it in the figures and lists.
-  useEffect(() => onRequestDone(done => { if (done.kind !== "invoice") return; setNewInvoiceId(done.invoiceId); void refresh() }), [refresh])
+  // Retain the completed invoice highlight; the mutation subscription refreshes figures.
+  useEffect(() => onRequestDone(done => { if (done.kind !== "invoice") return; setNewInvoiceId(done.invoiceId) }), [])
 
   if (load.status === "loading") {
     return (
@@ -70,7 +70,6 @@ function DashboardPage() {
       summary={load.summary}
       sendReminder={sendReminder}
       sendReminderBatch={sendReminderBatch}
-      onRemindersSettled={refresh}
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
       commandBar={<CommandBar recognize={recognize} suggest={suggest} />}

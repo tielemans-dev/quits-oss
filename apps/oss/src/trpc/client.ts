@@ -5,6 +5,7 @@ import superjson from "superjson"
 import { getRequestOrganizationId, markOrganizationChanged } from "../lib/active-organization"
 import { isOrganizationChangedError, organizationRequestHeaders } from "../lib/organization-request"
 import type { AppRouter } from "./router"
+import { mayPartiallyCommit, notifyMutation, reportMutationError } from "../lib/query-refresh"
 
 function getBaseUrl() {
   if (typeof window !== "undefined") return ""
@@ -60,11 +61,34 @@ export type TrpcClientOptions = {
   fetch?: typeof fetch
 }
 
+/** All UI mutation paths share the same refresh/error policy, including command-bar actions. */
+export function queryRefreshLink<TRouter extends AnyRouter>(): TRPCLink<TRouter> {
+  return () => ({ op, next }) => observable(observer => {
+    const organizationId = operationOrganizationId(op.context)
+    return next(op).subscribe({
+      next: value => {
+        if (op.type === "mutation") notifyMutation(op.path, organizationId)
+        observer.next(value)
+      },
+      error: error => {
+        if (op.type === "mutation") {
+          if (!op.context.handlesMutationError) reportMutationError(error, organizationId)
+          // Sending can persist issuance before email delivery fails.
+          if (mayPartiallyCommit(op.path)) notifyMutation(op.path, organizationId)
+        }
+        observer.error(error)
+      },
+      complete: () => observer.complete(),
+    })
+  })
+}
+
 export function createAppTrpcClient(options: TrpcClientOptions = {}) {
   return createTRPCClient<AppRouter>({
     links: [
       organizationChangedLink<AppRouter>(),
       organizationStampLink<AppRouter>(),
+      queryRefreshLink<AppRouter>(),
       httpBatchLink({
         url: options.url ?? `${getBaseUrl()}/api/trpc`,
         transformer: superjson,
