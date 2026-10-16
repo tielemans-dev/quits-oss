@@ -43,10 +43,20 @@ export type ManagedDomainRejectionReason = "invalid_domain" | "not_found" | "con
 
 /** Expected domain rejection. Providers translate their errors into these core-owned reasons. */
 export class ManagedDomainRejectedError extends Error {
+  readonly code = "MANAGED_DOMAIN_REJECTED"
+
   constructor(public readonly reason: ManagedDomainRejectionReason) {
     super("Managed domain request rejected")
     this.name = "ManagedDomainRejectedError"
   }
+}
+
+/** Recognizes the contract across package copies, but rejects unknown reason codes. */
+export function isManagedDomainRejection(error: unknown): error is Pick<ManagedDomainRejectedError, "code" | "reason"> {
+  return typeof error === "object" && error !== null &&
+    "code" in error && error.code === "MANAGED_DOMAIN_REJECTED" &&
+    "reason" in error &&
+    (error.reason === "invalid_domain" || error.reason === "not_found" || error.reason === "conflict")
 }
 
 /** Methods may throw ManagedDomainRejectedError; all other failures remain server errors. */

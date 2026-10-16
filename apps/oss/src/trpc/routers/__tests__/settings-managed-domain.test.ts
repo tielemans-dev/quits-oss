@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import superjson from "superjson"
+import { appLogger } from "../../../lib/observability"
 import {
   ManagedDomainRejectedError,
+  isManagedDomainRejection,
   resetRuntimeServices,
   setRuntimeServices,
 } from "@quits/oss/runtime/services"
@@ -66,20 +68,22 @@ async function request(operation: typeof operations[number]) {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.spyOn(appLogger, "warn").mockImplementation(() => {})
   db.upsert.mockResolvedValue({ ...stored })
   db.update.mockImplementation(async ({ data }) => ({ ...stored, ...data }))
   const result = {
     providerId: "domain-1", domain: "billing.example.com", status: "verified",
     records: [], failureReason: null, verifiedAt: new Date(),
   }
-  provider.createDomain.mockResolvedValue(result)
+  provider.createDomain.mockImplementation(async ({ domain }) => ({ ...result, domain }))
   provider.refreshDomain.mockResolvedValue(result)
   setRuntimeServices({ managedDocumentDomainProvider: provider })
 })
-afterEach(() => resetRuntimeServices())
+afterEach(() => { resetRuntimeServices(); vi.restoreAllMocks() })
 
 describe.each(operations)("$path via $method", (operation) => {
-  it.each(rejections.flatMap(rejection => ["en", "da"].map(language => ({
+  it.each(rejections.filter(rejection => operation.method !== "deleteDomain" || rejection.reason !== "not_found")
+    .flatMap(rejection => ["en", "da"].map(language => ({
     ...rejection, language, locale: language === "da" ? "da-DK" : "en-US",
     message: language === "da" ? rejection.da : rejection.en,
   }))))("returns a safe localized $status for $reason in $language", async (rejection) => {
@@ -100,6 +104,9 @@ describe.each(operations)("$path via $method", (operation) => {
     expect(JSON.stringify(body)).not.toContain("private provider")
     expect(provider[operation.method]).toHaveBeenCalledOnce()
     expect(db.update).not.toHaveBeenCalled()
+    expect(appLogger.warn).toHaveBeenCalledExactlyOnceWith("settings.managed_domain_rejected", {
+      organizationId: "org", operation: operation.method, reason: rejection.reason,
+    })
     if (operation.method === "deleteDomain") expect(provider.createDomain).not.toHaveBeenCalled()
   })
 
@@ -112,13 +119,32 @@ describe.each(operations)("$path via $method", (operation) => {
     expect(db.update).not.toHaveBeenCalled()
   })
 
-  it("does not classify an untyped provider error by its name or reason", async () => {
-    provider[operation.method].mockRejectedValue(Object.assign(new Error("Unexpected failure"), {
-      name: "ManagedDomainRejectedError", reason: "conflict",
-    }))
-    expect((await request(operation)).status).toBe(500)
+  it("recognizes a branded rejection from another package copy", async () => {
+    const error = { code: "MANAGED_DOMAIN_REJECTED", reason: "conflict", message: "private provider response" }
+    expect(error).not.toBeInstanceOf(ManagedDomainRejectedError)
+    expect(isManagedDomainRejection(error)).toBe(true)
+    provider[operation.method].mockRejectedValue(error)
+    const response = await request(operation)
+    expect(response.status).toBe(409)
+    expect(JSON.stringify(await response.json())).not.toContain("private provider")
     expect(provider[operation.method]).toHaveBeenCalledOnce()
     expect(db.update).not.toHaveBeenCalled()
+  })
+
+  it("preserves a branded rejection with an unknown reason as a plain 500", async () => {
+    const error = Object.assign(new ManagedDomainRejectedError("conflict"), {
+      reason: "future_reason",
+    })
+    expect(isManagedDomainRejection(error)).toBe(false)
+    provider[operation.method].mockRejectedValue(error)
+    const response = await request(operation)
+    expect(response.status).toBe(500)
+    expect((await response.json()).error.json).toMatchObject({
+      message: "Managed domain request rejected", data: { code: "INTERNAL_SERVER_ERROR" },
+    })
+    expect(provider[operation.method]).toHaveBeenCalledOnce()
+    expect(db.update).not.toHaveBeenCalled()
+    expect(appLogger.warn).not.toHaveBeenCalled()
   })
 
   it("allows retry after a rejection without changing settings on failure", async () => {
@@ -132,6 +158,22 @@ describe.each(operations)("$path via $method", (operation) => {
       operation.path === "disableDocumentSendingDomain" ? "not_configured" : "verified",
     )
   })
+})
+
+it.each(["configure", "disable"])("recovers via %s after deleting the old domain and rejecting its replacement", async action => {
+  provider.deleteDomain.mockResolvedValueOnce(undefined).mockRejectedValue(new ManagedDomainRejectedError("not_found"))
+  provider.createDomain.mockRejectedValueOnce(new ManagedDomainRejectedError("invalid_domain"))
+  const configure = operations[1]
+  expect((await request(configure)).status).toBe(400)
+  expect(provider.deleteDomain).toHaveBeenCalledOnce()
+  expect(provider.createDomain).toHaveBeenCalledOnce()
+  expect(db.update).not.toHaveBeenCalled()
+
+  const response = await request(action === "configure" ? configure : operations[3])
+  expect(response.status).toBe(200)
+  expect((await response.json()).result.data.json.requestedDomain).toBe(action === "configure" ? "new.example.com" : null)
+  expect(provider.deleteDomain).toHaveBeenNthCalledWith(2, { providerId: "domain-1", domain: stored.documentSendingDomain })
+  expect(db.update).toHaveBeenCalledOnce()
 })
 
 it.each(operations.filter(operation => operation.method !== "deleteDomain"))(

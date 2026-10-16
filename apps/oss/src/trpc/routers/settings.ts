@@ -38,7 +38,11 @@ import { appLogger } from "../../lib/observability"
 import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
-import { getManagedDocumentDomainProvider, getStripeConnectSettingsHandler, ManagedDomainRejectedError } from "../../lib/runtime/services"
+import {
+  getManagedDocumentDomainProvider,
+  getStripeConnectSettingsHandler,
+  isManagedDomainRejection,
+} from "../../lib/runtime/services"
 import {
   stripeConnectRedirectUrl,
   stripeConnectSettingsActions,
@@ -112,16 +116,37 @@ const companyLogoSchema = z
     "Company logo must be an image URL or uploaded image data"
   )
 
-/** Only typed provider rejections become client errors. Never forward provider diagnostics. */
-async function runManagedDomainOperation<T>(operation: () => Promise<T>, locale: string | null) {
+type ManagedDomainContext = { organizationId: string; locale: string | null }
+
+/** Only branded provider rejections become client errors. Never forward provider diagnostics. */
+function runManagedDomainOperation(
+  operation: "deleteDomain",
+  context: ManagedDomainContext,
+  execute: () => Promise<void>,
+): Promise<void>
+function runManagedDomainOperation<T>(
+  operation: "createDomain" | "refreshDomain",
+  context: ManagedDomainContext,
+  execute: () => Promise<T>,
+): Promise<T>
+async function runManagedDomainOperation<T>(
+  operation: "createDomain" | "refreshDomain" | "deleteDomain",
+  context: ManagedDomainContext,
+  execute: () => Promise<T>,
+) {
   try {
-    return await operation()
+    return await execute()
   } catch (error) {
-    if (!(error instanceof ManagedDomainRejectedError)) throw error
+    if (!isManagedDomainRejection(error)) throw error
+    appLogger.warn("settings.managed_domain_rejected", {
+      organizationId: context.organizationId, operation, reason: error.reason,
+    })
+    // A previous replacement attempt may already have removed the saved provider domain.
+    if (operation === "deleteDomain" && error.reason === "not_found") return
     const codes = { invalid_domain: "BAD_REQUEST", not_found: "NOT_FOUND", conflict: "CONFLICT" } as const
     throw new TRPCError({
       code: codes[error.reason],
-      message: translate(`settings.documentSending.error.${error.reason}`, locale),
+      message: translate(`settings.documentSending.error.${error.reason}`, context.locale),
     })
   }
 }
@@ -646,20 +671,20 @@ export const settingsRouter = router({
       })
 
       const { providerId, domain } = readDocumentSendingDomainState(current)
+      const domainContext = { organizationId: ctx.organizationId, locale: current.locale }
       if (
         providerId &&
         domain &&
         domain !== validation.normalizedDomain
       ) {
-        await runManagedDomainOperation(() => provider.deleteDomain({
-          providerId,
-          domain,
-        }), current.locale)
+        await runManagedDomainOperation("deleteDomain", domainContext, () =>
+          provider.deleteDomain({ providerId, domain })
+        )
       }
 
-      const created = await runManagedDomainOperation(() => provider.createDomain({
-        domain: validation.normalizedDomain,
-      }), current.locale)
+      const created = await runManagedDomainOperation("createDomain", domainContext, () =>
+        provider.createDomain({ domain: validation.normalizedDomain })
+      )
 
       const settings = await prisma.orgSettings.update({
         where: { organizationId: ctx.organizationId },
@@ -697,6 +722,7 @@ export const settingsRouter = router({
         create: { organizationId: ctx.organizationId },
       })
       const { providerId, domain } = readDocumentSendingDomainState(current)
+      const domainContext = { organizationId: ctx.organizationId, locale: current.locale }
 
       if (!providerId || !domain) {
         throw new TRPCError({
@@ -705,10 +731,9 @@ export const settingsRouter = router({
         })
       }
 
-      const refreshed = await runManagedDomainOperation(() => provider.refreshDomain({
-        providerId,
-        domain,
-      }), current.locale)
+      const refreshed = await runManagedDomainOperation("refreshDomain", domainContext, () =>
+        provider.refreshDomain({ providerId, domain })
+      )
 
       const settings = await prisma.orgSettings.update({
         where: { organizationId: ctx.organizationId },
@@ -740,12 +765,12 @@ export const settingsRouter = router({
         create: { organizationId: ctx.organizationId },
       })
       const { providerId, domain } = readDocumentSendingDomainState(current)
+      const domainContext = { organizationId: ctx.organizationId, locale: current.locale }
 
       if (provider.supported && providerId && domain) {
-        await runManagedDomainOperation(() => provider.deleteDomain({
-          providerId,
-          domain,
-        }), current.locale)
+        await runManagedDomainOperation("deleteDomain", domainContext, () =>
+          provider.deleteDomain({ providerId, domain })
+        )
       }
 
       const settings = await prisma.orgSettings.update({
