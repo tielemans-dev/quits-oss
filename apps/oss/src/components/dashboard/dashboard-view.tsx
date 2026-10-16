@@ -41,10 +41,11 @@ export function DashboardHeader({ subtitle }: { subtitle?: string }) {
 }
 
 /**
- * The dashboard of a loaded summary. Three questions, in the order a person asks them: how much
- * money is on its way (the blue card), what needs me today (attention), and is it going well (the
- * rest). The layout answers to the width of the content, not the window, since the sidebar takes
- * a share of it: one column on a phone, two when there is room, and the full 3:2 grid from 56rem.
+ * The dashboard of a loaded summary. Three questions, in the order a person asks them: what needs
+ * me today (attention, most urgent first), how much money is on its way (Udestående), and is it
+ * going well (the rest). The layout answers to the width of the content, not the window, since the
+ * sidebar takes a share of it: one column on a phone, two when there is room, and the full 3:2
+ * grid from 56rem.
  */
 export function DashboardView({
   summary,
@@ -54,7 +55,6 @@ export function DashboardView({
   onRemindersSettled,
   userName,
   commandBar,
-  morningCard,
   newInvoiceId,
 }: {
   summary: Summary
@@ -63,8 +63,6 @@ export function DashboardView({
   userName?: string | null
   /** The command bar, under the greeting. The page does not know how requests are answered. */
   commandBar?: ReactNode
-  /** Today at a glance, under the command bar. It reads its own lists; the page only places it. */
-  morningCard?: ReactNode
   sendReminder: SendReminder
   /** Queues a reminder job for several invoices at once; the tracker toast follows it. */
   sendReminderBatch?: (invoiceIds: string[]) => Promise<unknown>
@@ -97,7 +95,6 @@ export function DashboardView({
         className={commandBar ? "mb-4" : undefined}
       />
       {commandBar ? <div className="mb-6">{commandBar}</div> : null}
-      {morningCard}
 
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.
@@ -107,12 +104,25 @@ export function DashboardView({
       ) : (
         <div className="@container" data-state={state}>
           {/*
-            Two columns from 56rem: money on the left (the blue card, what needs me), the pipeline
-            and the calm story on the right. Below that the columns dissolve (`contents`), so the
-            cards are one flow in reading order: card, attention, incoming, chart, activity.
+            Two columns from 56rem: what needs me and the money owed on the left, the pipeline and
+            the calm story on the right. Below that the columns dissolve (`contents`), so the cards
+            are one flow in reading order: attention, Udestående, incoming, chart, activity.
           */}
           <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @4xl:items-start">
             <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">
+              {state !== "getting-started" || summary.attention.length > 0 ? (
+                <AttentionList
+                  className="@2xl:col-span-2 @4xl:col-span-1"
+                  items={summary.attention}
+                  reminders={reminders}
+                  onRemind={remind}
+                  onRemindAll={
+                    sendReminderBatch
+                      ? (ids) => void sendReminderBatch(ids).catch(() => {}).finally(() => onRemindersSettled?.())
+                      : undefined
+                  }
+                />
+              ) : null}
               {state === "getting-started" ? (
                 <GettingStarted
                   drafts={summary.drafts}
@@ -126,18 +136,6 @@ export function DashboardView({
                   className="@2xl:col-span-2 @4xl:col-span-1"
                 />
               )}
-              {state !== "getting-started" || summary.attention.length > 0 ? (
-                <AttentionList
-                  items={summary.attention}
-                  reminders={reminders}
-                  onRemind={remind}
-                  onRemindAll={
-                    sendReminderBatch
-                      ? (ids) => void sendReminderBatch(ids).catch(() => {}).finally(() => onRemindersSettled?.())
-                      : undefined
-                  }
-                />
-              ) : null}
             </div>
 
             <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">

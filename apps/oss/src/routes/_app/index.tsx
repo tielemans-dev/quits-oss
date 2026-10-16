@@ -5,7 +5,6 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DashboardView, DashboardHeader } from "../../components/dashboard/dashboard-view"
 import { DashboardError, DashboardSkeleton } from "../../components/dashboard/states"
 import { useDashboardSummary } from "../../components/dashboard/use-dashboard-summary"
-import { MorningCard } from "../../components/dashboard/morning-card"
 import { suggestRequest } from "../../components/command-bar/suggest-request"
 import { CommandBar } from "../../components/command-bar/command-bar"
 import { onRequestDone } from "../../components/command-bar/request-events"
@@ -74,7 +73,6 @@ function DashboardPage() {
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
       commandBar={<CommandBar recognize={recognize} suggest={suggest} onSearch={(from, query) => openPaletteFrom({ from, query })} />}
-      morningCard={<MorningCard canSendReminders={can("invoice:send")} />}
     />
   )
 }

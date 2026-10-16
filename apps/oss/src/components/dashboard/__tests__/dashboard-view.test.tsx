@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@tanstack/react-router", () => ({
@@ -112,10 +112,11 @@ describe("with money", () => {
     expect(hero.querySelector("[data-slot=amount]")!.getAttribute("data-rule")).toBe("single")
   })
 
-  it("says the overdue amount, the count and the age as a quiet second line", () => {
-    renderView(activeSummary())
-    expect(screen.getByText(/8\.750,00\skr\. forfaldent · 1 faktura/)).toBeTruthy()
-    expect(screen.getByText(/Den ældste er 14 dage over tid/)).toBeTruthy()
+  it("says the overdue amount once, in the split, and leaves the age to the attention list", () => {
+    const { container } = renderView(activeSummary())
+    const hero = container.querySelector("[data-slot=dashboard-hero]")!
+    expect(hero.textContent!.match(/8\.750,00\skr\./g)).toHaveLength(1)
+    expect(hero.textContent).not.toContain("Den ældste")
   })
 
   it("draws the second rule and says so when nothing is owed", () => {
@@ -528,67 +529,10 @@ describe("a refusal after the reminder is no longer allowed", () => {
   })
 })
 
-describe("the animated count-up", () => {
-  const frames: Array<(now: number) => void> = []
-  let clock = 0
-
-  function motion(reduce: boolean) {
-    frames.length = 0
-    clock = 0
-    vi.stubGlobal("matchMedia", (query: string) => ({ matches: reduce && query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }))
-    vi.stubGlobal("requestAnimationFrame", (callback: (now: number) => void) => frames.push(callback))
-    vi.stubGlobal("cancelAnimationFrame", () => {})
-    vi.spyOn(performance, "now").mockImplementation(() => clock)
-  }
-  const step = (to: number) =>
-    act(() => {
-      clock = to
-      const next = frames.splice(0)
-      next.forEach((frame) => frame(to))
-    })
-  const heroText = (container: HTMLElement) =>
-    container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!.textContent
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
-  it("starts at zero, passes through the middle, and lands exactly on the figure", () => {
-    motion(false)
+describe("the figure", () => {
+  it("is there at once, with no count-up", () => {
     const { container } = renderView(activeSummary())
-    expect(heroText(container)).toBe("0,00\u00a0kr.")
-    step(350)
-    const middle = heroText(container)
-    expect(middle).not.toBe("0,00\u00a0kr.")
-    expect(middle).not.toBe("20.000,00\u00a0kr.")
-    step(700)
-    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
-    // It does not start again when the summary reloads with another figure.
-    step(2000)
-    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
-  })
-
-  it("shows the figure at once under reduced motion", () => {
-    motion(true)
-    const { container } = renderView(activeSummary())
-    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
-    // No frame ever changes it (other frames, such as the double rule's, do not touch the figure).
-    step(100)
-    expect(heroText(container)).toBe("20.000,00\u00a0kr.")
-  })
-
-  it("jumps to a new figure after the first load instead of counting again", () => {
-    motion(false)
-    const view = renderView(activeSummary())
-    step(700)
-    const changed = activeSummary({ outstanding: total(bucket("DKK", "25000.00", 4)) })
-    view.rerender(
-      <I18nProvider locale="da-DK">
-        <DashboardView summary={changed} sendReminder={async () => ({ delivery: "sent" })} />
-      </I18nProvider>
-    )
-    expect(heroText(view.container)).toBe("25.000,00\u00a0kr.")
+    expect(container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!.textContent).toBe("20.000,00\u00a0kr.")
   })
 })
 
