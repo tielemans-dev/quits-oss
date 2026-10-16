@@ -105,6 +105,13 @@ Source-available invoicing for freelancers and small businesses.
    `bun run dev` now runs a preflight that applies Prisma migrations automatically.
    In `yaip-oss`, this command is pinned to `selfhost` distribution mode.
 
+   After the first server request, `bun run dev` also runs the scheduler. Each tick runs the
+   same tasks as `/api/cron/tick`, including due jobs and retries, then waits five seconds
+   before the next tick. It uses the dev server's database and email configuration, so use
+   an isolated local database and test email recipients. No cron secret is needed for this
+   in-process runner. Set `QUITS_DEV_SCHEDULER=false` to turn it off. Production builds,
+   tests, and direct Vite servers do not enable it; production still needs its cron trigger.
+
 6. If you want the full hosted simulation (cloud shell + cloud-configured OSS), run this from the workspace root:
 
    ```bash
