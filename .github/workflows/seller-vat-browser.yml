@@ -1,7 +1,7 @@
 name: Seller VAT browser evidence
 
 on:
-  # Optional, path-filtered evidence. Required CI browser checks cover merge groups.
+  # Optional evidence is path-filtered on PRs and also verifies merge-queue heads.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
@@ -10,15 +10,16 @@ on:
       - 'packages/contracts/**'
       - 'packages/shared/**'
       - 'bun.lock'
+  merge_group:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  # Unique non-PR groups also prevent replacement of pending main/tag runs.
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Preserve every main run, including pending runs; supersede the same non-main ref.
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   seller-vat-browser:

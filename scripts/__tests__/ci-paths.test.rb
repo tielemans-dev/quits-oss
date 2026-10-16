@@ -37,6 +37,7 @@ class CiPathsTest
     [File.basename(file, File.extname(file)), YAML.load_file(file)]
   end
   WORKFLOWS = ALL_WORKFLOWS.slice('ci', 'oss-boundary')
+  MERGE_GROUP_WORKFLOWS = %w[ci oss-boundary seller-vat-browser]
   DRAFT_GUARD = "github.event_name != 'pull_request' || !github.event.pull_request.draft"
   JOBS = { 'ci' => %w[lint typecheck unit runtime shared-browser-worker], 'oss-boundary' => %w[boundary-worker] }
 
@@ -91,19 +92,21 @@ class CiPathsTest
         assert_equal %w[opened synchronize reopened ready_for_review converted_to_draft], triggers['pull_request']['types']
       end
       assert_equal %w[merge_group pull_request push], triggers.keys.sort if WORKFLOWS.key?(name)
-      refute triggers.key?('merge_group') unless WORKFLOWS.key?(name)
+      assert_equal MERGE_GROUP_WORKFLOWS.include?(name), triggers.key?('merge_group'), name
       next unless triggers.key?('pull_request')
       group = workflow.fetch('concurrency').fetch('group')
       cancel = workflow.fetch('concurrency').fetch('cancel-in-progress')
       events = [
         ['pull_request', 'refs/pull/155/merge', true],
         ['push', 'refs/heads/main', false],
-        ['merge_group', 'refs/heads/gh-readonly-queue/main/pr-155', false],
-        ['push', 'refs/heads/topic', false],
-        ['push', 'refs/tags/v1.0.0', false],
-        ['release', 'refs/tags/v1.0.0', false],
+        ['merge_group', 'refs/heads/gh-readonly-queue/main/pr-155', true],
+        ['push', 'refs/heads/topic', true],
+        ['push', 'refs/tags/v1.0.0', true],
+        ['release', 'refs/tags/v1.0.0', true],
         ['workflow_dispatch', 'refs/heads/main', false],
+        ['workflow_dispatch', 'refs/heads/topic', true],
       ]
+      seen_groups = {}
       events.each do |event, ref, should_cancel|
         groups = [100, 101].map do |run_id|
           context = { 'github.workflow' => name, 'github.ref' => ref,
@@ -112,14 +115,40 @@ class CiPathsTest
           assert_equal should_cancel, expression(cancel, context), "#{event}/#{ref}"
           group.gsub(/\$\{\{.*?\}\}/) { |part| expression(part, context).to_s }
         end
-        # Unique non-PR groups prevent GitHub from replacing pending main/tag runs.
-        assert_equal(event == 'pull_request', groups.first == groups.last)
-        assert_equal "#{name}-#{event == 'pull_request' ? 155 : 100}", groups.first
+        # Preserve every main run, including pending runs; supersede the same non-main ref.
+        assert_equal should_cancel, groups.first == groups.last
+        assert_equal "#{name}-#{should_cancel ? ref : 100}", groups.first
+        if should_cancel
+          assert_equal ref, seen_groups.fetch(groups.first, ref)
+          seen_groups[groups.first] = ref
+        end
       end
     end
     assert_equal 'Shared product browser scenarios', WORKFLOWS['ci']['jobs']['shared-browser']['name']
     JOBS.each do |name, jobs|
       jobs.each { |job| assert_equal 'paths', WORKFLOWS[name]['jobs'][job]['needs'] }
+    end
+  end
+
+  def test_seller_vat_merge_group_and_manual_fallbacks
+    workflow = ALL_WORKFLOWS.fetch('seller-vat-browser')
+    assert_equal %w[merge_group pull_request workflow_dispatch], workflow.fetch(true).keys.sort
+    assert_empty Array(workflow.fetch(true).fetch('merge_group'))
+    job = workflow.fetch('jobs').fetch('seller-vat-browser')
+    checkout = job.fetch('steps').first.fetch('with').fetch('ref')
+    %w[pull_request merge_group workflow_dispatch].product(%w[baseline after]).each do |event, revision|
+      context = { 'github.event_name' => event, 'github.event.pull_request.draft' => false,
+                  'github.event.pull_request.base.sha' => event == 'pull_request' ? 'base' : nil,
+                  'github.event.pull_request.head.sha' => event == 'pull_request' ? 'head' : nil,
+                  'github.sha' => 'queue-or-dispatch-sha', 'matrix.revision' => revision }
+      assert expression(job.fetch('if'), context)
+      expected = event == 'pull_request' ? (revision == 'baseline' ? 'base' : 'head') : 'queue-or-dispatch-sha'
+      assert_equal expected, expression(checkout, context)
+      assert_equal(event == 'pull_request' ? 'head' : 'queue-or-dispatch-sha',
+                   expression(job.fetch('env').fetch('EVIDENCE_SHA'), context))
+    end
+    %w[qui52-baseline-capture qui52-current-capture].each do |name|
+      assert_equal ['workflow_dispatch'], ALL_WORKFLOWS.fetch(name).fetch(true).keys
     end
   end
 
@@ -230,6 +259,8 @@ class CiPathsTest
       [['.github/workflows/ci.yml'], true], [['.github/workflows/seller-vat-browser.yml'], true],
       [['.github/workflows/send-flow-browser.yml'], true], [['.github/scripts/ci-gate.mjs'], true],
       [['.github/scripts/fixture.md'], true],
+      [['.github/workflows/nested/workflow.yml'], true], [['scripts/notes.md'], true],
+      [['docs/guide.md', 'packages/contracts/notes.md'], true],
       [['docs/x.json', 'README.md', '.github/pull_request_template.md'], false],
       [['docs/x.json', 'README.md', '.github/workflows/ci.yml'], true],
       [['docs/x.json', 'README.md', '.github/workflows/ci.yml', 'apps/oss/src/x.ts'], true],
