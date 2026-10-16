@@ -344,7 +344,7 @@ for (const locale of ["da-DK", "en-US"]) {
       expect(invoice.totalGross.toNumber()).toBe(mixed ? (hosted ? 4500 : 4050) : 100)
       const token = signInvoicePaymentToken({ invoiceId: invoice.id, keyVersion: invoice.publicPaymentKeyVersion, scope: "invoice_payment" }, "qui62-browser-payment-test-secret")
       const expectedText = [locale === "da-DK" ? "CVR-nr. 12345674" : "CVR no. 12345674", "Testvej 1, 1000 København", "DK24256790", "Synthetic Buyer", `Synthetic service ${mixed ? 36 : 1}`,
-        ...(mixed && !hosted ? ["Synthetic health exemption evidence", translate("vat.reason.health", locale), locale === "da-DK" ? "Moms 0 %" : "Tax 0%"] : [])]
+        ...(mixed && !hosted ? ["Synthetic health exemption evidence", translate("pdf.vatStatement.exempt.health", locale), translate("pdf.vatRate", locale, { rate: "0" })] : [])]
       const assertPartiesAndVat = async () => {
         for (const value of expectedText) await expect(page.getByText(value, { exact: false }).first()).toBeVisible()
       }
@@ -411,8 +411,13 @@ for (const locale of ["da-DK", "en-US"]) {
       const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, dueDate: "2099-12-01", supplyDate: "2026-10-11", taxRate: 0, items, vatEvidence }, { actor })
       if (draft.status !== "completed") throw new Error(JSON.stringify(draft))
       const issued = await issueDocument({ kind: "invoice", actor, commandInput: { id: draft.result.id, allowSendWithoutEmail: true } })
+      const legalStatementKey = {
+        intra_community: "pdf.vatStatement.intra_community.goods",
+        export: "pdf.vatStatement.export.goods_outside_eu",
+        reverse_charge_domestic: "pdf.vatStatement.reverse_charge_domestic",
+      } as const
       const expectedText = ["12345674", "Testvej 1, 1000 København", "Synthetic Buyer", buyerVatId, statementText,
-        translate(`vat.treatment.${treatment}`, locale), translate(`vat.reason.${reasonCode}`, locale), locale === "da-DK" ? "Moms 0 %" : "Tax 0%"]
+        translate(legalStatementKey[treatment], locale), translate("pdf.vatRate", locale, { rate: "0" })]
       if (treatment === "reverse_charge_domestic") {
         expect(issued).toMatchObject({ status: "failed", error: { code: "evidence_incomplete", message: expect.stringContaining("reverse_charge_domestic is refused in Phase A") } })
         const unchanged = await prisma.invoice.findUniqueOrThrow({ where: { id: draft.result.id } })
