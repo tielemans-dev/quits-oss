@@ -137,8 +137,8 @@ attempt. Errors contain safe codes, never raw transport responses. The migration
 adds pinned request JSON and retry availability to this existing table.
 
 Before the first mapping attempt, `evidence` freezes the source money event,
-including line and document totals. A canonical hash also covers the current
-issued document's financial content, lines and issuance snapshot, excluding
+including line and document totals. A canonical hash sorts object keys by UTF-16
+code unit, independently of ICU locale, and covers the current issued document's financial content, lines and issuance snapshot, excluding
 payment/email status. Every retry checks this hash without remapping a pinned
 request. Changed source content or legacy attempts without evidence fail with
 `source_review_required`. Mapping failures retain evidence too.
@@ -173,14 +173,14 @@ Both providers declare automatic delivery capabilities. `payment.recorded` v1 is
 not applicable to either provider and is recorded as skipped with
 `event_not_applicable`, including legacy pending/failed queue rows. Dinero's pure
 payment preparation remains available only with explicit immutable evidence.
-Admins can retry failed
-deliveries with a fresh send budget and cleared backoff, retaining pinned requests
-and reconciliation. Skip requires an audit reason and advances the contiguous cursor
+Settings offers only Skip for source-evidence and totals-mismatch failures.
+Admins can retry other failed deliveries with a fresh send budget and cleared
+backoff, retaining pinned requests and reconciliation. Skip requires an audit reason and advances the contiguous cursor
 so later documents can continue. Both actions target the current connection generation.
 Reconnecting creates a new generation, but prior delivered/skipped events never enter its send queue. Pending,
 failed and in-flight predecessors require an explicit admin retry on the new connection
-or a skip with a reason. Retry requires `confirmReconnect`; same-account retries retain
-the pinned request and reconciliation, while a different account prepares a new request.
+or a skip with a reason. Retry requires a confirmation dialog and `confirmReconnect`.
+Same-account retries select the latest attempted row for that account and retain the pinned request and reconciliation, while a different account prepares a new request.
 Original delivery evidence stays in its old generation, including through repeated reconnects.
 
 ## Per-organization connections
@@ -203,7 +203,9 @@ returns metadata without reading credentials. Remote revocation remains OAuth wo
 
 Settings shows each provider as not connected, connected or error. Error is derived: a
 connected organization whose current generation has a failed delivery. It also shows
-the last delivery, the failed count and the last stored error code in plain language.
+the last delivery, failed, pending and backoff counts, and the last stored error
+code in plain language.
+Failed loads and mapping saves offer Reload settings.
 Disconnect, retry and skip need `settings:update` and run through `executeCommand`.
 State changes emit actor-attributed audit events atomically; repeated disconnect is
 a no-op. The card targets the earliest failure. Connect stays disabled until OAuth ships.
@@ -214,6 +216,9 @@ payment term, product/VAT mappings, receivable and bank/clearing accounts. Reque
 pin resolved settings for retries. Settings now stores account/VAT mappings per
 connection with a revision. It starts
 with a Danish 25% group and leaves chart-specific accounts and VAT codes blank.
+Domestic groups default to DK and reject other countries; EU services/goods groups
+require a country. Invalid stored mappings remain editable with row warnings and
+block new preparation until saved.
 Admins can add country-specific EU services/goods groups, remove groups and clear
 accounts. Missing sales fields identify blocked invoice/credit groups; a missing
 payment account is shown separately. Saves use the audited command path and reject

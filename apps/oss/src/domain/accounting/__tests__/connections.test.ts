@@ -1,5 +1,8 @@
+import { Effect } from "effect"
+import { Command, Db, type CommandScope } from "../../services"
+import { retryAccountingDelivery } from "../../commands/accounting"
 import { describe, expect, it, vi } from "vitest"
-import type { PrismaClient } from "../../../../generated/prisma/client"
+import type { Prisma, PrismaClient } from "../../../../generated/prisma/client"
 import { accountingConnections, connectAccounting } from "../connections"
 import { accountFingerprint } from "../sync-position"
 import { defaultMappings } from "../mappings"
@@ -28,6 +31,40 @@ describe("accounting connection evidence", () => {
     expect(JSON.stringify(events)).not.toContain("synthetic")
   })
 
+  it("finds a connection with corrupt stored mappings but blocks new preparation", async () => {
+    const db = { accountingConnection: { findFirst: async () => ({ provider: "dinero", mappings: { rows: [{ ...defaultMappings().rows[0], revenueAccount: -1 }], paymentAccount: null } }) } } as unknown as PrismaClient
+    const runtime = { settings: vi.fn(), transport: vi.fn() }
+    const connection = await accountingConnections(runtime, db).find("org")
+    expect(connection!.record.invalidMappingRows).toEqual([0])
+    await expect(connection!.settings({ id: "event", deliveryId: "d", type: "invoice.issued", schemaVersion: 1, payload: {} })).rejects.toThrow()
+    expect(runtime.settings).not.toHaveBeenCalled()
+  })
+  it.each(["A", "B"])("restores the latest attempted %s row after three alternating-account reconnects", async currentAccount => {
+    // A -> B -> A -> B, or B -> A -> B -> A. The flattened pointer still names the first row.
+    const otherAccount = currentAccount === "A" ? "B" : "A"
+    const fingerprint = (remoteAccountId: string) => accountFingerprint({ provider: "dinero", remoteAccountId })
+    const history = [otherAccount, currentAccount, otherAccount].map((account, i) => ({
+      id: `old-${i}`, sequence: 1, consumerKey: `accounting:dinero:g${i}`, organizationId: "org",
+      error: { code: "reconnect_review_required", accountFingerprint: fingerprint(account), previousDeliveryId: "old-0" },
+      evidence: { hash: `source-${i}` }, prepared: { idempotencyKey: `request-${i}` },
+      externalRef: `draft-${i}`, response: { externalRef: `draft-${i}` },
+    }))
+    const current = { id: "current", sequence: 1, error: { code: "reconnect_review_required", previousDeliveryId: "old-0" } }
+    const findFirst = vi.fn(async ({ where }: { where: { id?: string; error?: { equals: string } } }) =>
+      where.id ? current : [...history].reverse().find(row => row.error.accountFingerprint === where.error?.equals))
+    const updateMany = vi.fn(async () => ({ count: 1 }))
+    const db = { accountingConnection: { findFirst: async () => ({ provider: "dinero", generation: "current", remoteAccountId: currentAccount }) },
+      eventConsumerDelivery: { findFirst, updateMany } } as unknown as Prisma.TransactionClient
+    const scope: CommandScope = { organizationId: "org", commandId: "cmd", now: new Date(), approvedByUserId: null,
+      actor: { kind: "system", organizationId: "org", reason: "migration", label: "Test" }, emit: vi.fn(), enqueue: vi.fn() }
+    await Effect.runPromise(retryAccountingDelivery.handle({ deliveryId: "current", confirmReconnect: true }).pipe(
+      Effect.provideService(Db, db), Effect.provideService(Command, scope)))
+    expect(findFirst).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: "org", sequence: 1,
+      consumerKey: { startsWith: "accounting:dinero:", not: "accounting:dinero:current" }, error: { path: ["accountFingerprint"], equals: fingerprint(currentAccount) } }) }))
+    expect(updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      prepared: history[1]!.prepared, evidence: history[1]!.evidence, externalRef: "draft-1", response: history[1]!.response, status: "pending", attempts: 0,
+    }) }))
+  })
   it("resolves a credit with its invoice's saved configuration after mappings change", async () => {
     const mappings = defaultMappings(), original = { mappingRevision: "1", mappings: structuredClone(mappings) }
     mappings.rows[0]!.revenueAccount = 2000

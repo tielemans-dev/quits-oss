@@ -4,7 +4,8 @@ import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 
-export function AccountingMappingsEditor({ provider, config, canEdit, busy, save }: {
+export function AccountingMappingsEditor({ provider, config, canEdit, busy, save, invalidRows = [] }: {
+  invalidRows?: number[]
   provider: string; config: AccountingMappings; canEdit: boolean; busy: boolean
   save: (mappings: AccountingMappings) => Promise<boolean>
 }) {
@@ -28,6 +29,7 @@ export function AccountingMappingsEditor({ provider, config, canEdit, busy, save
     }}>
       <fieldset disabled={busy || !canEdit} className="grid min-w-0 gap-3">
         {draft.rows.map((row, index) => <div key={index} className="grid gap-2 sm:grid-cols-2">
+          {invalidRows.includes(index) ? <p className="text-sm text-destructive sm:col-span-2">{t("accounting.mappings.invalidRow", { row: index + 1 })}</p> : null}
           <label className="grid gap-1 text-sm">{t("accounting.mappings.group")}
             <select className="h-9 rounded-md border bg-background px-3" value={row.kind} onChange={event => update(index, { kind: event.target.value as typeof row.kind })}>
               {(["domestic", "services", "goods"] as const).map(kind => <option key={kind} value={kind}>{t(`accounting.mappings.${kind}`)}</option>)}

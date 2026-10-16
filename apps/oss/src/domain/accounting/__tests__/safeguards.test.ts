@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { EventConsumerDelivery, Prisma, PrismaClient } from "../../../../generated/prisma/client"
 import { claim, complete, fail } from "../../events/consumers"
@@ -146,6 +147,11 @@ describe("delivery safeguards with fake transport", () => {
     expect(await f.run()).toBe("failed")
     expect(f.row.error).toMatchObject({ code: "source_review_required" })
     expect(f.transport.send).not.toHaveBeenCalled()
+  })
+  it("hashes nested keys in UTF-16 order without locale collation", () => {
+    const canonical = '{"Z":[{"Z":1,"a":2,"ä":3}],"a":4,"ä":5}'
+    expect(fingerprint({ ä: 5, a: 4, Z: [{ ä: 3, a: 2, Z: 1 }] })).toBe(createHash("sha256").update(canonical).digest("hex"))
+    expect(fingerprint([1, 2])).not.toBe(fingerprint([2, 1]))
   })
   it("compares large minor units exactly, refuses sub-minor units, and ignores JSON key order", () => {
     const totals = { net: "90071992547409.91", tax: "0", gross: "90071992547409.91" }

@@ -1,5 +1,13 @@
 /** Owned by the accounting integrations settings. */
 export const daAccountingMessages = {
+  "accounting.refetch": "Genindlæs indstillinger",
+  "accounting.pending": "Afventende leverancer: {count}",
+  "accounting.backoff": "Venter på nyt forsøg: {count}",
+  "accounting.retry.title": "Prøv igen på denne forbindelse?",
+  "accounting.retry.description": "Tjek først, om dokumentet findes på den tidligere konto. Bekræft for at prøve igen på konto {account} i {provider}.",
+  "accounting.mappings.storedInvalid": "Nogle gemte tilknytninger er ugyldige. Gennemgå felterne, og gem, før du sender nye dokumenter.",
+  "accounting.mappings.invalidRow": "Gennemgå den gemte momsgruppe {row}.",
+
   "accounting.mappings.blockedDocument": "Mangler tilknytning til {number}.",
   "activity.event.accounting.mappings_updated": "Opdaterede regnskabstilknytninger ({provider})",
   "accounting.mappings.title": "Konti og momskoder",
@@ -12,7 +20,7 @@ export const daAccountingMessages = {
   "accounting.mappings.domestic": "Indenlandsk salg, 25 % moms",
   "accounting.mappings.services": "EU-ydelser, 0 % moms",
   "accounting.mappings.goods": "EU-varer, 0 % moms",
-  "accounting.mappings.country": "Landekode, tomt felt for intet land",
+  "accounting.mappings.country": "Landekode, DK for indenlandsk salg",
   "accounting.mappings.revenueAccount": "Omsætningskonto",
   "accounting.mappings.vatCode": "Momskode",
   "accounting.mappings.productNumber": "Varenummer",
@@ -72,6 +80,6 @@ export const daAccountingMessages = {
   "accounting.deliveryError.http": "{provider} afviste forespørgslen (HTTP {status}).",
   "accounting.deliveryError.unknown": "Leveringen mislykkedes.",
   "accounting.deliveryError.payload_totals_mismatch": "Beløbene i regnskabsdataene afviger fra kildedokumentet. Intet blev sendt. Gennemgå denne levering.",
-  "accounting.deliveryError.provider_totals_mismatch": "Regnskabsprogrammet oplyste andre beløb. Gennemgå dokumentet i regnskabsprogrammet, før du prøver igen.",
+  "accounting.deliveryError.provider_totals_mismatch": "Regnskabsprogrammet oplyste andre beløb. Gennemgå dokumentet i regnskabsprogrammet, før du springer denne levering over.",
   "accounting.deliveryError.source_review_required": "Kildedokumentet er ændret, eller dokumentationen fra første forsøg mangler. Gennemgå denne levering, før den sendes.",
 } as const
