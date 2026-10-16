@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest"
 import { suggestions } from "../suggestion-provider"
 
 const known = {
-  invoices: [{ number: "INV-2026-001", customer: "Birk Arkitekter" }, { number: "INV-2026-002", customer: "Studio Vester" }],
+  invoices: [
+    { number: "INV-2026-001", customer: "Birk Arkitekter", status: "sent", balanceDue: 12500, currency: "DKK" },
+    { number: "INV-2026-002", customer: "Studio Vester", status: "paid", balanceDue: 0, currency: "DKK" },
+  ],
   customers: [{ name: "Birk Arkitekter" }, { name: "Studio Vester" }],
 }
 
