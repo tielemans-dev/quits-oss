@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import type { ActivityEntry } from "../../../lib/exports/activity"
+import { useAppQuery } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../query-state"
 import { useI18n } from "../../../lib/i18n/react"
 import { trpc } from "../../../trpc/client"
 import { ActivityList } from "../../activity/activity-list"
@@ -9,26 +9,8 @@ import type { InvoicePanelProps } from "./types"
 /** The invoice's activity timeline, including related payments and credit notes. */
 export function InvoiceActivityPanel({ invoice }: InvoicePanelProps) {
   const { t } = useI18n()
-  const [events, setEvents] = useState<ActivityEntry[] | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    trpc.activity.forDocument
-      .query({ aggregateType: "invoice", aggregateId: invoice.id })
-      .then((result) => {
-        if (cancelled) return
-        setEvents(result.events)
-        setError(false)
-      })
-      .catch(() => {
-        if (!cancelled) setError(true)
-      })
-    return () => {
-      cancelled = true
-    }
-    // Reload when the invoice changes state (sent, paid, credited) so new events appear.
-  }, [invoice.id, invoice.status, invoice.paymentStatus])
+  const query = useAppQuery(["activity"], () => trpc.activity.forDocument.query({ aggregateType: "invoice", aggregateId: invoice.id }), [invoice.id])
+  const events = query.data?.events ?? null
 
   return (
     <Card>
@@ -36,10 +18,10 @@ export function InvoiceActivityPanel({ invoice }: InvoicePanelProps) {
         <CardTitle>{t("activity.panel.title")}</CardTitle>
       </CardHeader>
       <CardContent>
-        {error ? (
-          <p className="text-sm text-destructive">{t("activity.error")}</p>
+        {query.error ? (
+          <QueryError error={query.error} retry={query.refresh} />
         ) : events === null ? (
-          <p className="text-sm text-muted-foreground">{t("activity.loading")}</p>
+          <QuerySkeleton />
         ) : events.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("activity.panel.empty")}</p>
         ) : (

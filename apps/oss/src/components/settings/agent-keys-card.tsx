@@ -1,3 +1,5 @@
+import { QueryError, QuerySkeleton } from "../query-state"
+import { useQueryRefresh } from "../../hooks/use-query-refresh"
 import { Bot, Plus } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useI18n } from "../../lib/i18n/react"
@@ -41,10 +43,12 @@ export function AgentKeysCard() {
     try {
       setKeys(await trpc.agents.listKeys.query())
       setError(null)
-    } catch {
-      setError(t("agents.keys.error.load"))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : t("agents.keys.error.load"))
     }
   }, [t])
+
+  useQueryRefresh(["agents"], () => { void loadKeys() })
 
   useEffect(() => {
     let cancelled = false
@@ -95,9 +99,8 @@ export function AgentKeysCard() {
         ) : null}
       </CardHeader>
       <CardContent className="grid gap-3">
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {keys === null ? (
-          <p className="text-sm text-muted-foreground">{t("agents.keys.loading")}</p>
+        {error ? <QueryError error={new Error(error)} retry={loadKeys} /> : keys === null ? (
+          <QuerySkeleton />
         ) : keys.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
             <Bot className="size-8" />

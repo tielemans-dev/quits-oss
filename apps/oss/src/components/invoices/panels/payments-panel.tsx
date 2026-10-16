@@ -1,3 +1,5 @@
+import { QueryError, QuerySkeleton } from "../../query-state"
+import { useQueryRefresh } from "../../../hooks/use-query-refresh"
 import { ReceiptsPanel } from "./receipts-panel"
 import { useCallback, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
@@ -95,6 +97,8 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
     }
   }, [invoice.id, t])
 
+  useQueryRefresh(["payments"], () => { void load() })
+
   useEffect(() => {
     if (isDraft) return
     void load()
@@ -143,11 +147,9 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
         </dl>
 
         {loadError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {loadError}
-          </p>
+          <QueryError error={new Error(loadError)} retry={load} />
         ) : !view ? (
-          <p className="text-sm text-muted-foreground">{t("payments.loading")}</p>
+          <QuerySkeleton />
         ) : view.payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("payments.empty")}</p>
         ) : (

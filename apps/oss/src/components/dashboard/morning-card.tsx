@@ -1,3 +1,4 @@
+import { useQueryRefresh } from "../../hooks/use-query-refresh"
 import { Link } from "@tanstack/react-router"
 import { Clock, Percent, Send, type LucideIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
@@ -79,6 +80,8 @@ export function MorningCard({ canSendReminders }: { canSendReminders: boolean })
       // The lists below report their own errors; the summary stays away rather than guess.
     }
   }, [])
+  useQueryRefresh(["invoices", "settings"], () => { void load() })
+
   useEffect(() => {
     void load()
     // An invoice sent from the command bar changes every figure here.

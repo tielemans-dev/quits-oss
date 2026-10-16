@@ -1,3 +1,4 @@
+import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { useEffect, useMemo, useState, useDeferredValue } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { agreementCreateDraftDecimalInputSchema, type DeliverableInput } from "@quits/contracts/agreements"
@@ -72,10 +73,14 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const [offerFormatVersion, setOfferFormatVersion] = useState<number | null>(2)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [depositsEnabled, setDepositsEnabled] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [loadError, setLoadError] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
+    setLoading(true)
+    setLoadError(null)
     let cancelled = false
     Promise.all([
       trpc.agreements.capabilities.query(),
@@ -129,7 +134,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t("agreements.error"))
+        if (!cancelled) setLoadError(err)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -137,7 +142,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     return () => {
       cancelled = true
     }
-  }, [agreementId, t])
+  }, [agreementId, t, loadAttempt])
   function change<Key extends keyof Form>(key: Key, value: Form[Key]) {
     setForm((prev) => ({
       ...prev,
@@ -199,7 +204,8 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
       setSaving(false)
     }
   }
-  if (loading) return <div className="p-6">{t("agreements.loading")}</div>
+  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={() => setLoadAttempt(value => value + 1)} /></div>
+  if (loading) return <div className="p-6"><QuerySkeleton /></div>
   return (
     <div className="p-6 max-w-4xl">
       <Card>

@@ -70,6 +70,7 @@ import { Route as AppRoute } from "../_app"
 import { Route as SettingsRoute } from "../_app/settings"
 import { I18nProvider, useI18n } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
+import { notifyMutation } from "../../lib/query-refresh"
 import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 import { getRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 
@@ -152,6 +153,25 @@ function expectLanguage(locale: string) {
 }
 
 describe("saving the Settings language", () => {
+  it("keeps form edits through a failed background refresh and retry", async () => {
+    const { container } = await renderSettings()
+    const company = container.querySelector<HTMLInputElement>("#companyName")!
+    fireEvent.change(company, { target: { value: "Unsaved company" } })
+    const language = languageSelect(container)
+    fireEvent.change(language, { target: { value: "en-US" } })
+    state.getSettings.mockRejectedValueOnce(new Error("Refresh unavailable"))
+    await act(async () => notifyMutation("settings.update", "org_1"))
+    await screen.findByText("Refresh unavailable")
+    expect(company.isConnected).toBe(true)
+    expect(company.value).toBe("Unsaved company")
+    expect(language.value).toBe("en-US")
+    fireEvent.click(screen.getByRole("button", { name: translate("ui.retry", "da") }))
+    await waitFor(() => expect(screen.queryByText("Refresh unavailable")).toBeNull())
+    expect(container.querySelector("#companyName")).toBe(company)
+    expect(company.value).toBe("Unsaved company")
+    expect(language.value).toBe("en-US")
+  })
+
   it.each([null, "u_2"])("revalidates identity when the live session becomes %s during a save", async userId => {
     const { container, router } = await renderSettings()
     let finishSave!: (value: ReturnType<typeof settingsData>) => void

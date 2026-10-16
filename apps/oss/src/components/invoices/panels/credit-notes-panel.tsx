@@ -1,3 +1,5 @@
+import { useQueryRefresh } from "../../../hooks/use-query-refresh"
+import { QueryError, QuerySkeleton } from "../../query-state"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { FileMinus } from "lucide-react"
@@ -19,6 +21,8 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
   const navigate = useNavigate()
   const [creditNotes, setCreditNotes] = useState<CreditNoteListItem[] | null>(null)
   const [canCreate, setCanCreate] = useState(false)
+  const [loadError, setLoadError] = useState<unknown>(null)
+  const [denied, setDenied] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   // Keyed on the active organization so capabilities refresh after switching organization.
   const organizationId = useActiveOrganizationId()
@@ -26,6 +30,7 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
 
   const load = useCallback(async () => {
     const request = ++latestLoad.current
+    setLoadError(null)
     try {
       const [list, capabilities] = await Promise.all([
         trpc.creditNotes.list.query({ invoiceId: invoice.id }),
@@ -34,23 +39,32 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
       // A late answer from before an organization switch must not restore old rights.
       if (request !== latestLoad.current) return
       setCreditNotes(list)
+      setDenied(false)
       setCanCreate(capabilities.canCreate)
-    } catch {
-      // Members without credit note access simply do not see the panel.
-      if (request === latestLoad.current) setCreditNotes(null)
+    } catch (failure) {
+      if (request !== latestLoad.current) return
+      const code = (failure as { data?: { code?: string } } | null)?.data?.code
+      if (code === "FORBIDDEN" || code === "UNAUTHORIZED") { setDenied(true); setCreditNotes(null); setCanCreate(false) }
+      else setLoadError(failure)
     }
   }, [invoice.id])
 
   // Switching organization keeps the panel mounted, so start over with nothing allowed.
+  useQueryRefresh(["creditNotes"], () => { void load() })
+
   useEffect(() => {
     setCanCreate(false)
+    setCreditNotes(null)
+    setDenied(false)
     if (organizationId === undefined) return
     void load()
+    return () => { latestLoad.current++ }
   }, [load, organizationId])
 
   useEffect(() => onRequestDone(done => { if (done.kind === "creditNote" && done.invoiceId === invoice.id) void load() }), [invoice.id, load])
 
-  if (!creditNotes) return null
+  if (denied) return null
+  if (!creditNotes) return loadError ? <QueryError error={loadError} retry={load} /> : <QuerySkeleton />
 
   const creditedCents = creditNotes.filter(note => note.status === "issued").reduce((sum, creditNote) => sum + Math.round(creditNote.total * 100), 0)
   const credited = creditedCents / 100
@@ -82,6 +96,7 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
         )}
       </CardHeader>
       <CardContent className="grid gap-3">
+        {loadError ? <QueryError error={loadError} retry={load} /> : null}
         {creditNotes.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("creditNotes.panel.empty")}</p>
         ) : (

@@ -259,6 +259,18 @@ afterEachTest(() => {
 })
 
 describe("Settings tax relevance", () => {
+  it("shows a failed team query and retries instead of presenting an empty team", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData())
+    getFullOrganization.mockResolvedValueOnce({ error: { message: "Team unavailable" } })
+      .mockResolvedValue({ data: { members: [], invitations: [] } })
+    render(<RouteComponent />)
+    expect((await screen.findByRole("alert")).textContent).toContain("Team unavailable")
+    fireEvent.click(screen.getByRole("button", { name: "ui.retry" }))
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
+    expect(getFullOrganization).toHaveBeenCalledTimes(2)
+  })
+
   it.each([
     ["da-DK", "en-US", "CVR-nr.", "VAT/CVR number"],
     ["en-US", "da-DK", "VAT/CVR number", "CVR-nr."],
