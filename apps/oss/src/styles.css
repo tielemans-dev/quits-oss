@@ -470,8 +470,8 @@ html { background: var(--background); }
   from { opacity: 0; }
 }
 .request-stagger [data-stagger] {
-  animation: request-rise var(--duration-base) var(--ease-enter) both;
-  animation-delay: calc(var(--stagger-delay, 0ms) + var(--stagger) * var(--stagger-step));
+  animation: request-rise var(--duration-request-part) var(--ease-enter) both;
+  animation-delay: calc(var(--stagger-delay, 0ms) + var(--stagger) * var(--stagger-request));
 }
 @media (prefers-reduced-motion: reduce) {
   .request-stagger [data-stagger] {

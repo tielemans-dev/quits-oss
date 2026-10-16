@@ -23,7 +23,7 @@
   --ease-enter: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-exit: ease-out;
   --ease-linear: linear;
-  --duration-palette: 300ms;
+  --duration-palette: 200ms;
   --duration-list-fade: 90ms;
   --duration-spin: 1000ms;
   --duration-pulse: 2000ms;
@@ -49,4 +49,7 @@
 
   /* Gap between parts of a card that rise in one after the other. */
   --stagger-step: 45ms;
+  /* A request card follows typing, so its parts arrive quicker and closer together than a page's. */
+  --duration-request-part: 180ms;
+  --stagger-request: 20ms;
 }
