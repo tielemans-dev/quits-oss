@@ -30,5 +30,5 @@ const TOKENS = "apps/oss/src/motion-tokens.css"
 const STYLES = "apps/oss/src/styles.css"
 const read = (file) => { try { return readFileSync(join(root, file), "utf8") } catch { failures.push(`${file}: missing; the motion spec rules read it`); return "" } }
 failures.push(...checkDurationTokens(read(TOKENS)).map(message => `${TOKENS}: ${message}`))
-failures.push(...checkReducedMotion(files.filter(f => f.endsWith(".css") && (f === STYLES || read(f).includes("prefers-reduced-motion"))).map(f => [f, read(f)]), STYLES))
+failures.push(...checkReducedMotion(files.filter(f => f.endsWith(".css")).map(f => [f, read(f)]), STYLES))
 if (failures.length) { console.error(failures.join("\n")); process.exitCode = 1 }

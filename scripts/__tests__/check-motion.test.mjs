@@ -64,6 +64,8 @@ test("motion guard fails when reduced motion cuts instead of fading or keeps mov
     ["an incoming row that loses its fallback", STYLES, /\n  \.incoming-new \{\n    animation: request-fade[^}]*\}/, ""],
     ["spinners and pulses that keep moving", STYLES, "  .animate-spin,\n  .animate-pulse {\n    animation: none !important;\n  }\n", ""],
     ["a spinner that keeps spinning", STYLES, ".animate-spin,\n  .animate-pulse {", ".animate-pulse {"],
+    ["a stagger that fades slower", STYLES, "animation-name: request-fade;\n    animation-duration: var(--duration-fade);", "animation-name: request-fade;\n    animation-duration: var(--duration-base);"],
+    ["an onboarding stylesheet without its reduced-motion block", ONBOARDING, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}\n/, ""],
     ["an onboarding fade that moves", ONBOARDING, "@keyframes ob-fade {\n  from {\n    opacity: 0;", "@keyframes ob-fade {\n  from {\n    opacity: 0;\n    transform: translateY(3px);"],
     ["an onboarding transition that is not a fade", ONBOARDING, "transition: opacity var(--duration-fade) var(--ease-enter);", "transition: transform var(--duration-fade) var(--ease-enter);"],
   ]
