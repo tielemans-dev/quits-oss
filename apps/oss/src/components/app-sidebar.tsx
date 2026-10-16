@@ -32,7 +32,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       <SidebarMenuButton
         asChild
         isActive={active}
-        className="h-8 gap-2.5 px-2.5 text-[13.5px] font-medium text-muted-foreground hover:text-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground"
+        className="h-8 gap-2.5 px-2.5 text-sm font-medium text-muted-foreground hover:text-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground"
       >
         <Link
           to={item.path as LinkProps['to']}
@@ -42,7 +42,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
         >
           <span
             aria-hidden="true"
-            className={cn('size-1.5 shrink-0 rounded-[2px] bg-current opacity-35', active && 'bg-brand-text opacity-100')}
+            className={cn('size-1.5 shrink-0 rounded-none bg-current opacity-35', active && 'bg-brand-text opacity-100')}
           />
           <span className={cn('min-w-0', active && ACTIVE_RULE)}>{t(item.labelKey)}</span>
         </Link>
@@ -82,7 +82,7 @@ export function AppSidebar() {
             onClick={() => setOpenMobile(false)}
             className="relative ml-2 w-fit rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <QuitsWordmark className="text-[22px]" />
+            <QuitsWordmark className="text-2xl" />
           </Link>
           <OrgSwitcher className="relative" />
         </SidebarHeader>

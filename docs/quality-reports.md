@@ -26,7 +26,11 @@ font, weight, spacing and radius violations, including email and PDF literals.
 It also reports missing Tailwind theme category resets. This is a
 source scan, not Tailwind class registration validation. The proposed scales come
 from Ines's QUI-66 comment. Existing theme and document colour tokens remain the
-authority until her complete policy is validated. No styling changes are applied.
+authority until her complete policy is validated. Values built from theme custom
+properties and background placement (`bg-[length:…]`, `bg-[position:…]`) are not
+one-off values. The app, email and onboarding values follow the scales. The PDF
+fonts, sizes and spacing, and the Tailwind theme category resets, are still
+reported: changing them needs a PDF render and a build.
 
 For local browser runs, install dependencies, generate Prisma, install Chromium
 and `pdftoppm`, and use a disposable loopback database named `quits_quality`.

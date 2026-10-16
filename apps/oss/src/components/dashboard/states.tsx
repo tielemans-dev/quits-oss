@@ -34,7 +34,7 @@ export function DashboardSkeleton() {
           <span className={`${bar} block h-2.5 w-20`} />
           {[0, 1, 2, 3, 4].map((row) => (
             <div key={row} className="flex items-center gap-3" style={{ opacity: 1 - row * 0.14 }}>
-              <span className="bg-foreground/8 size-5 shrink-0 animate-pulse rounded-[6px]" />
+              <span className="bg-foreground/8 size-5 shrink-0 animate-pulse rounded-sm" />
               <span className={`${bar} h-3 w-1/3`} />
               <span className={`${bar} ml-auto h-3 w-16`} />
             </div>
@@ -47,7 +47,7 @@ export function DashboardSkeleton() {
               {[35, 55, 40, 65, 50, 80, 45, 60, 70, 55, 75, 90].map((height, index) => (
                 <span
                   key={index}
-                  className="bg-foreground/8 flex-1 animate-pulse rounded-[5px]"
+                  className="bg-foreground/8 flex-1 animate-pulse rounded-sm"
                   style={{ height: `${height}%` }}
                 />
               ))}

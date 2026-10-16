@@ -46,7 +46,7 @@ function ReminderUnsubscribePage() {
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background px-4 py-12">
-      <QuitsWordmark className="text-[26px]" />
+      <QuitsWordmark className="text-2xl" />
       <Card className="w-full max-w-[400px] shadow-none">
         <CardHeader>
           <h1 ref={heading} tabIndex={state.kind === "done" ? -1 : undefined} className="text-xl font-medium tracking-tight">

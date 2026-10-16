@@ -45,7 +45,7 @@ export function buildPaymentReceivedEmailContent({
 
   const html = layout(
     `
-    <h2 style="margin:0 0 16px;font-size:22px;">${t(`payments.email.${audience}.title`, locale)}</h2>
+    <h2 style="margin:0 0 16px;font-size:24px;">${t(`payments.email.${audience}.title`, locale)}</h2>
     ${audience === "client" ? `<p style="margin:0 0 8px;">${t("payments.email.client.greeting", locale, { name: escapeHtml(contactName) })}</p>` : ""}
     <p style="margin:0 0 24px;color:${C.body};">${t(`payments.email.${audience}.body`, locale, vars)}</p>
 

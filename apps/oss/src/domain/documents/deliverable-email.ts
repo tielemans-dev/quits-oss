@@ -19,8 +19,8 @@ export function composeDeliverableEmail(input: {
   return composeMessage(input.recipient, {
     subject: sanitizeHeader(`${title}: ${input.number ?? ""} ${input.title}`),
     html: layout(`
-      <h2 style="margin:0 0 4px;font-size:22px;">${escapeHtml(title)}</h2>
-      <p style="margin:0 0 16px;font-size:18px;font-weight:600;">${escapeHtml(input.title)}</p>
+      <h2 style="margin:0 0 4px;font-size:24px;">${escapeHtml(title)}</h2>
+      <p style="margin:0 0 16px;font-size:18px;font-weight:700;">${escapeHtml(input.title)}</p>
       ${input.note ? `<p style="margin:0 0 16px;color:${C.body};white-space:pre-wrap;">${escapeHtml(input.note)}</p>` : ""}
       ${actionBlock({ href: input.url, label: link, fallbackLabel: translate("agreements.email.linkFallback", input.locale) })}
     `, input.locale),

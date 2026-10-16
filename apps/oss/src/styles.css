@@ -35,6 +35,9 @@
     'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas,
     monospace;
 
+  /* The 11px step of the type scale; Tailwind's xs to 3xl cover the rest (12 to 30). */
+  --text-2xs: 0.6875rem;
+
   /* One strong weight: headings and emphasised text share it. */
   --font-weight-heading: 600;
   --font-weight-bold: 700;

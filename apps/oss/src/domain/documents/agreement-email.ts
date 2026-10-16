@@ -36,8 +36,8 @@ export function composeAgreementEmail(input: {
   const buyer = snapshot.buyerSnapshot
   const partyBlock = (label: string, lines: Array<string | null | undefined>) => `<div style="margin:16px 0;"><strong>${escapeHtml(label)}</strong>${lines.filter(Boolean).map(line => `<div>${escapeHtml(line!)}</div>`).join("")}</div>`
   const html = layout(`
-    <h2 style="margin:0 0 4px;font-size:22px;">${escapeHtml(title)} ${escapeHtml(input.number ?? "")}</h2>
-    <p style="margin:0 0 16px;font-size:18px;font-weight:600;">${escapeHtml(snapshot.title)}</p>
+    <h2 style="margin:0 0 4px;font-size:24px;">${escapeHtml(title)} ${escapeHtml(input.number ?? "")}</h2>
+    <p style="margin:0 0 16px;font-size:18px;font-weight:700;">${escapeHtml(snapshot.title)}</p>
     ${snapshot.summary ? `<p style="margin:0 0 16px;color:${C.body};white-space:pre-wrap;">${escapeHtml(snapshot.summary)}</p>` : ""}
     ${seller ? partyBlock(translate("pdf.from", locale), [seller.companyName, seller.companyAddress, ...formatTaxIds(seller.taxIds, locale, buyer?.country ?? "DK", vat.status), seller.companyEmail]) : ""}
     ${buyer ? partyBlock(translate("pdf.billTo", locale), [buyer.name, distinctCompany(buyer), ...pdfBuyerAddress(buyer, locale), ...formatTaxIds(buyer.taxIds, locale), buyer.email]) : ""}

@@ -75,12 +75,12 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
                   onMouseEnter={() => setActive(index)}
                   onFocus={() => setActive(index)}
                   onBlur={() => setActive(null)}
-                  className="group focus-visible:ring-ring flex h-full w-full flex-col justify-end rounded-[5px] outline-none focus-visible:ring-2"
+                  className="group focus-visible:ring-ring flex h-full w-full flex-col justify-end rounded-sm outline-none focus-visible:ring-2"
                 >
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "block w-full rounded-[5px] transition-colors duration-(--duration-fade)",
+                      "block w-full rounded-sm transition-colors duration-(--duration-fade)",
                       height === 0
                         ? "bg-foreground/10 h-0.5"
                         : month.isCurrent
@@ -95,7 +95,7 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
           })}
         </ul>
 
-        <ul aria-hidden="true" className="mono-label mt-2 flex gap-1 text-[10px] @sm:gap-1.5">
+        <ul aria-hidden="true" className="mono-label mt-2 flex gap-1 text-2xs @sm:gap-1.5">
           {chart.months.map((month) => (
             <li
               key={month.month}

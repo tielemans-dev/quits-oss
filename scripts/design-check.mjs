@@ -27,8 +27,14 @@ export function checkDesign(source, file) {
   for (const match of source.matchAll(/borderRadius\s*:\s*(\d+)\b/g)) {
     if (![0, 6, 8, 10, 12, 9999].includes(Number(match[1]))) report(match, 'radius')
   }
-  // Grid templates are intentionally allowed. Tokens remain the colour authority.
-  for (const match of source.matchAll(/(?:text|bg|border|p[trblxy]?|m[trblxy]?|gap|rounded)-\[[^\]]+\]|#[\da-f]{6}\b/gi)) report(match, 'one-off-value')
+  // Grid templates are intentionally allowed. Tokens remain the colour authority. A value built from
+  // theme custom properties (`var(--…)`) follows the tokens, and `bg-[length:…]`/`bg-[position:…]`
+  // place a background rather than set a colour, size or spacing. The boundary stops `top-[50%]`
+  // from reading as `p-[50%]`.
+  for (const match of source.matchAll(/(?<!\w)(?:text|bg|border|p[trblxy]?|m[trblxy]?|gap|rounded)-\[[^\]]+\]|#[\da-f]{6}\b/gi)) {
+    if (/var\(--|^bg-\[(?:length|position):/.test(match[0])) continue
+    report(match, 'one-off-value')
+  }
   for (const match of source.matchAll(/fontFamily\s*:\s*["']Helvetica[^"']*["']/g)) report(match, 'pdf-font')
   return findings
 }

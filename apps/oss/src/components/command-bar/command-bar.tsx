@@ -75,7 +75,7 @@ export function CommandBar({ recognize, suggest, className }: { recognize: Reque
         "border-hairline bg-panel overflow-hidden border shadow-xs",
         // The corners ease from pill to card in step with the height.
         "[transition:border-radius_var(--duration-base)_var(--ease-enter)] motion-reduce:[transition:none]",
-        intent ? "rounded-[18px]" : "rounded-full",
+        intent ? "rounded-xl" : "rounded-full",
         className
       )}
     >

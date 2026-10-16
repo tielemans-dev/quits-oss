@@ -16,7 +16,7 @@ function AuthPageContent({ children, path, search }: { children: React.ReactNode
   const language = resolveLanguage(locale)
   return <div lang={language} className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 py-8">
     <header className="flex w-full max-w-sm items-center justify-between gap-4">
-      <QuitsWordmark className="text-[26px]" />
+      <QuitsWordmark className="text-2xl" />
       <nav aria-label={language === 'da' ? 'Sprog' : 'Language'} className="flex gap-1 text-sm">
         {(['da', 'en'] as const).map((lang) => <Link key={lang} to={path} search={{ ...search, lang }}
           lang={lang} aria-label={lang === 'da' ? 'Dansk' : 'English'} aria-current={language === lang ? 'true' : undefined}

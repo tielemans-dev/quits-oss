@@ -76,7 +76,7 @@ export function buildCreditNoteEmailContent({
 
   const html = layout(
     `
-    <h2 style="margin:0 0 4px;font-size:22px;">${t("creditNotes.pdf.title", locale)} ${escapeHtml(creditNote.number)}</h2>
+    <h2 style="margin:0 0 4px;font-size:24px;">${t("creditNotes.pdf.title", locale)} ${escapeHtml(creditNote.number)}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("creditNotes.email.greeting", locale, {
       name: escapeHtml(contactName),
       invoiceNumber: escapeHtml(invoice.number),

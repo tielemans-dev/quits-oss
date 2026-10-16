@@ -290,12 +290,12 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
       <span aria-hidden="true" className="size-2.5 bg-settled" />
       <h1 className="text-3xl font-semibold tracking-tight">{t("billing.title")}</h1>
     </div>
-    {success && isPaid && <p className="mb-4 rounded-[7px] bg-settled/14 p-3 text-sm text-settled-text">{t("billing.flash.success")}</p>}
-    {canceled && <p className="mb-4 rounded-[7px] bg-tone-warning/14 p-3 text-sm">{t("billing.flash.canceled")}</p>}
-    {error && <p role="alert" className="mb-4 rounded-[7px] bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+    {success && isPaid && <p className="mb-4 rounded-md bg-settled/14 p-3 text-sm text-settled-text">{t("billing.flash.success")}</p>}
+    {canceled && <p className="mb-4 rounded-md bg-tone-warning/14 p-3 text-sm">{t("billing.flash.canceled")}</p>}
+    {error && <p role="alert" className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
     <div className={`grid gap-5 ${isComped ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"}`}>
-      <section className="rounded-[10px] border border-border bg-card p-6">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">{t("billing.currentPlan")}</p>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <p className="font-mono text-2xs font-semibold uppercase tracking-[0.13em] text-muted-foreground">{t("billing.currentPlan")}</p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <h2 className="text-2xl font-semibold">{isTrial ? t("trial.billing.trial") : plan?.name ?? "quits"}</h2>
           <span className="rounded-full bg-settled/14 px-2.5 py-1 text-xs font-semibold text-settled-text">
@@ -321,8 +321,8 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           </div>
         </>}
       </section>
-      {!isComped && <section className="rounded-[10px] border border-border bg-card p-6">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">{t("billing.subscription.title")}</p>
+      {!isComped && <section className="rounded-lg border border-border bg-card p-6">
+        <p className="font-mono text-2xs font-semibold uppercase tracking-[0.13em] text-muted-foreground">{t("billing.subscription.title")}</p>
         <h2 className="mt-5 text-2xl font-semibold">{plan?.name ?? "quits"}</h2>
         {price && <><p className="mt-3 text-3xl font-semibold tracking-tight">{price}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("trial.billing.priceMeta")}</p></>}
@@ -330,7 +330,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
           {([1, 2, 3, 4, 5] as const).map(number => <li key={number} className="flex gap-2.5"><span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 bg-settled" />{t(`trial.billing.include${number}`)}</li>)}
         </ul>
         {!isPaid && !isComped && <>
-          <Button className="mt-7 h-11 w-full rounded-[7px] bg-foreground text-background hover:bg-foreground/90" onClick={onUpgrade} disabled={actionLoading}>
+          <Button className="mt-7 h-11 w-full rounded-md bg-foreground text-background hover:bg-foreground/90" onClick={onUpgrade} disabled={actionLoading}>
             {actionLoading ? t("billing.action.redirecting") : subscription.status === "past_due" && subscription.access?.hasSubscription
               ? t("trial.billing.manage") : price ? t("trial.billing.cta", { price }) : t("trial.action.upgradeNow")}
           </Button>
@@ -338,7 +338,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
         </>}
       </section>}
     </div>
-    {isPaid && <section className="mt-5 rounded-[10px] border border-border bg-card p-6">
+    {isPaid && <section className="mt-5 rounded-lg border border-border bg-card p-6">
       <h2 className="text-lg font-semibold">{t("trial.billing.invoices")}</h2>
       <ul className="mt-4 divide-y divide-border">
         {(subscription.invoiceHistory ?? []).map(invoice => <li key={invoice.id} className="flex items-center justify-between gap-4 py-3 text-sm">

@@ -73,7 +73,7 @@ export function ListHeadCell({
     <div
       role="columnheader"
       className={cn(
-        "mono-label text-[10.5px] tracking-[0.1em]",
+        "mono-label text-2xs tracking-[0.1em]",
         align === "end" && "text-right",
         className
       )}
@@ -154,7 +154,7 @@ export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number
             className="border-hairline flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0"
             style={{ opacity: 1 - index * 0.14 }}
           >
-            <span className="bg-foreground/8 size-5 shrink-0 animate-pulse rounded-[6px]" />
+            <span className="bg-foreground/8 size-5 shrink-0 animate-pulse rounded-sm" />
             <span className="bg-foreground/8 h-3 w-1/3 animate-pulse rounded-full" />
             <span className="bg-foreground/8 ml-auto h-3 w-20 animate-pulse rounded-full" />
             <span className="bg-foreground/8 hidden h-5 w-16 animate-pulse rounded-full md:block" />
@@ -194,7 +194,7 @@ export function ListEmpty({
             className="border-hairline bg-panel flex items-center gap-3 rounded-lg border px-3 py-2.5"
             style={{ opacity: 0.9 - index * 0.25 }}
           >
-            <span className="bg-brand-soft size-5 shrink-0 rounded-[6px]" />
+            <span className="bg-brand-soft size-5 shrink-0 rounded-sm" />
             <span className="bg-foreground/10 h-2.5 w-24 rounded-full" />
             <span className="bg-foreground/10 ml-auto h-2.5 w-14 rounded-full" />
           </div>

@@ -233,9 +233,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             'border border-hairline bg-panel text-foreground shadow-2xl shadow-black/30 outline-none',
             // Opens and closes with a token-timed fade and scale; reduced motion applies the change immediately.
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-(--duration-square-shrink) ease-enter data-[state=closed]:ease-exit motion-reduce:zoom-in-100 motion-reduce:zoom-out-100',
-            // The corners grow from 12 to 18px as the palette becomes a card.
-            card ? 'rounded-[18px]' : 'rounded-xl',
-            '[transition:border-radius_var(--duration-palette)_var(--ease-enter)] motion-reduce:[transition:none]'
+            'rounded-xl'
           )}
         >
           <VisuallyHidden.Root>
@@ -260,7 +258,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
               onKeyDown={onKeyDown}
               className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
             />
-            <kbd className="mono-label rounded-[5px] border border-hairline px-1.5 py-px text-[10px]">esc</kbd>
+            <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>
           </div>
           <div
             id={listboxId}
@@ -315,7 +313,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
                     >
                       {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                       <span className="min-w-0 flex-1 truncate">{item.content ?? item.label}</span>
-                      {item.hint && <span className="mono-label shrink-0 text-[10.5px]">{item.hint}</span>}
+                      {item.hint && <span className="mono-label shrink-0 text-2xs">{item.hint}</span>}
                     </div>
                   )
                 })}
@@ -323,7 +321,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             ))}
           </div>
           {card}
-          <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-[10.5px]', card !== null && 'hidden')} aria-hidden="true">
+          <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', card !== null && 'hidden')} aria-hidden="true">
             <span>↑↓ {t('shell.palette.hint.select')}</span>
             <span>↵ {t('shell.palette.hint.open')}</span>
             <span>esc {t('shell.palette.hint.close')}</span>

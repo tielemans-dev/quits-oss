@@ -18,7 +18,7 @@ export function SearchField({ onOpen, className }: { onOpen: () => void; classNa
       aria-label={t('shell.search.open')}
       aria-keyshortcuts="Control+K Meta+K /"
       className={cn(
-        'group flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border border-hairline bg-panel px-3 text-left text-sm text-muted-foreground outline-hidden',
+        'group flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-hairline bg-panel px-3 text-left text-sm text-muted-foreground outline-hidden',
         'transition-[border-color,box-shadow] duration-(--duration-fade) ease-enter hover:border-brand/50 hover:shadow-[0_0_0_4px_var(--brand-soft)]',
         'focus-visible:border-brand/60 focus-visible:shadow-[0_0_0_4px_var(--brand-soft)]',
         className
@@ -31,7 +31,7 @@ export function SearchField({ onOpen, className }: { onOpen: () => void; classNa
       </span>
       <kbd
         aria-hidden="true"
-        className="hidden shrink-0 rounded-[5px] border border-hairline px-1.5 py-px font-mono text-[11px] font-medium md:block"
+        className="hidden shrink-0 rounded-sm border border-hairline px-1.5 py-px font-mono text-2xs font-medium md:block"
       >
         ⌘K
       </kbd>
