@@ -209,7 +209,7 @@ function CreditNoteDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <QuerySkeleton />
       </div>
     )
@@ -217,7 +217,7 @@ function CreditNoteDetailPage() {
 
   if (!creditNote) {
     return (
-      <div className="p-6 grid gap-4 justify-items-start">
+      <div className="grid gap-4 justify-items-start">
         {backLink}
         <p className="text-sm text-destructive" role="alert">
           {error ?? t("creditNotes.detail.notFound")}
@@ -245,7 +245,7 @@ function CreditNoteDetailPage() {
           : t("creditNotes.detail.email.failed", { date: formatDate(lastAttemptAt, locale, timezone) })
 
   return (
-    <div className="p-6 max-w-3xl grid grid-cols-[minmax(0,1fr)] gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex items-center justify-between">
         {backLink}
         <Button variant="outline" size="sm" disabled={downloading || creditNote.status !== "issued"} onClick={() => void handleDownload()}>

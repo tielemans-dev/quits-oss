@@ -163,7 +163,7 @@ function NewQuotePage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>{t("quotes.new.title")}</CardTitle>

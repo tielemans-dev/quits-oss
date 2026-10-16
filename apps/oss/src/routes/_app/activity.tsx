@@ -50,7 +50,7 @@ function ActivityPage() {
   ]
 
   return (
-    <div className="p-6 max-w-4xl grid gap-6">
+    <div className="grid gap-6">
       <div>
         <h1 className="text-2xl font-semibold">{t("activity.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("activity.description")}</p>

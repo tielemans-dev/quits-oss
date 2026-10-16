@@ -39,6 +39,6 @@ describe("navigation model", () => {
     expect(isNavItemActive(invoices, "/invoices")).toBe(true)
     expect(isNavItemActive(invoices, "/invoices/inv_1")).toBe(true)
     expect(isNavItemActive(invoices, "/invoices-archive")).toBe(false)
-    expect(isNavItemActive({ path: "/", labelKey: "nav.dashboard" }, "/invoices")).toBe(false)
+    expect(isNavItemActive({ path: "/" }, "/invoices")).toBe(false)
   })
 })

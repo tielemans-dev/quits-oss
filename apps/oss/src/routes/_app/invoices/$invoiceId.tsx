@@ -693,7 +693,7 @@ function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <QuerySkeleton />
       </div>
     )
@@ -701,7 +701,7 @@ function InvoiceDetailPage() {
 
   if (!invoice) {
     return (
-      <div className="p-6">
+      <div>
         <p className="text-destructive">
           {error ?? t("invoices.detail.error.notFound")}
         </p>

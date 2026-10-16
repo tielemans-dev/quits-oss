@@ -930,7 +930,7 @@ function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <div className="flex items-center gap-2 mb-6">
           <Settings className="size-6" />
           <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
@@ -942,7 +942,7 @@ function SettingsPage() {
 
   if (!settings) {
     return (
-      <div className="p-6">
+      <div>
         <div className="flex items-center gap-2 mb-6">
           <Settings className="size-6" />
           <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
@@ -955,7 +955,7 @@ function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div>
       <div className="flex items-center gap-2 mb-6">
         <Settings className="size-6" />
         <h1 className="text-2xl font-bold">{t("settings.title")}</h1>

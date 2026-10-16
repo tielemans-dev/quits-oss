@@ -132,10 +132,10 @@ function AgreementDetail() {
   if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
   if (!agreement)
     return (
-      <div className="p-6"><QuerySkeleton /></div>
+      <div><QuerySkeleton /></div>
     )
   return (
-    <div className="p-6 max-w-4xl grid gap-6">
+    <div className="grid gap-6">
       <Link to="/agreements" className="text-sm underline">
         {t("agreements.back")}
       </Link>

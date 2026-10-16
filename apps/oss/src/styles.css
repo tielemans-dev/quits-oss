@@ -439,20 +439,24 @@ html[data-document] body { font-size: var(--text-base); line-height: 1.6; }
   color: var(--muted-foreground);
 }
 
-/* The brand glow behind the sidebar and the organisation identity; see --brand-glow. */
-@utility bg-brand-glow {
-  background-image: var(--brand-glow);
-}
 
 /*
  * The page container (components/shell/app-main.tsx) gives every page one content width and one
- * padding. Pages still carry their own `p-*` and `max-w-*` from before the shell did, and this
- * unlayered rule outranks them, so no page needs touching to line up. Remove a page's own values
- * when you next edit it.
+ * padding; pages bring no width or padding of their own. The invoice workspace (editor next to its
+ * preview) gets the wide width. The document scrolls, never `<main>`, so sticky
+ * headers inside pages work.
  */
-[data-slot='app-content'] > * {
-  max-width: none;
-  padding: 0;
+[data-slot='app-content'] {
+  width: 100%;
+  max-width: calc(var(--content-width) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding: 32px var(--gutter) 64px;
+}
+[data-slot='app-content']:has(.invoice-workspace) { max-width: calc(var(--content-wide) + 2 * var(--gutter)); }
+
+html { background: var(--background); }
+@media (hover: hover) and (pointer: fine) {
+  html, body { overscroll-behavior: none; }
 }
 
 /*
@@ -567,7 +571,6 @@ html[data-document] body { font-size: var(--text-base); line-height: 1.6; }
 .invoice-status-paid { color: var(--settled-text); }
 .invoice-status-viewed { background: var(--st-seen-bg); color: var(--tone-info); }
 .invoice-status-overdue { background: var(--st-over-bg); color: var(--tone-warning); }
-[data-slot='app-content'] { background: var(--main-bg); }
 body { caret-color: var(--caret); }
 
 [data-slot='amount'] { font-weight: var(--w-total); }

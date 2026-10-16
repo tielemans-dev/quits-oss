@@ -1,3 +1,18 @@
+import {
+  CreditCard,
+  FileMinus,
+  FilePen,
+  FileText,
+  Handshake,
+  House,
+  ListChecks,
+  Package,
+  Repeat,
+  Settings,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+
 import type { TranslationKey } from '../../lib/i18n/messages'
 
 export type NavPath =
@@ -16,6 +31,8 @@ export type NavPath =
 export type NavItem = {
   path: NavPath
   labelKey: TranslationKey
+  /** Shown before the label in the sidebar (16px, stroke 1.5). */
+  icon: LucideIcon
   /** Words the command palette also matches, besides the translated label. */
   keywords?: string[]
   /** Only shown when the deployment has billing; see `useRuntimeDistribution`. */
@@ -40,33 +57,33 @@ export const navGroups: NavGroup[] = [
     id: 'home',
     labelKey: null,
     items: [
-      { path: '/', labelKey: 'nav.dashboard', keywords: ['dashboard', 'oversigt', 'forside'] },
-      { path: '/approvals', labelKey: 'nav.approvals', keywords: ['approvals', 'agent', 'agenter'] },
+      { path: '/', labelKey: 'nav.dashboard', icon: House, keywords: ['dashboard', 'oversigt', 'forside'] },
+      { path: '/approvals', labelKey: 'nav.approvals', icon: ListChecks, keywords: ['approvals', 'agent', 'agenter'] },
     ],
   },
   {
     id: 'sales',
     labelKey: 'nav.group.sales',
     items: [
-      { path: '/invoices', labelKey: 'nav.invoices', keywords: ['invoices', 'regninger'] },
-      { path: '/quotes', labelKey: 'nav.quotes', keywords: ['quotes', 'tilbud', 'tilbudsgivning'] },
-      { path: '/agreements', labelKey: 'nav.agreements', keywords: ['agreements', 'kontrakter'] },
-      { path: '/recurring', labelKey: 'nav.recurring', keywords: ['recurring', 'abonnement', 'gentagne'] },
+      { path: '/invoices', labelKey: 'nav.invoices', icon: FileText, keywords: ['invoices', 'regninger'] },
+      { path: '/quotes', labelKey: 'nav.quotes', icon: FilePen, keywords: ['quotes', 'tilbud', 'tilbudsgivning'] },
+      { path: '/agreements', labelKey: 'nav.agreements', icon: Handshake, keywords: ['agreements', 'kontrakter'] },
+      { path: '/recurring', labelKey: 'nav.recurring', icon: Repeat, keywords: ['recurring', 'abonnement', 'gentagne'] },
     ],
   },
   {
     id: 'customers-catalog',
     labelKey: 'nav.group.customersCatalog',
     items: [
-      { path: '/contacts', labelKey: 'nav.contacts', keywords: ['contacts', 'kontakter', 'customers'] },
-      { path: '/catalog', labelKey: 'nav.catalog', keywords: ['catalog', 'varer', 'produkter', 'ydelser'] },
+      { path: '/contacts', labelKey: 'nav.contacts', icon: Users, keywords: ['contacts', 'kontakter', 'customers'] },
+      { path: '/catalog', labelKey: 'nav.catalog', icon: Package, keywords: ['catalog', 'varer', 'produkter', 'ydelser'] },
     ],
   },
   {
     id: 'money',
     labelKey: 'nav.group.money',
     items: [
-      { path: '/credit-notes', labelKey: 'nav.creditNotes', keywords: ['credit notes', 'kreditnota'] },
+      { path: '/credit-notes', labelKey: 'nav.creditNotes', icon: FileMinus, keywords: ['credit notes', 'kreditnota'] },
     ],
   },
   {
@@ -74,8 +91,8 @@ export const navGroups: NavGroup[] = [
     labelKey: null,
     pinned: true,
     items: [
-      { path: '/billing', labelKey: 'nav.billing', requiresBilling: true, keywords: ['billing', 'plan'] },
-      { path: '/settings', labelKey: 'nav.settings', keywords: ['settings', 'indstillinger', 'firma'] },
+      { path: '/billing', labelKey: 'nav.billing', icon: CreditCard, requiresBilling: true, keywords: ['billing', 'plan'] },
+      { path: '/settings', labelKey: 'nav.settings', icon: Settings, keywords: ['settings', 'indstillinger', 'firma'] },
     ],
   },
 ]
@@ -91,7 +108,7 @@ export function visibleNavGroups(billingEnabled: boolean): NavGroup[] {
 }
 
 /** Whether `currentPath` is on `item`'s page or below it (`/invoices/inv_1` is on `/invoices`). */
-export function isNavItemActive(item: NavItem, currentPath: string): boolean {
+export function isNavItemActive(item: Pick<NavItem, 'path'>, currentPath: string): boolean {
   if (item.path === '/') return currentPath === '/'
   return currentPath === item.path || currentPath.startsWith(`${item.path}/`)
 }

@@ -30,8 +30,6 @@ vi.mock("@tanstack/react-router", () => ({
 // constants say self-host even when the server is cloud. The sidebar must follow the server.
 vi.mock("../../lib/distribution", () => ({ isCloudDistribution: false, billingEnabled: false }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key }) }))
-vi.mock("../user-menu", () => ({ UserMenu: () => null }))
-vi.mock("../brand/quits-mark", () => ({ QuitsMark: () => null }))
 vi.mock("../shell/org-switcher", () => ({ OrgSwitcher: () => null }))
 vi.mock("../shell/skip-link", () => ({ SkipLink: () => null }))
 vi.mock("../ui/sidebar", () => {
@@ -60,10 +58,11 @@ afterEach(() => {
 })
 
 describe("sidebar billing entry", () => {
-  it("shows Billing on cloud, as the server-delivered runtime says", () => {
+  it("keeps Billing out of the sidebar on cloud: it lives in the account menu", () => {
     router.context = { runtime: { distribution: "cloud", billingEnabled: true } }
     render(<AppSidebar />)
-    expect(screen.queryByText("nav.billing")).not.toBeNull()
+    expect(screen.queryByText("nav.billing")).toBeNull()
+    expect(screen.queryByText("nav.settings")).toBeNull()
   })
 
   it("hides Billing on self-host", () => {
@@ -81,11 +80,13 @@ describe("sidebar billing entry", () => {
 })
 
 describe("sidebar navigation", () => {
-  it("groups the pages under labelled sales, customers and money groups", () => {
+  it("groups the pages into named sales, customers and money groups, split by a hairline", () => {
     render(<AppSidebar />)
 
     for (const label of ["nav.group.sales", "nav.group.customersCatalog", "nav.group.money"]) {
-      expect(screen.queryByText(label)).not.toBeNull()
+      expect(screen.getByRole("group", { name: label })).not.toBeNull()
+      // The name is for assistive technology; the groups show no visible label.
+      expect(screen.queryByText(label)).toBeNull()
     }
     const sales = screen.getByRole("group", { name: "nav.group.sales" })
     expect(sales.textContent).toContain("nav.invoices")
@@ -103,12 +104,11 @@ describe("sidebar navigation", () => {
     expect(current.map((link) => link.getAttribute("href"))).toEqual(["/invoices"])
   })
 
-  it("closes the mobile drawer when a page or the logo is chosen", () => {
+  it("closes the mobile drawer when a page is chosen", () => {
     render(<AppSidebar />)
 
-    fireEvent.click(screen.getByRole("link", { name: "quits" }))
     fireEvent.click(screen.getByText("nav.quotes"))
-    expect(router.setOpenMobile).toHaveBeenCalledTimes(2)
+    expect(router.setOpenMobile).toHaveBeenCalledTimes(1)
     expect(router.setOpenMobile).toHaveBeenCalledWith(false)
   })
 

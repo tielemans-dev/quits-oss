@@ -23,7 +23,7 @@ function AgreementsPage() {
   const agreements = list.data ?? []
   if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
   return (
-    <div className="p-6 grid gap-6">
+    <div className="grid gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("agreements.title")}</h1>

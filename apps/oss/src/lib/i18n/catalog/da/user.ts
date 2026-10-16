@@ -3,6 +3,7 @@ export const daUserMessages = {
   "user.organizations": "Organisationer",
   "user.createOrganization": "Opret organisation",
   "user.signOut": "Log ud",
+  "user.menu": "Din konto",
   "user.theme": "Tema",
   "user.theme.system": "System",
   "user.theme.light": "Lyst",

@@ -396,7 +396,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   }
 
   return (
-    <div ref={summaryScope} className={`${onComplete ? "invoice-workspace" : "max-w-5xl"} p-4 sm:p-6 ${confirmOpen && onComplete ? "invoice-workspace-review" : ""}`}>
+    <div ref={summaryScope} className={`${onComplete ? "invoice-workspace" : ""} ${confirmOpen && onComplete ? "invoice-workspace-review" : ""}`}>
       {bankNudge.dialog}
       {handed && <Button type="button" variant="link" className="mb-2 px-0" onClick={backToRequest}><ArrowLeft className="size-4" />{t("invoices.new.backToRequest")}</Button>}
       <Card className="invoice-form">

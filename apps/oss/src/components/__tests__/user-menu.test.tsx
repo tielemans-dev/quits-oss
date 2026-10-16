@@ -11,7 +11,11 @@ const state = vi.hoisted(() => ({
   loadPage: vi.fn(),
 }))
 
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }))
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
+}))
+vi.mock("../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: false }) }))
 vi.mock("../../lib/auth-client", () => ({
   authClient: {
     signOut: state.signOut,
@@ -35,12 +39,6 @@ vi.mock("../../lib/auth-client", () => ({
 }))
 vi.mock("../../lib/page-navigation", () => ({ loadPage: state.loadPage, reloadPage: vi.fn() }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key }) }))
-vi.mock("../ui/sidebar", () => ({
-  SidebarMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SidebarMenuItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SidebarMenuButton: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  useSidebar: () => ({ isMobile: false }),
-}))
 const RadioGroupContext = createContext<(value: string) => void>(() => undefined)
 
 vi.mock("../ui/dropdown-menu", () => ({

@@ -57,7 +57,7 @@ function RecurringSchedulePage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <QuerySkeleton />
       </div>
     )
@@ -65,7 +65,7 @@ function RecurringSchedulePage() {
 
   if (!schedule) {
     return (
-      <div className="p-6">
+      <div>
         {backLink}
         <p className="text-muted-foreground">{t("recurring.detail.notFound")}</p>
       </div>
@@ -80,7 +80,7 @@ function RecurringSchedulePage() {
       : t("recurring.detail.noEnd")
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div>
       {backLink}
 
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">

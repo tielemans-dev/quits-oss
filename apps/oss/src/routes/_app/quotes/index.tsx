@@ -81,7 +81,7 @@ function QuotesListPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <PageHeader title={t("quotes.title")} />
         <ListSkeleton label={t("quotes.loading")} />
       </div>
@@ -98,7 +98,7 @@ function QuotesListPage() {
   )
 
   return (
-    <div className="p-6">
+    <div>
       <PageHeader title={t("quotes.title")} actions={newQuote(t("quotes.action.new"))} />
 
       {quotes.length === 0 ? (

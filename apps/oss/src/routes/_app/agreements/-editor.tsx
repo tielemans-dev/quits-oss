@@ -205,9 +205,9 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     }
   }
   if (loadError) return <div className="p-6"><QueryError error={loadError} retry={() => setLoadAttempt(value => value + 1)} /></div>
-  if (loading) return <div className="p-6"><QuerySkeleton /></div>
+  if (loading) return <div><QuerySkeleton /></div>
   return (
-    <div className="p-6 max-w-4xl">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>{t(agreementId ? "agreements.edit" : "agreements.new")}</CardTitle>

@@ -121,7 +121,7 @@ function InvoicesListPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div>
         <PageHeader title={t("invoices.title")} />
         <ListSkeleton label={t("invoices.loading")} />
       </div>
@@ -140,7 +140,7 @@ function InvoicesListPage() {
     ? `${t("invoices.detail.email.sendFailed.title")} ${t("invoices.detail.email.sendFailed.body")}`
     : notice?.sendError ?? (notice?.emailWarning ? t("invoices.detail.warning.emailSkipped", { reason: notice.emailWarning }) : t(notice?.kind === "recurring" ? "invoices.flow.scheduleSaved" : notice?.kind === "draft" ? "invoices.flow.created" : "shell.request.invoice.sent"))
   return (
-    <div className="p-6">
+    <div>
       {flowOpen && <InvoiceFlow open origin={origin.current} onClose={() => setFlowOpen(false)} onComplete={target => { void completed(target) }} />}
       {selected && <InvoiceDetailPanel key={selected} id={selected} origin={origin.current} onClose={() => setSelected(null)} />}
       {notice && <div ref={toast} role="status" className="invoice-toast fixed bottom-4 right-4 z-40 max-w-[calc(100vw-2rem)] rounded-lg border bg-panel p-4 shadow-lg">

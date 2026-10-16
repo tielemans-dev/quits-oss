@@ -74,22 +74,22 @@ export function OrgSwitcher({ className }: { className?: string }) {
       <DropdownMenuTrigger
         aria-label={t('shell.org.switch')}
         className={cn(
-          'group/org flex h-11 w-full items-center gap-2.5 rounded-lg px-2 text-left outline-hidden',
-          'hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[state=open]:bg-sidebar-accent',
+          'group/org flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left outline-hidden',
+          'hover:bg-(--neutral-6) focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[state=open]:bg-(--neutral-10)',
           className
         )}
       >
         <span
           aria-hidden="true"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-soft text-sm font-bold text-brand-text"
+          className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-foreground text-2xs font-medium text-background"
         >
           {name ? initialOf(name) : ''}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{name || ' '}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{name || ' '}</span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={4} className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg">
-        <DropdownMenuLabel className="mono-label px-2 py-1">{t('user.organizations')}</DropdownMenuLabel>
+        <DropdownMenuLabel className="px-2 py-1 text-xs font-normal text-muted-foreground">{t('user.organizations')}</DropdownMenuLabel>
         {currentOrg && (
           <DropdownMenuItem className="gap-2" disabled={inSync} onClick={() => handleSwitchOrg(currentOrg.id)}>
             <Check className="size-4 shrink-0" />

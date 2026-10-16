@@ -22,6 +22,7 @@ export const enNavMessages = {
   "shell.search.placeholderDraft": "Search, or write an invoice…",
   "shell.search.placeholderShort": "Search…",
   "shell.search.open": "Open search and commands",
+  "shell.settings": "Settings",
   "shell.new": "New",
   "shell.new.menuLabel": "Create new",
   "shell.new.invoice": "Invoice",

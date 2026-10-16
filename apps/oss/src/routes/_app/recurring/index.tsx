@@ -53,7 +53,7 @@ function RecurringInvoicesPage() {
   ) : null
 
   return (
-    <div className="p-6">
+    <div>
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t("recurring.title")}</h1>
