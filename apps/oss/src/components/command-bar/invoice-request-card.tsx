@@ -306,7 +306,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
         {/* The shadcn default animates every property; name the ones that change. */}
         <Button type="button" variant="outline" onClick={onDismiss} disabled={pending} className="transition-[color,background-color,box-shadow]">{t("shell.request.dismiss")}</Button>
         <Button type="button" variant="outline" onClick={edit} disabled={pending || !readiness} className="transition-[color,background-color,box-shadow]">{t("shell.request.invoice.edit")}</Button>
-        <Button type="button" disabled={pending || !readiness || !!blockedBy} onClick={() => void send()} className="transition-[color,background-color,box-shadow]">{pending ? t("invoices.detail.action.sending") : t("invoiceSend.confirm")}</Button>
+        <Button data-primary type="button" disabled={pending || !readiness || !!blockedBy} onClick={() => void send()} className="transition-[color,background-color,box-shadow]">{pending ? t("invoices.detail.action.sending") : t("invoiceSend.confirm")}</Button>
       </div>
     </div>
   )

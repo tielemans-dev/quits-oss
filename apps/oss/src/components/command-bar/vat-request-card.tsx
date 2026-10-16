@@ -84,7 +84,7 @@ export function VatRequestCard({ onDismiss }: RequestCardProps) {
       </>}
     <div {...stagger(4)} className="flex flex-wrap justify-end gap-2">
       <Button type="button" variant="outline" onClick={onDismiss} className="transition-[color,background-color,box-shadow]">{t("shell.request.dismiss")}</Button>
-      {overview?.available && <Button type="button" disabled={editing || saving} onClick={startExport} className="transition-[color,background-color,box-shadow]">{t("shell.request.vat.export")}</Button>}
+      {overview?.available && <Button data-primary type="button" disabled={editing || saving} onClick={startExport} className="transition-[color,background-color,box-shadow]">{t("shell.request.vat.export")}</Button>}
     </div>
   </div>
 }

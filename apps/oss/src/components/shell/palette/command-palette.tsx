@@ -238,7 +238,10 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
 
   // The leading item can answer with a card. Once typing pauses the palette becomes it, without
   // waiting for Enter; typing on updates it, and text that stops reading as one brings the list back.
-  const lead = items[0]?.card ? items[0] : null
+  // Readings that each have a card: the chosen one shows, the others wait beside it (↑↓ switch).
+  const carded = useMemo(() => items.filter((item) => item.card), [items])
+  const first = items[0]?.card ? items[0] : null
+  const lead = first ? (carded.find((item) => item.id === effectiveActiveId) ?? first) : null
   if (!lead && paused) setPaused(false)
   // Its reads start well before the pause ends, so the card opens with its data instead of filling
   // in as it grows. Not on every key: a half-typed invoice number is not worth looking up.
@@ -271,9 +274,26 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
     setActiveId(items[next].id)
   }
 
+  // The chord the card's button names: ⌘↵ on a Mac, Ctrl+↵ elsewhere. Known only in the browser.
+  useEffect(() => {
+    if (!/Mac|iPhone|iPad/.test(navigator.platform)) document.documentElement.style.setProperty('--chord', '"Ctrl+↵"')
+  }, [])
+
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    // ⌘↵ is the card's own button, pressed from the field: one deliberate chord on a labelled button.
+    if (shown && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      panel.current?.querySelector<HTMLButtonElement>('[data-primary]:not(:disabled)')?.click()
+      return
+    }
     // With a card showing, the arrows are the card's; Enter steps into it, to its fields and buttons.
     if (shown) {
+      if (!card && carded.length > 1 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+        event.preventDefault()
+        const index = carded.findIndex((item) => item.id === lead?.id)
+        setActiveId(carded[(index + (event.key === 'ArrowDown' ? 1 : -1) + carded.length) % carded.length]!.id)
+        return
+      }
       if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
         event.preventDefault()
         panel.current?.querySelector<HTMLElement>('[data-slot=request-card-slot]')?.focus()
@@ -301,6 +321,134 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
       }
     }
   }
+
+  // The panel follows this: list to card, and the card again when its data arrives.
+  const body = (
+    <div ref={follow}>
+      {/* Over a field, the icon lands on the field's: its inset plus the 8px overhang, less the palette's border. */}
+      <div className={cn('flex items-center gap-3 border-b border-hairline px-4')} style={anchor ? { paddingLeft: anchorInset + 7 } : undefined}>
+        <Search className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
+        <input
+          type="text"
+          role="combobox"
+          ref={input}
+          aria-expanded={!shown}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
+          aria-label={t('shell.palette.inputLabel')}
+          placeholder={placeholder ?? t(placeholderKey)}
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            // Editing what a chosen card answers drops it; the text decides again.
+            setCard(null)
+          }}
+          onKeyDown={onKeyDown}
+          className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label={t('shell.palette.clear')}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-(--duration-fade) hover:bg-(--neutral-6) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
+        )}
+        <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>
+      </div>
+      <div
+        id={listboxId}
+        role="listbox"
+        aria-busy={pending}
+        aria-label={t('shell.palette.title')}
+        className={cn(
+          'max-h-[min(380px,55vh)] overflow-y-auto p-2',
+          // A card takes the list's place; the panel eases from the list's height to the card's.
+          // Coming back, the list fades in (an animation restarts when `hidden` comes off).
+          shown !== null ? 'hidden' : 'animate-in fade-in-0 duration-(--duration-fade)'
+        )}
+      >
+        {sections.length === 0 &&
+          (pending ? (
+            // Nothing has matched yet, but a provider is still answering: not "no results" yet.
+            <p className="mono-label px-3 py-8 text-center">{t('shell.palette.searching')}</p>
+          ) : (
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+              {t('shell.palette.empty', { query: query.trim() })}
+            </p>
+          ))}
+        {sections.map((section) => (
+          <div
+            key={section.id}
+            role="group"
+            aria-labelledby={section.heading ? `${listboxId}-heading-${section.id}` : undefined}
+            className="pb-1"
+          >
+            {section.heading && (
+              <div id={`${listboxId}-heading-${section.id}`} className="mono-label px-3 pt-2 pb-1.5">
+                {section.heading}
+              </div>
+            )}
+            {section.items.map((item) => {
+              const active = item.id === effectiveActiveId
+              const Icon = item.icon
+              return (
+                <div
+                  key={item.id}
+                  id={`${listboxId}-${item.id}`}
+                  role="option"
+                  aria-selected={active}
+                  aria-label={item.content ? item.label : undefined}
+                  data-active={active}
+                  onPointerMove={() => !active && setActiveId(item.id)}
+                  onClick={() => choose(item)}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm',
+                    'data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground'
+                  )}
+                >
+                  {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1 truncate">{item.content ?? item.label}</span>
+                  {item.hint && <span className="mono-label shrink-0 text-2xs">{item.hint}</span>}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+      {shown && !card && carded.length > 1 && (
+        <div role="radiogroup" aria-label={t('shell.palette.groupSuggest')} className="flex gap-1.5 overflow-x-auto border-b border-hairline px-3 py-2">
+          {carded.slice(0, 5).map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="radio"
+                aria-checked={item.id === lead?.id}
+                onClick={() => { setActiveId(item.id); input.current?.focus() }}
+                className="flex max-w-72 shrink-0 items-center gap-1.5 rounded-full border border-hairline px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-(--duration-fade) hover:text-foreground aria-checked:border-foreground/30 aria-checked:bg-sidebar-accent aria-checked:text-foreground"
+              >
+                {Icon && <Icon className="size-3.5 shrink-0" aria-hidden="true" />}
+                <span className="truncate">{item.content ?? item.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {shown}
+      <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', shown !== null && 'hidden')} aria-hidden="true">
+        <span>↑↓ {t('shell.palette.hint.select')}</span>
+        <span>↵ {t('shell.palette.hint.open')}</span>
+        <span>esc {t('shell.palette.hint.close')}</span>
+      </div>
+    </div>
+  )
 
   return (
     <DialogPrimitive.Root
@@ -351,111 +499,7 @@ export function CommandPalette({ open, onOpenChange, can, billingEnabled, onNavi
             <DialogPrimitive.Title>{t('shell.palette.title')}</DialogPrimitive.Title>
             <DialogPrimitive.Description>{t('shell.palette.description')}</DialogPrimitive.Description>
           </VisuallyHidden.Root>
-          {/* The panel follows this: list to card, and the card again when its data arrives. */}
-          <div ref={follow}>
-            {/* Over a field, the icon lands on the field's: its inset plus the 8px overhang, less the palette's border. */}
-            <div className="flex items-center gap-3 border-b border-hairline px-4" style={anchor ? { paddingLeft: anchorInset + 7 } : undefined}>
-              <Search className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
-              <input
-                type="text"
-                role="combobox"
-                ref={input}
-                aria-expanded={!shown}
-                aria-controls={listboxId}
-                aria-autocomplete="list"
-                aria-activedescendant={effectiveActiveId ? `${listboxId}-${effectiveActiveId}` : undefined}
-                aria-label={t('shell.palette.inputLabel')}
-                placeholder={placeholder ?? t(placeholderKey)}
-                autoComplete="off"
-                spellCheck={false}
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value)
-                  // Editing what a chosen card answers drops it; the text decides again.
-                  setCard(null)
-                }}
-                onKeyDown={onKeyDown}
-                className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={clear}
-                  aria-label={t('shell.palette.clear')}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-(--duration-fade) hover:bg-(--neutral-6) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                </button>
-              )}
-              <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>
-            </div>
-            <div
-              id={listboxId}
-              role="listbox"
-              aria-busy={pending}
-              aria-label={t('shell.palette.title')}
-              className={cn(
-                'max-h-[min(380px,55vh)] overflow-y-auto p-2',
-                // A card takes the list's place; the panel eases from the list's height to the card's.
-                // Coming back, the list fades in (an animation restarts when `hidden` comes off).
-                shown !== null ? 'hidden' : 'animate-in fade-in-0 duration-(--duration-fade)'
-              )}
-            >
-              {sections.length === 0 &&
-                (pending ? (
-                  // Nothing has matched yet, but a provider is still answering: not "no results" yet.
-                  <p className="mono-label px-3 py-8 text-center">{t('shell.palette.searching')}</p>
-                ) : (
-                  <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                    {t('shell.palette.empty', { query: query.trim() })}
-                  </p>
-                ))}
-              {sections.map((section) => (
-                <div
-                  key={section.id}
-                  role="group"
-                  aria-labelledby={section.heading ? `${listboxId}-heading-${section.id}` : undefined}
-                  className="pb-1"
-                >
-                  {section.heading && (
-                    <div id={`${listboxId}-heading-${section.id}`} className="mono-label px-3 pt-2 pb-1.5">
-                      {section.heading}
-                    </div>
-                  )}
-                  {section.items.map((item) => {
-                    const active = item.id === effectiveActiveId
-                    const Icon = item.icon
-                    return (
-                      <div
-                        key={item.id}
-                        id={`${listboxId}-${item.id}`}
-                        role="option"
-                        aria-selected={active}
-                        aria-label={item.content ? item.label : undefined}
-                        data-active={active}
-                        onPointerMove={() => !active && setActiveId(item.id)}
-                        onClick={() => choose(item)}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm',
-                          'data-[active=true]:bg-sidebar-accent data-[active=true]:text-foreground'
-                        )}
-                      >
-                        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-                        <span className="min-w-0 flex-1 truncate">{item.content ?? item.label}</span>
-                        {item.hint && <span className="mono-label shrink-0 text-2xs">{item.hint}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-            {shown}
-            <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', shown !== null && 'hidden')} aria-hidden="true">
-              <span>↑↓ {t('shell.palette.hint.select')}</span>
-              <span>↵ {t('shell.palette.hint.open')}</span>
-              <span>esc {t('shell.palette.hint.close')}</span>
-            </div>
-          </div>
+          {body}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
