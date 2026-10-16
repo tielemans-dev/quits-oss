@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { discoverWorkspaceEnvFile } = (await import("../workspace-env.js")) as {
   discoverWorkspaceEnvFile: (input?: {
@@ -13,6 +13,8 @@ const { discoverWorkspaceEnvFile } = (await import("../workspace-env.js")) as {
 }
 
 describe("discoverWorkspaceEnvFile", () => {
+  beforeEach(() => vi.stubEnv("QUITS_WORKTREE_ENV", ""))
+  afterEach(() => vi.unstubAllEnvs())
   it("prefers the current worktree root .env", () => {
     const envFile = discoverWorkspaceEnvFile({
       cwd: "/repo/.worktrees/feature/apps/oss",

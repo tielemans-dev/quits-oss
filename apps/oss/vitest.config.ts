@@ -24,6 +24,8 @@ export default defineConfig({
     // Bound PostgreSQL connections and memory when several worktrees verify concurrently.
     maxWorkers: 2,
     globals: false,
+    // Preserve Vitest 3 mock history; Vitest 5 clears it before each test by default.
+    clearMocks: false,
     // Database-backed tests share one PostgreSQL across parallel workers and migrate schemas on
     // first use; vitest's 5s default times out under load (locally and on CI).
     testTimeout: 30_000,

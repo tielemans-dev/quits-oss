@@ -87,6 +87,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes ripgrep
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:

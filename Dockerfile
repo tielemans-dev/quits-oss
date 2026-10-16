@@ -1,4 +1,6 @@
+FROM node:22.22.3-bookworm-slim AS node
 FROM oven/bun:1.3.9 AS base
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 WORKDIR /app
 
 FROM base AS build
@@ -16,6 +18,7 @@ COPY --from=build /app/.bun-version ./.bun-version
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/oss ./apps/oss
 COPY --from=build /app/packages ./packages
+COPY --from=build /app/scripts/workspace-env.js ./scripts/workspace-env.js
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
