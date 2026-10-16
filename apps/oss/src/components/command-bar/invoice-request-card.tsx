@@ -29,7 +29,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { syncHeldJobs } from "../undo/undo-store"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
-import { useMorph } from "./use-morph"
 
 const SHRINK_MS = DURATION.card
 const HOLD_MS = 1500
@@ -71,7 +70,6 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   const hours = useRef<HTMLInputElement>(null)
   const dismissRef = useRef(onDismiss)
   useEffect(() => { dismissRef.current = onDismiss })
-  const morph = useMorph<HTMLDivElement>(SHRINK_MS)
 
   useEffect(() => {
     let cancelled = false
@@ -172,7 +170,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       }
       // The send waits out the undo window; its toast offers Fortryd and tells when it has gone.
       await syncHeldJobs()
-      morph.run(() => setSent({ id: target.id, amount: total, customer: customerName ?? "" }))
+      setSent({ id: target.id, amount: total, customer: customerName ?? "" })
     } catch (err) {
       const changed = invoiceFieldIssues(err).find(issue => issue.code === "changed_since_review")
       setError(changed ? t(invoiceIssueKey(changed.code), changed.params) : t("invoiceValidation.unknown"))
@@ -195,11 +193,9 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
     return () => { clearTimeout(leave); clearTimeout(close) }
   }, [sent])
 
-  // The same element carries the card and the check, so the morph animates one surface and never a blank one.
   if (sent) {
     return (
       <div
-        ref={morph.ref}
         role="status"
         className={cn("request-stagger flex items-center gap-3 overflow-hidden p-6", leaving && "scale-90 opacity-0 transition-[opacity,transform] motion-reduce:scale-100")}
         style={{ "--stagger-delay": `${CHECK_DELAY_MS}ms`, ...(leaving && { transitionDuration: `${LEAVE_MS}ms`, transitionTimingFunction: EASE_ENTER }) } as CSSProperties}
@@ -216,7 +212,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   }
 
   return (
-    <div ref={morph.ref} className="space-y-4 overflow-hidden p-4">
+    <div className="space-y-4 overflow-hidden p-4">
       {repeat && (
         <div {...stagger(0)}>
           <p className="font-semibold">{t("shell.request.title.repeat")}</p>

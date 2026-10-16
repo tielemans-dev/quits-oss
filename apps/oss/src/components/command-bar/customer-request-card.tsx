@@ -2,14 +2,12 @@ import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useI18n } from "../../lib/i18n/react"
-import { DURATION } from "../../lib/motion"
 import { trpc } from "../../trpc/client"
 import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
 import { InvoiceRequestCard } from "./invoice-request-card"
 import { stagger } from "./request-card-slot"
 import type { RequestCardProps } from "./request-intent"
-import { useMorph } from "./use-morph"
 
 type Company = { cvr: string; name: string; address: string; id?: string }
 const normalize = (value: string) => value.replace(/^DK\s*/i, "").replace(/\s/g, "")
@@ -26,7 +24,7 @@ export function CustomerRequestCard({ intent, onDismiss }: RequestCardProps) {
   const [attempt, setAttempt] = useState(0)
   const [pending, setPending] = useState(false)
   const busy = useRef(false)
-  const morph = useMorph<HTMLDivElement>(DURATION.card)
+  const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!created) return
@@ -63,7 +61,7 @@ export function CustomerRequestCard({ intent, onDismiss }: RequestCardProps) {
       const contact = company.id ? { id: company.id, reused: true } : await trpc.contacts.create.mutate({
         name: company.name, company: company.name, address: company.address, country: "DK", taxId: cvr, reuseCvr: true,
       })
-      morph.run(() => { setContactId(contact.id); setCreated(!contact.reused) })
+      setContactId(contact.id); setCreated(!contact.reused)
     } catch { setError(t("contacts.new.error.createFailed")) }
     finally { busy.current = false; setPending(false) }
   }
@@ -74,14 +72,14 @@ export function CustomerRequestCard({ intent, onDismiss }: RequestCardProps) {
     try {
       // The existing delete command refuses a customer already used by an invoice or other document.
       await trpc.contacts.undoCreate.mutate({ id: contactId })
-      morph.run(() => { setContactId(""); setCreated(false) })
+      setContactId(""); setCreated(false)
     } catch { setError(t("shell.request.customer.undoError")) }
     finally { busy.current = false; setPending(false) }
   }
 
   // Keep undo within the palette's focus trap; dashboard confirmations use the viewport corner.
-  const dialog = morph.ref.current?.closest('[role="dialog"]')
-  return <div ref={morph.ref}>
+  const dialog = root.current?.closest('[role="dialog"]')
+  return <div ref={root}>
     {contactId ? <InvoiceRequestCard intent={{ kind: "invoice", input: `faktura til CVR ${cvr}` }} initialContactId={contactId} onDismiss={onDismiss} /> : <div className="space-y-4 p-4">
       <div {...stagger(0)} className="space-y-1 text-sm break-words">
         <h2 className="font-semibold">{company?.name ?? t("shell.request.title.customer")}</h2>
