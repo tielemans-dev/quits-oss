@@ -10,6 +10,7 @@ import type {
   RuntimeCapabilityPatch,
 } from "@quits/contracts/runtime"
 import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
+import { getEmailDeliveryRuntimeStatus } from "../email-delivery"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
 export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
@@ -206,7 +207,16 @@ export function getRuntimeCapabilities(
   capabilities.sellerVatConfirmation = { enabled: isHostedRuntime(env) && capabilities.sellerVatConfirmation?.enabled === true }
   // Issuance artifacts are a release invariant; runtime extensions cannot opt out.
   capabilities.documents.artifactsRequired = true
-  return capabilities
+  // Report provider configuration, including managed runtimes, without exposing credentials.
+  const { configured } = getEmailDeliveryRuntimeStatus({
+    managed: capabilities.emailDelivery.managed,
+    resendApiKey: env.RESEND_API_KEY,
+    fromEmail: env.FROM_EMAIL,
+    emailProvider: env.EMAIL_PROVIDER,
+    smtp: env,
+    runtimeKind: getRuntimePlatform().getRuntimeKind(),
+  })
+  return { ...capabilities, emailDelivery: { ...capabilities.emailDelivery, configured } }
 }
 
 function isHostedRuntime(env: Record<string, string | undefined>) {

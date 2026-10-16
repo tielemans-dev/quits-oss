@@ -8,9 +8,11 @@ vi.mock("../../lib/email", async () => ({
 import { executeIssuanceCommand } from "../../application/issuance"
 import { prisma } from "../../lib/db"
 import { deliver } from "../../lib/email"
+import { translate } from "../../lib/i18n/translate"
 import { UNDO_HOLD_LEASE_MS, UNDO_WINDOW_MS } from "../../lib/undo-window"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { jobsRouter } from "../../trpc/routers/jobs"
+import { runtimeRouter } from "../../trpc/routers/runtime"
 import { createContact } from "../commands/contacts"
 import { createInvoiceDraft } from "../commands/invoices"
 import { DELAYED_INVOICE_SEND_JOB } from "../held-jobs"
@@ -63,6 +65,31 @@ describe.skipIf(!hasTestDatabase)("held sends and Fortryd", () => {
     if (draft.status !== "completed") throw new Error("draft setup failed")
     return draft.result.id
   }
+
+  it("refuses both queues before creating jobs when email is unconfigured, then allows retry after configuration", async () => {
+    const ctx = await setup()
+    const invoiceId = await overdueInvoice(ctx.org.organizationId)
+    const id = await draftInvoice(ctx)
+    const runtime = runtimeRouter.createCaller({} as never)
+    expect((await runtime.capabilities()).emailDelivery).toMatchObject({ configured: true })
+    vi.stubEnv("RESEND_API_KEY", "")
+    expect((await runtime.capabilities()).emailDelivery).toMatchObject({ configured: false })
+
+    const request = { invoiceIds: [invoiceId], clientRequestId: randomUUID() }
+    for (const send of [() => ctx.api.sendReminders(request), () => ctx.api.sendInvoiceLater({ id })]) {
+      await expect(send()).rejects.toMatchObject({ code: "BAD_REQUEST", cause: { tag: "InvalidState", code: "email_unavailable" } })
+    }
+    expect(await prisma.job.count({ where: { organizationId: ctx.org.organizationId } })).toBe(0)
+    expect(await prisma.jobStep.count({ where: { job: { organizationId: ctx.org.organizationId } } })).toBe(0)
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe("draft")
+    expect(deliver).not.toHaveBeenCalled()
+    expect(translate("email.error.email_unavailable", "en-US")).toContain("Configure email delivery")
+    expect(translate("email.error.email_unavailable", "da-DK")).toContain("Opsæt e-maillevering")
+
+    vi.stubEnv("RESEND_API_KEY", "test-key")
+    await expect(ctx.api.sendReminders(request)).resolves.toHaveProperty("jobId")
+    await expect(ctx.api.sendInvoiceLater({ id })).resolves.toHaveProperty("jobId")
+  })
 
   describe("reminder batch", () => {
     it("is held for the undo window: listed with its time left, and nothing is sent before it closes", async () => {

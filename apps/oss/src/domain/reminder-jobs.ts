@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { z } from "zod"
 import type { Job, Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { getRuntimeCapabilities } from "../lib/runtime/extensions"
 import { UNDO_WINDOW_MS } from "../lib/undo-window"
 import type { UserActor } from "./actor"
 import { defineCommand } from "./command"
@@ -40,6 +41,9 @@ export const queueReminderJob = defineCommand({
     const command = yield* Command
     if (command.actor.kind !== "user") return yield* new InvalidState({
       code: "user_required", message: "A user must queue reminder batches",
+    })
+    if (!getRuntimeCapabilities().emailDelivery.configured) return yield* new InvalidState({
+      code: "email_unavailable", message: "Configure email delivery before sending emails. Nothing was queued.",
     })
     const ids = [...new Set(input.invoiceIds)]
     const invoices = yield* Effect.promise(() => db.invoice.findMany({

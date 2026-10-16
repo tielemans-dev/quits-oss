@@ -1,4 +1,5 @@
 export const enEmailMessages = {
+  "email.error.email_unavailable": "Configure email delivery before sending emails. Nothing was queued.",
   "email.footer.sentVia": "Sent via quits",
   "email.invoice.greeting": "Hi {name}, please find your invoice below.",
   "email.invoice.subject": "Invoice {number} — {total} due {dueDate}",
