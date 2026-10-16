@@ -152,6 +152,12 @@ export const enSettingsMessages = {
     "Failed to refresh branded sending status.",
   "settings.documentSending.error.disableFailed":
     "Failed to disable branded sending.",
+  "settings.documentSending.error.invalid_domain":
+    "The sending domain was rejected. Check the domain and try again.",
+  "settings.documentSending.error.not_found":
+    "The sending domain could not be found. Check the domain setup and try again.",
+  "settings.documentSending.error.conflict":
+    "The sending domain conflicts with an existing setup. Check the domain setup and try again.",
   "settings.section.payments.title": "Payments (Stripe BYOK)",
   "settings.section.payments.description":
     "Configure your own Stripe account for hosted invoice payment links.",
