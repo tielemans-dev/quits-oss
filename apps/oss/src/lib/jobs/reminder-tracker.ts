@@ -6,6 +6,8 @@ export type TrackerJob = {
   kind?: string
   status: string
   createdAt: Date | string
+  /** When the server last moved the job on; a job that has not moved in a long while is stuck. */
+  updatedAt?: Date | string
   /** Time left in the undo window; nothing has been sent while it is above zero. */
   heldForMs?: number
   steps: {
@@ -57,10 +59,14 @@ export function remindedInvoiceIds(jobs: readonly TrackerJob[]): Set<string> {
 }
 
 const RECENT_FAILURE_MS = 24 * 60 * 60 * 1000
+/** A job the server has not moved on for this long is waiting on something a toast cannot fix. */
+const STALLED_MS = 15 * 60 * 1000
 
 /**
  * The one job the toast shows: the newest that is running, was running in this tab and has not
- * been dismissed, or failed recently enough to still be worth a retry after a reload.
+ * been dismissed, or failed recently enough to still be worth a retry after a reload. A job left
+ * waiting for a retry nothing runs, such as a reminder with no email delivery set up, is not
+ * brought back by a reload.
  */
 export function pickTrackedJob(
   jobs: readonly TrackerJob[],
@@ -71,7 +77,8 @@ export function pickTrackedJob(
   return jobs.find((job) => {
     if (dismissed.has(job.id) || job.heldForMs) return false
     const { phase } = trackerView(job)
-    if (phase === "running" || seen.has(job.id)) return true
+    if (seen.has(job.id)) return true
+    if (phase === "running") return now - new Date(job.updatedAt ?? job.createdAt).getTime() < STALLED_MS
     if (job.kind === "vat.summary" && phase === "done" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS) return true
     return phase === "failed" && now - new Date(job.createdAt).getTime() < RECENT_FAILURE_MS
   })
