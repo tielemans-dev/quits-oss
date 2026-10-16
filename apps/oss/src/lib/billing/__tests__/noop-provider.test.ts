@@ -5,7 +5,7 @@ describe("NoopBillingProvider", () => {
   it("returns free subscription for every organization", async () => {
     const provider = new NoopBillingProvider()
     await expect(provider.getSubscription("org-1")).resolves.toEqual({
-      status: "free",
+      status: "free", organizationAccess: { state: "self_hosted" },
       priceId: null,
     })
   })

@@ -55,7 +55,7 @@ export async function retryPendingCvrVerifications(db: PrismaClient, userId: str
         const updated = await tx.organizationCvrVerification.updateMany({
           where: { ...where, nextAttemptAt }, data: { status, checkedAt: new Date(), lastError: null },
         })
-        if (updated.count && status === "verified") await getBillingProvider().startTrial?.(row.organizationId, { cvr: row.cvr, tx })
+        if (updated.count && status === "verified") await getBillingProvider().startTrial?.(row.organizationId, { cvr: row.cvr, cvrVerified: true, tx })
       })
     } catch (error) {
       if (!(error instanceof Error) || error.message !== "cvr.alreadyRegistered") throw error

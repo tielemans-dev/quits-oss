@@ -153,7 +153,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
       })) })
     }
     // Confirmation and catalog writes are done. A failed hook still rolls the transaction back.
-    if (!isCloudDistribution || admittedCompany) await billingProvider.startTrial?.(organizationId, { cvr: input.cvr, tx })
+    await billingProvider.startTrial?.(organizationId, { cvr: input.cvr, cvrVerified: Boolean(admittedCompany), tx })
     return result
   }, { timeout: 60_000 })
   if (renamed) await followConfirmedNameSlug(organizationId, renamed, input.companyName).catch(() => {

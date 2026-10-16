@@ -1,7 +1,8 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { trpc } from "../../trpc/client"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
+import { useTrialAccess } from "../../components/billing/trial-access"
 import { Button } from "../../components/ui/button"
 import {
   Card,
@@ -13,7 +14,7 @@ import {
 import { AlertTriangle, CreditCard } from "lucide-react"
 import { useI18n } from "../../lib/i18n/react"
 import type { BillingSubscription } from "../../lib/billing/types"
-import { formatPlanAmount, formatPlanPrice, formatTrialDate, trialDaysLeft } from "../../lib/billing/trial-format"
+import { formatPlanAmount, formatPlanPrice, formatTrialDate } from "../../lib/billing/trial-format"
 
 export const Route = createFileRoute("/_app/billing")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -23,43 +24,17 @@ export const Route = createFileRoute("/_app/billing")({
   component: BillingPage,
 })
 
-type SubscriptionData = BillingSubscription
-
 function BillingPage() {
   const { t } = useI18n()
   const { billingEnabled } = useRuntimeDistribution()
   const search = useSearch({ from: "/_app/billing" })
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(
-    null
-  )
-  const [loading, setLoading] = useState(true)
+  const trial = useTrialAccess()
+  const subscription = trial?.subscription ?? null
+  const loading = trial?.loading ?? billingEnabled
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!billingEnabled) {
-      setLoading(false)
-      return
-    }
-    // A response that arrives after billing was switched off, or after the page closed, is dropped.
-    let cancelled = false
-    trpc.billing.getSubscription
-      .query()
-      .then((data) => {
-        if (!cancelled) setSubscription(data)
-      })
-      .catch(() => {
-        if (!cancelled) setError(t("billing.error.loadSubscription"))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [t, billingEnabled])
-
-  if (!billingEnabled) {
+  if (!billingEnabled || subscription?.organizationAccess?.state === "self_hosted") {
     return (
       <div className="p-6 max-w-2xl">
         <div className="flex items-center gap-2 mb-6">
@@ -116,6 +91,8 @@ function BillingPage() {
     }
   }
 
+  if (trial?.error || (!loading && billingEnabled && !subscription?.organizationAccess)) return <p role="alert">{t("billing.error.loadSubscription")}</p>
+
   if (loading) {
     return (
       <div className="p-6">
@@ -128,13 +105,13 @@ function BillingPage() {
     )
   }
 
-  const status = subscription?.status ?? "free"
+  const status = subscription?.organizationAccess.state ?? "self_hosted"
 
   const statusLabels: Record<string, { label: string; className: string }> = {
-    free: { label: t("billing.status.free"), className: "text-muted-foreground" },
-    active: { label: t("billing.status.active"), className: "text-tone-success" },
-    canceled: { label: t("billing.status.canceled"), className: "text-tone-warning" },
-    past_due: { label: t("billing.status.pastDue"), className: "text-destructive" },
+    self_hosted: { label: t("billing.status.free"), className: "text-muted-foreground" },
+    subscribed: { label: t("billing.status.active"), className: "text-tone-success" },
+    read_only: { label: t("billing.status.canceled"), className: "text-tone-warning" },
+    trial: { label: t("trial.status.active"), className: "text-tone-success" },
   }
 
   const statusInfo = statusLabels[status] ?? {
@@ -142,10 +119,10 @@ function BillingPage() {
     className: "text-muted-foreground",
   }
 
-  if (subscription?.access?.paidOnly) {
+  if (subscription?.organizationAccess) {
     return <HostedBillingPage subscription={subscription} actionLoading={actionLoading} error={error}
       success={search.success} canceled={search.canceled}
-      onUpgrade={subscription.access.hasSubscription ? handleManage : handleUpgrade} onManage={handleManage} />
+      onUpgrade={subscription.access?.hasSubscription ? handleManage : handleUpgrade} onManage={handleManage} />
   }
 
   return (
@@ -155,7 +132,7 @@ function BillingPage() {
         <h1 className="text-2xl font-bold">{t("billing.title")}</h1>
       </div>
 
-      {search.success && status === "active" && (
+      {search.success && subscription?.organizationAccess.state === "subscribed" && (
         <div className="mb-4 rounded-md border border-tone-success/30 bg-tone-success/10 p-3 text-sm text-foreground">
           {t("billing.flash.success")}
         </div>
@@ -200,7 +177,7 @@ function BillingPage() {
             </div>
           )}
 
-          {!subscription?.access?.paidOnly && status === "free" && (
+          {!subscription?.access?.paidOnly && status === "self_hosted" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.free.description")}
@@ -213,7 +190,7 @@ function BillingPage() {
             </div>
           )}
 
-          {!subscription?.access?.paidOnly && status === "active" && (
+          {!subscription?.access?.paidOnly && status === "subscribed" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.active.description")}
@@ -230,7 +207,7 @@ function BillingPage() {
             </div>
           )}
 
-          {!subscription?.access?.paidOnly && status === "canceled" && (
+          {!subscription?.access?.paidOnly && status === "read_only" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.canceled.description")}
@@ -243,7 +220,7 @@ function BillingPage() {
             </div>
           )}
 
-          {!subscription?.access?.paidOnly && status === "past_due" && (
+          {!subscription?.access?.paidOnly && status === "read_only" && (
             <div className="grid gap-2">
               <p className="text-sm text-muted-foreground">
                 {t("billing.pastDue.description")}
@@ -277,14 +254,13 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
   const { t, locale } = useI18n()
   const plan = subscription.plan
   const price = plan ? formatPlanPrice(plan, locale) : null
-  const trialEnd = subscription.trialEnd ? formatTrialDate(subscription.trialEnd, locale) : null
-  const isTrial = subscription.status === "trialing"
-  const isPaid = subscription.status === "active" && Boolean(subscription.access?.hasSubscription)
-  const isComped = subscription.status === "active" && !subscription.access?.hasSubscription
-  const days = subscription.trialEnd ? trialDaysLeft(subscription.trialEnd) : 0
-  const progress = subscription.trialStart && subscription.trialEnd
-    ? Math.min(100, Math.max(0, ((Date.now() / 1000 - subscription.trialStart) /
-      (subscription.trialEnd - subscription.trialStart)) * 100)) : 0
+  const access = subscription.organizationAccess
+  const trialEnd = (access.state === "trial" || access.state === "read_only") && access.trialEnd ? formatTrialDate(access.trialEnd, locale) : null
+  const isTrial = access.state === "trial"
+  const isPaid = access.state === "subscribed"
+  const isComped = access.state === "complimentary"
+  const days = access.state === "trial" ? access.daysLeft : 0
+  const progress = access.state === "trial" ? access.progress : 0
   return <div className="mx-auto max-w-4xl px-1 py-1 text-foreground">
     <div className="mb-7 flex items-center gap-2">
       <span aria-hidden="true" className="size-2.5 bg-settled" />
@@ -331,7 +307,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
         </ul>
         {!isPaid && !isComped && <>
           <Button className="mt-7 h-11 w-full rounded-md bg-foreground text-background hover:bg-foreground/90" onClick={onUpgrade} disabled={actionLoading}>
-            {actionLoading ? t("billing.action.redirecting") : subscription.status === "past_due" && subscription.access?.hasSubscription
+            {actionLoading ? t("billing.action.redirecting") : subscription.access?.portalAvailable
               ? t("trial.billing.manage") : price ? t("trial.billing.cta", { price }) : t("trial.action.upgradeNow")}
           </Button>
           <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">{t("trial.billing.note")}</p>

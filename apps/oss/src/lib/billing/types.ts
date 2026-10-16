@@ -2,7 +2,14 @@ import type { Prisma } from "../../../generated/prisma/client"
 
 export type SubscriptionStatus = "free" | "trialing" | "expired" | "active" | "canceled" | "past_due"
 
+/** Resolved by the server provider. Clients must never infer access from payment status or clocks. */
+export type OrganizationAccess =
+  | { state: "self_hosted" | "subscribed" | "complimentary" }
+  | { state: "trial"; daysLeft: number; trialStart: number; trialEnd: number; progress: number }
+  | { state: "read_only"; trialEnd?: number | null }
+
 export type BillingSubscription = {
+  organizationAccess: OrganizationAccess
   status: SubscriptionStatus
   priceId: string | null
   trialStart?: number | null
@@ -22,9 +29,12 @@ export type BillingSubscription = {
 
 export type BillingProvider = {
   getSubscription: (organizationId: string) => Promise<BillingSubscription>
+  /** Legacy adapter hook. Core write checks use getSubscription().organizationAccess. */
   assertInvoiceCreationAllowed: (organizationId: string) => Promise<void>
-  /** The verified CVR and transaction include identity writes not yet visible to other connections. */
-  startTrial?: (organizationId: string, context?: { cvr: string; tx: Prisma.TransactionClient }) => Promise<void>
+  /** Called after successful onboarding, including registry outages. Must be transactional and
+   * idempotent per organization. Later verification retries must preserve the original window.
+   * cvrVerified=false records a pending identity; it must not suppress the organization trial. */
+  startTrial?: (organizationId: string, context?: { cvr: string; cvrVerified: boolean; tx: Prisma.TransactionClient }) => Promise<void>
   createCheckoutSession?: (organizationId: string) => Promise<{ url: string | null }>
   createPortalSession?: (organizationId: string) => Promise<{ url: string | null }>
 }

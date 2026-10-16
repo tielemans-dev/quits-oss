@@ -464,7 +464,7 @@ function QuoteDetailPage() {
   }
 
   // Edit mode
-  if (editing && readOnly) return <PaywallBlock resource="quotes" endDate={trial?.subscription?.trialEnd} />
+  if (editing && readOnly) return <PaywallBlock resource="quotes" endDate={trial?.subscription?.organizationAccess?.state === "read_only" ? trial.subscription.organizationAccess.trialEnd : null} />
   if (editing) {
     const preview = previewDraft({ items: editItems, taxRate: editTaxRate || "0", pricesIncludeTax: quote.pricesIncludeTax ?? false, currency: quote.currency })
     const editSubtotal = Number(preview.result?.net ?? "0")

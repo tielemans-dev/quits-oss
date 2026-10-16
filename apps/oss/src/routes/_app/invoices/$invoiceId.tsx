@@ -696,7 +696,7 @@ function InvoiceDetailPage() {
   }
 
   // Edit mode
-  if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.trialEnd} />
+  if (editing && readOnly) return <PaywallBlock resource="invoices" endDate={trial?.subscription?.organizationAccess?.state === "read_only" ? trial.subscription.organizationAccess.trialEnd : null} />
   if (editing) {
     const preview = previewDraft({ items: editItems.filter(item => !item.deliverableId).map(item => normalizeInvoiceQuantity(item, locale)), taxRate: editTaxRate || "0", pricesIncludeTax: editPricesIncludeTax, currency: invoice.currency })
     const issueMessages = (match: (issue: ReadableIssue) => boolean) =>

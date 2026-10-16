@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, render, screen } from "@testing-library/react"
 import { I18nProvider } from "../../../lib/i18n/react"
 import type { BillingSubscription } from "../../../lib/billing/types"
 
@@ -16,8 +16,35 @@ import { blockedResource, PaywallBlock, TrialAccessProvider, TrialBanner, TrialR
 afterEach(() => { cleanup(); state.subscription = null })
 
 describe("trial form gate", () => {
+  it("uses the server trial decision even when the browser clock says it expired", async () => {
+    state.subscription = { status: "expired", priceId: null, trialEnd: 1,
+      organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 },
+      access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } } as BillingSubscription
+    render(<I18nProvider locale="en-US"><TrialAccessProvider>
+      <TrialBanner /><TrialRouteGate pathname="/invoices/new"><form aria-label="invoice form" /></TrialRouteGate>
+    </TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByRole("form", { name: "invoice form" })).toBeTruthy()
+    expect(screen.getByText(/14 days/)).toBeTruthy()
+    expect(screen.queryByText("Trial ended")).toBeNull()
+  })
+
+  it("refreshes trial expiry, payment and cancellation from the server", async () => {
+    const initial = { status: "active" as const, priceId: null, organizationAccess: { state: "trial" as const, daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 } }
+    state.subscription = initial
+    render(<I18nProvider locale="en-US"><TrialAccessProvider><TrialBanner />
+      <TrialRouteGate pathname="/invoices/new"><form aria-label="invoice form" /></TrialRouteGate>
+    </TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByRole("form")).toBeTruthy()
+    for (const next of ["read_only", "subscribed", "read_only", "complimentary", "self_hosted"] as const) {
+      state.subscription = { ...initial, organizationAccess: { state: next } }
+      await act(async () => { window.dispatchEvent(new Event("focus")) })
+      expect(Boolean(screen.queryByRole("form"))).toBe(next !== "read_only")
+      expect(Boolean(screen.queryByText("Trial ended"))).toBe(next === "read_only")
+    }
+  })
+
   it("keeps complimentary access writable without a trial banner despite API trial dates", async () => {
-    state.subscription = { status: "active", priceId: null,
+    state.subscription = { status: "active", organizationAccess: { state: "complimentary" }, priceId: null,
       trialStart: Date.UTC(2026, 9, 1) / 1000, trialEnd: Date.UTC(2026, 9, 25) / 1000,
       access: { paidOnly: true, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }
     render(<I18nProvider locale="en-US"><TrialAccessProvider>
@@ -42,7 +69,7 @@ describe("trial form gate", () => {
   })
 
   it("shows the localized paywall before any expired-trial form is rendered", async () => {
-    state.subscription = { status: "expired", priceId: "price_synthetic", trialEnd: Date.UTC(2026, 9, 25) / 1000,
+    state.subscription = { status: "expired", organizationAccess: { state: "read_only", trialEnd: Date.UTC(2026, 9, 25) / 1000 }, priceId: "price_synthetic", trialEnd: Date.UTC(2026, 9, 25) / 1000,
       access: { paidOnly: true, hasSubscription: true, checkoutAvailable: false, portalAvailable: true } }
     render(<I18nProvider locale="da-DK"><TrialAccessProvider>
       <TrialRouteGate pathname="/invoices/new"><form aria-label="invoice form"><input /></form></TrialRouteGate>
@@ -54,7 +81,7 @@ describe("trial form gate", () => {
   })
 
   it("allows a trial form and leaves read routes available", async () => {
-    state.subscription = { status: "trialing", priceId: "price_synthetic", trialEnd: Date.UTC(2026, 9, 25) / 1000,
+    state.subscription = { status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: "price_synthetic", trialEnd: Date.UTC(2026, 9, 25) / 1000,
       access: { paidOnly: true, hasSubscription: true, checkoutAvailable: false, portalAvailable: true } }
     render(<I18nProvider locale="en-US"><TrialAccessProvider>
       <TrialRouteGate pathname="/contacts/new"><form aria-label="customer form"><input /></form></TrialRouteGate>

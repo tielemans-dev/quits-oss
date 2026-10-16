@@ -4,6 +4,7 @@ export class NoopBillingProvider implements Required<BillingProvider> {
   async getSubscription(_organizationId: string): Promise<BillingSubscription> {
     return {
       status: "free",
+      organizationAccess: { state: "self_hosted" },
       priceId: null,
     }
   }

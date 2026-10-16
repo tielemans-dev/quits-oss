@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
-import { formatTrialDate, trialDaysLeft } from "../../lib/billing/trial-format"
+import { formatTrialDate } from "../../lib/billing/trial-format"
 import type { BillingSubscription } from "../../lib/billing/types"
 
 type TrialContextValue = { subscription: BillingSubscription | null; loading: boolean; error: boolean }
@@ -14,21 +14,23 @@ export function TrialAccessProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [loading, setLoading] = useState(billingEnabled)
   const [error, setError] = useState(false)
-  const [, setClockTick] = useState(0)
   useEffect(() => {
     if (!billingEnabled) { setLoading(false); return }
     let canceled = false
-    trpc.billing.getSubscription.query()
-      .then(result => { if (!canceled) setSubscription(result) })
-      .catch(() => { if (!canceled) setError(true) })
-      .finally(() => { if (!canceled) setLoading(false) })
-    return () => { canceled = true }
+    let pending = false
+    const refresh = () => {
+      if (pending) return
+      pending = true
+      return trpc.billing.getSubscription.query()
+        .then(result => { if (!canceled) { setSubscription(result); setError(false) } })
+        .catch(() => { if (!canceled) setError(true) })
+        .finally(() => { pending = false; if (!canceled) setLoading(false) })
+    }
+    void refresh()
+    const timer = setInterval(refresh, 60_000)
+    window.addEventListener("focus", refresh)
+    return () => { canceled = true; clearInterval(timer); window.removeEventListener("focus", refresh) }
   }, [billingEnabled])
-  useEffect(() => {
-    if (!subscription?.trialEnd || subscription.status !== "trialing") return
-    const timer = setInterval(() => setClockTick(value => value + 1), 60_000)
-    return () => clearInterval(timer)
-  }, [subscription?.trialEnd, subscription?.status])
   return <TrialContext.Provider value={{ subscription, loading, error }}>{children}</TrialContext.Provider>
 }
 
@@ -37,8 +39,7 @@ export function useTrialAccess() {
 }
 
 export function isReadOnly(subscription: BillingSubscription | null) {
-  return Boolean(subscription?.access?.paidOnly && subscription.status !== "active" &&
-    (subscription.status !== "trialing" || !subscription.trialEnd || subscription.trialEnd * 1000 <= Date.now()))
+  return Boolean(subscription && (!subscription.organizationAccess || subscription.organizationAccess.state === "read_only"))
 }
 
 export function blockedResource(pathname: string): "contacts" | "invoices" | "quotes" | "agreements" | null {
@@ -50,15 +51,13 @@ export function blockedResource(pathname: string): "contacts" | "invoices" | "qu
 export function TrialBanner() {
   const state = useTrialAccess()
   const { t, locale } = useI18n()
-  const subscription = state?.subscription
-  if (!subscription?.trialEnd || !["trialing", "expired"].includes(subscription.status)) return null
-  const ended = subscription.status === "expired" || subscription.trialEnd * 1000 <= Date.now()
-  const days = trialDaysLeft(subscription.trialEnd)
+  const access = state?.subscription?.organizationAccess
+  if (!access || (access.state !== "trial" && access.state !== "read_only")) return null
+  const ended = access.state === "read_only"
+  const days = access.state === "trial" ? access.daysLeft : 0
   const warning = !ended && days <= 3
-  const date = formatTrialDate(subscription.trialEnd, locale)
-  const progress = subscription.trialStart
-    ? Math.min(100, Math.max(0, ((Date.now() / 1000 - subscription.trialStart) /
-      (subscription.trialEnd - subscription.trialStart)) * 100)) : 0
+  const date = access.trialEnd ? formatTrialDate(access.trialEnd, locale) : ""
+  const progress = access.state === "trial" ? access.progress : 0
   const title = ended ? t("trial.banner.ended") : warning
     ? days === 1 ? t("trial.banner.tomorrow") : t("trial.banner.warning", { days })
     : t("trial.banner.active", { days })
@@ -92,7 +91,7 @@ export function TrialRouteGate({ pathname, children }: { pathname: string; child
   if (!billingEnabled || !resource) return <>{children}</>
   if (state?.loading) return <div aria-busy="true" className="p-6" />
   if (state?.error || !state?.subscription) return <div role="alert" className="p-6">Billing status is unavailable. Reload this page.</div>
-  if (isReadOnly(state.subscription)) return <PaywallBlock resource={resource} endDate={state.subscription.trialEnd} />
+  if (isReadOnly(state.subscription)) return <PaywallBlock resource={resource} endDate={state.subscription.organizationAccess?.state === "read_only" ? state.subscription.organizationAccess.trialEnd : null} />
   return <>{children}</>
 }
 
