@@ -275,4 +275,10 @@ export const enSettingsMessages = {
   "settings.nav.ai": "AI & agents",
   "settings.nav.accounting": "Accounting",
   "settings.nav.audit": "Activity log",
+  "settings.row.edit": "Edit",
+  "settings.row.save": "Save",
+  "settings.row.cancel": "Cancel",
+  "settings.row.done": "Done",
+  "settings.row.empty": "Not set",
+  "settings.row.vat": "VAT registration",
 } as const
