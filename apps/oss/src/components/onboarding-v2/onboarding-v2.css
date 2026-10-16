@@ -205,46 +205,9 @@
   margin: 0;
   text-align: right;
 }
-/* Skeleton and value share one grid cell, so the swap moves nothing. Animate only opacity,
-   transform and filter. */
-.ob-slot {
-  display: grid;
-  min-height: 20px;
-  align-items: center;
-}
-.ob-slot > * {
-  grid-area: 1 / 1;
-}
-.ob-slot-skeleton {
-  height: 14px;
-  transition: opacity var(--duration-base) var(--ease-exit) calc(var(--i) * var(--stagger-step));
-}
-.ob-slot[data-filled] .ob-slot-skeleton {
-  opacity: 0;
-  animation: none;
-}
-.ob-slot-value {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0;
-}
-.ob-slot[data-filled] .ob-slot-value {
-  animation: ob-fill var(--duration-base) var(--ease-enter) calc(var(--i) * var(--stagger-step)) both;
-}
 .ob-check {
   color: var(--tone-success);
   animation: ob-check var(--duration-base) var(--ease-enter) calc(var(--i) * var(--stagger-step)) both;
-}
-@keyframes ob-fill {
-  from {
-    opacity: 0;
-    filter: blur(4px);
-    transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-  }
 }
 @keyframes ob-check {
   from {
@@ -461,12 +424,8 @@
     animation: none;
   }
   /* Fade only: no blur, rise or scale. */
-  .ob-slot[data-filled] .ob-slot-value,
   .ob-check {
     animation: ob-fade var(--duration-fade) var(--ease-enter) both;
-  }
-  .ob-slot-skeleton {
-    transition: opacity var(--duration-fade) var(--ease-enter);
   }
 }
 @media (max-width: 520px) {

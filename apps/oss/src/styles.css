@@ -586,8 +586,72 @@ body { caret-color: var(--caret); }
   --tw-ease: var(--ease-exit);
 }
 /*
+ * Skeleton-to-result fill (FillSlot): the value blurs and rises into the place its skeleton held.
+ * Skeleton and value share one grid cell, so the swap moves nothing. Only opacity, transform and
+ * filter animate.
+ */
+.fill-slot {
+  display: grid;
+  min-height: 20px;
+  align-items: center;
+}
+.fill-slot > * {
+  grid-area: 1 / 1;
+}
+.fill-slot-skeleton {
+  height: 14px;
+  transition: opacity var(--duration-base) var(--ease-exit) calc(var(--i, 0) * var(--stagger-step));
+}
+.fill-slot[data-filled] .fill-slot-skeleton {
+  opacity: 0;
+  animation: none;
+}
+.fill-slot-value {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+}
+.fill-slot[data-filled] .fill-slot-value {
+  animation: fill-in var(--duration-base) var(--ease-enter) calc(var(--i, 0) * var(--stagger-step)) both;
+}
+/* Settings rows fill in reading order where the browser can count siblings, otherwise together. */
+@supports (order: sibling-index()) {
+  [data-slot="settings-row"] {
+    --i: calc(sibling-index() - 1);
+  }
+}
+@keyframes fill-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fill-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Fade only: no blur or rise. */
+  .fill-slot[data-filled] .fill-slot-value {
+    animation: fill-fade var(--duration-fade) var(--ease-enter) both;
+  }
+  .fill-slot-skeleton {
+    transition: opacity var(--duration-fade) var(--ease-enter);
+  }
+}
+/*
  * Reduced motion drops movement and keeps the fades: a 150ms cross-fade, never a hard cut.
- * Components with their own fallback (tracker-fade, request-fade, ob-fade) override this by
+ * Components with their own fallback (tracker-fade, request-fade, ob-fade, fill-fade) override this by
  * specificity. Everything else is covered here:
  *  - transitions are limited to colour and opacity properties, so transform, translate, scale,
  *    clip-path, size and position changes are instant;

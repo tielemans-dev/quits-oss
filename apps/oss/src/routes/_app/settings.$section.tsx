@@ -77,7 +77,7 @@ import { useRequestOrganizationId } from "../../lib/active-organization"
 import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-layout-session"
 import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
-import { SettingsEmpty, SettingsRow, SettingsRows } from "../../components/settings/settings-row"
+import { SettingsEmpty, SettingsRow, SettingsRows, SettingsRowsSkeleton } from "../../components/settings/settings-row"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -964,7 +964,8 @@ function SettingsPage() {
     return (
       <div>
         <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
-        <QuerySkeleton />
+        <p role="status" className="sr-only">{t("settings.loading")}</p>
+        <SettingsRowsSkeleton />
       </div>
     )
   }
