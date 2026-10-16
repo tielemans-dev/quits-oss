@@ -1,0 +1,100 @@
+{
+  "sources": [
+    {
+      "name": "tanstack",
+      "version": "1.166.6",
+      "repository": "https://github.com/TanStack/router",
+      "revision": "964cae0224b2956ab081bf48ce5f71ccb19340a1",
+      "license": "MIT",
+      "files": [
+        {
+          "path": "tanstack/LICENSE",
+          "url": "https://raw.githubusercontent.com/TanStack/router/964cae0224b2956ab081bf48ce5f71ccb19340a1/LICENSE",
+          "sha256": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+        },
+        {
+          "path": "tanstack/start-overview.md",
+          "url": "https://raw.githubusercontent.com/TanStack/router/964cae0224b2956ab081bf48ce5f71ccb19340a1/docs/start/framework/react/overview.md",
+          "sha256": "03f1b2c7ee92b34a42a5ec702e6f8ffd35a04c662e1af6f948bbbc2153d13de1"
+        },
+        {
+          "path": "tanstack/server-functions.md",
+          "url": "https://raw.githubusercontent.com/TanStack/router/964cae0224b2956ab081bf48ce5f71ccb19340a1/docs/start/framework/react/guide/server-functions.md",
+          "sha256": "21dacf54acfeaa3f0b9643d45a32592b4be5ace647c78c8a1ec5256038ae0c37"
+        },
+        {
+          "path": "tanstack/router-overview.md",
+          "url": "https://raw.githubusercontent.com/TanStack/router/964cae0224b2956ab081bf48ce5f71ccb19340a1/docs/router/overview.md",
+          "sha256": "346cdbb09d2f5f019bda25796f832070a027fcbd61a3765562de08f711ddcc15"
+        }
+      ]
+    },
+    {
+      "name": "prisma",
+      "version": "7.x documentation; app lockfile resolves 7.4.2",
+      "repository": "https://github.com/prisma/web",
+      "revision": "21aed79a4a263598e28aca0c9b45d02dbe274880",
+      "license": "No license file declared in the upstream repository",
+      "files": [
+        {
+          "path": "prisma/upgrade-to-v7.mdx",
+          "url": "https://raw.githubusercontent.com/prisma/web/21aed79a4a263598e28aca0c9b45d02dbe274880/apps/docs/content/docs/guides/upgrade-prisma-orm/v7.mdx",
+          "sha256": "bf9d32a0e79cc93d3ed3cc0bfa9fece5f7f891127080f62e9e2fc72feb5e227f"
+        },
+        {
+          "path": "prisma/generating-client.mdx",
+          "url": "https://raw.githubusercontent.com/prisma/web/21aed79a4a263598e28aca0c9b45d02dbe274880/apps/docs/content/docs/orm/v7/prisma-client/setup-and-configuration/generating-prisma-client.mdx",
+          "sha256": "4c53c2302f64a93defc2868c52843ec6a667c819c0f063381c62a6a68292e920"
+        }
+      ]
+    },
+    {
+      "name": "better-auth",
+      "version": "1.5.4",
+      "repository": "https://github.com/better-auth/better-auth",
+      "revision": "cb9e1bc1d16812dc9722af927df74eadcd508943",
+      "license": "MIT",
+      "files": [
+        {
+          "path": "better-auth/LICENSE.md",
+          "url": "https://raw.githubusercontent.com/better-auth/better-auth/cb9e1bc1d16812dc9722af927df74eadcd508943/LICENSE.md",
+          "sha256": "7a07f7d9085cb3157e4377d944988c9712933141b0f7201955ceccfac92abde4"
+        },
+        {
+          "path": "better-auth/prisma-adapter.mdx",
+          "url": "https://raw.githubusercontent.com/better-auth/better-auth/cb9e1bc1d16812dc9722af927df74eadcd508943/docs/content/docs/adapters/prisma.mdx",
+          "sha256": "420b8e5f46aa711c5764033a05154b5b8f12899389857e165d969d9b3ad3f964"
+        },
+        {
+          "path": "better-auth/tanstack-integration.mdx",
+          "url": "https://raw.githubusercontent.com/better-auth/better-auth/cb9e1bc1d16812dc9722af927df74eadcd508943/docs/content/docs/integrations/tanstack.mdx",
+          "sha256": "fecbd4bd83ee653988456197275591228bddeabb645c5803bdc5b219b015a327"
+        }
+      ]
+    },
+    {
+      "name": "trpc",
+      "version": "11.12.0",
+      "repository": "https://github.com/trpc/trpc",
+      "revision": "8a144e9005ec9177b41aefee914d0f5b6c471aa9",
+      "license": "MIT",
+      "files": [
+        {
+          "path": "trpc/LICENSE",
+          "url": "https://raw.githubusercontent.com/trpc/trpc/8a144e9005ec9177b41aefee914d0f5b6c471aa9/LICENSE",
+          "sha256": "e714dd84c8fa242600844b05d317a31003423723178c1f1603dbfad1bc68d906"
+        },
+        {
+          "path": "trpc/quickstart.mdx",
+          "url": "https://raw.githubusercontent.com/trpc/trpc/8a144e9005ec9177b41aefee914d0f5b6c471aa9/www/docs/main/quickstart.mdx",
+          "sha256": "6e9b8b993efd433804c21454c1427d962be6d673d4d8314ad400c95ca035d00c"
+        },
+        {
+          "path": "trpc/context.md",
+          "url": "https://raw.githubusercontent.com/trpc/trpc/8a144e9005ec9177b41aefee914d0f5b6c471aa9/www/docs/server/context.md",
+          "sha256": "9cb31e5438077b4dfab893cf3653f9603d5807617d9521d00d6105e3b141f132"
+        }
+      ]
+    }
+  ]
+}

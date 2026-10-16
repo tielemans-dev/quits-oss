@@ -136,6 +136,10 @@ suites. Do not run a full suite or build to prove a small change.
 
 ## Docs rules
 
+- Framework references live in `docs/vendor/`; see `docs/vendor.md` for sources
+  and updates. Exclude `docs/vendor/**` and `.repos/**` from lint and code review.
+  Review the source manifest, updater and exclusions instead of upstream content.
+
 - Copy changes: `bun run i18n:check` also runs the copy gates (Danish values left as English, glossary
   wording). Rules and allowlists are in `scripts/i18n/copy-rules.json`; opt out inline with
   `// copy-check: allow <rule-id> <reason>`. Reviewers: when a diff changes price, trial, non-VAT or B2B
