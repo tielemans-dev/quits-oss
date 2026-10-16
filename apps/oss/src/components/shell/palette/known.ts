@@ -1,8 +1,9 @@
+import type { Invoice } from '../../command-bar/overdue-invoices'
 import { readCustomers, readInvoices } from '../../command-bar/request-data'
 
 /** What the palette grounds half-typed requests in: issued invoices and customers, by name. */
 export type Known = {
-  invoices: Array<{ number: string; customer: string }>
+  invoices: Array<{ number: string; customer: string; status: string; balanceDue: number; currency: string }>
   customers: Array<{ name: string }>
 }
 
@@ -18,9 +19,9 @@ export function loadKnown(): Promise<Known> {
     readInvoices().then((value) => value.invoices, () => []),
     readCustomers().then((value) => value.customers, () => []),
   ]).then(([invoices, contacts]) => ({
-    invoices: (invoices as Array<{ number: string | null; contact: { name: string } }>)
-      .filter((invoice): invoice is { number: string; contact: { name: string } } => Boolean(invoice.number))
-      .map((invoice) => ({ number: invoice.number, customer: invoice.contact.name })),
+    invoices: (invoices as Array<Invoice>)
+      .filter((invoice): invoice is Invoice & { number: string } => Boolean(invoice.number))
+      .map((invoice) => ({ number: invoice.number, customer: invoice.contact.name, status: invoice.status, balanceDue: invoice.balanceDue, currency: invoice.currency })),
     customers: (contacts as Array<{ name: string }>).map((contact) => ({ name: contact.name })),
   }))
   const entry: NonNullable<typeof cache> = { at: Date.now(), promise, value: null }
