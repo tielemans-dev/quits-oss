@@ -1,9 +1,9 @@
 # Event envelope and consumers
 
-Every persisted domain event has a positive `schemaVersion`. Events are v1 except
-`agreement.draft_created` v2, which records nullable `sourceQuoteId`. Its v1 upcast adds null
-without changing the archived v1 fixture payload. Template CRUD emits
-`agreement_template.created`, `agreement_template.updated` and `agreement_template.deleted` v1. A payload
+Every persisted domain event has a positive `schemaVersion`. Events are `v1` except
+`agreement.draft_created` `v2`, which records nullable `sourceQuoteId`. Its `v1` upcast adds null
+without changing the archived `v1` fixture payload. Template CRUD emits
+`agreement_template.created`, `agreement_template.updated` and `agreement_template.deleted` `v1`. A payload
 shape never changes without a version bump, including additions and removals of fields. The
 registry in `apps/oss/src/domain/events/registry.ts` describes the serialized payloads written
 by today's emitters. The writer validates after JSON serialization and preserves that value.
@@ -17,7 +17,7 @@ events are absent from the production registry.
 `upcastEvent` leaves current events unchanged. When introducing a later version, add a pure,
 total N-to-N+1 transform for that type. Unsupported versions and missing transforms throw
 `UnsupportedEventVersion`. A sparse historical event must never acquire facts that were not
-recorded. Upcasting does not make existing v1 money events sufficient for posting.
+recorded. Upcasting does not make existing `v1` money events sufficient for posting.
 
 ## Consumer lifecycle
 
@@ -48,7 +48,7 @@ Callers must not catch it inside the same transaction and commit partial work.
 Filtered reads do not drive consumer cursors. All-skipped tails still advance through `scan` and
 `advance`.
 
-The v1 inventory preserves existing differences: invoice creation can include `quoteId`; sent
+The `v1` inventory preserves existing differences: invoice creation can include `quoteId`; sent
 payloads can omit `emailSent`; credit note re-email uses `credit_note.sent`; agreement acceptance
 has internal and customer-link variants; manual offer issuance can have a null recipient; reminder skips have command and delivery variants; and
 `deliverable.updated` can include prior acceptance. Money fields retain their current numeric or
@@ -56,21 +56,21 @@ string representation. Recurring failure events carry structured command errors.
 
 ## A3b money facts
 
-`invoice.issued` v1 freezes the issuance candidate's dates, inputs, parties, valued VAT groups,
+`invoice.issued` `v1` freezes the issuance candidate's dates, inputs, parties, valued VAT groups,
 reporting-only VAT data, artifact identities and origin references. `Money.minor` is an integer
 string. Group and total components reuse the pricing contracts' decimal strings in major units;
 `currency`, `exponent` and `baseExponent` identify their units. Consumers must convert those
 components at the declared exponent. Signed components, including negative derived base net,
 are preserved. No positions or posting function are introduced here.
 
-`credit_note.issued` v2 records the credited portion and cumulative entitlement against frozen
+`credit_note.issued` `v2` records the credited portion and cumulative entitlement against frozen
 invoice groups. Its Phase A discharge is known only for an unpaid sale with sufficient open
 balance after prior credits and no advance or deposit application. Payment-linked credits have
 `allocationsReleased: null` and `postable: false`; an empty array would claim reconciliation that
-has not happened. v1 upcasts add only `postable: false` and
-`incompleteReason: historical_payload_incomplete`. The original v1 fixtures remain unchanged.
+has not happened. `v1` upcasts add only `postable: false` and
+`incompleteReason: historical_payload_incomplete`. The original `v1` fixtures remain unchanged.
 
-`invoice.base_valuation_recorded` v1 adds a human-reviewed historical rate and groups. It does
+`invoice.base_valuation_recorded` `v1` adds a human-reviewed historical rate and groups. It does
 not rewrite historical events, amounts, artifacts or supply dates, and it does not manufacture an
 `invoice.issued` event. Issued documents without reviewed valuation remain `unknown` even when
 invoice and base currency coincide.

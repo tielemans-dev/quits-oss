@@ -58,7 +58,7 @@ invoice accrual (see tax points), registration with Erhvervsstyrelsen.
 | `Valuation` | `{ base: Money, rate, rateScale, rateDate, rateSource }`, `rateSource` in `same_currency`, `user`, `provider:<name>`, `unknown`. The only rate that produces posting lines. |
 | `vatReporting?` | `{ rate, rateSource, taxBaseForReturn, taxForReturn }`. Reporting-only; never a posting line. Verify with an accountant which rule applies (bekendtgørelse 2023/1435). |
 
-**Tax-point derivation, Phase A scope.** `supplyDate` is required on every v2 invoice; the
+**Tax-point derivation, Phase A scope.** `supplyDate` is required on every `v2` invoice; the
 editor defaults it to the issue date and the user confirms it. A `sale` invoice gets
 `invoice_issued` only when `supplyDate >= issueDate` (invoice issued at or before delivery, § 23
 stk. 2). Any earlier `supplyDate` gets `tax_point_review` and the posting function refuses with
@@ -72,7 +72,7 @@ are refused when the invoice was under review. Advances (`advance_received`) are
 
 `DomainEvent.schemaVersion`; registry with zod schemas built from an inventory of today's
 serialized shapes and fixtures; `appendEvents` validates and refuses unregistered types; test-only
-registration; `upcastEvent` pure and total; both readers return `schemaVersion`; sparse v1 events
+registration; `upcastEvent` pure and total; both readers return `schemaVersion`; sparse `v1` events
 are `postable: false`.
 
 ## Part 2: Phase A events
@@ -80,15 +80,15 @@ are `postable: false`.
 Shared fragments: `Money { minor, currency, exponent }`, `Valuation`, `VatGroup { treatment,
 rate, country, reasonCode?, net, tax, gross, netBase, taxBase, grossBase, evidence? }`, `Dates`.
 
-### `document.artifact_stored` v1 (A3a)
+### `document.artifact_stored` `v1` (A3a)
 
 Emitted at publication of an issuance candidate for invoices, credit notes and agreements:
 `documentKind`, `documentId`, `candidateId`, `artifacts { pdf { ref, hash, size }, ubl? }`,
-`rendererVersion`. When no renderer is configured (A3a release), `document.artifact_missing` v1
+`rendererVersion`. When no renderer is configured (A3a release), `document.artifact_missing` `v1`
 is emitted instead. A3a emits **no** `invoice.issued`; existing lifecycle events continue
 unchanged until A3b.
 
-### `invoice.issued` v1 (A3b)
+### `invoice.issued` `v1` (A3b)
 
 Once per invoice, in the issuance transaction of every path. Payload: `documentId`, `number`,
 `purpose: sale` (Phase A; `prepayment` is Phase C and refused by A4), `Dates`, `supplyDate`,
@@ -99,7 +99,7 @@ base equivalents }`, `calculation { version, roundingMode, pricesIncludeTax, exp
 `seller`, `buyer` with tax ids refreshed at issuance, `coveredByAdvances: []` and
 `depositApplications: []` (reserved, always empty in Phase A), `artifacts`, provenance ids.
 
-### `credit_note.issued` v2 (A3b)
+### `credit_note.issued` `v2` (A3b)
 
 The credited portion. Payload: invoice-shaped lines and groups for the credited portion;
 `correctsInvoiceId`, `correctsNumber`, `correctsPurpose`, `mode: lines | amount`, `reason`;
@@ -117,7 +117,7 @@ all of: `correctsPurpose = sale`; the invoice has no non-voided payment; `covere
 `carryingBase` taken from the frozen base components per rule 8 (`valuationSource:
 frozen_components`), so `fxDifferenceBase` is zero by construction in Phase A. Any other case is
 `postable: false` with `incompleteReason` in `allocations_pending`, `purpose_not_supported`,
-`balance_adjustment_unsupported`; B1 emits `credit_note.allocations_reconciled` v1 to complete the
+`balance_adjustment_unsupported`; B1 emits `credit_note.allocations_reconciled` `v1` to complete the
 first. `amount` mode input is gross, allocated across remaining creditable groups by remaining
 gross, largest remainder, then rule 8 per group. A full cancellation takes every group's remaining
 components, so the original rounding is reversed exactly.
@@ -162,7 +162,7 @@ documents keep theirs.
 **Inputs.** The calculator takes decimal strings. Quantity and unit-price **input precision is
 independent of the currency exponent**: inputs are bounded only by the schema (up to 6 decimals
 for quantity, up to 4 for unit price), and money is rounded at the currency exponent only when
-computed, so a quantity of 0.5 at 100 JPY yields 50, never 100. New contracts (agent tools, v2
+computed, so a quantity of 0.5 at 100 JPY yields 50, never 100. New contracts (agent tools, `v2`
 editor routes) require strings. The existing numeric tRPC inputs stay accepted for the UI's
 transition only: numbers are converted with `String(number)` (full JavaScript precision, never
 `toFixed`) and flagged `inputPrecision: "number"`; that path is removed when every editor sends
@@ -227,7 +227,7 @@ refuse them at creation. Existing documents in unsupported currencies keep their
   quantityMinor, carryingBase, revaluationRevision, lastRevaluedAt)` becomes authoritative, is
   rebuilt from events in B1's migration, and settlement becomes a projection of allocations.
 - Fallback: pre-change documents carry `rateSource: unknown`; `postingsFor` refuses with
-  `base_valuation_unknown`; `invoice.base_valuation_recorded` v1 records a reviewed historical
+  `base_valuation_unknown`; `invoice.base_valuation_recorded` `v1` records a reviewed historical
   rate.
 
 ## Part 5: renderer, artifacts and the issuance candidate (A3a)
@@ -269,7 +269,7 @@ no import cycle is created.
    createdAt)` with unique `(organizationId, documentKind, documentId, renderInputHash)`.
    `renderInput` is the complete render input: prospective snapshot, number, dates, recipient,
    and for credit notes the credit-selection fingerprint. A reservation that is never committed
-   consumes its number: the sweep emits `document.number_voided` v1 for it so the sequence stays
+   consumes its number: the sweep emits `document.number_voided` `v1` for it so the sequence stays
    accounted for (verify with an accountant that a documented void satisfies numbering rules).
 2. **Prepare** (no transaction): render and `put` from `renderInput`; a compare-and-set on
    `prepToken` moves the row to `stored` with refs and hashes, or to `missing` with
@@ -293,7 +293,7 @@ Agreements keep their existing pre-queue issuance and use steps 1 to 3 for their
 them): a staging row is `abandoned` only when its lease has expired **and** it has no candidate at
 all, or every candidate it has is `retired` **and** no delivery job for any of them is queued,
 running, or awaiting settlement (`domain/delivery/outbox.ts` permits delayed settlement). A number
-is voided (`document.number_voided` v1: organizationId, documentKind, number, reservationId,
+is voided (`document.number_voided` `v1`: organizationId, documentKind, number, reservationId,
 reason) only for an abandoned reservation that **allocated** a fresh number; a reused number
 belongs to the document and is never voided. Artifact bytes are deleted only when no
 `candidate_bound` or `published` staging row and no retired candidate younger than seven days
@@ -334,14 +334,14 @@ is the remote idempotency key.
 
 ## Part 7: agreements amendment (Agreements Phase 2) and Phase A posting of deliverable invoices
 
-- **Offer format version.** An **absent** `offerFormatVersion` means v1. v1 snapshots (deposit
+- **Offer format version.** An **absent** `offerFormatVersion` means `v1`. `v1` snapshots (deposit
   included in total) keep their serialized bytes, canonical hashing and pinned fixtures byte for
-  byte; no default is ever injected into v1 hash input. Readers, builders and renderers dispatch
-  explicitly on presence of the field: the v1 builder is frozen as is, and A2a adds no field to
+  byte; no default is ever injected into `v1` hash input. Readers, builders and renderers dispatch
+  explicitly on presence of the field: the `v1` builder is frozen as is, and A2a adds no field to
   it. New drafts produce `offerFormatVersion: 2` with `serviceTotal` (service lines only),
   `paymentSchedule[]` (deposit lines with amount, trigger, VAT group attribution),
   `calculationVersion`, `originalInputs`, frozen VAT groups. Amounts state their VAT basis.
-  v2 fixtures are separate from the v1 fixtures.
+  `v2` fixtures are separate from the `v1` fixtures.
 - **Invoicing from deliverables** (`invoice.create_from_deliverables`): creates drafts and
   reserves deliverables in one transaction; a selection containing schedule lines and service
   lines creates two drafts atomically with the named result `{ saleInvoiceId?,
@@ -381,7 +381,7 @@ Roles in Phase A: `debtor`, `revenue`, `output_vat`, `payable_rounding`, `fx_gai
 | `credit_note.issued` (postable) | Reverse each credited base component as a **signed** line: revenue, output VAT and payable rounding are posted as Dr when the component is positive and as Cr when it is negative (a derived negative base net at an unfavourable rate is a Cr `revenue`); Cr `debtor` at `debtorDischarge.carryingBase`, which equals the signed sum. No FX line in Phase A. |
 
 Refusals, each a typed `PostingRefusal` with a fixture proving it: `base_valuation_unknown`,
-`not_postable` (sparse v1, legacy currency, any `incompleteReason`), `tax_point_review_required`
+`not_postable` (sparse `v1`, legacy currency, any `incompleteReason`), `tax_point_review_required`
 (including `taxPointDate ≠ issueDate` for `invoice_issued`, and `assessment_required`),
 `unsupported_treatment_combination` (`out_of_scope` mixed, `unclassified_zero`, `zero_rated`,
 `reverse_charge_domestic`, missing or non-valid evidence, `standard` with rate 0),
@@ -463,14 +463,14 @@ Kept verbatim in spirit from review round 3 so a human can decide:
 | PR | Scope | Depends on |
 | --- | --- | --- |
 | A1 | Part 1, Part 6. In implementation. | nothing |
-| A2a.1 | Additive: `@quits/shared/pricing` decimal calculator (string inputs, number compatibility, independent input precision) with packed-package verification; VAT treatment columns, evidence JSON, contracts; `calculationVersion`, `quantityInput`, `unitPriceInput` columns with backfill; precision rule at settings and drafts. Legacy execution path unchanged; v2 not yet produced. | A1 |
-| A2a.2 | Activation: every producer on v2 (invoice and quote create and edit including no-item edits that reconstruct from Decimal columns, quote conversion, recurring generation, agreement pricing for v2 offers); every editor on the shared calculator; `calculationVersion` propagation. | A2a.1 |
+| A2a.1 | Additive: `@quits/shared/pricing` decimal calculator (string inputs, number compatibility, independent input precision) with packed-package verification; VAT treatment columns, evidence JSON, contracts; `calculationVersion`, `quantityInput`, `unitPriceInput` columns with backfill; precision rule at settings and drafts. Legacy execution path unchanged; `v2` not yet produced. | A1 |
+| A2a.2 | Activation: every producer on `v2` (invoice and quote create and edit including no-item edits that reconstruct from Decimal columns, quote conversion, recurring generation, agreement pricing for `v2` offers); every editor on the shared calculator; `calculationVersion` propagation. | A2a.1 |
 | A2b | Version-aware credit pricing with residuals and rounding reversal; versioned UBL with the K, G, AE, E, O mapping. | A2a.2 |
 | A3a | Part 5: interfaces, self-host entrypoint, `issueDocument` orchestration used by all entry points and approval recovery, reservation and staging protocol, candidate, sweep with number voiding, `document.artifact_stored` and `document.artifact_missing`, `documents.artifactsRequired` capability. Merge gates: packaged cloud compile; the eleven protocol tests. | A1 |
 | Cloud 0 | Gated sync PR with `check-oss-release-compat.sh`. Prerequisite of the A3a release. | nothing |
 | Cloud 1 | Workers renderer and store adapters; harness passes with adapters against the published A3a release. | A3a released, Cloud 0 |
-| Agreements Phase 2 | Offer format v2 with absent-means-v1 dispatch, invoicing from deliverables on `issueDocument`, two-draft command, `purpose` column with prepayment issuance refused. | A3a, A2a.2 |
-| A3b | Part 4 base currency and valuation; `invoice.issued` v1; `credit_note.issued` v2 with the transition rule; buyer tax ids; `supplyDate` input and tax-point rule; stored downloads; dashboard buckets; `artifactsRequired = true`. | A2b, A3a, Cloud 1, Agreements Phase 2 |
+| Agreements Phase 2 | Offer format `v2` with absent-means-`v1` dispatch, invoicing from deliverables on `issueDocument`, two-draft command, `purpose` column with prepayment issuance refused. | A3a, A2a.2 |
+| A3b | Part 4 base currency and valuation; `invoice.issued` `v1`; `credit_note.issued` `v2` with the transition rule; buyer tax ids; `supplyDate` input and tax-point rule; stored downloads; dashboard buckets; `artifactsRequired = true`. | A2b, A3a, Cloud 1, Agreements Phase 2 |
 | A4 | Part 10 Phase A, refusal catalogue, tests 1 to 10, the note. | A3b |
 | B1 to B4, C1, C2, C5 | Draft; briefs only after the open issues are decided. | A4 |
 | C3a, C3b | Disable Better Auth deletion; Restrict cascades with explicit deletion and fixtures. | nothing; C3a |

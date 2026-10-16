@@ -23,7 +23,7 @@ signupWaitlist?: { privacyVersion: string; privacyPath?: string }
 
 Admission runs before the email endpoint looks up an account and at every auth adapter user
 insert, including internal and OAuth creation. Emails are trimmed and lowercased; codes have
-whitespace removed and are uppercased. Better Auth 1.5.4 preserves the extra `inviteCode` body
+whitespace removed and are uppercased. Better Auth preserves the extra `inviteCode` body
 field. The UI supplies it through the client's typed fetch-options `body`. `x-quits-invite` is
 also supported when no string body code is present. Raw codes longer than 64 characters,
 including excessive whitespace, or nonempty whitespace-only codes become `inviteCodeInvalid: true`
@@ -75,8 +75,9 @@ This is not durable delivery or a retry guarantee. Direct admission, consumption
 including JavaScript failures from a custom transaction-bound adapter and non-user operations.
 Catching those failures in the outer callback does not permit COMMIT. Any failed nested transaction
 also makes the owner roll back, even if its caller catches the error. This compensates for Better
-Auth 1.5.4 dispatching nested queues before outer completion and dispatching queues even after transaction failure. Regression tests use
-its actual internal adapter, database hooks and PostgreSQL.
+Auth dispatching nested queues before outer completion and dispatching queues even after
+transaction failure. The pinned dependency is recorded in `apps/oss/package.json`. Regression
+tests use its actual internal adapter, database hooks and PostgreSQL.
 
 The installation administrator path also runs admission before lookup and consumes within its
 existing setup transaction when a policy is configured. Ordinary installation setup stays open;

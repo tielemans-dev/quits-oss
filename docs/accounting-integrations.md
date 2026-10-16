@@ -14,11 +14,11 @@ The adapter never reads current document rows, recalculates historical prices or
 owns transport. The delivery step handles request state; live authorization and
 multi-operation remote bookkeeping remain follow-ups.
 
-Use `invoice.issued` v1 and postable `credit_note.issued` v2, not email or cumulative
+Use `invoice.issued` `v1` and postable `credit_note.issued` `v2`, not email or cumulative
 paid notifications. `postingsFor` validates frozen evidence, equations and base
 valuation first. Credits reverse historical amounts; sparse legacy credits and
 unsupported applications remain refused. Payment receipts currently use
-`payment.recorded` v1. Their payload lacks frozen payment date, base valuation and
+`payment.recorded` `v1`. Their payload lacks frozen payment date, base valuation and
 settlement detail, so delivery needs a richer money event before it can be safe.
 Dinero's pure payment mapper requires that missing evidence as explicit resolved
 input; it does not authorize delivery of legacy receipts by themselves.
@@ -53,7 +53,7 @@ requires review; current mappings are never substituted. Fees, refunds, overpaym
 and FX need separate posting policy;
 never treat a net settlement as a gross customer payment.
 
-Slice 1 accepts same-currency DKK v2 sales/credits with 25% or intra-community VAT.
+Slice 1 accepts same-currency DKK `v2` sales/credits with 25% or intra-community VAT.
 Each line uses quantity 1 and its frozen net as unit price, with negative quantity
 for credits. Line order and descriptions survive. Refuse mixed VAT zones,
 unrepresentable JSON money, rounding differences or missing mappings. Shared
@@ -66,7 +66,7 @@ Keep Quits' document number in `references.other`; e-conomic assigns its own num
 ### Dinero differences
 
 `dineroProvider` returns a relative `path` and request `body`. It accepts the same
-DKK v2 invoice/credit subset and uses the shared Decimal money boundary. Each
+DKK `v2` invoice/credit subset and uses the shared Decimal money boundary. Each
 frozen VAT group resolves to an entry `AccountNumber`, whose remote VAT type must
 match the treatment before delivery. Unlike e-conomic's recipient-wide VAT zone,
 Dinero selects tax through each line's account. Lines use frozen net as
@@ -83,7 +83,7 @@ delivery ID as `ExternalReference`, and retain the Quits number in `Comment`.
 `dineroBookingPayload` returns the server's version `Timestamp`; it is not a date.
 Dinero may assign its own voucher number. Booking stays a separate operation.
 
-Payment preparation accepts `payment.recorded` v1 only with matching payment ID
+Payment preparation accepts `payment.recorded` `v1` only with matching payment ID
 and invoice number in immutable `settings.payment` evidence. Require a frozen
 `paymentDate`, equal DKK `baseAmount`, explicit `gross_no_fees` settlement, booked
 invoice GUID, current server version timestamp and resolved deposit account.
@@ -169,7 +169,7 @@ resending. Lease tokens fence persistence and completion.
 Delivered means the single prepared draft/payment request was accepted, not that
 sales were booked. Remote draft validation before booking, booking, remote relationship validation
 and provider-specific reconciliation are required before enabling a live worker.
-Both providers declare automatic delivery capabilities. `payment.recorded` v1 is
+Both providers declare automatic delivery capabilities. `payment.recorded` `v1` is
 not applicable to either provider and is recorded as skipped with
 `event_not_applicable`, including legacy pending/failed queue rows. Dinero's pure
 payment preparation remains available only with explicit immutable evidence.

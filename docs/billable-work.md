@@ -126,8 +126,8 @@ set from all credits visible today, since those may postdate the decision. If th
 has been used with retained data, historical cumulative-credit decisions need an evidence audit.
 New decisions always store the reviewed set, including a one-element set for single-note callers.
 
-`deliverable.rebill_authorized` now uses schema version 2 with required `creditNoteIds`. Its archived
-v1 fixture is unchanged. The pure v1-to-v2 upcast derives only `[creditNoteId]`, the one recorded
+`deliverable.rebill_authorized` now uses `schemaVersion: 2` with required `creditNoteIds`. Its archived
+`v1` fixture is unchanged. The pure `v1-to-v2` upcast derives only `[creditNoteId]`, the one recorded
 reference. It does not establish cumulative reviewed evidence or repair historical decisions.
 
 ## Kvit handoff

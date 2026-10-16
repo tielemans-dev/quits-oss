@@ -64,8 +64,8 @@ When disabled, agreement editors hide the deposit/payment-schedule checkbox,
 billable selections exclude deposit lines, and prepayment drafts hide sale conversion.
 The command layer refuses deposit draft creation or edits, new deposit offer issuance,
 first acceptance of frozen deposit offers, selection of deposit lines for invoices, and
-converting or issuing existing deposit drafts. Acceptance checks the frozen v1 lines or
-v2 payment schedule under the agreement lock, preserving existing acceptance replay.
+converting or issuing existing deposit drafts. Acceptance checks the frozen `v1` lines or
+`v2` payment schedule under the agreement lock, preserving existing acceptance replay.
 Partial commercial edits check the effective stored deposit flag; agreement-wide
 repricing checks the stored lines when no replacement is supplied. Service-line edits
 on mixed drafts and explicit removal of deposit flows remain available.
