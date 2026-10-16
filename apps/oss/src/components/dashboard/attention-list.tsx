@@ -78,12 +78,14 @@ export function AttentionList({
   reminders,
   onRemind,
   onRemindAll,
+  className,
 }: {
   items: AttentionItem[]
   reminders: Record<string, ReminderState>
   onRemind: (invoiceId: string) => void
   /** Queues one reminder job for these invoices; the corner tracker shows it. */
   onRemindAll?: (invoiceIds: string[]) => void
+  className?: string
 }) {
   const { t, locale } = useI18n()
   const remindable = items.filter((item) => attentionAction(item) === "remind").map((item) => item.documentId)
@@ -92,6 +94,7 @@ export function AttentionList({
     <Panel
       label={t("dashboard.attention.title")}
       data-slot="dashboard-attention"
+      className={className}
       action={
         onRemindAll && remindable.length > 1 ? (
           <Button type="button" variant="outline" size="xs" onClick={() => onRemindAll(remindable)}>
