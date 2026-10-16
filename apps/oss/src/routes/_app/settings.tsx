@@ -935,7 +935,7 @@ function SettingsPage() {
         <p className="text-sm text-destructive">{t("settings.capabilities.failed")}</p>
         <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
       </div>}
-      <div className="grid gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {error && (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -1058,6 +1058,7 @@ function SettingsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="file"
+                  aria-label={t("settings.companyLogo.file")}
                   accept={LOGO_FILE_ACCEPT}
                   onChange={handleLogoFileChange}
                   className="block w-full max-w-sm text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/80"
@@ -1089,7 +1090,7 @@ function SettingsPage() {
           />
         )}
 
-        <form id={settingsFormId} onSubmit={handleSubmit} className="grid gap-6">
+        <form id={settingsFormId} onSubmit={handleSubmit} className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {/* Billing Defaults */}
         <Card>
           <CardHeader>
@@ -1746,7 +1747,7 @@ function SettingsPage() {
               className="flex-1"
             />
             <Select value={inviteRole} onValueChange={setInviteRole}>
-              <SelectTrigger className="w-full sm:w-36">
+              <SelectTrigger className="w-full sm:w-36" aria-label={t("settings.team.inviteRole")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1880,7 +1881,7 @@ function SettingsPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-6 grid gap-6">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6">
         <PaymentDetailsCard locale={settings?.locale} />
         <ReminderPolicyCard />
         <AccountingIntegrationsCard />

@@ -14,7 +14,7 @@ import { useCountUp } from "./use-count-up"
  * graphic so the card has one alarm colour). Money received this month is the Settled green
  * (8.3:1 on ink, 7.2:1 on the dark-theme card). Text on the card is paper at 90% or more.
  */
-const OVERDUE_TONE = "bg-[#ffbfb5]"
+const OVERDUE_TONE = "bg-tone-danger/30"
 
 /**
  * The Outstanding card, on the ink hero surface: how much money is on its way to me. The figure sits on a single rule while

@@ -64,21 +64,21 @@ export function TrialBanner() {
     : t("trial.banner.active", { days })
   const meta = ended ? t("trial.banner.endedMeta") : warning
     ? t("trial.banner.warningMeta") : t("trial.banner.activeMeta", { date })
-  return <aside className={`border-b px-4 py-4 md:px-8 ${ended ? "border-[#0B0B0C] bg-[#0B0B0C] text-white" : warning
-    ? "border-[#F5D9A8] bg-[#FEF6E7] text-[#0B0B0C]" : "border-[#E7E7E4] bg-white text-[#0B0B0C]"}`}>
+  return <aside className={`border-b px-4 py-4 md:px-8 ${ended ? "border-foreground bg-foreground text-background" : warning
+    ? "border-tone-warning/40 bg-tone-warning/14 text-foreground" : "border-border bg-card text-foreground"}`}>
     <div className="mx-auto flex max-w-[1216px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2.5">
-          <span aria-hidden="true" className={`size-2.5 shrink-0 ${warning ? "bg-[#E8A33A]" : "bg-[#1FC16B]"}`} />
+          <span aria-hidden="true" className={`size-2.5 shrink-0 ${warning ? "bg-tone-warning" : "bg-settled"}`} />
           <strong className="text-sm font-semibold">{title}</strong>
         </div>
-        <p className={`mt-1 pl-5 text-sm ${ended ? "text-white/75" : "text-[#6B6B70]"}`}>{meta}</p>
+        <p className={`mt-1 pl-5 text-sm ${ended ? "text-white/75" : "text-muted-foreground"}`}>{meta}</p>
         {!ended && <div className="mt-3 ml-5 h-1 max-w-[360px] overflow-hidden rounded-full bg-black/10" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={title}>
-          <div className={`h-full ${warning ? "bg-[#E8A33A]" : "bg-[#1FC16B]"}`} style={{ width: `${progress}%` }} />
+          <div className={`h-full ${warning ? "bg-tone-warning" : "bg-settled"}`} style={{ width: `${progress}%` }} />
         </div>}
       </div>
       <Link to="/billing" search={{ success: undefined, canceled: undefined }} className={`inline-flex min-h-9 items-center justify-center self-start rounded-[7px] px-4 text-sm font-semibold sm:self-auto ${ended
-        ? "bg-[#1FC16B] text-[#0B0B0C]" : warning ? "bg-[#0B0B0C] text-white" : "border border-[#E7E7E4] bg-white text-[#0B0B0C]"}`}>
+        ? "bg-settled text-foreground" : warning ? "bg-foreground text-background" : "border border-border bg-card text-foreground"}`}>
         {ended ? t("trial.action.upgradeNow") : warning ? t("trial.action.upgrade") : t("trial.action.plans")}
       </Link>
     </div>
@@ -100,19 +100,19 @@ export function PaywallBlock({ resource, endDate }: { resource: "contacts" | "in
   const { t, locale } = useI18n()
   const date = endDate ? formatTrialDate(endDate, locale) : ""
   return <section className="mx-auto max-w-2xl px-2 py-8 sm:py-14">
-    <div className="rounded-[10px] border border-[#E7E7E4] bg-white p-6 sm:p-10">
-      <span className="inline-flex rounded-full bg-[#FDECEC] px-3 py-1 text-xs font-semibold text-[#B42318]">{t("trial.paywall.pill")}</span>
-      <h1 className="mt-5 max-w-lg text-3xl font-semibold tracking-tight text-[#0B0B0C]">{t("trial.paywall.heading", { resource: t(`trial.resource.${resource}`) })}</h1>
-      <p className="mt-3 max-w-lg text-sm leading-6 text-[#6B6B70]">{endDate ? t("trial.paywall.body", { date }) : t("trial.paywall.bodyNoDate")}</p>
+    <div className="rounded-[10px] border border-border bg-card p-6 sm:p-10">
+      <span className="inline-flex rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">{t("trial.paywall.pill")}</span>
+      <h1 className="mt-5 max-w-lg text-3xl font-semibold tracking-tight text-foreground">{t("trial.paywall.heading", { resource: t(`trial.resource.${resource}`) })}</h1>
+      <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">{endDate ? t("trial.paywall.body", { date }) : t("trial.paywall.bodyNoDate")}</p>
       <div className="mt-7 flex flex-wrap gap-3">
-        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] bg-[#0B0B0C] px-5 text-sm font-semibold text-white">{t("trial.action.upgradeNow")}</Link>
-        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] border border-[#E7E7E4] px-5 text-sm font-semibold text-[#0B0B0C]">{t("trial.action.plans")}</Link>
+        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] bg-foreground px-5 text-sm font-semibold text-background">{t("trial.action.upgradeNow")}</Link>
+        <Link to="/billing" search={{ success: undefined, canceled: undefined }} className="inline-flex min-h-10 items-center rounded-[7px] border border-border px-5 text-sm font-semibold text-foreground">{t("trial.action.plans")}</Link>
       </div>
     </div>
-    <div aria-hidden="true" className="pointer-events-none mt-7 rounded-[10px] border border-[#E7E7E4] bg-[#FAFAF9] p-6 opacity-55 grayscale">
-      <p className="font-mono text-[11px] font-semibold tracking-widest text-[#6B6B70]">{t("trial.lock")} · {t("trial.paywall.preview")}</p>
-      <div className="mt-5 h-9 rounded-[7px] border border-[#E7E7E4] bg-white" />
-      <div className="mt-3 h-9 rounded-[7px] border border-[#E7E7E4] bg-white" />
+    <div aria-hidden="true" className="pointer-events-none mt-7 rounded-[10px] border border-border bg-canvas p-6 opacity-55 grayscale">
+      <p className="font-mono text-[11px] font-semibold tracking-widest text-muted-foreground">{t("trial.lock")} · {t("trial.paywall.preview")}</p>
+      <div className="mt-5 h-9 rounded-[7px] border border-border bg-card" />
+      <div className="mt-3 h-9 rounded-[7px] border border-border bg-card" />
     </div>
   </section>
 }

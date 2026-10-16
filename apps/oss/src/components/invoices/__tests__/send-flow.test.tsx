@@ -78,7 +78,7 @@ describe("invoice send controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send faktura" }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
     view.rerender(<I18nProvider locale="da-DK"><SendConfirmation open onOpenChange={onOpenChange} number="INV-0002" recipient="buyer@example.test" amount="125,00 kr." dueDate="1. januar 2099" pending onConfirm={onConfirm} /></I18nProvider>)
-    expect((screen.getByRole("button", { name: "Sender..." }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: "Sender…" }) as HTMLButtonElement).disabled).toBe(true)
   })
   it("defaults the customer country to DK with a localized label", () => {
     render(<I18nProvider locale="da-DK"><CountrySelect id="country" name="country" defaultCountry="DK" /></I18nProvider>)

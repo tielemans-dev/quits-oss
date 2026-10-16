@@ -39,7 +39,7 @@ function GhostDashboard() {
         <span className="mt-4 flex h-1.5 gap-0.5 rounded-full">
           <span className="bg-settled w-1/3 rounded-full" />
           <span className="w-1/2 rounded-full bg-white/40" />
-          <span className="w-1/6 rounded-full bg-[#ffbfb5]" />
+          <span className="w-1/6 rounded-full bg-tone-danger/30" />
         </span>
       </div>
       <div className="border-hairline bg-panel flex h-16 items-end gap-1 rounded-xl border p-3">

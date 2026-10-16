@@ -176,7 +176,7 @@ function NewQuotePage() {
         <CardHeader>
           <CardTitle>{t("quotes.new.title")}</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-6">
+        <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-6">
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -185,7 +185,7 @@ function NewQuotePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-              <Label>{t("docForm.contact")} *</Label>
+              <Label htmlFor="contactId">{t("docForm.contact")} *</Label>
               {loadingContacts ? (
                 <p className="text-sm text-muted-foreground py-2">
                   {t("docForm.loadingContacts")}
@@ -196,7 +196,7 @@ function NewQuotePage() {
                 </p>
               ) : (
                 <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="contactId" className="w-full">
                     <SelectValue placeholder={t("docForm.selectContact")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -226,7 +226,8 @@ function NewQuotePage() {
           {/* Line Items */}
           <div className="grid gap-3">
             <Label>{t("docForm.lineItems")}</Label>
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
+              <div className="min-w-[40rem]">
               <div className="grid grid-cols-[180px_1fr_80px_100px_100px_40px] gap-2 p-3 border-b bg-muted/50 text-sm font-medium">
                 <span>{t("docForm.column.item")}</span>
                 <span>{t("docForm.column.description")}</span>
@@ -244,7 +245,7 @@ function NewQuotePage() {
                     value={item.catalogItemId}
                     onValueChange={(value) => applyCatalogItem(index, value)}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full" aria-label={t("docForm.column.item")}>
                       <SelectValue
                         placeholder={
                           loadingCatalog
@@ -264,11 +265,13 @@ function NewQuotePage() {
                     </SelectContent>
                   </Select>
                   <Input
+                    aria-label={t("docForm.column.description")}
                     placeholder={t("docForm.column.description")}
                     value={item.description}
                     onChange={(e) => updateItem(index, "description", e.target.value)}
                   />
                   <Input
+                    aria-label={t("docForm.column.qty")}
                     type="number"
                     min="0.000001"
                     step="0.000001"
@@ -278,6 +281,7 @@ function NewQuotePage() {
                     }
                   />
                   <Input
+                    aria-label={t("docForm.column.unitPrice")}
                     type="number"
                     min="0"
                     step="0.0001"
@@ -301,6 +305,7 @@ function NewQuotePage() {
                   </Button>
                 </div>
               ))}
+              </div>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-fit">
               <Plus className="size-4" />
@@ -321,6 +326,7 @@ function NewQuotePage() {
                 <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
                 <div className="flex items-center gap-1">
                   <Input
+                    aria-label={t("docForm.summary.tax")}
                     type="number"
                     min="0"
                     max="100"
@@ -352,7 +358,7 @@ function NewQuotePage() {
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
+        <CardFooter className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
             variant="outline"

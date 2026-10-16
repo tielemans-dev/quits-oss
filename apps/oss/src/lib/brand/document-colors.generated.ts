@@ -14,8 +14,8 @@ export const documentColors = {
   "settledSoft": "#ffffff",
   "tones": {
     "neutral": {
-      "text": "#6f6c64",
-      "tint": "#ebeae9"
+      "text": "#66635b",
+      "tint": "#eae9e8"
     },
     "info": {
       "text": "#3a3934",

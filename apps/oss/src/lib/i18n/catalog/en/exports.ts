@@ -4,7 +4,7 @@ export const enExportsMessages = {
   "exports.einvoice.description":
     "Download this invoice as a Peppol BIS Billing 3.0 (UBL) file for e-invoicing networks and accounting systems.",
   "exports.einvoice.download": "Download e-invoice (UBL)",
-  "exports.einvoice.preparing": "Preparing...",
+  "exports.einvoice.preparing": "Preparing…",
   "exports.einvoice.error": "Could not create the e-invoice.",
   "exports.einvoice.missing.title": "Add these details before downloading the e-invoice:",
   "exports.einvoice.missing.document.notIssued": "Send or issue the document first. Drafts cannot be exported.",
@@ -47,7 +47,7 @@ export const enExportsMessages = {
   "exports.accounting.dataset.settlements": "Settlement events",
   "exports.accounting.dataset.payments": "Payments",
   "exports.accounting.download": "Download CSV",
-  "exports.accounting.preparing": "Preparing...",
+  "exports.accounting.preparing": "Preparing…",
   "exports.accounting.invalidRange": "The start date must be on or before the end date.",
   "exports.accounting.error": "Could not create the export.",
   "exports.accounting.forbidden": "Your role does not allow exports.",

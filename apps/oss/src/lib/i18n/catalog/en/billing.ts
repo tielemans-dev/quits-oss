@@ -1,6 +1,6 @@
 export const enBillingMessages = {
   "billing.title": "Billing",
-  "billing.loading": "Loading...",
+  "billing.loading": "Loading…",
   "billing.error.loadSubscription": "Failed to load subscription info",
   "billing.error.checkout": "Failed to create checkout session",
   "billing.error.portal": "Failed to open billing portal",
@@ -25,7 +25,7 @@ export const enBillingMessages = {
     "Your subscription has been canceled. Resubscribe to continue using premium features.",
   "billing.pastDue.description":
     "Your payment is past due. Please update your payment method to keep your subscription active.",
-  "billing.action.redirecting": "Redirecting...",
+  "billing.action.redirecting": "Redirecting…",
   "billing.action.upgrade": "Upgrade",
   "billing.action.manage": "Manage Subscription",
   "billing.action.resubscribe": "Resubscribe",

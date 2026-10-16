@@ -18,7 +18,7 @@ export const daActivityMessages = {
   "activity.filter.agentKey": "Agentnøgler",
   "activity.filter.organization": "Organisationsindstillinger",
   "activity.loadMore": "Indlæs flere",
-  "activity.loading": "Indlæser...",
+  "activity.loading": "Indlæser…",
   "activity.empty": "Ingen aktivitet endnu.",
   "activity.error": "Aktiviteten kunne ikke indlæses.",
   "activity.forbidden": "Din rolle giver ikke adgang til revisionsloggen.",

@@ -43,7 +43,6 @@ export function LocalizedDateField({
   placeholder,
   clearLabel,
   disabled,
-  required,
   invalid,
   describedBy,
 }: LocalizedDateFieldProps) {
@@ -58,7 +57,6 @@ export function LocalizedDateField({
           type="button"
           variant="outline"
           disabled={disabled}
-          aria-required={required}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
           className={cn("w-full justify-between text-left font-normal", !value && "text-muted-foreground")}

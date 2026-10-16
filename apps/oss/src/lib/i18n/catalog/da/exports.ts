@@ -4,7 +4,7 @@ export const daExportsMessages = {
   "exports.einvoice.description":
     "Download fakturaen som en Peppol BIS Billing 3.0-fil (UBL) til e-fakturanetværk og regnskabssystemer.",
   "exports.einvoice.download": "Download e-faktura (UBL)",
-  "exports.einvoice.preparing": "Forbereder...",
+  "exports.einvoice.preparing": "Forbereder…",
   "exports.einvoice.error": "E-fakturaen kunne ikke oprettes.",
   "exports.einvoice.missing.title": "Tilføj disse oplysninger, før e-fakturaen kan downloades:",
   "exports.einvoice.missing.document.notIssued": "Send eller udsted dokumentet først. Kladder kan ikke eksporteres.",
@@ -47,7 +47,7 @@ export const daExportsMessages = {
   "exports.accounting.dataset.settlements": "Afregningshændelser",
   "exports.accounting.dataset.payments": "Betalinger",
   "exports.accounting.download": "Download CSV",
-  "exports.accounting.preparing": "Forbereder...",
+  "exports.accounting.preparing": "Forbereder…",
   "exports.accounting.invalidRange": "Startdatoen skal ligge før eller på slutdatoen.",
   "exports.accounting.error": "Eksporten kunne ikke oprettes.",
   "exports.accounting.forbidden": "Din rolle giver ikke adgang til eksport.",

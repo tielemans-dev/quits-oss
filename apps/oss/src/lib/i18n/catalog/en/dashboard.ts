@@ -1,5 +1,5 @@
 export const enDashboardMessages = {
-  "dashboard.loading": "Loading your overview...",
+  "dashboard.loading": "Loading your overview…",
   "dashboard.subtitle.start": "Your money will gather here as soon as you send an invoice.",
   "dashboard.greeting.morning": "Good morning",
   "dashboard.greeting.forenoon": "Good morning",
@@ -75,7 +75,7 @@ export const enDashboardMessages = {
   "dashboard.attention.action.followUp": "Follow up",
   "dashboard.attention.action.checkDelivery": "Check delivery",
 
-  "dashboard.remind.sending": "Sending...",
+  "dashboard.remind.sending": "Sending…",
   "dashboard.remind.sent": "Reminder sent",
   "dashboard.remind.pending": "Reminder queued",
   "dashboard.remind.unconfirmed": "Delivery not confirmed",

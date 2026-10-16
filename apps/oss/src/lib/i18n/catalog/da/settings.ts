@@ -16,7 +16,7 @@ export const daSettingsMessages = {
   "settings.title": "Indstillinger",
   "settings.capabilities.failed": "Kunne ikke hente tilgængelige indstillinger. Du kan gemme andre ændringer eller prøve igen.",
   "settings.capabilities.retry": "Prøv igen",
-  "settings.loading": "Indlæser...",
+  "settings.loading": "Indlæser…",
   "settings.success.saved": "Indstillinger gemt.",
   "settings.error.loadFailed": "Kunne ikke indlæse indstillinger",
   "settings.error.loadModelsFailed": "Kunne ikke hente modellisten.",
@@ -55,7 +55,7 @@ export const daSettingsMessages = {
   "settings.organizationSlug.help": "Bogstaver, tal og bindestreger. Bruges i URL'er.",
   "settings.organizationSlug.invalid": "Brug et kort URL-navn med bogstaver, tal og bindestreger.",
   "settings.companyAddress.label": "Virksomhedsadresse",
-  "settings.companyAddress.placeholder": "Hovedgade 123&#10;By, Region 1234",
+  "settings.companyAddress.placeholder": "Hovedgade 123\nBy, Region 1234",
   "settings.companyEmail.label": "Virksomheds-e-mail",
   "settings.companyEmail.placeholder": "faktura@acme.dk",
   "settings.companyPhone.label": "Virksomhedstelefon",
@@ -65,6 +65,7 @@ export const daSettingsMessages = {
   "settings.companyLogo.placeholder": "https://example.com/logo.png",
   "settings.companyLogo.help":
     "Indsæt en billed-URL til logo eller upload en fil.",
+  "settings.companyLogo.file": "Upload virksomhedslogo",
   "settings.companyLogo.remove": "Fjern logo",
   "settings.companyLogo.previewAlt": "Forhåndsvisning af virksomhedslogo",
   "settings.section.localization.title": "Lokalisering og compliance",
@@ -207,7 +208,7 @@ export const daSettingsMessages = {
   "settings.ai.drafts.saved.on": "AI-kladder er slået til.",
   "settings.ai.drafts.saved.off": "AI-kladder er slået fra.",
   "settings.aiModel.label": "AI-model",
-  "settings.aiModel.refreshing": "Opdaterer...",
+  "settings.aiModel.refreshing": "Opdaterer…",
   "settings.aiModel.refresh": "Opdater modeller",
   "settings.aiApiKey.label": "API-nøgle",
   "settings.aiApiKey.configuredHelp":
@@ -223,7 +224,7 @@ export const daSettingsMessages = {
   "settings.aiModel.customHelp":
     "Skriv et modelnavn, eller vælg et forslag fra endpointet.",
   "settings.aiProvider.label": "Udbyder",
-  "settings.aiProvider.checking": "Tjekker AI-tilgængelighed...",
+  "settings.aiProvider.checking": "Tjekker AI-tilgængelighed…",
   "settings.aiProvider.unavailable": "AI-fakturakladning er ikke tilgængelig på denne server.",
   "settings.aiProvider.openrouter": "OpenRouter",
   "settings.aiProvider.openaiCompatible": "OpenAI-kompatibelt endpoint",
@@ -233,15 +234,16 @@ export const daSettingsMessages = {
   "settings.aiBaseUrl.label": "Base-URL",
   "settings.aiBaseUrl.help":
     "Roden af en OpenAI-kompatibel API, inklusive versionsstien. Til Ollama bruges http://localhost:11434/v1.",
-  "settings.action.saving": "Gemmer...",
+  "settings.action.saving": "Gemmer…",
   "settings.action.save": "Gem indstillinger",
   "settings.section.team.title": "Teammedlemmer",
   "settings.section.team.description":
     "Administrer hvem der har adgang til denne organisation.",
+  "settings.team.inviteRole": "Rolle",
   "settings.team.inviteEmail.placeholder": "kollega@example.com",
-  "settings.team.action.sending": "Sender...",
+  "settings.team.action.sending": "Sender…",
   "settings.team.action.invite": "Inviter",
-  "settings.team.loading": "Indlæser medlemmer...",
+  "settings.team.loading": "Indlæser medlemmer…",
   "settings.team.you": "(dig)",
   "settings.team.remove.title": "Fjern medlem?",
   "settings.team.remove.description":

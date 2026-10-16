@@ -239,7 +239,7 @@ function CreditNoteDetailPage() {
           : t("creditNotes.detail.email.failed", { date: formatDate(lastAttemptAt, locale, timezone) })
 
   return (
-    <div className="p-6 max-w-3xl grid gap-6">
+    <div className="p-6 max-w-3xl grid grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex items-center justify-between">
         {backLink}
         <Button variant="outline" size="sm" disabled={downloading || creditNote.status !== "issued"} onClick={() => void handleDownload()}>
@@ -273,8 +273,8 @@ function CreditNoteDetailPage() {
         </div>}
       </div>}
       <Card>
-        <CardContent className="p-6 grid gap-6">
-          <div className="flex items-start justify-between gap-4">
+        <CardContent className="p-6 grid grid-cols-[minmax(0,1fr)] gap-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="grid gap-1">
               <h1 className="text-2xl font-bold">
                 {t("creditNotes.detail.title", { number: creditNote.number })}
@@ -289,7 +289,7 @@ function CreditNoteDetailPage() {
                 {t("creditNotes.detail.reference", { number: creditNote.invoice.number ?? "" })}
               </Link>
             </div>
-            <div className="text-right text-sm text-muted-foreground">
+            <div className="text-left text-sm sm:text-right text-muted-foreground">
               <p>
                 <span className="font-medium text-foreground">{t("pdf.issueDate")}:</span>{" "}
                 {formatDate(creditNote.issueDate, locale, timezone)}

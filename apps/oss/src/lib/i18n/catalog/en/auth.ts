@@ -189,7 +189,7 @@ export const enAuthMessages = {
   "auth.onboarding.ai.title": "AI setup assistant",
   "auth.onboarding.ai.prompt": "Describe your company setup",
   "auth.onboarding.ai.placeholder": "Example: We are a Danish consultancy, VAT registered, billing email is billing@acme.example.",
-  "auth.onboarding.ai.thinking": "Thinking...",
+  "auth.onboarding.ai.thinking": "Thinking…",
   "auth.onboarding.ai.suggest": "Suggest patch",
   "auth.onboarding.ai.proposed": "Proposed changes",
   "auth.onboarding.ai.none": "No confident field updates found. Try adding more detail.",

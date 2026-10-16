@@ -86,7 +86,7 @@ export function AccountingIntegrationsCard() {
         <CardTitle>{t("accounting.title")}</CardTitle>
         <CardDescription>{t("accounting.description")}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-3">
+      <CardContent className="grid grid-cols-[minmax(0,1fr)] gap-3">
         {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         {state === null && !error ? <p className="text-sm text-muted-foreground">{t("accounting.loading")}</p> : null}
         {state?.providers.map((item) => {
@@ -101,7 +101,7 @@ export function AccountingIntegrationsCard() {
                     {t(`accounting.status.${item.status}`)}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {item.status === "not_connected" ? (
                     <>
                       <Badge variant="outline">{t("accounting.connect.soon")}</Badge>
@@ -139,7 +139,7 @@ export function AccountingIntegrationsCard() {
                     </span>
                   ) : null}
                   {canDisconnect && delivery.failedDeliveryId ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, ...(delivery.lastErrorCode === "reconnect_review_required" ? { confirmReconnect: true } : {}) }), t("accounting.action.error"))}>{t("accounting.retry")}</Button>
                       <AlertDialog onOpenChange={() => setSkipReason("")}>
                         <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.skip")}</Button></AlertDialogTrigger>

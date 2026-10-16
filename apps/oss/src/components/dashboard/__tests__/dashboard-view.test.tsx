@@ -243,7 +243,7 @@ describe("reminder action", () => {
     const send = vi.fn(() => new Promise<{ delivery: string }>((resolve) => (finish = resolve)))
     renderView(activeSummary(), send)
     fireEvent.click(screen.getByRole("button", { name: "Send påmindelse" }))
-    const sending = await screen.findByRole("button", { name: "Sender..." })
+    const sending = await screen.findByRole("button", { name: "Sender…" })
     expect((sending as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(sending)
     expect(send).toHaveBeenCalledTimes(1)

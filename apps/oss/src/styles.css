@@ -126,7 +126,7 @@ code {
    * tint on a white panel. Mapping to the design: success is settled, danger is overdue, info is
    * sent, progress is viewed, neutral is draft. Success sits on --settled-soft instead.
    */
-  --tone-neutral: #6f6c64;
+  --tone-neutral: #66635b;
   --tone-info: #3a3934;
   --tone-progress: #4b50cc;
   --tone-success: var(--brand-text);

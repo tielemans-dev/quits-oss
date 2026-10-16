@@ -2,7 +2,7 @@
 export const enRecurringMessages = {
   "recurring.title": "Recurring invoices",
   "recurring.description": "Schedules that create invoices for you on a fixed cadence.",
-  "recurring.loading": "Loading schedules...",
+  "recurring.loading": "Loading schedules…",
   "recurring.action.new": "New schedule",
   "recurring.action.edit": "Edit",
   "recurring.action.pause": "Pause",
