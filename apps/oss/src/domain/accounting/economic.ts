@@ -3,6 +3,7 @@ import { creditNoteIssuedSchema, invoiceIssuedSchema } from "../events/money"
 import { postingsFor } from "./postings"
 import { apiAmount } from "./api-amount"
 import type { AccountingProvider, AccountingRefusal } from "./provider"
+import { supportsDocumentDelivery } from "./provider"
 
 /** Resolved within one org/connection; product groups supply sales accounts and VAT codes. */
 export type EconomicSettings = {
@@ -26,6 +27,7 @@ const refuse = (code: string, detail: string): AccountingRefusal => ({ status: "
 
 export const economicProvider: AccountingProvider<EconomicSettings, EconomicDraft> = {
   id: "economic",
+  supportsDelivery: supportsDocumentDelivery,
   map(event, settings) {
     const postings = postingsFor(event)
     if (!Array.isArray(postings)) return refuse(postings.code, postings.detail)

@@ -40,6 +40,45 @@
         "deliveryId": "delivery-1",
         "reason": "Already entered manually"
       }
+    },
+    {
+      "source": "accounting/connections.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action: \"reconnect_hold\", provider: previous.provider, generation: previous.generation, deliveryId: row.id, reason: \"reconnect_review_required\" }",
+      "variant": "default",
+      "payload": {
+        "action": "reconnect_hold",
+        "provider": "dinero",
+        "generation": "old-generation",
+        "deliveryId": "delivery-1",
+        "reason": "reconnect_review_required"
+      }
+    },
+    {
+      "source": "accounting/connections.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action: previous ? \"reconnect\" : \"connect\", provider: input.provider, generation: data.generation, deliveryId: null, reason: null }",
+      "variant": "default",
+      "payload": {
+        "action": "reconnect",
+        "provider": "dinero",
+        "generation": "new-generation",
+        "deliveryId": null,
+        "reason": null
+      }
+    },
+    {
+      "source": "accounting/connections.ts",
+      "typeExpression": "\"accounting.action_recorded\"",
+      "payloadExpression": "{ action: previous ? \"reconnect\" : \"connect\", provider: input.provider, generation: data.generation, deliveryId: null, reason: null }",
+      "variant": "no_optional",
+      "payload": {
+        "action": "connect",
+        "provider": "dinero",
+        "generation": "new-generation",
+        "deliveryId": null,
+        "reason": null
+      }
     }
   ]
 }

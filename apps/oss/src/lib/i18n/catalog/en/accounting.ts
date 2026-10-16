@@ -26,6 +26,9 @@ export const enAccountingMessages = {
   "accounting.mappings.invalid": "Use whole positive account numbers and two-letter country codes. Remove duplicate VAT groups.",
 
   "activity.event.accounting.action_recorded": "Accounting action recorded",
+  "activity.event.accounting.action_recorded.connect": "Connected accounting ({provider})",
+  "activity.event.accounting.action_recorded.reconnect": "Reconnected accounting ({provider})",
+  "activity.event.accounting.action_recorded.reconnect_hold": "Held accounting delivery {deliveryId} for reconnect review ({provider})",
   "activity.event.accounting.action_recorded.disconnect": "Disconnected accounting ({provider})",
   "activity.event.accounting.action_recorded.retry": "Retried accounting delivery {deliveryId} ({provider})",
   "activity.event.accounting.action_recorded.skip": "Skipped accounting delivery {deliveryId} ({provider}): {reason}",

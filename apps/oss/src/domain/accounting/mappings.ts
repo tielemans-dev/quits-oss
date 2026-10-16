@@ -12,6 +12,8 @@ export const mappingsSchema = z.object({ rows: z.array(row).max(100), paymentAcc
   if (new Set(keys).size !== keys.length) ctx.addIssue({ code: "custom", path: ["rows"], message: "Duplicate VAT group" })
 })
 export type AccountingMappings = z.infer<typeof mappingsSchema>
+export const mappingContextSchema = z.object({ mappingRevision: z.string(), mappings: mappingsSchema.optional(), accountFingerprint: z.string().optional() })
+export type MappingContext = z.infer<typeof mappingContextSchema>
 export const defaultMappings = (): AccountingMappings => ({ rows: [{ kind: "domestic", country: "DK", revenueAccount: null, vatCode: "", productNumber: "", vatZoneNumber: 1 }], paymentAccount: null })
 export function mappingKey(value: AccountingMappings["rows"][number]) {
   return vatGroupKey({ treatment: value.kind === "domestic" ? "standard" : "intra_community",

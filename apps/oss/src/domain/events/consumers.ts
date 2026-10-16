@@ -35,7 +35,7 @@ async function cursor(tx: Prisma.TransactionClient, input: Consumer) {
 
 /** Call inside a transaction. A conflict must roll back its delivery inserts as well. */
 export async function scan(input: Consumer & { interestedTypes: readonly string[]; limit: number;
-  dispositions?: (events: Array<{ sequence: number; occurredAt: Date }>, tx: Prisma.TransactionClient) => Promise<Map<number, ScanDisposition>> }, db: Db = prisma) {
+  dispositions?: (events: Array<{ sequence: number; occurredAt: Date; type: string; aggregateId: string }>, tx: Prisma.TransactionClient) => Promise<Map<number, ScanDisposition>> }, db: Db = prisma) {
   const limit = batchLimit(input.limit)
   const scope = { organizationId: input.organizationId, consumerKey: input.consumerKey }
   return transaction(db, async (tx) => {

@@ -13,5 +13,9 @@ type AccountingMapping<Payload> = AccountingRefusal | {
 /** Pure preparation only. Transport, credentials and delivery state belong to the worker. */
 export interface AccountingProvider<Settings, Payload> {
   readonly id: string
+  supportsDelivery(type: string): boolean
   map(event: AccountingEvent, settings: Settings): AccountingMapping<Payload>
 }
+
+/** Payment v1 lacks the immutable evidence required for automatic delivery. */
+export const supportsDocumentDelivery = (type: string) => type === "invoice.issued" || type === "credit_note.issued"

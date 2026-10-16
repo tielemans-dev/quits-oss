@@ -39,7 +39,7 @@ describeDb("accounting delivery", () => {
     const row = () => prisma.eventConsumerDelivery.findFirstOrThrow({ where: { organizationId }, orderBy: { sequence: "asc" } })
     return { organizationId, event, connection, connections, transport, run, row, now }
   }
-  it.each(["invoice.issued", "credit_note.issued", "payment.recorded"])("delivers %s once, even on a duplicate scan", async type => {
+  it.each(["invoice.issued", "credit_note.issued"])("delivers %s once, even on a duplicate scan", async type => {
     const f = await setup(type)
     expect(await f.run()).toBe("delivered")
     const row = await f.row()
@@ -106,13 +106,18 @@ describeDb("accounting delivery", () => {
     expect(await prisma.eventConsumerDelivery.count({ where: { organizationId: f.organizationId } })).toBe(0)
     expect(f.transport.send).not.toHaveBeenCalled()
   })
-  it("records an adapter refusal without sending incomplete payments", async () => {
+  it("skips unsupported payments without sending or resolving settings", async () => {
     const f = await setup("payment.recorded")
-    const settings = await f.connection.settings()
-    delete settings.payment
-    expect(await f.run()).toBe("failed")
-    expect(await f.row()).toMatchObject({ error: { code: "missing_mapping" } })
+    expect(await f.run()).toBe("idle")
+    expect(await f.row()).toMatchObject({ status: "skipped", attempts: 0, error: { code: "event_not_applicable" } })
+    expect(f.connection.settings).not.toHaveBeenCalled()
     expect(f.transport.send).not.toHaveBeenCalled()
+    const invoice = invoiceFixture(); invoice.buyer = { name: "Buyer", country: "DK" }
+    for (const [sequence, type, payload, schemaVersion] of [[2, "invoice.issued", invoice, 1], [3, "credit_note.issued", creditFixture(invoice), 2]] as const)
+      await prisma.domainEvent.create({ data: { organizationId: f.organizationId, sequence, type, payload, schemaVersion, aggregateId: "invoice", aggregateType: "invoice", actorKind: "system" } })
+    expect(await f.run()).toBe("delivered")
+    expect(await f.run()).toBe("delivered")
+    expect(await prisma.eventConsumerCursor.findFirstOrThrow({ where: { organizationId: f.organizationId } })).toMatchObject({ acknowledgedSequence: 3 })
   })
   it("reconciles a lost response without repeating the remote effect", async () => {
     const f = await setup()
