@@ -148,16 +148,40 @@ export function TrackerToast({
   )
 }
 
+const DISMISSED_KEY = "quits.tracker.dismissed"
+
+/** Closed toasts stay closed across reloads; only the latest few are worth remembering. */
+function readDismissed(): ReadonlySet<string> {
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(DISMISSED_KEY) ?? "[]")
+    return new Set(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function storeDismissed(ids: ReadonlySet<string>) {
+  try {
+    window.localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids].slice(-50)))
+  } catch {
+    // Without storage a closed toast is closed until the next reload.
+  }
+}
+
 /** Mounted once in the app layout: follows the newest reminder job the server reports. */
 export function ReminderTracker() {
   const jobs = useReminderJobs()
   const held = useTrackerHeld()
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set())
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set())
+  const [dismissed, setDismissed] = useState(readDismissed)
   const job = pickTrackedJob(jobs, seen, dismissed)
   const phase = job ? trackerView(job).phase : undefined
   const id = job?.id
-  const dismiss = (jobId: string) => setDismissed((current) => new Set(current).add(jobId))
+  const dismiss = (jobId: string) => setDismissed((current) => {
+    const next = new Set(current).add(jobId)
+    storeDismissed(next)
+    return next
+  })
 
   useEffect(() => {
     if (id && phase === "running") setSeen((current) => (current.has(id) ? current : new Set(current).add(id)))

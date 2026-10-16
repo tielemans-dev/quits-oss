@@ -69,6 +69,13 @@ describe("pickTrackedJob", () => {
     expect(pickTrackedJob([finished, running], none, none, now)?.id).toBe("running")
   })
 
+  it("does not bring back a job that has not moved on for a long while", () => {
+    const stalled = job(["pending"], { updatedAt: new Date(now - 60 * 60_000) }, "stalled")
+    expect(pickTrackedJob([stalled], none, none, now)).toBeUndefined()
+    expect(pickTrackedJob([stalled], new Set(["stalled"]), none, now)?.id).toBe("stalled")
+    expect(pickTrackedJob([{ ...stalled, updatedAt: new Date(now - 60_000) }], none, none, now)?.id).toBe("stalled")
+  })
+
   it("keeps a job finished in this tab until it is dismissed", () => {
     expect(pickTrackedJob([finished], new Set(["finished"]), none, now)?.id).toBe("finished")
     expect(pickTrackedJob([finished], new Set(["finished"]), new Set(["finished"]), now)).toBeUndefined()
