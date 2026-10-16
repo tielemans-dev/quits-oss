@@ -1,6 +1,8 @@
 {
   "$schema": "https://oxc.rs/schema.json",
   "ignorePatterns": [
+    "docs/vendor/**",
+    ".repos/**",
     "build/**",
     "apps/oss/build/**",
     "apps/oss/generated/**",
