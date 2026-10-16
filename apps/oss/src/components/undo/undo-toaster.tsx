@@ -4,6 +4,7 @@ import { useI18n } from "../../lib/i18n/react"
 import { DURATION } from "../../lib/motion"
 import { UNDO_HOLD_LEASE_MS, UNDO_WINDOW_MS } from "../../lib/undo-window"
 import { cn } from "../../lib/utils"
+import { useTrackerHeld } from "../jobs/tracker-hold"
 import { Button } from "../ui/button"
 import { removeUndo, syncHeldJobs, useUndoItems, type UndoItem } from "./undo-store"
 
@@ -29,6 +30,8 @@ function UndoToast({ item }: { item: UndoItem }) {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ text: string; failed: boolean } | null>(null)
   const [shown, setShown] = useState(false)
+  // A card flying to the corner becomes this toast: it waits for the square to land.
+  const held = useTrackerHeld()
   const settled = busy || note !== null
 
   const leave = (delay: number) => setTimeout(() => { setShown(false); setTimeout(() => removeUndo(item.id), FADE_MS) }, delay)
@@ -87,7 +90,7 @@ function UndoToast({ item }: { item: UndoItem }) {
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}
       className={cn(
         "bg-popover text-popover-foreground border-hairline overflow-hidden rounded-2xl border opacity-0 transition-[opacity] duration-(--duration-undo-fade) ease-enter [filter:drop-shadow(0_8px_24px_rgb(11_11_12/0.18))]",
-        shown && "opacity-100"
+        shown && !held && "opacity-100"
       )}
     >
       <div className="flex items-center gap-3 p-3 text-sm">
