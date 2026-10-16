@@ -3,6 +3,7 @@ import { defaultMappings, mappingsSchema, missingSalesMappings, type AccountingM
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 
 export function AccountingMappingsEditor({ provider, config, canEdit, busy, save, invalidRows = [] }: {
   invalidRows?: number[]
@@ -28,12 +29,15 @@ export function AccountingMappingsEditor({ provider, config, canEdit, busy, save
       if (parsed.success) setSaved(await save(parsed.data))
     }}>
       <fieldset disabled={busy || !canEdit} className="grid min-w-0 gap-3">
-        {draft.rows.map((row, index) => <div key={index} className="grid gap-2 sm:grid-cols-2">
+        {draft.rows.map((row, index) => <div key={index} className="grid gap-2 border-b pb-3 sm:grid-cols-2">
           {invalidRows.includes(index) ? <p className="text-sm text-destructive sm:col-span-2">{t("accounting.mappings.invalidRow", { row: index + 1 })}</p> : null}
           <label className="grid gap-1 text-sm">{t("accounting.mappings.group")}
-            <select className="h-9 rounded-md border bg-background px-3" value={row.kind} onChange={event => update(index, { kind: event.target.value as typeof row.kind })}>
-              {(["domestic", "services", "goods"] as const).map(kind => <option key={kind} value={kind}>{t(`accounting.mappings.${kind}`)}</option>)}
-            </select>
+            <Select value={row.kind} onValueChange={kind => update(index, { kind: kind as typeof row.kind })}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(["domestic", "services", "goods"] as const).map(kind => <SelectItem key={kind} value={kind}>{t(`accounting.mappings.${kind}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </label>
           <label className="grid gap-1 text-sm">{t("accounting.mappings.country")}<Input maxLength={2} value={row.country} onChange={event => update(index, { country: event.target.value.toUpperCase() })} /></label>
           {(["revenueAccount", "vatCode", ...(provider === "economic" ? ["productNumber", "vatZoneNumber"] as const : [])] as const).map(field => {
@@ -42,7 +46,7 @@ export function AccountingMappingsEditor({ provider, config, canEdit, busy, save
               <Input type={numeric ? "number" : "text"} min={numeric ? 1 : undefined} max={numeric ? 2147483647 : undefined} step={numeric ? 1 : undefined} maxLength={25} value={row[field] ?? ""} onChange={event => update(index, { [field]: numeric ? event.target.value === "" ? null : Number(event.target.value) : event.target.value })} />
             </label>
           })}
-          {canEdit ? <Button type="button" variant="ghost" size="sm" onClick={() => { setSaved(false); setDraft(value => ({ ...value, rows: value.rows.filter((_, at) => at !== index) })) }}>{t("accounting.mappings.remove")}</Button> : null}
+          {canEdit ? <Button type="button" variant="ghost" size="sm" className="justify-self-start sm:col-span-2" onClick={() => { setSaved(false); setDraft(value => ({ ...value, rows: value.rows.filter((_, at) => at !== index) })) }}>{t("accounting.mappings.remove")}</Button> : null}
         </div>)}
         <label className="grid gap-1 text-sm">{t("accounting.mappings.paymentAccount")}<Input type="number" min={1} max={2147483647} step={1} value={draft.paymentAccount ?? ""} onChange={event => { setSaved(false); setDraft({ ...draft, paymentAccount: event.target.value === "" ? null : Number(event.target.value) }) }} /></label>
         {canEdit ? <div className="flex flex-wrap gap-2">

@@ -60,6 +60,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle, Download } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { DocumentTotals } from "../../../components/documents/document-totals"
@@ -979,17 +980,25 @@ function QuoteDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("docForm.column.description")}</TableHead>
-                  <TableHead className="text-right w-[80px]">{t("docForm.column.qty")}</TableHead>
-                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(quote.priceBasis).unitPrice)}</TableHead>
+                  <TableHead className="hidden w-[80px] text-right sm:table-cell">{t("docForm.column.qty")}</TableHead>
+                  <TableHead className="hidden w-[140px] text-right sm:table-cell">{t(lineColumnKeys(quote.priceBasis).unitPrice)}</TableHead>
                   <TableHead className="text-right w-[140px]">{t(lineColumnKeys(quote.priceBasis).amount)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {quote.items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell className="text-right num">{item.quantity}</TableCell>
-                    <TableCell className="text-right num">
+                    <TableCell className="whitespace-normal">
+                      {item.description}
+                      <p className="num mt-1 text-xs text-muted-foreground sm:hidden">
+                        {t("public.document.lineQuantity", {
+                          quantity: localizeInvoiceQuantity(String(item.quantity), locale),
+                          price: formatCurrency(item.displayUnitPrice ?? item.unitPrice, quote.currency, locale),
+                        })}
+                      </p>
+                    </TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">
                       {formatCurrency(item.displayUnitPrice ?? item.unitPrice, quote.currency, locale)}
                     </TableCell>
                     <TableCell className="text-right num">

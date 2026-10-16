@@ -73,7 +73,7 @@ code {
   --brand-foreground: #ffffff;
   --brand-text: #4b50cc;
   --brand-soft: rgb(91 95 222/10%);
-  --brand-glow: linear-gradient(0deg,rgb(91 95 222/6%),rgb(91 95 222/1%) 45%,transparent 60%);
+  --brand-glow: radial-gradient(100% 100% at 0 0,rgb(91 95 222/6%),rgb(91 95 222/1%) 45%,transparent);
 
   /*
    * Settled: the green full stop, for money that has arrived and nothing else. --settled is a fill
@@ -200,7 +200,7 @@ code {
   --brand-foreground: #ffffff;
   --brand-text: #a0a7f8;
   --brand-soft: rgb(160 167 248/20%);
-  --brand-glow: linear-gradient(0deg,rgb(160 167 248/10%),rgb(160 167 248/2%) 45%,transparent 60%);
+  --brand-glow: radial-gradient(100% 100% at 0 0,rgb(160 167 248/10%),rgb(160 167 248/2%) 45%,transparent);
 
   /* Keep the paid rule bright on dark surfaces. */
   --settled-rule: #3cc47f;

@@ -1376,17 +1376,26 @@ function InvoiceDetailPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("pdf.description")}</TableHead>
-                    <TableHead className="text-right w-[80px]">{t("pdf.qty")}</TableHead>
-                    <TableHead className="text-right w-[140px]">{t(lineColumnKeys(invoice.priceBasis).unitPrice)}</TableHead>
+                    <TableHead className="hidden w-[80px] text-right sm:table-cell">{t("pdf.qty")}</TableHead>
+                    <TableHead className="hidden w-[140px] text-right sm:table-cell">{t(lineColumnKeys(invoice.priceBasis).unitPrice)}</TableHead>
                     <TableHead className="text-right w-[140px]">{t(lineColumnKeys(invoice.priceBasis).amount)}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {invoice.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
-                      <TableCell className="text-right num">{item.quantity}</TableCell>
-                      <TableCell className="text-right num">
+                      <TableCell className="whitespace-normal">
+                        {item.description}
+                        <p className="num mt-1 text-xs text-muted-foreground sm:hidden">
+                          {t("public.document.lineQuantity", {
+                            quantity: localizeInvoiceQuantity(String(item.quantity), locale),
+                            price: formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale),
+                          })}
+                        </p>
+                        {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
+                      </TableCell>
+                      <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
+                      <TableCell className="hidden text-right num sm:table-cell">
                         {formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale)}
                       </TableCell>
                       <TableCell className="text-right num">

@@ -133,11 +133,12 @@ export const listRowLinkClass =
   "after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
 
 /**
- * Row actions: shown on hover and on keyboard focus where the device can hover, always where it
- * cannot (phones, tablets). Sits above the stretched row link.
+ * Row actions: in the wide table layout they show on hover and on keyboard focus where the device
+ * can hover, and always where it cannot (phones, tablets). In the stacked layout there is no room
+ * to hide them, so they always show and the row keeps one height. Sits above the stretched row link.
  */
 export const rowActionsClass =
-  "relative z-10 flex justify-end [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-(--duration-fade)"
+  "relative z-10 flex justify-end @4xl:[@media(hover:hover)]:opacity-0 @4xl:[@media(hover:hover)]:group-hover/row:opacity-100 @4xl:[@media(hover:hover)]:group-focus-within/row:opacity-100 @4xl:[@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-(--duration-fade)"
 
 /** Placeholder rows while the first load runs; the caller supplies the label read to screen readers. */
 export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number }) {

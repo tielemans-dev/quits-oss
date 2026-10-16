@@ -273,7 +273,7 @@ function InvoicesListPage() {
                       delay={Math.min(stagger.get(invoice.id) ?? 0, 5) * PILL_STAGGER_MS}
                     />
                   </ListCell>
-                  <ListCell className="@max-4xl:col-span-2 @max-4xl:row-start-3 @max-4xl:empty:sr-only">
+                  <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-2 @max-4xl:-my-1.5 @max-4xl:justify-self-end @max-4xl:empty:sr-only">
                     {invoice.status === "draft" && (
                       <div className={rowActionsClass}>
                         <AlertDialog>
@@ -281,7 +281,7 @@ function InvoicesListPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              className="size-7"
+                              className="size-9 @4xl:size-7"
                               aria-label={t("invoices.delete.title")}
                               disabled={deleting === invoice.id}
                             >

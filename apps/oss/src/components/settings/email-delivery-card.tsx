@@ -19,7 +19,7 @@ export function EmailDeliveryCard({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
           <div className="space-y-1">
             <CardTitle>{t("settings.section.emailDelivery.title")}</CardTitle>
             <CardDescription>
