@@ -192,6 +192,20 @@ describe.each(["da-DK", "en-US"])("quote detail polish in %s", (locale) => {
     expect(container.querySelectorAll('[data-slot="card"] [data-slot="card"]').length).toBe(0)
   })
 
+  it("keeps quantity and unit price under the description where the columns are hidden on a phone", async () => {
+    state.locale = locale
+    const data = quote("q_1", "Q-0001", "sent")
+    Object.assign(data, { items: [{ id: "i_1", description: "Consulting", quantity: 6, unitPrice: 950, total: 5700, sortOrder: 0 }] })
+    state.get.mockResolvedValue(data)
+    render(<RouteComponent />)
+    const da = locale === "da-DK"
+    const summary = await screen.findByText(da ? /^6\s×\s950,00\skr\.$/ : /^6\s×\sDKK\s950\.00$/)
+    expect(summary.className).toContain("sm:hidden")
+    const header = screen.getByRole("columnheader", { name: da ? "Antal" : "Qty" })
+    expect(header.className).toContain("hidden")
+    expect(header.className).toContain("sm:table-cell")
+  })
+
   it("keeps an explicit unknown country in foreign address order", async () => {
     state.locale = locale
     const data = quote("q_1", "Q-0001")
