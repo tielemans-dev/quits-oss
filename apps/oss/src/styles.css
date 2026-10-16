@@ -6,11 +6,17 @@
 
 /*
  * Both families are bundled with the app (SIL OFL 1.1), so no font is fetched from a CDN.
- * Geist (variable, 100-900) is the UI, display and figure face; Geist Mono (variable) is for
- * micro-labels, invoice numbers and CVR through the `mono-label` utility and `font-mono`.
+ * Latin includes Danish. Geist is the UI face; Geist Mono is for data.
+ * Both copyright notices and the OFL are shipped in /fonts/OFL.txt.
  */
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
+@font-face {
+  font-family: 'Geist Variable'; font-style: normal; font-weight: 400 500; font-display: swap;
+  src: url('@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono Variable'; font-style: normal; font-weight: 400 500; font-display: swap;
+  src: url('@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2');
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -28,6 +34,9 @@
  */
 
 @theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
   --font-sans:
     'Geist Variable', ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', sans-serif;
@@ -35,21 +44,34 @@
     'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas,
     monospace;
 
-  /* The 11px step of the type scale; Tailwind's xs to 3xl cover the rest (12 to 30). */
-  --text-2xs: 0.6875rem;
+  /* Seven app steps; legacy larger utilities alias the figure step until their PR. */
+  --text-2xs: 0.6875rem; --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem; --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem; --text-sm--line-height: 1.25rem;
+  --text-base: 1rem; --text-base--line-height: 1.5rem;
+  --text-lg: var(--text-base); --text-lg--line-height: var(--text-base--line-height);
+  --text-xl: 1.25rem; --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem; --text-2xl--line-height: 2rem;
+  --text-3xl: 2rem; --text-3xl--line-height: 2.25rem;
+  --text-4xl: var(--text-3xl); --text-4xl--line-height: var(--text-3xl--line-height);
+  --text-5xl: var(--text-3xl); --text-5xl--line-height: var(--text-3xl--line-height);
+  --text-6xl: var(--text-3xl); --text-6xl--line-height: var(--text-3xl--line-height);
+  --font-weight-heading: 500;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 500;
+  --font-weight-extrabold: 500;
+  --tracking-heading: -0.01em;
 
-  /* One strong weight: headings and emphasised text share it. */
-  --font-weight-heading: 600;
-  --font-weight-bold: 700;
-  --tracking-heading: -0.025em;
-
-  /* A light panel gets a hairline and a 1px lift; dark panels get no shadow (see --shadow-ink). */
-  --shadow-xs: var(--shadow-ink);
-  --shadow-sm: var(--shadow-ink);
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: var(--shadow-float);
+  --shadow-lg: var(--shadow-float);
+  --shadow-xl: var(--shadow-float);
+  --shadow-2xl: var(--shadow-float);
 }
 
 body {
-  @apply m-0;
+  @apply m-0 text-sm;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -59,91 +81,96 @@ code {
   font-family: var(--font-mono);
 }
 
+/* Quits Light / Quits Dark: shared semantic names for app and landing adoption. */
 :root {
   color-scheme: light;
+  --neutral: rgb(98 102 150);
+  --neutral-6: rgb(from var(--neutral) r g b / 6%);
+  --neutral-10: rgb(from var(--neutral) r g b / 10%);
+  --neutral-22: rgb(from var(--neutral) r g b / 22%);
+  --shadow-float: 0 0 0 1px var(--neutral-10), 0 2px 6px rgb(22 23 42 / 6%), 0 12px 32px -6px rgb(22 23 42 / 16%);
+  --shadow-menu: 0 0 0 1px var(--neutral-10), 0 4px 12px -2px rgb(22 23 42 / 12%);
+  --scrim: rgb(22 23 42 / 22%);
+  --sidebar-width: 232px;
+  --topbar-height: 48px;
+  --content-width: 968px;
+  --content-wide: 1200px;
+  --gutter: 24px;
+  --row-height: 52px;
+  --control-height: 32px;
 
-  /* Surfaces: paper canvas, white panels. */
-  --canvas: #faf9f6;
+  /* Cool slate sidebar, white page and panels. */
+  --canvas: #f7f7fb;
   --panel: #ffffff;
   --panel-raised: #ffffff;
-  --hairline: rgb(120 114 100/13%);
+  --hairline: var(--neutral-10);
 
-  /* Brand: ink. --brand-text is the brand colour as text on a surface. */
+  /* One indigo action accent; --brand-text is its accessible text value. */
   --brand: #5b5fde;
   --brand-foreground: #ffffff;
   --brand-text: #4b50cc;
   --brand-soft: rgb(91 95 222/10%);
-  --brand-glow: radial-gradient(100% 100% at 0 0,rgb(91 95 222/6%),rgb(91 95 222/1%) 45%,transparent);
+  --brand-glow: none;
 
-  /*
-   * Settled: the green full stop, for money that has arrived and nothing else. --settled is a fill
-   * (never text on a light surface: 2.36:1 on white); --settled-rule is the paid amount rule
-   * (3.33:1 on white, 3.19:1 on paper); --settled-text is the green as
-   * text (4.89:1 on white); --settled-soft is the paid chip, under --tone-success text (6.24:1).
-   */
+  /* Settled fill is decorative; its text token reaches 6.31:1 on white. */
   --settled: #1f9d5c;
   --settled-rule: #1f9d5c;
   --settled-text: #0f6e41;
-  --settled-soft: transparent;
+  --settled-soft: rgb(from var(--settled) r g b / 10%);
 
-  /* The Outstanding card on the dashboard: an ink surface in both themes. */
-  --hero: #ffffff;
-  --hero-foreground: #2a2925;
+  /* Retired surface aliases remain until their component PRs. */
+  --hero: var(--panel);
+  --hero-foreground: var(--foreground);
 
-  --shadow-ink: 0 1px 2px 0 rgb(11 11 12 / 6%);
+  --shadow-ink: none;
 
-  --background: var(--canvas);
-  --foreground: #2a2925;
+  --background: #ffffff;
+  --foreground: #16172a;
   --card: var(--panel);
   --card-foreground: var(--foreground);
   --popover: var(--panel-raised);
   --popover-foreground: var(--foreground);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: #efeee9;
+  --secondary: var(--neutral-6);
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
-  /* Graphite: 5.05:1 on white, 4.83:1 on the paper canvas. */
-  --muted-foreground: #6f6c64;
+  /* Secondary text: 6.07:1 on white, 5.68:1 on the sidebar. */
+  --muted-foreground: #5f6176;
   --accent: var(--secondary);
   --accent-foreground: var(--foreground);
   --destructive: #b42029;
   --destructive-foreground: #b42029;
   --border: var(--hairline);
-  --input: rgb(120 114 100/20%);
-  /* Green-600: 3.33:1 on white, enough for a focus ring. */
+  --input: #8386a0;
+  /* Focus shares the accessible accent text colour. */
   --ring: #4b50cc;
-  --radius: 0.625rem;
-  --sidebar: #faf9f6;
+  --radius: 8px;
+  --sidebar: var(--canvas);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: rgb(120 114 100/11%);
+  --sidebar-accent: var(--neutral-10);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--hairline);
   --sidebar-ring: #4b50cc;
 
-  /*
-   * Status tones: each is a text colour. A badge fills with the tone mixed into transparent at
-   * 14% (see StatusBadge), with the label at full strength. Every tone reaches 4.5:1 over its own
-   * tint on a white panel. Mapping to the design: success is settled, danger is overdue, info is
-   * sent, progress is viewed, neutral is draft. Success sits on --settled-soft instead.
-   */
-  --tone-neutral: #66635b;
-  --tone-info: #3a3934;
-  --tone-progress: #4b50cc;
-  --tone-success: var(--brand-text);
+  /* Semantic text tones; non-semantic statuses share the muted tier. */
+  --tone-neutral: var(--muted-foreground);
+  --tone-info: var(--muted-foreground);
+  --tone-progress: var(--muted-foreground);
+  --tone-success: var(--settled-text);
   --tone-warning: #9a4400;
   --tone-danger: #b42029;
-  --tone-muted: #6f6c64;
+  --tone-muted: var(--muted-foreground);
 
   /* Charts use the tone hues so they match the rest of the interface; the first is settled. */
-  --chart-1: #1f9d5c;
-  --chart-2: #6f6c64;
-  --chart-3: #9a4400;
-  --chart-4: #5b5fde;
-  --chart-5: #e5484d;
-  --main-bg: #ffffff;
+  --chart-1: var(--settled);
+  --chart-2: var(--neutral-22);
+  --chart-3: var(--tone-warning);
+  --chart-4: var(--brand);
+  --chart-5: var(--tone-danger);
+  --main-bg: var(--background);
   --glow-main: none;
   --glow-sb: none;
   --sheet: #ffffff;
@@ -153,8 +180,8 @@ code {
   --sheet-ring: rgb(120 114 100/16%);
   --sheet-shadow: rgb(40 34 60/14%);
   --tk-ul: rgb(91 95 222/45%);
-  --caret: #5b5fde;
-  --mic-bg: rgb(120 114 100/10%);
+  --caret: var(--brand-text);
+  --mic-bg: var(--neutral-10);
   --paper: #ffffff;
   --paper-tx: #2a2925;
   --paper-mu: #6f6c64;
@@ -164,91 +191,85 @@ code {
   --paper-caret: #5b5fde;
   --paper-shadow: rgb(40 34 60/16%);
   --glow-paper: none;
-  --toast: #ffffff;
-  --toast-tx: #2a2925;
-  --toast-mu: #6f6c64;
-  --toast-track: rgb(120 114 100/16%);
-  --toast-ring: rgb(120 114 100/16%);
-  --toast-shadow: rgb(40 34 60/14%);
-  --fresh: #f6f6fd;
-  --fresh-0: rgb(246 246 253/0%);
-  --dim: rgb(112 108 98/22%);
-  --fg-title: #1d1c19;
-  --fg-2: #4f4d47;
-  --st-sent-bg: transparent;
-  --st-seen-bg: rgb(91 95 222/10%);
-  --st-over-bg: rgb(204 96 20/11%);
-  --st-paid-bg: transparent;
-  --pill-pad: 0 8px;
-  --pill-fs: 12px;
+  --toast: var(--panel);
+  --toast-tx: var(--foreground);
+  --toast-mu: var(--muted-foreground);
+  --toast-track: var(--neutral-22);
+  --toast-ring: var(--neutral-10);
+  --toast-shadow: var(--shadow-float);
+  --fresh: var(--neutral-6);
+  --fresh-0: rgb(from var(--neutral) r g b / 0%);
+  --dim: var(--scrim);
+  --fg-title: var(--foreground);
+  --fg-2: var(--muted-foreground);
+  --st-sent-bg: var(--neutral-6);
+  --st-seen-bg: var(--neutral-6);
+  --st-over-bg: var(--tone-warning-soft);
+  --st-paid-bg: var(--settled-soft);
+  --pill-pad: 0 6px;
+  --pill-fs: var(--text-xs);
   --dot: none;
   --dec-fs: .74em;
   --dec-top: -.3em;
-  --w-total: 600;
-  --w-h1: 600;
+  --w-total: 500;
+  --w-h1: 500;
+  --tone-neutral-soft: rgb(from var(--tone-neutral) r g b / 10%);
+  --tone-info-soft: rgb(from var(--tone-info) r g b / 10%);
+  --tone-progress-soft: rgb(from var(--tone-progress) r g b / 10%);
+  --tone-success-soft: rgb(from var(--tone-success) r g b / 10%);
+  --tone-warning-soft: rgb(from var(--tone-warning) r g b / 10%);
+  --tone-danger-soft: rgb(from var(--tone-danger) r g b / 10%);
+  --tone-muted-soft: rgb(from var(--tone-muted) r g b / 10%);
 }
 
 .dark {
   color-scheme: dark;
+  --neutral: rgb(160 166 220);
+  --background: #0f1019;
+  --shadow-float: 0 0 0 1px var(--neutral-10), 0 2px 6px rgb(0 0 0 / 18%), 0 12px 32px -6px rgb(0 0 0 / 48%);
+  --shadow-menu: 0 0 0 1px var(--neutral-10), 0 4px 12px -2px rgb(0 0 0 / 36%);
+  --scrim: rgb(0 0 0 / 48%);
 
-  --canvas: #0e1018;
-  --panel: #1c1f2b;
-  --panel-raised: #252937;
-  --hairline: rgb(180 188 216/12%);
+  --canvas: #0b0c14;
+  --panel: #0f1019;
+  --panel-raised: #0f1019;
 
   --brand: #5b5fde;
   --brand-foreground: #ffffff;
   --brand-text: #a0a7f8;
-  --brand-soft: rgb(160 167 248/20%);
-  --brand-glow: radial-gradient(100% 100% at 0 0,rgb(160 167 248/10%),rgb(160 167 248/2%) 45%,transparent);
+  --brand-soft: rgb(160 167 248 / 10%);
+  --brand-glow: none;
 
   /* Keep the paid rule bright on dark surfaces. */
   --settled-rule: #3cc47f;
 
   /* Green-400 as text on ink: 10.68:1. */
   --settled-text: #7ad3a2;
-  --settled-soft: transparent;
 
-  --hero: #1c1f2b;
-  --hero-foreground: #e9ebf3;
-
-  /* No shadows in dark mode: depth is the surface step and the hairline. */
-  --shadow-ink: 0 0 #0000;
+  /* Controls and cards remain flat in both themes. */
+  --shadow-ink: none;
 
   --foreground: #e9ebf3;
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
-  --secondary: #2c3141;
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
   --muted-foreground: #9da1b3;
   --accent: var(--secondary);
   --accent-foreground: var(--foreground);
-  --destructive: #ff7a6b;
-  --destructive-foreground: #ff7a6b;
-  --input: rgb(180 188 216/20%);
+  --destructive: #ff8a7c;
+  --destructive-foreground: var(--destructive);
+  --input: #6b6f88;
   --ring: #a0a7f8;
   --sidebar-foreground: var(--foreground);
-  --sidebar-accent: rgb(180 188 216/12%);
   --sidebar-accent-foreground: var(--foreground);
 
-  --tone-neutral: #9da1b3;
-  --tone-info: #dcdee8;
-  --tone-progress: #a0a7f8;
-  --tone-success: var(--brand-text);
   --tone-warning: #f5a56b;
   --tone-danger: #ff8a7c;
-  --tone-muted: #9da1b3;
 
-  --chart-1: #3cc47f;
-  --chart-2: #9da1b3;
-  --chart-3: #f5a56b;
-  --chart-4: #5b5fde;
-  --chart-5: #ff8a7c;
   --settled: #3cc47f;
-  --sidebar: #0e1018;
+  --sidebar: var(--canvas);
   --sidebar-ring: #a0a7f8;
-  --main-bg: #151821;
   --glow-main: none;
   --glow-sb: none;
   --sheet: #1c1f2b;
@@ -258,8 +279,6 @@ code {
   --sheet-ring: rgb(180 188 216/14%);
   --sheet-shadow: rgb(4 5 14/60%);
   --tk-ul: rgb(160 167 248/60%);
-  --caret: #a0a7f8;
-  --mic-bg: rgb(180 188 216/12%);
   --paper: #fdfdfc;
   --paper-tx: #1d1e27;
   --paper-mu: #666876;
@@ -269,34 +288,15 @@ code {
   --paper-caret: #5b5fde;
   --paper-shadow: rgb(4 5 14/70%);
   --glow-paper: none;
-  --toast: #252937;
-  --toast-tx: #e9ebf3;
-  --toast-mu: #9da1b3;
-  --toast-track: rgb(180 188 216/20%);
-  --toast-ring: rgb(180 188 216/14%);
-  --toast-shadow: rgb(4 5 14/55%);
-  --fresh: #1d2130;
-  --fresh-0: rgb(29 33 48/0%);
-  --dim: rgb(6 7 14/50%);
-  --fg-title: #f7f8fb;
-  --fg-2: #c3c6d3;
-  --st-sent-bg: transparent;
-  --st-seen-bg: rgb(160 167 248/20%);
-  --st-over-bg: rgb(245 165 107/20%);
-  --st-paid-bg: transparent;
-  --pill-pad: 0 8px;
-  --pill-fs: 12px;
   --dot: none;
   --dec-fs: .74em;
   --dec-top: -.3em;
-  --w-total: 600;
-  --w-h1: 600;
 }
 
 /*
  * Public recipient pages (/pay, /q, /a) are a seller's document, not our interface: forced light,
  * and quiet. The head script and ThemeProvider put data-document on <html> (see lib/theme.ts);
- * this drops the glow, keeps the focus ring ink and turns the "sent" tone to a plain steel blue.
+ * this keeps the focus ring ink and inherits the shared neutral status tones.
  */
 html[data-document] {
   --brand: #0b0b0c;
@@ -305,9 +305,8 @@ html[data-document] {
   --brand-glow: none;
   --ring: #0b0b0c;
   --sidebar-ring: #0b0b0c;
-  --tone-info: #2a5a9c;
-  --chart-1: #2a5a9c;
 }
+html[data-document] body { font-size: var(--text-base); line-height: 1.6; }
 
 @theme inline {
   --color-background: var(--background);
@@ -347,11 +346,12 @@ html[data-document] {
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  /* 6, 8, 10 and 12px: panels (rounded-xl) are 12px. */
+  /* 4 / 8 / 12 / 16px; lg remains a control alias. */
   --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -367,6 +367,17 @@ html[data-document] {
   --color-tone-warning: var(--tone-warning);
   --color-tone-danger: var(--tone-danger);
   --color-tone-muted: var(--tone-muted);
+  --color-neutral: var(--neutral);
+  --color-neutral-6: var(--neutral-6);
+  --color-neutral-10: var(--neutral-10);
+  --color-neutral-22: var(--neutral-22);
+  --color-tone-neutral-soft: var(--tone-neutral-soft);
+  --color-tone-info-soft: var(--tone-info-soft);
+  --color-tone-progress-soft: var(--tone-progress-soft);
+  --color-tone-success-soft: var(--tone-success-soft);
+  --color-tone-warning-soft: var(--tone-warning-soft);
+  --color-tone-danger-soft: var(--tone-danger-soft);
+  --color-tone-muted-soft: var(--tone-muted-soft);
 }
 
 @layer base {
@@ -381,14 +392,16 @@ html[data-document] {
   h3 {
     font-weight: var(--font-weight-heading);
     letter-spacing: var(--tracking-heading);
+    text-wrap: balance;
   }
+  p { text-wrap: pretty; }
   /* Controls that draw their own focus style opt out with `outline-none`. */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
   ::selection {
-    background-color: color-mix(in oklab, var(--brand) 28%, transparent);
+    background-color: var(--brand-soft);
   }
 }
 
@@ -403,14 +416,14 @@ html[data-document] {
 }
 
 /*
- * A hero figure: Geist 800, tight. Set the size with a text-* class. Proportional for the
+ * A hero figure: Geist 500, tight. Set the size with a text-* class. Proportional for the
  * reason above; add `tabular-nums` only on a string that holds no separators.
  */
 @utility figure {
-  font-weight: 800;
+  font-weight: var(--font-weight-heading);
   font-variant-numeric: lining-nums proportional-nums;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: var(--text-3xl--line-height);
 }
 
 /* A micro-label: Geist Mono, 11px, uppercase, +8% tracking. Colour is the muted text colour. */
@@ -622,4 +635,13 @@ body { caret-color: var(--caret); }
 @media (prefers-reduced-motion: reduce) {
   .invoice-toast { transition: opacity var(--duration-fade) var(--ease-enter) !important; transform: none; }
   .invoice-fresh-row { animation: request-fade var(--duration-fade) var(--ease-enter) !important; }
+}
+
+/* Responsive token values; component geometry is adopted in later PRs. */
+@media (max-width: 639px) {
+  :root { --gutter: 16px; --row-height: 64px; }
+  input, textarea, select { font-size: var(--text-base); }
+}
+@media (pointer: coarse) {
+  :root { --control-height: 44px; }
 }
