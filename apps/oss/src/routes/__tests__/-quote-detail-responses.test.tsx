@@ -105,6 +105,13 @@ afterEach(() => {
 })
 
 describe("quote detail page responses", () => {
+  it("names a customer whose company is its name once", async () => {
+    const base = quote("q_1", "Q-0001")
+    state.get.mockResolvedValue({ ...base, contact: { ...base.contact, company: " Acme " } })
+    render(<RouteComponent />)
+    const quoteTo = (await screen.findByText(catalogTranslate("quotes.detail.quoteTo", state.locale))).parentElement!
+    expect([...quoteTo.querySelectorAll("p")].map(line => line.textContent)).toEqual(["Acme", "acme@example.com"])
+  })
   it("keeps the list exit for a confirmed missing quote", async () => {
     state.get.mockRejectedValue(Object.assign(new Error("Missing"), { data: { code: "NOT_FOUND" } }))
     render(<RouteComponent />)
