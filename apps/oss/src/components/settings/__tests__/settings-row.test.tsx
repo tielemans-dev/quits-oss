@@ -45,4 +45,18 @@ describe("SettingsRow", () => {
     rerender(<Row savedVersion={1} />)
     expect(screen.getByRole("button", { name: "settings.row.edit Name" })).toBeTruthy()
   })
+
+  it("marks its Save as a save's origin, shows the result and lets the page reset controlled fields", () => {
+    const onCancel = vi.fn()
+    render(
+      <SettingsRow label="CVR" value="12345674" formId="shared" origin="cvr" result={<p role="status">Saved</p>} onCancel={onCancel}>
+        <input aria-label="CVR field" />
+      </SettingsRow>,
+    )
+    expect(screen.getByRole("status").closest("[data-save-origin]")?.getAttribute("data-save-origin")).toBe("cvr")
+    fireEvent.click(screen.getByRole("button", { name: "settings.row.edit CVR" }))
+    expect(screen.getByRole("button", { name: "settings.row.save" }).closest("[data-save-origin]")?.getAttribute("data-save-origin")).toBe("cvr")
+    fireEvent.click(screen.getByRole("button", { name: "settings.row.cancel" }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
 })

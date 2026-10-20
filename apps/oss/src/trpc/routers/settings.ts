@@ -465,7 +465,13 @@ export const settingsRouter = router({
         if (isCloudDistribution && primaryTaxId !== undefined) {
           const stored = await tx.organizationTaxId.findFirst({ where: { organizationId: ctx.organizationId },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] })
-          if (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase()) {
+          // Settings sends the stored Danish number as a CVR. Refiling a number stored under the VAT scheme
+          // keeps the number that was checked, as an unchanged one does, so no registry lookup can fail an
+          // unrelated save. A pending verification stays for the login retry.
+          const refiledAsCvr = resolvedCountry === "DK" && !!stored && (!stored.countryCode || stored.countryCode === "DK") &&
+            ["vat", "dk_vat"].includes(stored.scheme.trim().toLowerCase()) && primaryTaxId.trim() === stored.value.trim() &&
+            isNationalRegistrationScheme(primaryTaxIdScheme, "DK")
+          if (!refiledAsCvr && (primaryTaxId.trim() !== stored?.value.trim() || (primaryTaxIdScheme?.trim() || "vat").toLowerCase() !== stored?.scheme.toLowerCase())) {
             const company = await requireOnboardingCvr({ cvr: primaryTaxId.trim().replace(/^DK/, ""), scheme: primaryTaxIdScheme,
               cloud: true, userId: ctx.user.id, organizationId: ctx.organizationId, tx })
             if (company) verifiedCvr = company.cvr
