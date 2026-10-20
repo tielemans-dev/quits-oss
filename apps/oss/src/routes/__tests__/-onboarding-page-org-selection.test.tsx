@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { requiredLabel } from "../../test-utils/required-label"
 
 const {
   navigate,
@@ -124,8 +125,8 @@ describe("OnboardingPage org selection", () => {
     vi.mocked(authClient.organization.checkSlug).mockResolvedValue({ data: { status: true }, error: null } as never)
     vi.mocked(authClient.organization.create).mockResolvedValue({ data: null, error: { code: "cvr.alreadyRegistered" } } as never)
     render(<RoutePage />)
-    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
-    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
+    const name = await screen.findByLabelText(requiredLabel("auth.onboarding.field.companyName"))
+    fireEvent.change(screen.getByRole("textbox", { name: "auth.onboarding.cvrLabel" }), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Synthetic" } })
     fireEvent.submit(name.closest("form")!)
     expect(await screen.findByText("cvr.alreadyRegistered")).toBeTruthy()
@@ -138,7 +139,7 @@ describe("OnboardingPage org selection", () => {
     listOrganizations.mockResolvedValue({ data: [] })
     vi.mocked(trpc.onboarding.searchCvr.query).mockResolvedValue({ available: true, companies: [{ cvr: "24256790", name: "Ceased ApS", address: "Testvej 1", active: false }] })
     render(<RoutePage />)
-    const query = await screen.findByLabelText("auth.onboarding.lookup.query")
+    const query = await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))
     fireEvent.change(query, { target: { value: "Ceased" } })
     fireEvent.submit(query.closest("form")!)
     const notice = await screen.findByText("cvr.inactive")
@@ -153,8 +154,8 @@ describe("OnboardingPage org selection", () => {
     setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError") })
     render(<RoutePage />)
-    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
-    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
+    const name = await screen.findByLabelText(requiredLabel("auth.onboarding.field.companyName"))
+    fireEvent.change(screen.getByRole("textbox", { name: "auth.onboarding.cvrLabel" }), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Acme" } })
     fireEvent.submit(name.closest("form")!)
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
@@ -242,8 +243,8 @@ describe("OnboardingPage org selection", () => {
     setActiveOrganization.mockResolvedValue({ data: { id: "org_created" } })
     render(<RoutePage />)
     fireEvent.click(await screen.findByRole("button", { name: "auth.onboarding.lookup.manual" }))
-    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
-    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
+    const name = await screen.findByLabelText(requiredLabel("auth.onboarding.field.companyName"))
+    fireEvent.change(screen.getByRole("textbox", { name: "auth.onboarding.cvrLabel" }), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Nordlys ApS" } })
     fireEvent.submit(name.closest("form")!)
     await waitFor(() => expect(setActiveOrganization).toHaveBeenCalledWith({ organizationId: "org_created" }))
@@ -262,9 +263,9 @@ describe("OnboardingPage org selection", () => {
     render(<RoutePage />)
     const retry = await screen.findByRole("button", { name: "onboardingV2.retry" })
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
-    expect(screen.queryByLabelText("auth.onboarding.field.companyName")).toBeNull()
+    expect(screen.queryByLabelText(requiredLabel("auth.onboarding.field.companyName"))).toBeNull()
     fireEvent.click(retry)
-    expect(await screen.findByLabelText("auth.onboarding.lookup.query")).toBeTruthy()
+    expect(await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))).toBeTruthy()
     expect(screen.getByText("auth.onboarding.lookup.title")).toBeTruthy()
   })
 
@@ -294,6 +295,61 @@ describe("OnboardingPage org selection", () => {
     }
   })
 
+  it("ends a hung CVR lookup with the retry message instead of staying on searching", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      isCloudDistributionMock.mockReturnValue(true)
+      useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+      listOrganizations.mockResolvedValue({ data: [] })
+      vi.mocked(trpc.onboarding.searchCvr.query).mockReturnValueOnce(new Promise(() => {}) as never)
+      render(<RoutePage />)
+      const query = await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))
+      fireEvent.change(query, { target: { value: "Nordlys" } })
+      fireEvent.submit(query.closest("form")!)
+      expect(await screen.findByRole("button", { name: "auth.onboarding.lookup.searching" })).toBeTruthy()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await screen.findByText("auth.onboarding.lookup.failed")).toBeTruthy()
+      expect((screen.getByRole("button", { name: "auth.onboarding.lookup.submit" }) as HTMLButtonElement).disabled).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("drops a lookup reply for a query the user has since edited", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    let reply!: (value: unknown) => void
+    vi.mocked(trpc.onboarding.searchCvr.query).mockReturnValueOnce(new Promise(resolve => { reply = resolve }) as never)
+    render(<RoutePage />)
+    const query = await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))
+    fireEvent.change(query, { target: { value: "Nordlys" } })
+    fireEvent.submit(query.closest("form")!)
+    await screen.findByRole("button", { name: "auth.onboarding.lookup.searching" })
+    fireEvent.change(query, { target: { value: "Nordlys Studio" } })
+    expect((screen.getByRole("button", { name: "auth.onboarding.lookup.submit" }) as HTMLButtonElement).disabled).toBe(false)
+    reply({ available: true, companies: [{ cvr: "24256790", name: "Old Result ApS", address: "Testvej 1", active: true }] })
+    await waitFor(() => expect(trpc.onboarding.searchCvr.query).toHaveBeenCalledTimes(1))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(screen.queryByText(/Old Result ApS/)).toBeNull()
+  })
+
+  it("does not call creating the chosen organization a lookup", async () => {
+    isCloudDistributionMock.mockReturnValue(true)
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
+    listOrganizations.mockResolvedValue({ data: [] })
+    vi.mocked(trpc.onboarding.searchCvr.query).mockResolvedValue({ available: true, companies: [{ cvr: "24256790", name: "Nordlys ApS", address: "Testvej 1", active: true }] })
+    vi.mocked(authClient.organization.checkSlug).mockReturnValue(new Promise(() => {}) as never)
+    render(<RoutePage />)
+    const query = await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))
+    fireEvent.change(query, { target: { value: "Nordlys" } })
+    fireEvent.submit(query.closest("form")!)
+    fireEvent.click(await screen.findByRole("button", { name: /auth\.onboarding\.lookup\.confirm/ }))
+    const submit = await screen.findByRole("button", { name: "auth.onboarding.lookup.submit" })
+    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(true))
+    expect(screen.queryByRole("button", { name: "auth.onboarding.lookup.searching" })).toBeNull()
+  })
+
   it("starts a hosted organization from CVR lookup instead of a name and slug form", async () => {
     isCloudDistributionMock.mockReturnValue(true)
     useSessionMock.mockReturnValue({
@@ -315,7 +371,7 @@ describe("OnboardingPage org selection", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
     render(<RoutePage />)
-    expect(await screen.findByLabelText("auth.onboarding.field.companyName")).toBeTruthy()
+    expect(await screen.findByLabelText(requiredLabel("auth.onboarding.field.companyName"))).toBeTruthy()
     expect(screen.queryByText("auth.onboarding.lookup.title")).toBeNull()
     expect(screen.queryByText("auth.onboarding.lookup.manualBack")).toBeNull()
   })
@@ -324,7 +380,7 @@ describe("OnboardingPage org selection", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
     render(<RoutePage />)
-    const name = await screen.findByLabelText("auth.onboarding.field.companyName")
+    const name = await screen.findByLabelText(requiredLabel("auth.onboarding.field.companyName"))
     const form = name.closest("form")!
     expect(form.noValidate).toBe(true)
     fireEvent.submit(form)
@@ -332,7 +388,7 @@ describe("OnboardingPage org selection", () => {
     expect(name.getAttribute("aria-invalid")).toBe("true")
     expect(name.getAttribute("aria-describedby")).toBe("company-name-error")
     expect(authClient.organization.create).not.toHaveBeenCalled()
-    fireEvent.change(screen.getByLabelText("auth.onboarding.cvrLabel"), { target: { value: "24256790" } })
+    fireEvent.change(screen.getByRole("textbox", { name: "auth.onboarding.cvrLabel" }), { target: { value: "24256790" } })
     fireEvent.change(name, { target: { value: "Acme" } })
     expect(screen.queryByText("validation.required")).toBeNull()
     expect(name.getAttribute("aria-invalid")).toBeNull()
@@ -343,7 +399,7 @@ describe("OnboardingPage org selection", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
     render(<RoutePage />)
-    const query = await screen.findByLabelText("auth.onboarding.lookup.query")
+    const query = await screen.findByLabelText(requiredLabel("auth.onboarding.lookup.query"))
     const form = query.closest("form")!
     expect(form.noValidate).toBe(true)
     fireEvent.submit(form)

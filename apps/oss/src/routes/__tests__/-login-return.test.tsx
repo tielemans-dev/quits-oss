@@ -33,6 +33,7 @@ vi.mock('../../components/onboarding/company-setup', () => ({ CompanySetup: ({ o
 import { Route as LoginRoute } from '../login'
 import { Route as OnboardingRoute } from '../_app/onboarding'
 import { asMockedRoute } from '../../test-utils/mocked-route'
+import { requiredLabel } from "../../test-utils/required-label"
 const Login = asMockedRoute(LoginRoute).component
 const Onboarding = asMockedRoute(OnboardingRoute).component
 const orgs = [{ id: 'org_1', name: 'First org' }, { id: 'org_2', name: 'Second org' }]
@@ -207,9 +208,9 @@ describe('return after required organization flow', () => {
       renderPage(Onboarding)
       if (create) {
         if (cloud) fireEvent.click(await screen.findByRole('button', { name: 'Enter manually' }))
-        const input = await screen.findByLabelText('Company name')
+        const input = await screen.findByLabelText(requiredLabel("Company name"))
         fireEvent.change(input, { target: { value: 'New org' } })
-        fireEvent.change(screen.getByLabelText('CVR number'), { target: { value: '24256790' } })
+        fireEvent.change(screen.getByRole('textbox', { name: 'CVR number' }), { target: { value: '24256790' } })
         fireEvent.submit(screen.getByRole('button', { name: 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : '/hosted/account?tab=vat&lang=en'))
@@ -230,8 +231,8 @@ describe('return after required organization flow', () => {
       expect(await screen.findByText(create ? creationTitle : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
       if (create) {
         if (cloud) fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
-        fireEvent.change(await screen.findByLabelText(lang === 'da' ? 'Virksomhedsnavn' : 'Company name'), { target: { value: 'New org' } })
-        fireEvent.change(screen.getByLabelText(lang === 'da' ? 'CVR-nr.' : 'CVR number'), { target: { value: '24256790' } })
+        fireEvent.change(await screen.findByLabelText(requiredLabel(lang === 'da' ? 'Virksomhedsnavn' : 'Company name')), { target: { value: 'New org' } })
+        fireEvent.change(screen.getByRole('textbox', { name: lang === 'da' ? 'CVR-nr.' : 'CVR number' }), { target: { value: '24256790' } })
         fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : `/hosted/account?tab=vat&lang=${lang}`))
@@ -249,7 +250,7 @@ describe('return after required organization flow', () => {
     })
     renderPage(Onboarding)
     expect(screen.queryByLabelText('Slug')).toBeNull()
-    fireEvent.change(await screen.findByLabelText('Company name or CVR'), { target: { value: 'Nordlys' } })
+    fireEvent.change(await screen.findByLabelText(requiredLabel("Company name or CVR")), { target: { value: 'Nordlys' } })
     expect(screen.getByRole('button', { name: 'Look up' }).closest('form')?.className).toContain('gap-6')
     fireEvent.click(screen.getByRole('button', { name: 'Look up' }))
     fireEvent.click(await screen.findByRole('button', { name: /Use Nordlys Studio ApS/ }))
@@ -285,9 +286,9 @@ describe('return after required organization flow', () => {
     state.status.mockResolvedValue({ isComplete: false, missing: [] }); state.draft.mockResolvedValue({ missing: [] }); state.complete.mockResolvedValue({})
     renderPage(Onboarding)
     await waitFor(() => expect(screen.queryByText('Indlæser opsætning…')).toBeNull())
-    fireEvent.change(screen.getByLabelText('Virksomhedsnavn'), { target: { value: 'Return target ApS' } })
-    fireEvent.change(screen.getByLabelText('Adresse'), { target: { value: 'Testvej 1, 2100 København' } })
-    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'billing@example.test' } })
+    fireEvent.change(screen.getByLabelText(requiredLabel("Virksomhedsnavn")), { target: { value: 'Return target ApS' } })
+    fireEvent.change(screen.getByLabelText(requiredLabel("Adresse")), { target: { value: 'Testvej 1, 2100 København' } })
+    fireEvent.change(screen.getByLabelText(requiredLabel("E-mail")), { target: { value: 'billing@example.test' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Afslut opsætning' }).closest('form')!)
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?tab=vat&lang=da'))
     expect(state.complete).toHaveBeenCalledWith({ method: 'manual' })

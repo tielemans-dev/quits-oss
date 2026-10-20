@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
 import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
 import { translateCvrError } from '../../lib/i18n/cvr-error'
@@ -201,6 +202,9 @@ function OnboardingPageContent() {
   const [lookupQueryError, setLookupQueryError] = useState<'validation.required' | 'validation.unknown' | null>(null)
   const [statusLoading, setStatusLoading] = useState(isCloud && hasActiveOrg)
   const [submitting, setSubmitting] = useState(false)
+  // A lookup is its own state: creating the organization afterwards is not "looking up".
+  const [searching, setSearching] = useState(false)
+  const lookupRun = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [orgAccessState, setOrgAccessState] = useState<OrganizationAccessState>({
     kind: 'create',
@@ -560,17 +564,19 @@ function OnboardingPageContent() {
       setLookupMessage(t('auth.onboarding.lookup.unavailable'))
       return
     }
-    setSubmitting(true)
+    const run = ++lookupRun.current
+    setSearching(true)
     try {
-      const result = await trpc.onboarding.searchCvr.query({ q: query })
+      const result = await withTimeout(trpc.onboarding.searchCvr.query({ q: query }), ONBOARDING_LOOKUP_TIMEOUT_MS)
+      if (run !== lookupRun.current) return
       setLookupCompanies(result.companies)
       setLookupMessage(result.available
         ? (result.companies.length ? null : t('auth.onboarding.lookup.empty'))
         : t('auth.onboarding.lookup.unavailable'))
     } catch {
-      setLookupMessage(t('auth.onboarding.lookup.failed'))
+      if (run === lookupRun.current) setLookupMessage(t('auth.onboarding.lookup.failed'))
     } finally {
-      setSubmitting(false)
+      if (run === lookupRun.current) setSearching(false)
     }
   }
 
@@ -744,10 +750,10 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="company-cvr">{t('auth.onboarding.cvrLabel')}</Label>
+                  <Label htmlFor="company-cvr">{t('auth.onboarding.cvrLabel')}{isCloud ? <span aria-hidden="true"> *</span> : null}</Label>
                   <Input id="company-cvr" inputMode="numeric" maxLength={8} required={isCloud} value={manualCvr}
                     onChange={event => setManualCvr(event.target.value)} />
-                  <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')}</Label>
+                  <Label htmlFor="company-name">{t('auth.onboarding.field.companyName')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="company-name"
                     type="text"
@@ -795,7 +801,7 @@ function OnboardingPageContent() {
                   </p>
                 )}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="cvr-query">{t('auth.onboarding.lookup.query')}</Label>
+                  <Label htmlFor="cvr-query">{t('auth.onboarding.lookup.query')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="cvr-query"
                     type="text"
@@ -805,6 +811,8 @@ function OnboardingPageContent() {
                     onChange={(e) => {
                       setLookupQuery(e.target.value)
                       if (e.target.value.trim().length >= 3) setLookupQueryError(null)
+                      // A reply for the previous query must not land under the edited one.
+                      if (searching) { lookupRun.current++; setSearching(false) }
                     }}
                     required
                     minLength={3}
@@ -828,7 +836,7 @@ function OnboardingPageContent() {
                     type="button"
                     variant="outline"
                     className="h-auto w-full flex-col items-start gap-1 py-3"
-                    disabled={submitting || company.active === false}
+                    disabled={submitting || searching || company.active === false}
                     onClick={() => void createOrganizationFromCompanyName(company.name, company)}
                   >
                     <span>{t('auth.onboarding.lookup.confirm', { company: company.name })}</span>
@@ -840,14 +848,14 @@ function OnboardingPageContent() {
                 ))}
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? t('auth.onboarding.lookup.searching') : t('auth.onboarding.lookup.submit')}
+                <Button type="submit" className="w-full" disabled={submitting || searching}>
+                  {searching ? t('auth.onboarding.lookup.searching') : t('auth.onboarding.lookup.submit')}
                 </Button>
                 <Button
                   type="button"
                   variant="link"
                   className="w-full"
-                  disabled={submitting}
+                  disabled={submitting || searching}
                   onClick={() => {
                     setEntryMode('manual')
                     setError(null)
@@ -998,7 +1006,7 @@ function OnboardingPageContent() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="companyName">{t('auth.onboarding.field.companyName')}</Label>
+                  <Label htmlFor="companyName">{t('auth.onboarding.field.companyName')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="companyName"
                     aria-invalid={hasSubmitted && (!values.companyName.trim())}
@@ -1012,7 +1020,7 @@ function OnboardingPageContent() {
                   ) : null}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="companyEmail">{t('auth.onboarding.field.companyEmail')}</Label>
+                  <Label htmlFor="companyEmail">{t('auth.onboarding.field.companyEmail')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="companyEmail"
                     aria-invalid={hasSubmitted && emailIssue !== null}
@@ -1027,9 +1035,11 @@ function OnboardingPageContent() {
                   ) : null}
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <Label htmlFor="companyAddress">{t('auth.onboarding.field.companyAddress')}</Label>
-                  <Input
+                  <Label htmlFor="companyAddress">{t('auth.onboarding.field.companyAddress')} <span aria-hidden="true">*</span></Label>
+                  {/* A registry address has a street line and a postal line, as in Settings. */}
+                  <Textarea
                     id="companyAddress"
+                    rows={2}
                     aria-invalid={hasSubmitted && (!values.companyAddress.trim())}
                     aria-describedby={hasSubmitted && !values.companyAddress.trim() ? 'companyAddress-error' : undefined}
                     value={values.companyAddress}
@@ -1125,7 +1135,7 @@ function OnboardingPageContent() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="timezone">{t('auth.onboarding.field.timezone')}</Label>
+                  <Label htmlFor="timezone">{t('auth.onboarding.field.timezone')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="timezone"
                     aria-invalid={hasSubmitted && (!values.timezone.trim())}
@@ -1209,7 +1219,7 @@ function OnboardingPageContent() {
               </p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="invoicePrefix">{t('auth.onboarding.field.invoicePrefix')}</Label>
+                  <Label htmlFor="invoicePrefix">{t('auth.onboarding.field.invoicePrefix')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="invoicePrefix"
                     aria-invalid={hasSubmitted && (!values.invoicePrefix.trim())}
@@ -1219,7 +1229,7 @@ function OnboardingPageContent() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="quotePrefix">{t('auth.onboarding.field.quotePrefix')}</Label>
+                  <Label htmlFor="quotePrefix">{t('auth.onboarding.field.quotePrefix')} <span aria-hidden="true">*</span></Label>
                   <Input
                     id="quotePrefix"
                     aria-invalid={hasSubmitted && (!values.quotePrefix.trim())}

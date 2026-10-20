@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { ComponentType } from "react"
+import { requiredLabel } from "../../test-utils/required-label"
 
 const {
   navigate,
@@ -161,7 +162,7 @@ describe("OnboardingPage cloud flow", () => {
     let resolveStatus!: (value: unknown) => void
     onboardingStatusQuery.mockReturnValue(new Promise((resolve) => { resolveStatus = resolve }))
     render(<RouteComponent />)
-    const companyName = await screen.findByLabelText("Company name") as HTMLInputElement
+    const companyName = await screen.findByLabelText(requiredLabel("Company name")) as HTMLInputElement
     expect(companyName.matches(":disabled")).toBe(true)
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).matches(":disabled")).toBe(true)
     resolveStatus({ isComplete: false, missing: [], values: { companyName: "Saved company", locale: "en-US" } })
@@ -241,12 +242,13 @@ describe("OnboardingPage cloud flow", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1", email: "test@example.com" }, session: { activeOrganizationId: "org_1" } } })
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
     onboardingStatusQuery.mockResolvedValue({ isComplete: false, values: { companyName: null, companyAddress: null }, missing: [] })
-    stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Selected street 1", cvr: "24256790" })
-    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }, missing: [] } as never)
+    stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Testvej 12A, 1. tv.\n9000 Aalborg", cvr: "24256790" })
+    vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS", companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }, missing: [] } as never)
     render(<RouteComponent />)
-    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Selected street 1", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", locale: "en-US" }))
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", locale: "en-US" }))
     expect(await screen.findByDisplayValue("Selected ApS")).toBeTruthy()
-    expect(screen.getByDisplayValue("Selected street 1")).toBeTruthy()
+    // The registry's street and postal lines stay apart instead of running together.
+    expect((screen.getByLabelText(requiredLabel("Company address")) as HTMLTextAreaElement).value).toBe("Testvej 12A, 1. tv.\n9000 Aalborg")
     expect(screen.getByDisplayValue("24256790")).toBeTruthy()
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US")
     expect(screen.getByText("Finish organization setup")).toBeTruthy()
@@ -341,7 +343,7 @@ describe("OnboardingPage cloud flow", () => {
     })
 
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("da-DK")
-    expect((screen.getByLabelText("Timezone") as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText(requiredLabel("Timezone")) as HTMLInputElement).value).toBe(
       "Europe/Copenhagen"
     )
     expect((screen.getByLabelText("Default currency") as HTMLSelectElement).value).toBe(
@@ -444,14 +446,14 @@ describe.each([
     expect((screen.getByLabelText(label("Tax setup")) as HTMLSelectElement).value).toBe("eu_vat")
     expect(screen.queryByRole("alert")).toBeNull()
     expect(screen.queryByText(/Missing required fields/)).toBeNull()
-    fireEvent.change(screen.getByLabelText(label("Company name")), { target: { value: "Edited before submit" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label("Company name"))), { target: { value: "Edited before submit" } })
     expect(screen.queryByRole("alert")).toBeNull()
     fireEvent.submit(screen.getByRole("button", { name: label("Finish onboarding") }).closest("form")!)
     expect(screen.getByRole("alert").textContent).toBe(message)
     expect(trpc.onboarding.saveDraft.mutate).not.toHaveBeenCalled()
     expect(trpc.onboarding.completeManual.mutate).not.toHaveBeenCalled()
-    fireEvent.change(screen.getByLabelText(label("Company address")), { target: { value: "Example street 1" } })
-    fireEvent.change(screen.getByLabelText(label("Billing email")), { target: { value: "billing@example.com" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label("Company address"))), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label("Billing email"))), { target: { value: "billing@example.com" } })
     fireEvent.change(screen.getByLabelText(label("VAT/CVR number")), { target: { value: "12345678" } })
     expect(screen.queryByRole("alert")).toBeNull()
     fireEvent.submit(screen.getByRole("button", { name: label("Finish onboarding") }).closest("form")!)
@@ -490,7 +492,7 @@ describe.each([
     runtimeCapabilitiesQuery.mockResolvedValue({ onboardingAi: { enabled: false } })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ missing: [] } as never)
     render(<RouteComponent />)
-    const name = await screen.findByLabelText(label.name)
+    const name = await screen.findByLabelText(requiredLabel(label.name))
     expect(name.matches(":disabled")).toBe(true)
     await act(async () => { status.resolve({ isComplete: false, values: { locale }, missing: [] }) })
     await waitFor(() => expect(name.matches(":disabled")).toBe(false))
@@ -499,14 +501,14 @@ describe.each([
 
   it("explains an invalid email inline and clears the message and banner once it is fixed", async () => {
     await renderIncomplete()
-    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
-    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
-    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "not-an-email" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.name)), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.address)), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.email)), { target: { value: "not-an-email" } })
     submit()
     expect(screen.getByRole("alert").textContent).toBe(banner)
     expect(screen.getByText(invalidEmail)).toBeTruthy()
-    expect(screen.getByLabelText(label.email).getAttribute("aria-describedby")).toBe("companyEmail-error")
-    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    expect(screen.getByLabelText(requiredLabel(label.email)).getAttribute("aria-describedby")).toBe("companyEmail-error")
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.email)), { target: { value: "billing@example.com" } })
     expect(screen.queryByText(invalidEmail)).toBeNull()
     expect(screen.queryByRole("alert")).toBeNull()
   })
@@ -516,15 +518,15 @@ describe.each([
     submit()
     expect(screen.getByText(requiredEmail)).toBeTruthy()
     for (const [input, id] of [[label.name, "companyName-error"], [label.address, "companyAddress-error"]]) {
-      expect(screen.getByLabelText(input).getAttribute("aria-invalid")).toBe("true")
-      expect(screen.getByLabelText(input).getAttribute("aria-describedby")).toBe(id)
+      expect(screen.getByLabelText(requiredLabel(input)).getAttribute("aria-invalid")).toBe("true")
+      expect(screen.getByLabelText(requiredLabel(input)).getAttribute("aria-describedby")).toBe(id)
       expect(document.getElementById(id)?.textContent).toBe(required)
     }
     expect(screen.getAllByText(required)).toHaveLength(2)
-    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.name)), { target: { value: "Synthetic ApS" } })
     expect(screen.getAllByText(required)).toHaveLength(1)
-    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
-    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.address)), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.email)), { target: { value: "billing@example.com" } })
     expect(screen.queryByText(required)).toBeNull()
     expect(screen.queryByText(requiredEmail)).toBeNull()
     expect(screen.queryByRole("alert")).toBeNull()
@@ -534,9 +536,9 @@ describe.each([
     await renderIncomplete()
     const saved = deferred<{ missing: ["primaryTaxId"] }>()
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockReturnValue(saved.promise as never)
-    fireEvent.change(screen.getByLabelText(label.name), { target: { value: "Synthetic ApS" } })
-    fireEvent.change(screen.getByLabelText(label.address), { target: { value: "Example street 1" } })
-    fireEvent.change(screen.getByLabelText(label.email), { target: { value: "billing@example.com" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.name)), { target: { value: "Synthetic ApS" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.address)), { target: { value: "Example street 1" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel(label.email)), { target: { value: "billing@example.com" } })
     submit()
     expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledOnce()
     expect(screen.queryByRole("alert")).toBeNull()

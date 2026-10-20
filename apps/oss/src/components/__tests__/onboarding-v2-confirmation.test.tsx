@@ -300,10 +300,15 @@ describe("review page CVR errors (QUI-39)", () => {
     const { cvr, form } = await review("da-DK")
     fireEvent.change(cvr, { target: { value: "24256790" } })
     const email = screen.getByLabelText(translate("onboardingV2.field.email", "da-DK"))
+    // Marked before submitting, with a visual-only star next to its label.
+    const label = email.closest(".ob-field")!.querySelector(".ob-field-label")!
+    expect(label.querySelector("[aria-hidden=true]")?.textContent).toBe(" *")
     fireEvent.change(email, { target: { value: "" } })
     fireEvent.submit(form)
-    expect(await screen.findByText("Indtast en e-mail")).toBeTruthy()
+    const error = await screen.findByText("Indtast en e-mail")
     expect(email.getAttribute("aria-invalid")).toBe("true")
+    // The error sits with the field, not only in the summary.
+    expect(email.closest(".ob-field")!.contains(error)).toBe(true)
     expect(api.confirm).not.toHaveBeenCalled()
   })
 
