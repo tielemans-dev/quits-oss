@@ -83,7 +83,7 @@ function QuotesListPage() {
     return (
       <div>
         <PageHeader title={t("quotes.title")} />
-        <ListSkeleton label={t("quotes.loading")} />
+        <ListSkeleton label={t("quotes.loading")} bleed />
       </div>
     )
   }

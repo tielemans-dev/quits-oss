@@ -142,17 +142,21 @@ export const listRowLinkClass =
 export const rowActionsClass =
   "relative z-10 flex justify-end @4xl:[@media(hover:hover)]:opacity-0 @4xl:[@media(hover:hover)]:group-hover/row:opacity-100 @4xl:[@media(hover:hover)]:group-focus-within/row:opacity-100 @4xl:[@media(hover:hover)]:focus-within:opacity-100 transition-opacity duration-(--duration-fade)"
 
-/** Placeholder rows while the first load runs; the caller supplies the label read to screen readers. */
-export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number }) {
+/**
+ * Placeholder rows while the first load runs; the caller supplies the label read to screen readers.
+ * `bleed` reaches 12px past the column on both sides, as a `ListTable` does, so the rows land where
+ * the list's rows will. Anywhere else (a card, a form field) the rows stay inside their parent.
+ */
+export function ListSkeleton({ label, rows = 5, bleed = false }: { label: string; rows?: number; bleed?: boolean }) {
   return (
     <div role="status" aria-live="polite" data-slot="list-skeleton">
       <span className="sr-only">{label}</span>
       <div
         aria-hidden="true"
-        className="border-hairline -mx-3 border-t"
+        className={cn("border-hairline border-t", bleed && "-mx-3")}
       >
         {Array.from({ length: rows }, (_, index) => (
-          <div key={index} className="border-hairline flex h-13 items-center gap-3 border-b px-3">
+          <div key={index} className={cn("border-hairline flex h-13 items-center gap-3 border-b", bleed && "px-3")}>
             <span className="h-3 w-1/3 animate-pulse rounded-sm bg-(--neutral-6)" />
             <span className="ml-auto h-3 w-20 animate-pulse rounded-sm bg-(--neutral-6)" />
             <span className="hidden h-5 w-16 animate-pulse rounded-sm bg-(--neutral-6) md:block" />

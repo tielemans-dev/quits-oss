@@ -25,7 +25,7 @@ function CreditNotesPage() {
       <PageHeader title={t("creditNotes.title")} />
 
       {loading ? (
-        <ListSkeleton label={t("creditNotes.loading")} />
+        <ListSkeleton label={t("creditNotes.loading")} bleed />
       ) : creditNotes.length === 0 ? (
         <ListEmpty
           title={t("creditNotes.empty.title")}
