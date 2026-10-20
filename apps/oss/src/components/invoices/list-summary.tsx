@@ -1,6 +1,7 @@
 import type { DashboardSummary } from "@quits/contracts/dashboard"
 import { useI18n } from "../../lib/i18n/react"
 import { Amount } from "../kvit/amount"
+import { tCount } from "../dashboard/i18n"
 import { precisionOf, secondaryBucket, unvaluedOnlyCurrencies } from "../dashboard/summary-model"
 
 /** Reuse the ledger's exact, per-currency totals, including partial receipts this month. */
@@ -18,7 +19,7 @@ export function InvoiceListSummary({ summary }: { summary: DashboardSummary }) {
             return <div key={currency}><Amount value={bucket.amount} currency={currency} locale={locale} precision={precisionOf(bucket)} size="md" /></div>
           }) : <Amount value="0" currency={summary.baseCurrency} locale={locale} size="md" />}
         </dd>
-        <dd className="text-xs text-muted-foreground">{t("invoices.summary.count", { count: total.count })}</dd>
+        <dd className="text-xs text-muted-foreground">{tCount(t, "invoices.summary.count", total.count)}</dd>
       </div>
     })}
   </dl>

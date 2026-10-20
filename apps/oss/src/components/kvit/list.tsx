@@ -1,5 +1,4 @@
 import type { CSSProperties, ComponentProps, ReactNode } from "react"
-import { Plus } from "lucide-react"
 
 import { cn } from "../../lib/utils"
 
@@ -14,6 +13,9 @@ import { cn } from "../../lib/utils"
  * In the card tier the header is visually hidden but stays in the accessibility tree, and the
  * cells that do not fit are `hidden` in the header and in every row alike, so the column counts
  * match. Pages place the card cells with `@max-4xl:col-start-* @max-4xl:row-start-*`.
+ *
+ * There is no box: the list sits on the page between hairlines. Rows bleed 12px past the text on
+ * each side, so the text lines up with the page title and the hover fill has room.
  */
 export function ListTable({
   label,
@@ -37,7 +39,7 @@ export function ListTable({
       data-slot="list-table"
       style={{ "--list-cols": columns, "--list-cols-compact": compactColumns, ...style } as CSSProperties}
       className={cn(
-        "border-hairline bg-panel @container overflow-hidden rounded-xl border shadow-[0_1px_2px_rgb(16_18_27/6%)] dark:shadow-none",
+        "@container -mx-3",
         className
       )}
       {...props}
@@ -52,7 +54,7 @@ export function ListHead({ children }: { children: ReactNode }) {
     <div role="rowgroup">
       <div
         role="row"
-        className="border-hairline items-center gap-x-4 border-b px-4 py-2.5 @max-4xl:sr-only @4xl:grid @4xl:grid-cols-(--list-cols-compact) @5xl:grid-cols-(--list-cols)"
+        className="border-hairline h-10 items-center gap-x-4 border-b px-3 @max-4xl:sr-only @4xl:grid @4xl:grid-cols-(--list-cols-compact) @5xl:grid-cols-(--list-cols)"
       >
         {children}
       </div>
@@ -73,7 +75,7 @@ export function ListHeadCell({
     <div
       role="columnheader"
       className={cn(
-        "mono-label text-2xs tracking-[0.1em]",
+        "text-muted-foreground text-xs font-medium",
         align === "end" && "text-right",
         className
       )}
@@ -98,8 +100,8 @@ export function ListRow({ className, children, ...props }: ComponentProps<"div">
       role="row"
       data-slot="list-row"
       className={cn(
-        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-4 py-3 transition-colors duration-(--duration-fade) last:border-b-0 @4xl:grid-cols-(--list-cols-compact) @4xl:py-2.5 @5xl:grid-cols-(--list-cols)",
-        "hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset",
+        "group/row border-hairline relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 border-b px-3 py-3 transition-colors duration-(--duration-fade) @4xl:min-h-13 @4xl:grid-cols-(--list-cols-compact) @4xl:py-2 @5xl:grid-cols-(--list-cols)",
+        "hover:bg-(--neutral-6) has-[a:focus-visible]:bg-(--neutral-6) has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset",
         className
       )}
       {...props}
@@ -147,18 +149,13 @@ export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number
       <span className="sr-only">{label}</span>
       <div
         aria-hidden="true"
-        className="border-hairline bg-panel overflow-hidden rounded-xl border"
+        className="border-hairline -mx-3 border-t"
       >
         {Array.from({ length: rows }, (_, index) => (
-          <div
-            key={index}
-            className="border-hairline flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0"
-            style={{ opacity: 1 - index * 0.14 }}
-          >
-            <span className="bg-foreground/8 size-5 shrink-0 animate-pulse rounded-sm" />
-            <span className="bg-foreground/8 h-3 w-1/3 animate-pulse rounded-full" />
-            <span className="bg-foreground/8 ml-auto h-3 w-20 animate-pulse rounded-full" />
-            <span className="bg-foreground/8 hidden h-5 w-16 animate-pulse rounded-full md:block" />
+          <div key={index} className="border-hairline flex h-13 items-center gap-3 border-b px-3">
+            <span className="h-3 w-1/3 animate-pulse rounded-sm bg-(--neutral-6)" />
+            <span className="ml-auto h-3 w-20 animate-pulse rounded-sm bg-(--neutral-6)" />
+            <span className="hidden h-5 w-16 animate-pulse rounded-sm bg-(--neutral-6) md:block" />
           </div>
         ))}
       </div>
@@ -167,9 +164,9 @@ export function ListSkeleton({ label, rows = 5 }: { label: string; rows?: number
 }
 
 /**
- * The first-run state of a list: a dashed "not yet" tile with a brand plus, and a ghost of the rows
- * that will appear. Not for a filtered list that matches nothing: that one needs a "clear filters"
- * action instead of "create".
+ * The first-run state of a list: what will appear here and why it matters, and the action that
+ * starts it. No illustration, no ghost rows. Not for a filtered list that matches nothing: that one
+ * needs a "clear filters" action instead of "create".
  */
 export function ListEmpty({
   title,
@@ -181,32 +178,10 @@ export function ListEmpty({
   action?: ReactNode
 }) {
   return (
-    <div
-      data-slot="list-empty"
-      className="border-hairline rounded-xl border border-dashed px-6 py-14 text-center"
-    >
-      <div
-        aria-hidden="true"
-        className="mx-auto mb-6 w-full max-w-sm space-y-2 [mask-image:linear-gradient(to_bottom,black,transparent)]"
-      >
-        {[0, 1, 2].map((index) => (
-          <div
-            key={index}
-            className="border-hairline bg-panel flex items-center gap-3 rounded-lg border px-3 py-2.5"
-            style={{ opacity: 0.9 - index * 0.25 }}
-          >
-            <span className="bg-brand-soft size-5 shrink-0 rounded-sm" />
-            <span className="bg-foreground/10 h-2.5 w-24 rounded-full" />
-            <span className="bg-foreground/10 ml-auto h-2.5 w-14 rounded-full" />
-          </div>
-        ))}
-      </div>
-      <span className="bg-brand-soft text-brand-text mx-auto mb-3 grid size-9 place-items-center rounded-full">
-        <Plus aria-hidden="true" className="size-4.5" />
-      </span>
-      <h2 className="text-base font-semibold tracking-[-0.01em]">{title}</h2>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">{description}</p>
-      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
+    <div data-slot="list-empty" className="max-w-160 pt-16">
+      <h2 className="text-xl font-medium tracking-[-0.01em]">{title}</h2>
+      <p className="text-muted-foreground mt-2 text-sm">{description}</p>
+      {action ? <div className="mt-6 flex">{action}</div> : null}
     </div>
   )
 }
