@@ -23,6 +23,8 @@ import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as DemoSendReviewRouteImport } from './routes/demo/send-review'
 import { Route as DemoInvoiceEditorRouteImport } from './routes/demo/invoice-editor'
+import { Route as DemoSplatRouteImport } from './routes/demo/$'
+import { Route as CustomersSplatRouteImport } from './routes/customers.$'
 import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as ATokenRouteImport } from './routes/a.$token'
@@ -31,6 +33,7 @@ import { Route as AppCatalogRouteImport } from './routes/_app/catalog'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppSplatRouteImport } from './routes/_app/$'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings.index'
 import { Route as AppRecurringIndexRouteImport } from './routes/_app/recurring/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
@@ -134,6 +137,16 @@ const DemoInvoiceEditorRoute = DemoInvoiceEditorRouteImport.update({
   path: '/invoice-editor',
   getParentRoute: () => DemoRoute,
 } as any)
+const DemoSplatRoute = DemoSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DemoRoute,
+} as any)
+const CustomersSplatRoute = CustomersSplatRouteImport.update({
+  id: '/customers/$',
+  path: '/customers/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMcpRoute = ApiMcpRouteImport.update({
   id: '/api/mcp',
   path: '/api/mcp',
@@ -173,6 +186,11 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSplatRoute = AppSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
@@ -356,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/$': typeof AppSplatRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
@@ -364,6 +383,8 @@ export interface FileRoutesByFullPath {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/customers/$': typeof CustomersSplatRoute
+  '/demo/$': typeof DemoSplatRoute
   '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
   '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
@@ -410,6 +431,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/$': typeof AppSplatRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/billing': typeof AppBillingRoute
@@ -418,6 +440,8 @@ export interface FileRoutesByTo {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/customers/$': typeof CustomersSplatRoute
+  '/demo/$': typeof DemoSplatRoute
   '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
   '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
@@ -468,6 +492,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
+  '/_app/$': typeof AppSplatRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/billing': typeof AppBillingRoute
@@ -476,6 +501,8 @@ export interface FileRoutesById {
   '/a/$token': typeof ATokenRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/mcp': typeof ApiMcpRoute
+  '/customers/$': typeof CustomersSplatRoute
+  '/demo/$': typeof DemoSplatRoute
   '/demo/invoice-editor': typeof DemoInvoiceEditorRoute
   '/demo/send-review': typeof DemoSendReviewRoute
   '/pay/$token': typeof PayTokenRoute
@@ -527,6 +554,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/$'
     | '/activity'
     | '/approvals'
     | '/billing'
@@ -535,6 +563,8 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/customers/$'
+    | '/demo/$'
     | '/demo/invoice-editor'
     | '/demo/send-review'
     | '/pay/$token'
@@ -581,6 +611,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/$'
     | '/activity'
     | '/approvals'
     | '/billing'
@@ -589,6 +620,8 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/customers/$'
+    | '/demo/$'
     | '/demo/invoice-editor'
     | '/demo/send-review'
     | '/pay/$token'
@@ -638,6 +671,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/setup'
     | '/signup'
+    | '/_app/$'
     | '/_app/activity'
     | '/_app/approvals'
     | '/_app/billing'
@@ -646,6 +680,8 @@ export interface FileRouteTypes {
     | '/a/$token'
     | '/accept-invitation/$invitationId'
     | '/api/mcp'
+    | '/customers/$'
+    | '/demo/$'
     | '/demo/invoice-editor'
     | '/demo/send-review'
     | '/pay/$token'
@@ -699,6 +735,7 @@ export interface RootRouteChildren {
   ATokenRoute: typeof ATokenRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiMcpRoute: typeof ApiMcpRoute
+  CustomersSplatRoute: typeof CustomersSplatRoute
   PayTokenRoute: typeof PayTokenRoute
   QTokenRoute: typeof QTokenRoute
   RemindersUnsubscribeRoute: typeof RemindersUnsubscribeRoute
@@ -818,6 +855,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoInvoiceEditorRouteImport
       parentRoute: typeof DemoRoute
     }
+    '/demo/$': {
+      id: '/demo/$'
+      path: '/$'
+      fullPath: '/demo/$'
+      preLoaderRoute: typeof DemoSplatRouteImport
+      parentRoute: typeof DemoRoute
+    }
+    '/customers/$': {
+      id: '/customers/$'
+      path: '/customers/$'
+      fullPath: '/customers/$'
+      preLoaderRoute: typeof CustomersSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mcp': {
       id: '/api/mcp'
       path: '/api/mcp'
@@ -872,6 +923,13 @@ declare module '@tanstack/react-router' {
       path: '/activity'
       fullPath: '/activity'
       preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$': {
+      id: '/_app/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof AppSplatRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/': {
@@ -1109,6 +1167,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppSplatRoute: typeof AppSplatRoute
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppBillingRoute: typeof AppBillingRoute
@@ -1137,6 +1196,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppSplatRoute: AppSplatRoute,
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
   AppBillingRoute: AppBillingRoute,
@@ -1167,12 +1227,14 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface DemoRouteChildren {
+  DemoSplatRoute: typeof DemoSplatRoute
   DemoInvoiceEditorRoute: typeof DemoInvoiceEditorRoute
   DemoSendReviewRoute: typeof DemoSendReviewRoute
   DemoIndexRoute: typeof DemoIndexRoute
 }
 
 const DemoRouteChildren: DemoRouteChildren = {
+  DemoSplatRoute: DemoSplatRoute,
   DemoInvoiceEditorRoute: DemoInvoiceEditorRoute,
   DemoSendReviewRoute: DemoSendReviewRoute,
   DemoIndexRoute: DemoIndexRoute,
@@ -1191,6 +1253,7 @@ const rootRouteChildren: RootRouteChildren = {
   ATokenRoute: ATokenRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiMcpRoute: ApiMcpRoute,
+  CustomersSplatRoute: CustomersSplatRoute,
   PayTokenRoute: PayTokenRoute,
   QTokenRoute: QTokenRoute,
   RemindersUnsubscribeRoute: RemindersUnsubscribeRoute,
