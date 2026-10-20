@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { composeInvoiceEmail } from "../../src/domain/documents/invoice-email"
 import { translate } from "../../src/lib/i18n/translate"
-import { waitForClientReady } from "./support"
+import { emulateBrowserLanguage, waitForClientReady } from "./support"
 
 // MOCK: captures only synthetic fixtures in the disposable CI database enforced by the config.
 const revision = process.env.QUI62_EVIDENCE_REVISION === "baseline" ? "baseline" : "after"
@@ -68,7 +68,8 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
   expect(cleared.ok()).toBe(true)
   await prisma.member.deleteMany({ where: { organizationId } })
   await prisma.session.updateMany({ data: { activeOrganizationId: null } })
-  await page.addInitScript(language => Object.defineProperty(navigator, "language", { value: language }), locale)
+  // With no organization left, onboarding speaks the browser's language.
+  await emulateBrowserLanguage(page, locale)
   await page.goto("/onboarding")
   await waitForClientReady(page)
   await expect(page.getByLabel(translate("auth.onboarding.field.companyName", locale), { exact: true })).toBeVisible()
