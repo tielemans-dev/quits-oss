@@ -3,10 +3,11 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
+import type { UiLanguage } from "../../lib/i18n/ui-language"
 
 const { routerState } = vi.hoisted(() => ({
   routerState: {
-    matches: [] as Array<{ routeId: string; context: { locale?: string } }>,
+    matches: [] as Array<{ routeId: string; context: { locale?: string; language?: UiLanguage } }>,
     location: { pathname: "/", search: {} as Record<string, unknown> },
   },
 }))
@@ -35,8 +36,8 @@ function Navigation() {
 }
 
 // MOCK: route context only. The real document shell and locale providers render without effects.
-function response(locale?: string, children: ReactNode = <I18nProvider initialLocale={locale}><Navigation /></I18nProvider>) {
-  routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/_app", context: { locale } }]
+function response(locale?: string, children: ReactNode = <I18nProvider initialLocale={locale}><Navigation /></I18nProvider>, language?: UiLanguage) {
+  routerState.matches = [{ routeId: "__root__", context: { language } }, { routeId: "/_app", context: { locale } }]
   return renderToStaticMarkup(<Shell>{children}</Shell>)
 }
 
@@ -71,9 +72,21 @@ describe("root document SSR language", () => {
     expect(html).toContain('<html lang="da">')
   })
 
-  it.each([["da", undefined, "da", "Fakturaer"], ["da", "en-US", "da", "Fakturaer"], ["en", "da-DK", "en", "Invoices"]] as const)("declares onboarding's lang=%s over organization locale %s (QUI-56)", (lang, locale, language, navigation) => {
-    routerState.location = { pathname: "/onboarding", search: { lang } }
-    const html = response(locale, <I18nProvider initialLocale={lang}><Navigation /></I18nProvider>)
+  it.each([["da", undefined, "da", "Fakturaer"], ["da", "en-US", "da", "Fakturaer"], ["en", "da-DK", "en", "Invoices"]] as const)("declares the chosen language %s over organization locale %s", (chosen, locale, language, navigation) => {
+    const html = response(locale, <I18nProvider initialLocale={chosen}><Navigation /></I18nProvider>, { chosen, browser: "en-US" })
+    expect(html).toContain(`<html lang="${language}">`)
+    expect(html).toContain(`<nav>${navigation}</nav>`)
+  })
+
+  // Login and signup render outside the app layout: the server answers in the chosen or browser language.
+  it.each([
+    [undefined, "da-DK", "da", "Fakturaer"],
+    [undefined, "en-US", "en", "Invoices"],
+    ["en", "da-DK", "en", "Invoices"],
+    ["da", "en-US", "da", "Fakturaer"],
+  ] as const)("renders a signed-out page in chosen %s, browser %s", (chosen, browser, language, navigation) => {
+    routerState.matches = [{ routeId: "__root__", context: { language: { chosen, browser } } }, { routeId: "/login", context: {} }]
+    const html = renderToStaticMarkup(<Shell><Navigation /></Shell>)
     expect(html).toContain(`<html lang="${language}">`)
     expect(html).toContain(`<nav>${navigation}</nav>`)
   })

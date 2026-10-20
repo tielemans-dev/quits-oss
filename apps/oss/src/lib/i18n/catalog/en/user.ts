@@ -4,6 +4,7 @@ export const enUserMessages = {
   "user.createOrganization": "Create organization",
   "user.signOut": "Sign out",
   "user.menu": "Your account",
+  "user.language": "Language",
   "user.theme": "Theme",
   "user.theme.system": "System",
   "user.theme.light": "Light",

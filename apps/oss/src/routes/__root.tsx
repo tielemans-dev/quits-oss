@@ -9,7 +9,7 @@ import { getInstallationStatus, normalizeInstallationStatus } from '../lib/insta
 import type { InstallationStatus } from '../lib/installation-state'
 import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
 import { SETUP_DEFAULT_LOCALE } from '../lib/setup-locale'
-import { onboardingShellLanguage } from '../lib/login-return'
+import { parseUiLanguage, readUiLanguage, saveUiLanguage, uiLocale, type UiLanguage } from '../lib/i18n/ui-language'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
@@ -50,7 +50,9 @@ export const Route = createRootRoute({
     ) {
       throw redirect({ to: '/setup' })
     }
-    return { installation }
+    // Every page renders in the language from `?lang`, the saved choice or the browser, on the
+    // server too, so the first paint is already in it.
+    return { installation, language: readUiLanguage(location.search) }
   },
   notFoundComponent: NotFound,
   head: () => ({
@@ -97,17 +99,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const installation = useRouterState({
     select: (state) => (state.matches[0]?.context as { installation?: InstallationStatus } | undefined)?.installation,
   })
+  const language = useRouterState({
+    select: (state) => (state.matches[0]?.context as { language?: UiLanguage } | undefined)?.language,
+  })
   // The loaded app context is available to the shell on SSR and hydration. Read only the
   // editable app locale: public documents mark their fixed language on their own wrapper.
-  const locale = useRouterState({
-    select: (state) =>
-      // First-run setup has no organization yet; its page speaks the setup default.
-      state.matches.some((match) => match.routeId === '/setup')
-        ? SETUP_DEFAULT_LOCALE
-        // Onboarding opened with `lang` renders in it (shell included), so the document must say so.
-        : onboardingShellLanguage(state.location.pathname, state.location.search) ??
-          (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
+  // First-run setup has no organization yet; its page speaks the setup default.
+  const setup = useRouterState({ select: (state) => state.matches.some((match) => match.routeId === '/setup') })
+  const organizationLocale = useRouterState({
+    select: (state) => (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
   })
+  const locale = setup ? SETUP_DEFAULT_LOCALE : uiLocale(language, organizationLocale)
+  // A `?lang` the page was opened with, such as from the landing page, is kept for later pages.
+  const requestedLanguage = useRouterState({
+    select: (state) => parseUiLanguage((state.location.search as { lang?: unknown }).lang),
+  })
+  useEffect(() => {
+    if (requestedLanguage) saveUiLanguage(requestedLanguage)
+  }, [requestedLanguage])
   useEffect(() => {
     rememberInstallationStatus(installation)
   }, [installation])
@@ -126,7 +135,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <I18nProvider>
+        <I18nProvider initialLocale={uiLocale(language)}>
           <ThemeProvider>
             <TooltipProvider>
               {children}
