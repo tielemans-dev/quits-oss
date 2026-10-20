@@ -1,7 +1,5 @@
 /** Owned by the pages a customer opens from a link: the invoice, quote and agreement pages. */
 export const enPublicMessages = {
-  "public.document.customer": "Customer",
-  "public.document.company": "Company",
   "public.document.notProvided": "Not provided",
   "public.document.total": "Total",
   "public.document.notes": "Notes",

@@ -8,7 +8,8 @@ import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
 import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
 import type { VatRow } from "../../lib/documents/line-amounts"
 import { buildTotals } from "../../lib/documents/totals"
-import { buyerAddress, sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
+import { buyerAddress, sellerAddressLines, sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
+import { PartyBlock } from "../documents/party-block"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -171,15 +172,10 @@ function PublicInvoiceDocument({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.from")}</h2>
-                <p>{invoice.sellerSnapshot?.companyName}</p><p className="whitespace-pre-line">{invoice.sellerSnapshot?.companyAddress}</p>
-                {formatTaxIds(sellerPresentationTaxIds(invoice.sellerSnapshot?.taxIds, momsRegistered), locale, invoice.buyerSnapshot?.country ?? "DK", momsRegistered).map(id => <p key={id}>{id}</p>)}
-              </div>
-              <div><h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("pdf.billTo")}</h2>
-                <p>{invoice.buyerSnapshot?.name || t("public.document.notProvided")}</p>{distinctCompany(invoice.buyerSnapshot) && <p>{distinctCompany(invoice.buyerSnapshot)}</p>}
-                {formatTaxIds(invoice.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
-                {buyerAddress(invoice.buyerSnapshot, locale).map((line, index) => <p key={index}>{line}</p>)}
-              </div>
+              <PartyBlock title={t("pdf.from")} lines={[invoice.sellerSnapshot?.companyName, ...sellerAddressLines(invoice.sellerSnapshot?.companyAddress),
+                ...formatTaxIds(sellerPresentationTaxIds(invoice.sellerSnapshot?.taxIds, momsRegistered), locale, invoice.buyerSnapshot?.country ?? "DK", momsRegistered)]} />
+              <PartyBlock title={t("pdf.billTo")} lines={[invoice.buyerSnapshot?.name || t("public.document.notProvided"), distinctCompany(invoice.buyerSnapshot),
+                ...formatTaxIds(invoice.buyerSnapshot?.taxIds, locale), ...buyerAddress(invoice.buyerSnapshot, locale)]} />
             </div>
             <div className="grid gap-3">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

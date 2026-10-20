@@ -9,7 +9,7 @@ import { getInstallationStatus, normalizeInstallationStatus } from '../lib/insta
 import type { InstallationStatus } from '../lib/installation-state'
 import { rememberInstallationStatus, reuseInstallationStatus } from '../lib/installation-cache'
 import { SETUP_DEFAULT_LOCALE } from '../lib/setup-locale'
-import { onboardingShellLanguage } from '../lib/login-return'
+import { authShellLanguage, onboardingShellLanguage } from '../lib/login-return'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
 
@@ -91,22 +91,29 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
+/** Pages opened from a link to one document, each rendered in that document's language. */
+const PUBLIC_DOCUMENT_ROUTES = new Set<string>(['/pay/$token', '/q/$token', '/a/$token', '/reminders/unsubscribe'])
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   // A server-rendered page already holds the installation answer; keep it so the first client
   // navigation does not ask the server again.
   const installation = useRouterState({
     select: (state) => (state.matches[0]?.context as { installation?: InstallationStatus } | undefined)?.installation,
   })
-  // The loaded app context is available to the shell on SSR and hydration. Read only the
-  // editable app locale: public documents mark their fixed language on their own wrapper.
+  // The loaded app context is available to the shell on SSR and hydration.
   const locale = useRouterState({
-    select: (state) =>
+    select: (state) => {
+      // A public document speaks the language its loader chose on the server, not the app's.
+      const publicDocument = state.matches.find((match) => PUBLIC_DOCUMENT_ROUTES.has(match.routeId))
+      if (publicDocument) return (publicDocument.loaderData as { locale?: string } | undefined)?.locale
       // First-run setup has no organization yet; its page speaks the setup default.
-      state.matches.some((match) => match.routeId === '/setup')
+      return state.matches.some((match) => match.routeId === '/setup')
         ? SETUP_DEFAULT_LOCALE
-        // Onboarding opened with `lang` renders in it (shell included), so the document must say so.
+        // Onboarding and the auth pages opened with `lang` render in it, so the document must say so.
         : onboardingShellLanguage(state.location.pathname, state.location.search) ??
-          (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale,
+          authShellLanguage(state.location.pathname, state.location.search) ??
+          (state.matches.find((match) => match.routeId === '/_app')?.context as { locale?: string } | undefined)?.locale
+    },
   })
   useEffect(() => {
     rememberInstallationStatus(installation)

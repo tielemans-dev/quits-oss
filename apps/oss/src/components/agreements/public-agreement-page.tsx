@@ -1,4 +1,4 @@
-import { pdfBuyerAddress } from "../../lib/documents/invoice-identity"
+import { pdfBuyerAddress, sellerAddressLines } from "../../lib/documents/invoice-identity"
 import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
@@ -70,7 +70,7 @@ export function PublicAgreementPage({
       </header>
       <section className="grid gap-2">
         <p>{snapshot.sellerSnapshot?.companyName}</p>
-        <p>{snapshot.sellerSnapshot?.companyAddress}</p>
+        {sellerAddressLines(snapshot.sellerSnapshot?.companyAddress).map((line, index) => <p key={index}>{line}</p>)}
           {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <p key={id}>{id}</p>)}
         <p>
           {t("agreements.customer")}: {snapshot.buyerSnapshot?.name}{" "}

@@ -124,6 +124,11 @@ describe("public agreement page in Danish", () => {
     expect(agreementPage("da-DK", { ...document, status: "completed" })).toContain("<p>Gennemført</p>")
   })
 
+  it("shows each line of the seller's address on its own line, as /q does (QUI-215)", () => {
+    const html = agreementPage("da-DK", { ...document, snapshot: { ...snapshot, sellerSnapshot: { companyName: "Acme ApS", companyAddress: "Nordlysvej 1\n2100 København Ø" } } })
+    expect(html).toContain("<p>Acme ApS</p><p>Nordlysvej 1</p><p>2100 København Ø</p>")
+  })
+
   it("shows the seller's logo and name above the agreement", () => {
     const html = agreementPage("da-DK")
 
