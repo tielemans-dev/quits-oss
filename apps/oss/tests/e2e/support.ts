@@ -332,6 +332,14 @@ export function uniqueEmail(prefix: string) {
 
 export async function waitForClientReady(page: Page) {
   await page.waitForLoadState("networkidle")
+  // A quiet network is not a hydrated page: on the first visit to a route the dev server can pause
+  // before it serves the route's component, and a click on the server's HTML meanwhile is lost.
+  // React gives every element it has hydrated a fiber.
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll("button")).every((button) =>
+      Object.keys(button).some((key) => key.startsWith("__reactFiber$"))
+    )
+  )
   await page.waitForTimeout(250)
 }
 
