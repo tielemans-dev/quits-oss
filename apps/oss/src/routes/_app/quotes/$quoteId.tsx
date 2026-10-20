@@ -65,6 +65,7 @@ import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle, Download } from "
 import { useI18n } from "../../../lib/i18n/react"
 import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { distinctCompany } from "../../../lib/documents/tax-ids"
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
@@ -978,7 +979,7 @@ function QuoteDetailPage() {
               {t("quotes.detail.quoteTo")}
             </h3>
             <p className="font-semibold">{contact.name}</p>
-            {contact.company && <p className="text-sm">{contact.company}</p>}
+            {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
             {contact.email && (
               <p className="text-sm text-muted-foreground">{contact.email}</p>
             )}
