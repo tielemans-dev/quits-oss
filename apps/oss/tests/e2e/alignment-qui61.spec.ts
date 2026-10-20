@@ -15,12 +15,18 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: resolve(captureDir, `${name}-${variant}.png`), fullPage: true })
 }
 async function searchAligned(page: Page, screen: string) {
-  // Overblik has no search in the top bar: its field is the palette itself.
+  // Overblik has no search in the top bar: its field is the palette itself, centred under the
+  // greeting. Everywhere else the search starts where the content does.
   const field = screen === "dashboard" ? page.locator("[data-live-sheet]") : page.getByRole("button", { name: /Open search|Åbn søgning/ })
   const search = await field.boundingBox()
-  const content = await page.locator("[data-slot=app-content]").evaluate(el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft))
+  const content = await page.locator("[data-slot=app-content]").evaluate(el => {
+    const box = el.getBoundingClientRect(), style = getComputedStyle(el)
+    const left = box.left + parseFloat(style.paddingLeft), right = box.right - parseFloat(style.paddingRight)
+    return { left, centre: (left + right) / 2 }
+  })
   expect(search).not.toBeNull()
-  expect(Math.abs(search!.x - content)).toBeLessThanOrEqual(1)
+  if (screen === "dashboard") expect(Math.abs(search!.x + search!.width / 2 - content.centre)).toBeLessThanOrEqual(1)
+  else expect(Math.abs(search!.x - content.left)).toBeLessThanOrEqual(1)
 }
 for (const locale of [danishLocale, usEnglishLocale]) {
   test(`QUI-61 alignment in ${locale.locale}`, async ({ browser }) => {
