@@ -61,4 +61,13 @@ describe("new menu", () => {
     expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(true)
     expect(container.firstElementChild?.getAttribute("data-open")).toBe("false")
   })
+
+  it("marks a read-only organization, but not one that is still being set up", () => {
+    const { rerender } = render(<NewMenu open onOpenChange={() => undefined} can={() => true} ready readOnly />)
+    expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText("trial.lock")).toBeTruthy()
+    rerender(<NewMenu open onOpenChange={() => undefined} can={() => true} ready readOnly setupPending />)
+    expect((screen.getByRole("button") as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByText("trial.lock")).toBeNull()
+  })
 })

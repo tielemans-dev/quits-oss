@@ -15,6 +15,8 @@ const state = vi.hoisted(() => ({
   reloadPage: vi.fn(),
   settingsQuery: vi.fn(async () => ({ locale: "en-US" })),
   setLocale: vi.fn(),
+  distribution: "selfhost" as "selfhost" | "cloud",
+  cloudOnboardingComplete: null as boolean | null,
 }))
 
 vi.mock("@tanstack/react-router", async () => {
@@ -25,8 +27,8 @@ vi.mock("@tanstack/react-router", async () => {
       useRouteContext: () => ({
         user: { id: "u_1" },
         activeOrganizationId: state.loadedOrganizationId,
-        runtime: { distribution: "selfhost", billingEnabled: false },
-        cloudOnboardingComplete: null,
+        runtime: { distribution: state.distribution, billingEnabled: state.distribution === "cloud" },
+        cloudOnboardingComplete: state.cloudOnboardingComplete,
         locale: state.locale,
       }),
     }),
@@ -75,7 +77,8 @@ vi.mock("../../components/shell/app-main", () => ({
   ),
 }))
 vi.mock("../../components/billing/trial-access", () => ({
-  TrialAccessProvider: ({ children }: { children: unknown }) => children,
+  TrialAccessProvider: ({ children, onboardingPending }: { children: unknown; onboardingPending?: boolean }) =>
+    <div data-testid="trial-access" data-onboarding-pending={String(onboardingPending)}>{children as never}</div>,
   TrialBanner: () => null,
   TrialRouteGate: ({ children }: { children: unknown }) => children,
 }))
@@ -112,6 +115,8 @@ afterEach(() => {
   state.reloadPage.mockReset()
   state.settingsQuery.mockClear()
   state.setLocale.mockClear()
+  state.distribution = "selfhost"
+  state.cloudOnboardingComplete = null
   vi.restoreAllMocks()
 })
 
@@ -123,6 +128,21 @@ function layoutFor(organizationId: string) {
     cloudOnboardingComplete: null,
   }
 }
+
+describe("app layout onboarding state", () => {
+  it.each([
+    ["selfhost", null, "org_a", "false"],
+    ["cloud", false, "org_a", "true"],
+    ["cloud", true, "org_a", "false"],
+    ["cloud", null, null, "false"],
+  ] as const)("on %s with onboarding complete=%s and organization %s, passes pending=%s", (distribution, complete, organizationId, pending) => {
+    state.distribution = distribution
+    state.cloudOnboardingComplete = complete
+    state.loadedOrganizationId = organizationId
+    render(<route.component />)
+    expect(screen.getByTestId("trial-access").getAttribute("data-onboarding-pending")).toBe(pending)
+  })
+})
 
 describe("app layout request organization", () => {
   it("uses the loaded organization locale before hydration and without a settings round trip", async () => {
