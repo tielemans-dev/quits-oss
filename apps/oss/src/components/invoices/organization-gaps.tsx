@@ -32,6 +32,7 @@ export function OrganizationGaps({ issues, warnings = [] }: { issues: readonly F
     {missingCvr !== missingVatChoice && <p className="text-sm">{t(missingCvr ? "invoiceValidation.cvr.invalid" : "invoiceValidation.seller.vatRegistration.required")}</p>}
     {other.map(issue => <p key={`${issue.code}:${issue.field}`} className="text-sm">{t(sellerFieldKeys[issue.field] ?? invoiceIssueKey(issue.code), issue.params)}</p>)}
     {bank && <p className="text-sm">{t(bankBlocking ? "invoiceValidation.bankCard.body" : "invoiceValidation.bankCard.optionalBody")}</p>}
-    <Link to="/settings" className="w-fit text-sm underline underline-offset-4">{t(`invoiceValidation.${card}.action`)}</Link>
+    {/* Seller identity and the VAT answer live under Company; bank details under Payments. */}
+    <Link to="/settings/$section" params={{ section: seller ? "company" : "payments" }} className="w-fit text-sm underline underline-offset-4">{t(`invoiceValidation.${card}.action`)}</Link>
   </section>
 }

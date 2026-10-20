@@ -93,6 +93,7 @@ export const enInvoicesMessages = {
   "invoices.detail.error.notFound": "Invoice not found",
   "invoices.detail.error.updateFailed": "Failed to update invoice",
   "invoices.detail.error.sendFailed": "Failed to send invoice",
+  "invoices.detail.send.blocked": "This invoice can't be sent yet. Fix what's listed above, then try again.",
   "invoices.detail.error.markPaidFailed": "Failed to mark as paid",
   "invoices.detail.error.paymentLinkFailed": "Failed to create payment link",
   "invoices.detail.error.deleteFailed": "Failed to delete invoice",

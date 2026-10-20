@@ -876,6 +876,8 @@ describe("detail confirmation with known readiness issues", () => {
     await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.send" })) })
     expect(screen.queryByRole("button", { name: "invoiceSend.confirm" })).toBeNull()
     expect(api.send).not.toHaveBeenCalled()
+    // The refusal is said next to the button, not only in the card above it.
+    expect(screen.getByText("invoices.detail.send.blocked")).toBeTruthy()
   })
 })
 

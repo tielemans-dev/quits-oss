@@ -97,6 +97,7 @@ export const daInvoicesMessages = {
   "invoices.detail.error.notFound": "Faktura blev ikke fundet",
   "invoices.detail.error.updateFailed": "Kunne ikke opdatere faktura",
   "invoices.detail.error.sendFailed": "Kunne ikke sende faktura",
+  "invoices.detail.send.blocked": "Fakturaen kan ikke sendes endnu. Ret det, der står ovenfor, og prøv igen.",
   "invoices.detail.error.markPaidFailed": "Kunne ikke markere som betalt",
   "invoices.detail.error.paymentLinkFailed": "Kunne ikke oprette betalingslink",
   "invoices.detail.error.deleteFailed": "Kunne ikke slette faktura",
