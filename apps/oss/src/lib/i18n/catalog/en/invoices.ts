@@ -154,7 +154,7 @@ export const enInvoicesMessages = {
   "vat.line": "Line {number}",
   "vat.treatment": "VAT treatment",
   "vat.lineTreatment": "VAT treatment for line {number}",
-  "vat.fractionalRate": "VAT rate (0.25 = 25%)",
+  "vat.percentRate": "VAT rate (%)",
   "vat.lineRate": "VAT rate for line {number}",
   "vat.reason": "Reason code",
   "vat.lineReason": "VAT reason for line {number}",

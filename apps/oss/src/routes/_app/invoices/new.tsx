@@ -511,7 +511,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
             amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
 
-          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
+          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} defaultCountry={readiness?.countryCode} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
           {!restrictedVat && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">

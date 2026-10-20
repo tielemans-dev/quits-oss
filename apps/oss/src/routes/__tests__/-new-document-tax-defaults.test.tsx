@@ -59,6 +59,22 @@ describe.each([['invoice', InvoiceRoute], ['quote', QuoteRoute]] as const)("new 
   })
 })
 
+describe("new quote amounts", () => {
+  beforeEach(() => { fixture.load.mockReset() })
+  afterEach(cleanup)
+  it("shows no amount in a fallback currency until the organization's currency loads", async () => {
+    let resolve!: (settings: unknown) => void
+    fixture.load.mockReturnValue(new Promise(r => { resolve = r }))
+    const Component = (QuoteRoute as unknown as { component: () => React.ReactNode }).component
+    const { container } = render(<Component />)
+    expect(container.textContent).not.toMatch(/US\$|USD/)
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0)
+    await act(async () => resolve({ taxRate: 25, pricesIncludeTax: false, defaultCurrency: "DKK", countryCode: "DK" }))
+    await waitFor(() => expect(container.textContent).toMatch(/kr\./))
+    expect(container.textContent).not.toMatch(/US\$|USD/)
+  })
+})
+
 
 describe("new invoice payment-term defaults", () => {
   beforeEach(() => {
