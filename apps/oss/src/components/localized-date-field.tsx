@@ -75,7 +75,8 @@ export function LocalizedDateField({
   }
 
   return (
-    <div className="relative">
+    // h-fit keeps the button centred on the input when a grid row stretches the field.
+    <div className="relative h-fit">
       <Input
         ref={field}
         id={id}
