@@ -14,6 +14,7 @@ import { deliverSmtp } from "../../lib/email-smtp-node"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
 import { defaultNodePlatform } from "../../lib/runtime/node-platform"
 import { resetRuntimePlatform, setRuntimePlatform } from "../../lib/runtime/platform"
+import { setRuntimeServices } from "../../lib/runtime/services"
 import { createTestOrganization, hasTestDatabase } from "../../test-utils/organization"
 import { authenticateAgentSecret, createAgentKey } from "../agent-keys"
 import { decideApproval } from "../approvals"
@@ -31,13 +32,16 @@ import {
   EMAIL_DELIVERY_ATTEMPTS,
   EMAIL_DELIVERY_JOB,
   isDefiniteRejection,
+  POLICY_REFUSAL_LIMIT_MS,
   readDeliveryResult,
   settleAbandonedDeliveries,
 } from "../delivery/outbox"
+import { NEVER_SENT_MESSAGE } from "../delivery/provider-failure"
 import { readActivity } from "../events"
 
 import "../features/reminders"
 import { registerJobHandler, runDueJobs } from "../jobs"
+import { runSchedulerTick } from "../scheduler"
 
 const describeIfDatabase = hasTestDatabase ? describe : describe.skip
 
@@ -69,6 +73,7 @@ describeIfDatabase("email outbox", () => {
   afterEach(async () => {
     vi.restoreAllMocks()
     resetRuntimePlatform()
+    setRuntimeServices({ operationPolicy: undefined })
     while (cleanups.length) await cleanups.pop()?.()
     process.env.RESEND_API_KEY = previousEnv.RESEND_API_KEY
     process.env.FROM_EMAIL = previousEnv.FROM_EMAIL
@@ -485,6 +490,46 @@ describeIfDatabase("email outbox", () => {
       lastEmailAttemptOutcome: "unconfirmed",
     })
     expect(await settleAbandonedDeliveries({ organizationIds: [org.organizationId] })).toMatchObject({ abandoned: 0 })
+  })
+
+  it("gives up a first send the operation policy keeps refusing, leaving a draft that can be sent again", async () => {
+    const { org, invoiceId } = await setup()
+    // Access ends between the send and its delivery, so only the delivery is refused.
+    setRuntimeServices({ operationPolicy: { authorize: async operation => operation.name === EMAIL_DELIVERY_JOB
+      ? { allowed: false, message: "Synthetic restriction" } : { allowed: true } } })
+    expect(await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin }))
+      .toMatchObject({ status: "completed", result: { emailPending: true } })
+    const sending = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })
+    expect(sending).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
+    expect(sending.number).not.toBeNull()
+    const queuedAt = (await deliveryJob(org.organizationId)).createdAt.getTime()
+    const tick = (at: number) => runSchedulerTick(new Date(at), { organizationIds: [org.organizationId] })
+
+    await tick(queuedAt + POLICY_REFUSAL_LIMIT_MS - 60_000)
+    expect(await deliveryJob(org.organizationId)).toMatchObject({ status: "pending", attempts: 0, lastError: "Synthetic restriction" })
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({ lastEmailAttemptOutcome: "sending" })
+
+    await tick(queuedAt + POLICY_REFUSAL_LIMIT_MS)
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } })).toMatchObject({
+      status: "draft", number: null, lastEmailAttemptOutcome: "failed", lastEmailAttemptCode: "send_failed",
+      lastEmailAttemptMessage: NEVER_SENT_MESSAGE,
+    })
+    expect(await deliveryJob(org.organizationId)).toMatchObject({ status: "failed", result: { outcome: "withdrawn" } })
+    const activity = await readActivity({ organizationId: org.organizationId, aggregateId: invoiceId })
+    expect(activity.events.map(event => event.type)).toContain("invoice.email_failed")
+    expect(activity.events.map(event => event.type)).not.toContain("invoice.issued")
+
+    // Once access returns, sending again, after the first reservation's lease, issues the invoice
+    // under the number it gave back.
+    setRuntimeServices({ operationPolicy: undefined })
+    const resentAt = queuedAt + POLICY_REFUSAL_LIMIT_MS
+    expect(await executeIssuanceCommand(sendInvoice, { id: invoiceId }, { actor: org.actors.admin, now: new Date(resentAt) }))
+      .toMatchObject({ status: "completed" })
+    await tick(resentAt)
+    expect(deliver).toHaveBeenCalledOnce()
+    expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } }))
+      .toMatchObject({ status: "sent", number: sending.number, lastEmailAttemptOutcome: "sent" })
   })
 
   it("reports each delivery's own outcome even after a later attempt on the same document", async () => {
