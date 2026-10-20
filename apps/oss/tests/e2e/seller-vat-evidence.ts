@@ -4,7 +4,20 @@ import { expect, test, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import { composeInvoiceEmail } from "../../src/domain/documents/invoice-email"
 import { translate } from "../../src/lib/i18n/translate"
-import { emulateBrowserLanguage, waitForClientReady } from "./support"
+import { waitForClientReady } from "./support"
+
+// The baseline job runs this file against main's support.ts, so it keeps its own copy of the
+// support.ts helper: the server reads Accept-Language and the client reads navigator.languages.
+async function emulateBrowserLanguage(page: Page, locale: string) {
+  // Chromium keeps the context's own Accept-Language over setExtraHTTPHeaders, so rewrite it.
+  await page.route("**/*", (route) =>
+    route.fallback({ headers: { ...route.request().headers(), "accept-language": locale } })
+  )
+  await page.addInitScript((language) => {
+    Object.defineProperty(navigator, "language", { get: () => language })
+    Object.defineProperty(navigator, "languages", { get: () => [language] })
+  }, locale)
+}
 
 // MOCK: captures only synthetic fixtures in the disposable CI database enforced by the config.
 const revision = process.env.QUI62_EVIDENCE_REVISION === "baseline" ? "baseline" : "after"
