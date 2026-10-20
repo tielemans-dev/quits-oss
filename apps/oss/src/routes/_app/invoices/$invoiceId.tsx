@@ -251,6 +251,9 @@ function InvoiceDetailPage() {
         : null
   )
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  // Set when Send was refused before the review; the reasons are listed above the send panel.
+  const [sendBlocked, setSendBlocked] = useState(false)
+  const sendIssues = useRef<HTMLDivElement>(null)
   const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>> | null>(null)
   const [sendConfirmation, setSendConfirmation] = useState<"send" | "resend" | "manual" | null>(null)
   const [sendReviewVersion, setSendReviewVersion] = useState<string>()
@@ -523,8 +526,19 @@ function InvoiceDetailPage() {
     }
   }
 
+  // A refused Send says so next to the button and brings the reasons into view.
+  function showSendBlockers() {
+    setSendBlocked(true)
+    requestAnimationFrame(() => {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      sendIssues.current?.scrollIntoView?.({ block: "nearest", behavior: reduce ? "auto" : "smooth" })
+      sendIssues.current?.focus({ preventScroll: true })
+    })
+  }
+
   async function requestSend(allowSendWithoutEmail = false) {
     if (!invoice || acting) return
+    setSendBlocked(false)
     const issues: FieldIssue[] = []
     if (orgSettings.baseCurrency && invoice.currency !== orgSettings.baseCurrency) {
       if (!invoiceSendInputSchema.shape.exchangeRate.unwrap().safeParse(issuance.exchangeRate).success) issues.push({ code: "required", field: "exchangeRate", params: {} })
@@ -532,7 +546,7 @@ function InvoiceDetailPage() {
     }
     setFieldIssues(issues)
     setError(null)
-    if (issues.length) return
+    if (issues.length) { showSendBlockers(); return }
     // Known gaps (seller identity, recipient, currency, policy) are shown instead of asking for a confirmation that
     // would be refused. The state is read fresh: Settings may have changed since the page loaded.
     setActing(true)
@@ -550,7 +564,7 @@ function InvoiceDetailPage() {
       if (state.policyUnavailable) { setError(t("invoiceValidation.policyUnavailable")); return }
       const blocking = state.issues.filter(issue => !(allowSendWithoutEmail && issue.code === "missing_recipient"))
       setFieldIssues(blocking)
-      if (blocking.length) return
+      if (blocking.length) { showSendBlockers(); return }
     } catch (failure) {
       setError(failure instanceof Error && !isUnexpectedFailure(failure) ? failure.message : t("invoiceValidation.unknown"))
       return
@@ -1249,8 +1263,10 @@ function InvoiceDetailPage() {
 
       {/* Invoice content (printable) */}
       <div className="print-area grid gap-6">
+        <div ref={sendIssues} tabIndex={-1} className="grid gap-2 empty:hidden focus:outline-none no-print">
             {(invoice.status === "draft" || fieldIssues.some(issue => issue.field.startsWith("seller."))) && <OrganizationGaps issues={[...(invoice.status === "draft" ? readiness?.issues ?? [] : []), ...fieldIssues]} />}
             {fieldIssues.filter(issue => !issue.field.startsWith("seller.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+        </div>
 
         {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">
           <p role="status">{t("agreements.disputedDraft")}</p>
@@ -1269,6 +1285,7 @@ function InvoiceDetailPage() {
                   pending: acting,
                   // A queued email settles on its own; sending again is refused meanwhile.
                   disabled: acting || emailSending,
+                  notice: sendBlocked && fieldIssues.length > 0 ? t("invoices.detail.send.blocked") : null,
                   onClick: () => {
                     void requestSend()
                   },
