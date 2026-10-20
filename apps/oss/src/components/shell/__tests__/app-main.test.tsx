@@ -116,11 +116,11 @@ describe("app main on Overblik", () => {
     expect(screen.getByTestId("search-field")).not.toBeNull()
   })
 
-  // Desktop search must start where the content does (QUI-61), so the button moves first on phones only.
-  it("puts the menu button first on phones and leaves search first on desktop", () => {
-    route.pathname = "/invoices"
+  // Desktop hides the button (`md:hidden`), so search leads the bar there and starts where the content does (QUI-61).
+  it.each(["/", "/invoices"])("starts the top bar with the menu button on %s", (pathname) => {
+    route.pathname = pathname
     render(<AppMain>page</AppMain>)
-    expect(screen.getByRole("banner").firstElementChild?.firstElementChild).toBe(screen.getByTestId("search-field"))
-    expect(screen.getByTestId("menu-trigger").className).toContain("max-md:-order-1")
+    expect(screen.getByRole("banner").firstElementChild?.firstElementChild).toBe(screen.getByTestId("menu-trigger"))
+    expect(screen.getByTestId("menu-trigger").className).toContain("md:hidden")
   })
 })
