@@ -49,6 +49,10 @@ describe("activity targets", () => {
     expect(activityTarget({ documentKind: "agreement", aggregateId: "g" })).toEqual({ to: "agreement", id: "g" })
     expect(activityTarget({ documentKind: null, aggregateId: "p" })).toEqual({ to: "none" })
   })
+
+  it("links an older payment event nowhere, since its id is the payment's, not the invoice's", () => {
+    expect(activityTarget({ aggregateType: "payment", documentKind: "invoice", aggregateId: "pay-1" })).toEqual({ to: "none" })
+  })
 })
 
 describe("describeActivity", () => {
@@ -72,6 +76,15 @@ describe("describeActivity", () => {
     expect(lines.map((line) => line.kind)).toEqual(["invoicePaid"])
     // A part payment has no paid event, so it stays.
     expect(describeActivity([activityEvent({ id: "e1", type: "payment.recorded", aggregateId: "a" })]).map((line) => line.kind)).toEqual(["paymentRecorded"])
+  })
+
+  it("knows an older payment event by its invoice's number, so it is not told twice either", () => {
+    const lines = describeActivity([
+      activityEvent({ id: "e2", type: "invoice.paid", aggregateId: "inv-a", documentNumber: "2026-148" }),
+      activityEvent({ id: "e1", type: "payment.recorded", aggregateType: "payment", aggregateId: "pay-1", documentNumber: "2026-148" }),
+      activityEvent({ id: "e0", type: "payment.recorded", aggregateType: "payment", aggregateId: "pay-2", documentNumber: "2026-149" }),
+    ])
+    expect(lines.map((line) => [line.kind, line.number])).toEqual([["invoicePaid", "2026-148"], ["paymentRecorded", "2026-149"]])
   })
 
   it("collapses a repeat of one kind for one document, and keeps different documents apart", () => {
