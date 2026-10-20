@@ -7,7 +7,6 @@ import { afterEach as afterEachTest, describe, expect, it, vi } from "vitest"
 const {
   capabilitiesQuery,
   hostedFlag,
-  distribution,
   prepareConfirmation,
   useSessionMock,
   settingsGetQuery,
@@ -20,7 +19,6 @@ const {
   displayLanguage: { locale: "da-DK" },
   capabilitiesQuery: vi.fn(),
   hostedFlag: { enabled: false, nonVatEnabled: true },
-  distribution: { selfhost: true },
   prepareConfirmation: vi.fn(async () => ({ token: "signed" })),
   useSessionMock: vi.fn(),
   settingsGetQuery: vi.fn(),
@@ -30,7 +28,9 @@ const {
   runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
-vi.mock("../../lib/distribution", () => ({ get isSelfHostDistribution() { return distribution.selfhost } }))
+// MOCK: a hosted bundle built without VITE_QUITS_DISTRIBUTION says self-hosted (QUI-206). The page
+// must follow the distribution the server sends, `runtimeState` here.
+vi.mock("../../lib/distribution", () => ({ isSelfHostDistribution: true }))
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -40,8 +40,8 @@ vi.mock("@tanstack/react-router", () => ({
       user: { id: "user_1" },
       activeOrganizationId: "org_1",
       locale: "da-DK",
-      runtime: { distribution: distribution.selfhost ? "selfhost" : "cloud", billingEnabled: false },
-      cloudOnboardingComplete: distribution.selfhost ? null : true,
+      runtime: { distribution: runtimeState.selfhost ? "selfhost" : "cloud", billingEnabled: false },
+      cloudOnboardingComplete: runtimeState.selfhost ? null : true,
     }),
   }),
   useRouter: () => ({ invalidate: vi.fn(async () => {}) }),
@@ -245,7 +245,6 @@ afterEachTest(() => {
   capabilitiesQuery.mockReset()
   hostedFlag.enabled = false
   hostedFlag.nonVatEnabled = true
-  distribution.selfhost = true
   prepareConfirmation.mockClear()
   resetRequestOrganizationForTesting()
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
@@ -320,7 +319,7 @@ describe("Settings tax relevance", () => {
   })
 
   it.each([true, false, null])("omits stored VAT %s on unrelated saves while hosted capabilities are pending or failed, then retries without losing edits", async stored => {
-    distribution.selfhost = false
+    runtimeState.selfhost = false
     hostedFlag.enabled = true
     let reject!: (error: Error) => void
     capabilitiesQuery.mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail }))
@@ -358,7 +357,7 @@ describe("Settings tax relevance", () => {
   })
 
   it.each([[false, true, false], [false, true, true], [true, false, false]])("honors non-VAT capability for selfhost %s, confirmation %s, nonVAT %s", async (selfhost, enabled, nonVatEnabled) => {
-    distribution.selfhost = selfhost
+    runtimeState.selfhost = selfhost
     hostedFlag.enabled = enabled
     hostedFlag.nonVatEnabled = nonVatEnabled
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
@@ -373,7 +372,7 @@ describe("Settings tax relevance", () => {
 
   it.each([[true, true], [true, false], [false, true], [false, false]])("shows company choice with hosted confirmation %s and saves registration %s", async (confirmationEnabled, registered) => {
     hostedFlag.enabled = confirmationEnabled
-    distribution.selfhost = !confirmationEnabled
+    runtimeState.selfhost = !confirmationEnabled
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
     getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
     const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: confirmationEnabled ? true : null, primaryTaxId: "24256790" })
@@ -394,7 +393,7 @@ describe("Settings tax relevance", () => {
 
   it.each(["companyName", "companyAddress", "taxId", "scheme"])("requires a fresh hosted choice after editing %s", async field => {
     hostedFlag.enabled = true
-    distribution.selfhost = false
+    runtimeState.selfhost = false
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
     getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
     const current = buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat", momsRegistered: true, primaryTaxId: "24256790" })
@@ -422,7 +421,7 @@ describe("Settings tax relevance", () => {
   })
 
   it("preserves the disabled hosted confirmation flag", async () => {
-    distribution.selfhost = false
+    runtimeState.selfhost = false
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
     getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
     settingsGetQuery.mockResolvedValue(buildSettingsData({ countryCode: "DK", taxRegime: "eu_vat" }))
@@ -551,7 +550,7 @@ async function renderDanishSettings(momsRegistered: boolean | null, overrides: R
 
 describe("Settings VAT status after upstream integration", () => {
   it.each([true, false])("edits and clears optional SE in Settings with self-host=%s", async selfhost => {
-    distribution.selfhost = runtimeState.selfhost = selfhost
+    runtimeState.selfhost = selfhost
     hostedFlag.enabled = !selfhost
     await renderDanishSettings(true, { seNumber: "00123456" })
     const input = screen.getByLabelText("settings.seNumber.label") as HTMLInputElement
@@ -589,7 +588,7 @@ describe("Settings VAT status after upstream integration", () => {
     expect(settingsUpdate.mock.calls[1][0].momsRegistered).toBeUndefined()
   })
   it("hides unsupported hosted non-VAT selection while retaining saved false", async () => {
-    distribution.selfhost = false
+    runtimeState.selfhost = false
     hostedFlag.enabled = true
     hostedFlag.nonVatEnabled = false
     await renderDanishSettings(false)
@@ -604,7 +603,7 @@ describe("Settings VAT status after upstream integration", () => {
 
 describe("Settings hosted VAT persistence", () => {
   function enableHostedConfirmation() {
-    distribution.selfhost = false
+    runtimeState.selfhost = false
     hostedFlag.enabled = true
   }
 

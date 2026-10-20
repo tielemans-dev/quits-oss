@@ -3,7 +3,7 @@ import { QueryError, QuerySkeleton } from "../../components/query-state"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import type { FieldIssue } from "@quits/contracts/agent"
 import { normalizeCountryCode } from "../../lib/compliance/registry"
-import { isSelfHostDistribution } from "../../lib/distribution"
+import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
@@ -234,6 +234,8 @@ function SettingsPage() {
   const { t, locale: displayLocale } = useI18n()
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
+  // The server's distribution, not the build's: a hosted bundle can lack VITE_QUITS_DISTRIBUTION.
+  const { isSelfHost } = useRuntimeDistribution()
   const settingsFormId = useId()
   const { data: session, isPending: sessionPending } = useSession()
   const liveUserId = useRef<string | undefined>(undefined)
@@ -653,7 +655,7 @@ function SettingsPage() {
     // needs no toggle. Unchanged evidence is kept as is. Only a choice the seller can see is sent, and an
     // unreviewed one only with a complete Danish identity (CVR in the exact form
     // prepareSellerVatConfirmation accepts), so unrelated saves are not blocked by it.
-    const displayedSellerVatChoice = sellerVatChoice === false && !(isSelfHostDistribution || nonVatEnabled) ? null : sellerVatChoice
+    const displayedSellerVatChoice = sellerVatChoice === false && !(isSelfHost || nonVatEnabled) ? null : sellerVatChoice
     const sellerIdentityComplete = Boolean(companyNameInput && companyAddressInput) && /^(DK)?\d{8}$/u.test(primaryTaxId.trim())
     const confirmedSellerVatChoice = !sellerVatChoiceShown || withdrawSellerVatEvidence ? null
       : sellerVatChoiceReviewed ? sellerVatChoice : sellerIdentityComplete ? displayedSellerVatChoice : null
@@ -674,7 +676,7 @@ function SettingsPage() {
         primaryTaxIdScheme: countryCode === "DK" && !sellerVatConfirmationEnabled ? "cvr" : primaryTaxIdScheme,
         currency: defaultCurrency,
         taxRate: taxRateRaw ? parseFloat(taxRateRaw) : null,
-        momsRegistered: !isSelfHostDistribution && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : confirmedSellerVatChoice ?? undefined : momsRegisteredUpdate,
+        momsRegistered: !isSelfHost && sellerVatConfirmationEnabled === null ? undefined : sellerVatConfirmationEnabled && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? withdrawSellerVatEvidence ? null : confirmedSellerVatChoice ?? undefined : momsRegisteredUpdate,
         sellerVatConfirmationToken,
         paymentTermsDays: Number(paymentTermsDaysInput),
         companyName: companyNameInput || undefined,
@@ -975,7 +977,7 @@ function SettingsPage() {
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
 
-      {!isSelfHostDistribution && capabilitiesFailed && <div role="alert" className="grid gap-2">
+      {!isSelfHost && capabilitiesFailed && <div role="alert" className="grid gap-2">
         <p className="text-sm text-destructive">{t("settings.capabilities.failed")}</p>
         <Button type="button" variant="outline" disabled={loadingAiCapabilities} onClick={() => setCapabilitiesAttempt(attempt => attempt + 1)}>{t("settings.capabilities.retry")}</Button>
       </div>}
@@ -1050,10 +1052,10 @@ function SettingsPage() {
                 defaultValue={settings.companyPhone ?? ""}
               />
           </SettingsRow>
-          {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
+          {(isSelfHost || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
             // Answered in place: invoices cannot be sent until it is, so it is never behind an edit step.
             <SettingsRow label={t("settings.row.vat")} description={t("sellerCard.body")} value={
-              <div className="grid gap-3"><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+              <div className="grid gap-3"><SellerVatStatus nonVatEnabled={isSelfHost || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
                 {/* Saving the choice shown also confirms it, so this is offered even without a change. */}
                 <Button type="submit" form={settingsFormId} size="sm" className="justify-self-start" disabled={saving}>
