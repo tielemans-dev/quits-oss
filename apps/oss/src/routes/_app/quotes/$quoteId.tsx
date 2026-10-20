@@ -771,7 +771,7 @@ function QuoteDetailPage() {
             setError(null)
             try {
               const { downloadDocumentPdf } = await import("../../../lib/documents-download")
-              await downloadDocumentPdf("quote", quote.id, quote.number)
+              await downloadDocumentPdf("quote", quote.id, quote.number, { customer: quote.contact.name, locale })
             } catch {
               if (isCurrent()) setError(t("quotes.detail.error.downloadFailed"))
             } finally {

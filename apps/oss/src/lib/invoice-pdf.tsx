@@ -297,9 +297,12 @@ export function InvoicePdfDocument({
     subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total,
     vatRows: invoice.vatRows, rounding: invoice.rounding, currency: invoice.currency, locale, taxRegime: invoice.taxRegime,
   })
+  // A draft's number is not reserved, so its PDF says where the reference will come from rather than guess it.
+  const paymentReference = (invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference)?.trim()
+    || (invoice.status === "draft" ? translate("pdf.paymentReferenceOnSend", locale) : null)
   const paymentDetails = quote ? null : buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
-    invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference,
+    paymentReference,
     locale
   )
 

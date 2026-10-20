@@ -127,7 +127,7 @@ describe("quote detail page responses", () => {
     const pending = await screen.findByRole("button", { name: "Downloading PDF…" })
     expect((pending as HTMLButtonElement).disabled).toBe(true)
     await act(async () => { download.resolve(); await download.promise })
-    expect(state.download).toHaveBeenCalledWith("quote", "q_1", "Q-0001")
+    expect(state.download).toHaveBeenCalledWith("quote", "q_1", "Q-0001", { customer: "Acme", locale: "en-US" })
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }))
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Could not download the PDF. Try again.")
     expect((screen.getByRole("button", { name: "Download PDF" }) as HTMLButtonElement).disabled).toBe(false)
