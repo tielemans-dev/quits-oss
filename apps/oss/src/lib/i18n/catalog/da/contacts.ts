@@ -39,6 +39,7 @@ export const daContactsMessages = {
   "contacts.action.saving": "Gemmer…",
   "contacts.action.cancel": "Annuller",
   "contacts.action.delete": "Slet",
+  "contacts.action.edit": "Rediger",
   "contacts.action.back": "Tilbage til kunder",
   "contacts.empty.title": "Ingen kunder endnu",
   "contacts.empty.description":
