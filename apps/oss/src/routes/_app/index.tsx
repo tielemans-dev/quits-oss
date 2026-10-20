@@ -41,10 +41,12 @@ function DashboardPage() {
   // Retain the completed invoice highlight; the mutation subscription refreshes figures.
   useEffect(() => onRequestDone(done => { if (done.kind !== "invoice") return; setNewInvoiceId(done.invoiceId) }), [])
 
+  const commandBar = <CommandPalette inline open onOpenChange={() => {}} can={can} billingEnabled={billingEnabled} placeholder={t("dashboard.commandBar.placeholder")} />
+
   if (load.status === "loading") {
     return (
       <>
-        <DashboardHeader />
+        <DashboardHeader commandBar={commandBar} />
         <DashboardSkeleton />
       </>
     )
@@ -53,7 +55,7 @@ function DashboardPage() {
   if (load.status === "error") {
     return (
       <>
-        <DashboardHeader />
+        <DashboardHeader commandBar={commandBar} />
         <div>
           <DashboardError retrying={load.retrying} onRetry={retry} />
         </div>
@@ -69,7 +71,7 @@ function DashboardPage() {
       sendReminderBatch={sendReminderBatch}
       newInvoiceId={newInvoiceId}
       userName={session?.user.name}
-      commandBar={<CommandPalette inline open onOpenChange={() => {}} can={can} billingEnabled={billingEnabled} placeholder={t("dashboard.commandBar.placeholder")} />}
+      commandBar={commandBar}
     />
   )
 }
