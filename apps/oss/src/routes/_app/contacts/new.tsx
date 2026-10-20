@@ -1,7 +1,7 @@
 import { useBusinessBuyersOnly } from "../../../hooks/use-business-buyers-only"
 import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -19,6 +19,8 @@ import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
 import { contactSaveError } from "./-contact-save-error"
 import { handledMutationError } from "../../../lib/query-refresh"
+import { CompanyField } from "./-company-field"
+import { CvrLookup, type RegistryCustomer } from "./-cvr-lookup"
 
 export const Route = createFileRoute("/_app/contacts/new")({
   component: NewContactPage,
@@ -38,6 +40,13 @@ function NewContactPage() {
   // A failed or stalled lookup opens it with the country left to the person; an answer that arrives later still fills
   // the select until they choose one.
   const [countrySettled, setCountrySettled] = useState(false)
+  // A CVR answer remounts the fields it fills (`key`), so they start from the register's values.
+  const [prefill, setPrefill] = useState<{ key: number; customer: RegistryCustomer | null }>({ key: 0, customer: null })
+  const formRef = useRef<HTMLFormElement>(null)
+  function fillFromRegistry(customer: RegistryCustomer) {
+    const typedName = (formRef.current?.elements.namedItem("name") as HTMLInputElement | null)?.value.trim()
+    setPrefill(({ key }) => ({ key: key + 1, customer: { ...customer, name: typedName || customer.name } }))
+  }
   useEffect(() => {
     let cancelled = false
     const settle = () => { if (!cancelled) setCountrySettled(true) }
@@ -91,7 +100,7 @@ function NewContactPage() {
         <CardHeader>
           <CardTitle>{t("contacts.new.title")}</CardTitle>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form ref={formRef} onSubmit={handleSubmit}>
           <CardContent className="grid gap-4">
             {error && (
               <p className="text-sm text-destructive" role="alert">
@@ -99,11 +108,15 @@ function NewContactPage() {
               </p>
             )}
 
+            <CvrLookup onFound={fillFromRegistry} />
+
             <div className="grid gap-2">
               <Label htmlFor="name">{t("contacts.field.name")} {t("contacts.field.required")}</Label>
               <Input
+                key={`name-${prefill.key}`}
                 id="name"
                 name="name"
+                defaultValue={prefill.customer?.name}
                 required
                 maxLength={120}
                 placeholder={t("contacts.placeholder.name")}
@@ -132,23 +145,20 @@ function NewContactPage() {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="company">{t("contacts.field.company")}</Label>
-              <Input
-                id="company"
-                aria-describedby={businessOnly ? "company-help" : undefined}
-                name="company"
-                maxLength={120}
-                placeholder={t("contacts.placeholder.company")}
-              />
-              {businessOnly && <p id="company-help" className="text-sm text-muted-foreground">{t("contacts.businessOnly.help")}</p>}
-            </div>
+            <CompanyField
+              key={`company-${prefill.key}`}
+              businessOnly={businessOnly}
+              defaultValue={prefill.customer?.company}
+              placeholder={t("contacts.placeholder.company")}
+            />
 
             <div className="grid gap-2">
               <Label htmlFor="address">{t("contacts.field.address")}</Label>
               <Input
+                key={`address-${prefill.key}`}
                 id="address"
                 name="address"
+                defaultValue={prefill.customer?.address}
                 maxLength={240}
                 placeholder={t("contacts.placeholder.address")}
               />
@@ -157,7 +167,7 @@ function NewContactPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="city">{t("contacts.field.city")}</Label>
-                <Input id="city" name="city" maxLength={120} />
+                <Input key={`city-${prefill.key}`} id="city" name="city" defaultValue={prefill.customer?.city} maxLength={120} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="state">{t("contacts.field.state")}</Label>
@@ -165,19 +175,21 @@ function NewContactPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="zip">{t("contacts.field.zip")}</Label>
-                <Input id="zip" name="zip" maxLength={20} />
+                <Input key={`zip-${prefill.key}`} id="zip" name="zip" defaultValue={prefill.customer?.zip} maxLength={20} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <CountrySelect id="country" name="country" defaultCountry={organizationCountry} />
+                <CountrySelect key={`country-${prefill.key}`} id="country" name="country" defaultCountry={prefill.customer?.country ?? organizationCountry} />
               </div>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="taxId">{t("contacts.field.taxId")}</Label>
               <Input
+                key={`taxId-${prefill.key}`}
                 id="taxId"
                 name="taxId"
+                defaultValue={prefill.customer?.taxId}
                 maxLength={40}
                 placeholder={t("contacts.placeholder.taxId")}
               />

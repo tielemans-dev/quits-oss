@@ -960,7 +960,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} defaultCountry={readiness?.countryCode} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
             {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence" && !issue.evidence)}
             {evidenceEntries.map((entry) => <div key={entry}>{fieldMessage(`edit-vatEvidence-${entry}-error`, (issue) => issue.field === "vatEvidence" && issue.evidence === entry)}</div>)}
             {!invoice.agreementId && !readiness?.standardVatRate && <VatGroupPreview {...preview} />}

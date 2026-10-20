@@ -421,8 +421,10 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
 
           <div className="grid gap-2">
             <Label htmlFor="aiPrompt">{t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}</Label>
-            <input
-              className="w-full rounded-md border bg-transparent px-3 py-2 text-base"
+            {/* A textarea, so the example prompt wraps instead of being cut off on narrow screens. */}
+            <Textarea
+              rows={2}
+              className="resize-none"
               aria-label={t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}
               onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (onComplete) compose(); else if (aiDraftAvailable) void handleGenerateInvoiceDraftFromAi() } }}
               id="aiPrompt"
@@ -511,7 +513,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
             amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
 
-          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
+          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} defaultCountry={readiness?.countryCode} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
           {!restrictedVat && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">

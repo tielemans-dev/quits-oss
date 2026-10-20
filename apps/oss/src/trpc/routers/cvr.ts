@@ -34,6 +34,8 @@ export const cvrRouter = router({
       if (!lookup) throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "CVR lookup is unavailable" })
       return lookup.get(input.cvr, { userId: ctx.user.id, organizationId: ctx.organizationId, signal: lookupSignal(signal, ctx.request?.signal) })
     }),
+  // Whether the customer form can offer `customer`; self-hosted installs have no lookup provider.
+  customerAvailable: authorizedProcedure("contact:create").query(() => ({ enabled: Boolean(getCvrLookupProvider()) })),
   available: authorizedProcedure("settings:read").query(() => ({
     enabled: cvrOnboardingEnabled(),
     suggestions: cvrOnboardingEnabled(),

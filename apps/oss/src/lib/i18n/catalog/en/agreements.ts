@@ -13,7 +13,8 @@ export const enAgreementsMessages = {
   "agreements.summary": "Scope summary",
   "agreements.template": "Template",
   "agreements.custom": "Custom terms",
-  "agreements.terms": "Terms (Markdown)",
+  "agreements.terms": "Terms",
+  "agreements.termsFormatHint": "You can format the text with Markdown, such as **bold** and # headings.",
   "agreements.preview": "Terms preview",
   "agreements.legalNotice":
     "Templates are examples, not legal advice. Review the terms before using them.",
@@ -98,7 +99,7 @@ export const enAgreementsMessages = {
   "agreements.fulfillment.accepted": "Accepted",
   "agreements.fulfillment.changes_requested": "Changes requested",
   "agreements.fulfillment.cancelled": "Cancelled",
-  "agreements.deposits": "Deposits",
+  "agreements.deposits": "Deposit lines",
   "agreements.start": "Start",
   "agreements.reopen": "Reopen",
   "agreements.markDelivered": "Mark delivered",

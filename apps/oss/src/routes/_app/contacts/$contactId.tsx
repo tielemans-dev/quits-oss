@@ -22,6 +22,7 @@ import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
 import { contactSaveError } from "./-contact-save-error"
 import { handledMutationError } from "../../../lib/query-refresh"
+import { CompanyField } from "./-company-field"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   component: EditContactPage,
@@ -224,17 +225,7 @@ function EditContactPage() {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="company">{t("contacts.field.company")}</Label>
-              <Input
-                id="company"
-                aria-describedby={businessOnly ? "company-help" : undefined}
-                name="company"
-                maxLength={120}
-                defaultValue={contact.company ?? ""}
-              />
-              {businessOnly && <p id="company-help" className="text-sm text-muted-foreground">{t("contacts.businessOnly.help")}</p>}
-            </div>
+            <CompanyField businessOnly={businessOnly} defaultValue={contact.company ?? ""} />
 
             <div className="grid gap-2">
               <Label htmlFor="address">{t("contacts.field.address")}</Label>

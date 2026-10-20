@@ -1,15 +1,19 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, useRouterState } from "@tanstack/react-router"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { formatTrialDate } from "../../lib/billing/trial-format"
 import type { BillingSubscription } from "../../lib/billing/types"
 
-type TrialContextValue = { subscription: BillingSubscription | null; loading: boolean; error: boolean }
+type TrialContextValue = { subscription: BillingSubscription | null; loading: boolean; error: boolean; setupPending: boolean }
 const TrialContext = createContext<TrialContextValue | null>(null)
 
-export function TrialAccessProvider({ children }: { children: ReactNode }) {
+/**
+ * `onboardingPending`: the organization has not finished hosted onboarding. Its trial starts when
+ * onboarding completes, so until then writes are blocked without the trial having ended.
+ */
+export function TrialAccessProvider({ children, onboardingPending = false }: { children: ReactNode; onboardingPending?: boolean }) {
   const { billingEnabled } = useRuntimeDistribution()
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [loading, setLoading] = useState(billingEnabled)
@@ -31,7 +35,8 @@ export function TrialAccessProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", refresh)
     return () => { canceled = true; clearInterval(timer); window.removeEventListener("focus", refresh) }
   }, [billingEnabled])
-  return <TrialContext.Provider value={{ subscription, loading, error: error && !subscription }}>{children}</TrialContext.Provider>
+  return <TrialContext.Provider value={{ subscription, loading, error: error && !subscription,
+    setupPending: onboardingPending && isSetupPending(subscription) }}>{children}</TrialContext.Provider>
 }
 
 export function useTrialAccess() {
@@ -40,6 +45,12 @@ export function useTrialAccess() {
 
 export function isReadOnly(subscription: BillingSubscription | null) {
   return Boolean(subscription && (!subscription.organizationAccess || subscription.organizationAccess.state === "read_only"))
+}
+
+/** Read-only only because no trial has started yet: an ended trial or failed payment is still shown as such. */
+function isSetupPending(subscription: BillingSubscription | null) {
+  const access = subscription?.organizationAccess
+  return isReadOnly(subscription) && !(access?.state === "read_only" && (access.reason === "trial_ended" || access.reason === "payment_failed"))
 }
 
 export function blockedResource(pathname: string): "contacts" | "invoices" | "quotes" | "agreements" | null {
@@ -51,7 +62,19 @@ export function blockedResource(pathname: string): "contacts" | "invoices" | "qu
 export function TrialBanner() {
   const state = useTrialAccess()
   const { t, locale } = useI18n()
+  const onOnboarding = useRouterState({ select: s => s.location.pathname.startsWith("/onboarding") })
   const access = state?.subscription?.organizationAccess
+  if (state?.setupPending) return <aside className="border-b border-border bg-card px-4 py-4 text-foreground md:px-8">
+    <div className="mx-auto flex max-w-[1216px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <strong className="text-sm font-semibold">{t("trial.setup.title")}</strong>
+        <p className="mt-1 text-sm text-muted-foreground">{t("trial.setup.meta")}</p>
+      </div>
+      {onOnboarding ? null : <Link to="/onboarding" className="inline-flex min-h-9 items-center justify-center self-start rounded-md bg-foreground px-4 text-sm font-semibold text-background sm:self-auto">
+        {t("trial.setup.action")}
+      </Link>}
+    </div>
+  </aside>
   if (!access || (access.state !== "trial" && access.state !== "read_only")) return null
   const ended = access.state === "read_only"
   const trialEnded = access.state === "read_only" && access.reason === "trial_ended"
@@ -73,7 +96,7 @@ export function TrialBanner() {
           <strong className="text-sm font-semibold">{title}</strong>
         </div>
         <p className={`mt-1 pl-5 text-sm ${ended ? "text-white/75" : "text-muted-foreground"}`}>{meta}</p>
-        {!ended && <div className="mt-3 ml-5 h-1 max-w-[360px] overflow-hidden rounded-full bg-black/10" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={title}>
+        {!ended && <div className="mt-3 ml-5 h-1 max-w-[360px] overflow-hidden rounded-full bg-neutral-22" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={title}>
           <div className={`h-full ${warning ? "bg-tone-warning" : "bg-settled"}`} style={{ width: `${progress}%` }} />
         </div>}
       </div>

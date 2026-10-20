@@ -1,8 +1,5 @@
-import { useQueryRevision } from "./use-query-refresh"
-import { useEffect, useState } from "react"
 import { normalizeCurrency } from "../lib/i18n/locale"
-import { loadOrganizationSettings } from "../lib/organization-settings-query"
-import { useRequestOrganizationId } from "../lib/active-organization"
+import { useOrgSettings } from "./use-org-settings"
 
 type CurrencySettings = {
   defaultCurrency?: string | null
@@ -13,28 +10,7 @@ export function resolveOrgCurrency(settings?: CurrencySettings | null): string {
   return normalizeCurrency(settings?.defaultCurrency ?? settings?.currency ?? null)
 }
 
+/** The organization's currency, with the fallback currency until its settings load. */
 export function useOrgCurrency() {
-  const [currency, setCurrency] = useState<string>("USD")
-
-  const organizationId = useRequestOrganizationId()
-  const query = useQueryRevision(["settings"])
-  useEffect(() => {
-    if (!organizationId) return
-    let cancelled = false
-    loadOrganizationSettings()
-      .then((settings) => {
-        if (!cancelled) {
-          setCurrency(resolveOrgCurrency(settings))
-        }
-      })
-      .catch(() => {
-        // Keep fallback currency when settings are unavailable.
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [organizationId, query.revision])
-
-  return currency
+  return resolveOrgCurrency(useOrgSettings())
 }

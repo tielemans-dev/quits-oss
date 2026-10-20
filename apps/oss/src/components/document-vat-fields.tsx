@@ -2,16 +2,33 @@ import type { DocumentLineInput } from "@quits/contracts/invoices"
 import { vatReasonCodes, vatTreatmentSchema, type VatReasonCode, type DraftVatEvidence } from "@quits/contracts/vat"
 import { documentVat } from "@quits/shared/pricing"
 import type { CalculateDocumentOutput } from "@quits/contracts/pricing"
+import { useState, type ComponentProps } from "react"
 import { useI18n } from "../lib/i18n/react"
 import { formatCurrency } from "../lib/i18n/format"
+import { vatFractionToPercentText, vatPercentTextToFraction } from "../lib/vat-rate-input"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 
 /** Per-line classifications and document evidence. Evidence may stay incomplete in a draft. */
-export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, evidence, onEvidenceChange, classificationReadOnly = false, hideClassification = false, lineErrorId, evidenceErrorId }: {
+/** A line's VAT rate typed as a percentage (25); the line keeps the fraction ("0.25"). */
+function VatPercentInput({ value, onChange, ...props }: { value: string; onChange: (fraction: string) => void } & Omit<ComponentProps<typeof Input>, "value" | "onChange">) {
+  const { locale } = useI18n()
+  // The typed text, kept while it still means the line's rate, so "12," is not reformatted mid-entry.
+  // Text that is not a percentage clears the rate, which the preview and the server then reject.
+  const [typed, setTyped] = useState<{ text: string; fraction: string } | null>(null)
+  return <Input {...props} inputMode="decimal" value={typed?.fraction === value ? typed.text : vatFractionToPercentText(value, locale)} onChange={(event) => {
+    const fraction = vatPercentTextToFraction(event.target.value) ?? ""
+    setTyped({ text: event.target.value, fraction })
+    onChange(fraction)
+  }} />
+}
+
+export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, defaultCountry, evidence, onEvidenceChange, classificationReadOnly = false, hideClassification = false, lineErrorId, evidenceErrorId }: {
   items: Line[]
   onItemsChange: (items: Line[]) => void
   taxRate: string
+  /** The organization's country: shown for a line without a VAT country, and set when a domestic treatment is chosen, as invoice lines do. */
+  defaultCountry?: string | null
   evidence: DraftVatEvidence
   onEvidenceChange: (evidence: DraftVatEvidence) => void
   classificationReadOnly?: boolean
@@ -44,13 +61,14 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
         <label className="grid min-w-0 gap-1 text-sm">{t("vat.treatment")}
           <select className="h-9 w-full min-w-0 rounded-md border bg-background px-2" aria-label={t("vat.lineTreatment", { number: index + 1 })} {...a11y} value={vat.treatment} onChange={(event) => {
             const treatment = vatTreatmentSchema.parse(event.target.value)
-            patch({ treatment, rate: treatment === "standard" ? documentVat({ ...item, vat: undefined }, taxRate || "0").rate : "0", reasonCode: vatReasonCodes[treatment][0] ?? null })
+            patch({ treatment, rate: treatment === "standard" ? documentVat({ ...item, vat: undefined }, taxRate || "0").rate : "0", reasonCode: vatReasonCodes[treatment][0] ?? null,
+              ...(treatment === "standard" || treatment === "exempt" ? { country: vat.country ?? defaultCountry ?? null } : {}) })
           }}>
             {vatTreatmentSchema.options.map((treatment) => <option key={treatment} value={treatment}>{t(`vat.treatment.${treatment}`)}</option>)}
           </select>
         </label>
-        {vat.treatment === "standard" && <label className="grid min-w-0 gap-1 text-sm">{t("vat.fractionalRate")}
-          <Input aria-label={t("vat.lineRate", { number: index + 1 })} {...a11y} inputMode="decimal" value={vat.rate} onChange={(event) => patch({ rate: event.target.value })} />
+        {vat.treatment === "standard" && <label className="grid min-w-0 gap-1 text-sm">{t("vat.percentRate")}
+          <VatPercentInput aria-label={t("vat.lineRate", { number: index + 1 })} {...a11y} value={vat.rate} onChange={(rate) => patch({ rate })} />
         </label>}
         {reasons.length > 0 && <label className="grid min-w-0 gap-1 text-sm">{t("vat.reason")}
           <select className="h-9 w-full min-w-0 rounded-md border bg-background px-2" value={vat.reasonCode ?? ""} aria-label={t("vat.lineReason", { number: index + 1 })} {...a11y} onChange={(event) => patch({ reasonCode: event.target.value as NonNullable<DocumentLineInput["vat"]>["reasonCode"] })}>
@@ -59,7 +77,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
           </select>
         </label>}
         {vat.treatment !== "out_of_scope" && <label className="grid min-w-0 gap-1 text-sm">{t("vat.country")}
-          <Input maxLength={2} {...a11y} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
+          <Input maxLength={2} {...a11y} placeholder={defaultCountry ?? undefined} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
         </label>}
       </div>
     })}

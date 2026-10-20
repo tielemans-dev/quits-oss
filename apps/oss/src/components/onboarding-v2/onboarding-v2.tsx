@@ -5,6 +5,7 @@ import { B2bNotice } from "../onboarding/b2b-notice"
 import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { useI18n } from "../../lib/i18n/react"
+import { currencyPickerOptions } from "../../lib/picker-options"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { SellerVatStatus } from "../seller-vat-status"
 import { Button } from "../ui/button"
@@ -821,9 +822,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 disabled={busy}
                 onChange={(e) => update("defaultCurrency", e.target.value)}
               >
-                {(["DKK", "EUR", "USD", "GBP"] as const).map((currency) => (
-                  <option key={currency} value={currency}>
-                    {t(`auth.onboarding.currency.${currency}`)}
+                {currencyPickerOptions(["DKK", "EUR", "USD", "GBP"], draft.values.countryCode, locale, (code) => t(`auth.onboarding.currency.${code}`)).map((currency) => (
+                  <option key={currency.value} value={currency.value}>
+                    {currency.label}
                   </option>
                 ))}
               </select>
