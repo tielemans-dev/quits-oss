@@ -9,7 +9,7 @@ const route = vi.hoisted(() => ({ pathname: "/invoices" }))
 
 vi.mock("../../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: false }) }))
 vi.mock("../../ui/sidebar", () => ({
-  SidebarTrigger: () => <button type="button" data-testid="menu-trigger" />,
+  SidebarTrigger: ({ className }: { className?: string }) => <button type="button" data-testid="menu-trigger" className={className} />,
   useSidebar: () => ({ setOpenMobile: sidebar.setOpenMobile }),
 }))
 vi.mock("../search-field", () => ({ SearchField: () => <div data-testid="search-field" /> }))
@@ -116,9 +116,11 @@ describe("app main on Overblik", () => {
     expect(screen.getByTestId("search-field")).not.toBeNull()
   })
 
-  it.each(["/", "/invoices"])("starts the top bar with the menu button on %s", (pathname) => {
-    route.pathname = pathname
+  // Desktop search must start where the content does (QUI-61), so the button moves first on phones only.
+  it("puts the menu button first on phones and leaves search first on desktop", () => {
+    route.pathname = "/invoices"
     render(<AppMain>page</AppMain>)
-    expect(screen.getByRole("banner").firstElementChild?.firstElementChild).toBe(screen.getByTestId("menu-trigger"))
+    expect(screen.getByRole("banner").firstElementChild?.firstElementChild).toBe(screen.getByTestId("search-field"))
+    expect(screen.getByTestId("menu-trigger").className).toContain("max-md:-order-1")
   })
 })
