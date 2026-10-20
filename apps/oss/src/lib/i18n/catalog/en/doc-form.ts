@@ -5,6 +5,7 @@ export const enDocFormMessages = {
   "docForm.selectContact": "Select a customer",
   "docForm.selectDate": "Select a date",
   "docForm.clear": "Clear",
+  "dateField.openCalendar": "Open calendar",
   "docForm.lineItems": "Line Items",
   "docForm.column.item": "Item",
   "docForm.column.description": "Description",

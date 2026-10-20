@@ -21,7 +21,7 @@ export function IssuanceFields({ value, onChange, currency, baseCurrency, showHi
     {showHint && <p className="text-sm text-muted-foreground">{t("invoices.issuance.confirmDates")}</p>}
     {baseCurrency && currency !== baseCurrency && <>
       <div className="grid gap-2"><Label htmlFor="exchangeRate">{t("invoices.issuance.rate", { currency, baseCurrency })}</Label><Input id="exchangeRate" inputMode="decimal" required value={value.exchangeRate} onChange={event => onChange({ ...value, exchangeRate: event.target.value })} /></div>
-      <div className="grid gap-2"><Label htmlFor="rateDate">{t("invoices.issuance.rateDate")}</Label><Input id="rateDate" type="date" required value={value.rateDate} onChange={event => onChange({ ...value, rateDate: event.target.value })} /></div>
+      <div className="grid gap-2"><Label htmlFor="rateDate">{t("invoices.issuance.rateDate")}</Label><LocalizedDateField id="rateDate" required value={value.rateDate} locale={locale} placeholder={t("docForm.selectDate")} clearLabel={t("docForm.clear")} onChange={rateDate => onChange({ ...value, rateDate })} /></div>
     </>}
   </div>
 }
