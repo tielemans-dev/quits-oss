@@ -4,8 +4,8 @@ import { useI18n } from "../../lib/i18n/react"
 import { cn } from "../../lib/utils"
 import { Amount } from "../kvit/amount"
 import { formatAmountText, minorToDecimal } from "../kvit/amount-format"
-import { Panel } from "../kvit/panel"
 import { tCount } from "./i18n"
+import { DashboardSection } from "./section"
 import { precisionOf, toMinor, type HeroModel } from "./summary-model"
 
 /**
@@ -16,10 +16,10 @@ import { precisionOf, toMinor, type HeroModel } from "./summary-model"
 const TONES = { paid: "bg-settled", pending: "bg-(--neutral-22)", overdue: "bg-tone-warning" }
 
 /**
- * Udestående: how much money is on its way to me. One figure, on a single rule while money is
- * asked for and on both once nothing is owed (the signature); one sentence of what it means; then
- * how this month splits, each amount said once, and any other currency on a line of its own. The
- * attention list above says what is late and by how long.
+ * Udestående: how much money is on its way to me. One figure and one sentence of what it means;
+ * then how this month splits, as one bar and a row per part with its amount on the right (Stripe's
+ * aging form), each amount said once and a zero said in words; and any other currency on a line of
+ * its own. The attention list says what is late and by how long.
  */
 export function HeroCard({
   hero,
@@ -51,7 +51,7 @@ export function HeroCard({
         { key: "paid", share: paid, label: t("dashboard.hero.legendPaid", { month: monthName }), amount: paidText, className: TONES.paid },
         { key: "pending", share: pending, label: t("dashboard.hero.legendPending"), amount: pendingText, className: TONES.pending },
         { key: "overdue", share: overdue, label: t("dashboard.hero.legendOverdue"), amount: overdueText, className: TONES.overdue },
-      ].filter((part) => part.share > 0),
+      ],
       summary: t("dashboard.hero.splitSummary", {
         month: monthName,
         paid: paidText,
@@ -63,49 +63,49 @@ export function HeroCard({
   }, [hero, owedMinor, exponent, locale, monthName, t])
 
   return (
-    <Panel label={t("dashboard.hero.label")} data-slot="dashboard-hero" className={cn("pb-5", className)}>
-      <div className="px-4 pt-2">
-        <Amount
-          value={minorToDecimal(owedMinor, exponent)}
-          currency={hero.currency}
-          locale={locale}
-          size="hero"
-          precision={precision}
-        />
-        <p className="text-muted-foreground mt-1 text-sm">
-          {kvit
-            ? t("dashboard.hero.kvit")
-            : [
-                hero.outstanding ? tCount(t, "dashboard.hero.count", hero.outstanding.count) : null,
-                hero.noneOverdue ? t("dashboard.hero.noneOverdue") : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-        </p>
-      </div>
+    <DashboardSection title={t("dashboard.hero.label")} data-slot="dashboard-hero" className={className}>
+      <Amount
+        value={minorToDecimal(owedMinor, exponent)}
+        currency={hero.currency}
+        locale={locale}
+        size="hero"
+        precision={precision}
+      />
+      <p className="text-muted-foreground mt-1 text-sm">
+        {kvit
+          ? t("dashboard.hero.kvit")
+          : [
+              hero.outstanding ? tCount(t, "dashboard.hero.count", hero.outstanding.count) : null,
+              hero.noneOverdue ? t("dashboard.hero.noneOverdue") : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+      </p>
 
       {split ? (
-        <div className="mt-5 px-4">
-          <div
-            role="img"
-            aria-label={split.summary}
-            className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-(--neutral-6)"
-          >
-            {split.parts.map((part) => (
-              <span
-                key={part.key}
-                data-segment={part.key}
-                className={cn("block h-full min-w-1.5 rounded-full", part.className)}
-                style={{ flexGrow: part.share, flexBasis: 0 }}
-              />
-            ))}
+        <div className="mt-5">
+          <div role="img" aria-label={split.summary} className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-(--neutral-6)">
+            {split.parts
+              .filter((part) => part.share > 0)
+              .map((part) => (
+                <span
+                  key={part.key}
+                  data-segment={part.key}
+                  className={cn("block h-full min-w-1.5 rounded-full", part.className)}
+                  style={{ flexGrow: part.share, flexBasis: 0 }}
+                />
+              ))}
           </div>
-          <ul className="text-muted-foreground mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <ul className="mt-3 text-sm">
             {split.parts.map((part) => (
-              <li key={part.key} className="inline-flex items-center gap-1.5">
-                <span aria-hidden="true" className={cn("size-1.5 rounded-full", part.className)} />
-                <span>{part.label}</span>
-                <span className="text-foreground font-medium tabular-nums">{part.amount}</span>
+              <li key={part.key} className="border-hairline flex items-center gap-2.5 border-t py-2 first:border-t-0">
+                <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", part.className)} />
+                <span className="text-muted-foreground min-w-0 flex-1 truncate">{part.label}</span>
+                {part.share > 0 ? (
+                  <span className="font-medium tabular-nums">{part.amount}</span>
+                ) : (
+                  <span className="text-muted-foreground">{t("dashboard.hero.none")}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -113,7 +113,7 @@ export function HeroCard({
       ) : null}
 
       {hero.others.length > 0 ? (
-        <ul className="text-muted-foreground border-hairline mx-4 mt-4 space-y-0.5 border-t pt-3 text-xs">
+        <ul className="text-muted-foreground border-hairline mt-2 space-y-0.5 border-t pt-3 text-xs">
           {hero.others.map((other) => (
             <li key={other.currency}>
               {t("dashboard.hero.otherOutstanding", {
@@ -128,6 +128,6 @@ export function HeroCard({
           ))}
         </ul>
       ) : null}
-    </Panel>
+    </DashboardSection>
   )
 }

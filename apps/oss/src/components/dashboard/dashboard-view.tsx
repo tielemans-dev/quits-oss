@@ -105,14 +105,14 @@ export function DashboardView({
         <div className="@container" data-state={state}>
           {/*
             Two columns from 56rem: what needs me and the money owed on the left, the pipeline and
-            the calm story on the right. Below that the columns dissolve (`contents`), so the cards
-            are one flow in reading order: attention, Udestående, incoming, chart, activity.
+            the calm story on the right. Below that the columns dissolve (`contents`), so the
+            sections are one flow in reading order: attention, Udestående, incoming, chart,
+            activity. Sections sit on the page between hairlines, with no boxes.
           */}
-          <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @4xl:items-start">
-            <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">
+          <div className="grid gap-10 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @4xl:items-start @4xl:gap-x-12">
+            <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-10">
               {state !== "getting-started" || summary.attention.length > 0 ? (
                 <AttentionList
-                  className="@2xl:col-span-2 @4xl:col-span-1"
                   items={summary.attention}
                   reminders={reminders}
                   onRemind={remind}
@@ -124,21 +124,13 @@ export function DashboardView({
                 />
               ) : null}
               {state === "getting-started" ? (
-                <GettingStarted
-                  drafts={summary.drafts}
-                  className="@2xl:col-span-2 @4xl:col-span-1"
-                />
+                <GettingStarted drafts={summary.drafts} />
               ) : (
-                <HeroCard
-                  hero={hero}
-                  kvit={state === "kvit"}
-                  monthName={monthName}
-                  className="@2xl:col-span-2 @4xl:col-span-1"
-                />
+                <HeroCard hero={hero} kvit={state === "kvit"} monthName={monthName} />
               )}
             </div>
 
-            <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-4">
+            <div className="contents @4xl:flex @4xl:flex-col @4xl:gap-10">
               {state === "getting-started" ? (
                 <ActivityFeed events={summary.activity} asOf={summary.asOf} timezone={summary.timezone} />
               ) : (

@@ -212,9 +212,7 @@ describe("attention reasons and actions", () => {
   it("colours a row amber for a real arrear only, never for zero days", () => {
     const tones = (attention: Summary["attention"]) => {
       const { container } = renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention }))
-      const found = Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map(
-        (el) => el.className.match(/text-tone-(\w+)/)?.[1]
-      )
+      const found = Array.from(container.querySelectorAll("[data-slot=dashboard-attention] [data-tone]")).map((el) => el.getAttribute("data-tone"))
       cleanup()
       return found
     }
