@@ -112,7 +112,7 @@ describe("public agreement page in Danish", () => {
     expect(html).toContain("Gyldig til: 28. mar. 2027")
     expect(html).toContain("Aftalt dato: 1. mar. 2027")
     expect(html).toContain("Forventet dato: 15. apr. 2027")
-    expect(html).toContain("1,5\u00a0×\u00a0500,00 kr. = 750,00 kr.")
+    expect(html).toContain("1,5\u00a0×\u00a0400,00 kr. = 600,00 kr.")
     expect(html).toContain("1.250,00 kr.")
     expect(html).not.toContain("2027-03-28")
     expect(html).not.toContain("1.50\u00a0×\u00a0500.00")
@@ -142,7 +142,7 @@ describe("public agreement page in Danish", () => {
     })
 
     expect(html).toContain("Valid until: Mar 28, 2027")
-    expect(html).toContain("1.5\u00a0×\u00a0$500.00 = $750.00")
+    expect(html).toContain("1.5\u00a0×\u00a0$400.00 = $600.00")
   })
 })
 
