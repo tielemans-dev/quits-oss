@@ -13,7 +13,6 @@ export const daContactsMessages = {
   "contacts.field.country": "Land",
   "contacts.field.taxId": "CVR/momsnummer",
   "contacts.field.notes": "Noter",
-  "contacts.phone.invalid": "Indtast et gyldigt telefonnummer",
   "contacts.placeholder.name": "John Doe",
   "contacts.placeholder.email": "john@eksempel.dk",
   "contacts.placeholder.phone": "+45 12 34 56 78",

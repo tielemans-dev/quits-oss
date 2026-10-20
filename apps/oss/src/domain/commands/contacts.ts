@@ -11,6 +11,7 @@ import {
 import { peppolEndpointIssue } from "@quits/contracts/exports"
 import {
   normalizeCountryCode,
+  normalizePhone,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 import { defineCommand } from "../command"
@@ -114,6 +115,7 @@ export const createContact = defineCommand({
         db.contact.create({
           data: {
             ...fields,
+            ...(fields.phone !== undefined ? { phone: normalizePhone(fields.phone) } : {}),
             email: input.email || null,
             country: normalizeCountry(input.country),
             organizationId: command.organizationId,
@@ -184,6 +186,7 @@ export const updateContact = defineCommand({
           data: {
             ...data,
             ...(data.email !== undefined ? { email: data.email || null } : {}),
+            ...(data.phone !== undefined ? { phone: normalizePhone(data.phone) } : {}),
             ...(data.country !== undefined ? { country: normalizeCountry(data.country) } : {}),
           },
         })

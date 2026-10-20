@@ -490,6 +490,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     const message: TranslationKey =
       name === "cvr" ? (cvrError ?? (value ? "validation.cvr.invalid" : "validation.required"))
       : name === "companyEmail" ? (value ? "validation.email.invalid" : "validation.email.required")
+      : name === "companyPhone" && value ? "validation.phone.invalid"
       : value ? "validation.unknown" : "validation.required"
     return t(message)
   }

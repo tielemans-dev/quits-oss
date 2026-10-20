@@ -87,6 +87,11 @@ describe("Danish onboarding v2", () => {
   ])("rejects malformed summary %j", patch => {
     expect(confirmOnboardingV2Schema.safeParse({ ...input, ...patch }).success).toBe(false)
   })
+  it("accepts a spaced Danish company phone and stores it normalized", () => {
+    expect(confirmOnboardingV2Schema.safeParse({ ...input, companyPhone: "+45 12 34 56 78" }).success).toBe(true)
+    expect(confirmOnboardingV2Schema.safeParse({ ...input, companyPhone: "+45 12 34 56" }).success).toBe(false)
+    expect(buildDkPresets({ ...company, companyPhone: "+45 12 34 56 78" }).companyPhone).toBe("+4512345678")
+  })
   it("allows v2 completion without public email while preserving v1 email requirements", () => {
     const settings = { ...buildDkPresets({ ...company, companyEmail: null }), onboardingProfile: null, onboardingVersion: 2, onboardingCompletedAt: new Date(), onboardingStatus: "complete", primaryTaxId: input.cvr }
     expect(getCloudOnboardingState(settings).isComplete).toBe(true)

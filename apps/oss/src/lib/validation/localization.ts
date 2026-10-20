@@ -1,7 +1,8 @@
+import { normalizePhone } from "@quits/contracts/contacts"
 import { findCountryModule, normalizeCountryCode } from "../compliance/registry"
 
 // Countries without a module are checked against these loose formats only.
-const GENERIC_PHONE = /^\+?[0-9()[\]\-.\s]{6,20}$/
+const GENERIC_PHONE = /^\+?\d{6,15}$/
 const GENERIC_POSTAL_CODE = /^[A-Z0-9][A-Z0-9\s-]{2,12}$/i
 const GENERIC_TAX_ID = /^[A-Z0-9-]{4,20}$/i
 
@@ -9,12 +10,12 @@ function stripSpaces(value: string) {
   return value.replace(/\s+/g, "")
 }
 
-export { normalizeCountryCode }
+export { normalizeCountryCode, normalizePhone }
 
 export function isValidPhoneForCountry(countryCode: string | null, phone: string) {
-  const trimmed = phone.trim()
-  if (!trimmed) return true
-  return (findCountryModule(countryCode)?.formats.phone ?? GENERIC_PHONE).test(trimmed)
+  const normalized = normalizePhone(phone)
+  if (!normalized) return true
+  return (findCountryModule(countryCode)?.formats.phone ?? GENERIC_PHONE).test(normalized)
 }
 
 export function isValidPostalCodeForCountry(countryCode: string | null, postalCode: string) {

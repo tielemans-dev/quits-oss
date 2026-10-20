@@ -59,7 +59,6 @@ export const enSettingsMessages = {
   "settings.companyEmail.label": "Company Email",
   "settings.companyEmail.placeholder": "billing@acme.com",
   "settings.companyPhone.label": "Company Phone",
-  "settings.companyPhone.title": "Enter a valid phone number",
   "settings.companyPhone.placeholder": "+1 555 123 4567",
   "settings.companyLogo.label": "Company Logo",
   "settings.companyLogo.placeholder": "https://example.com/logo.png",

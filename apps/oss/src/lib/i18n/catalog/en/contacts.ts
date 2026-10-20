@@ -13,7 +13,6 @@ export const enContactsMessages = {
   "contacts.field.country": "Country",
   "contacts.field.taxId": "Tax ID",
   "contacts.field.notes": "Notes",
-  "contacts.phone.invalid": "Enter a valid phone number",
   "contacts.placeholder.name": "John Doe",
   "contacts.placeholder.email": "john@example.com",
   "contacts.placeholder.phone": "+1 555 123 4567",

@@ -17,6 +17,8 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
+import { contactSaveError } from "./-contact-save-error"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 export const Route = createFileRoute("/_app/contacts/new")({
   component: NewContactPage,
@@ -75,14 +77,10 @@ function NewContactPage() {
         peppolEndpointId: peppol.peppolEndpointId ?? undefined,
         peppolEndpointScheme: peppol.peppolEndpointScheme ?? undefined,
         notes: (form.get("notes") as string) || undefined,
-      })
+      }, handledMutationError)
       navigate({ to: "/contacts" })
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("contacts.new.error.createFailed")
-      )
+      setError(contactSaveError(err, t, "contacts.new.error.createFailed"))
       setSaving(false)
     }
   }
@@ -129,8 +127,6 @@ function NewContactPage() {
                   id="phone"
                   name="phone"
                   maxLength={40}
-                  pattern="^\+?[0-9()\-\s.]{6,20}$"
-                  title={t("contacts.phone.invalid")}
                   placeholder={t("contacts.placeholder.phone")}
                 />
               </div>

@@ -54,6 +54,7 @@ export type CountryModule = {
     pricesIncludeTax: boolean
   }
   formats: {
+    /** Checked against the normalized number (`normalizePhone`), so no spacing or punctuation. */
     phone: RegExp
     postalCode: RegExp
     taxId: readonly RegExp[]

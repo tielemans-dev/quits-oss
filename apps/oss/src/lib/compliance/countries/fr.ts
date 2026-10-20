@@ -8,7 +8,7 @@ export const france: CountryModule = {
   regime: euVatRegime,
   defaults: { locale: "fr-FR", currency: "EUR", timezone: "Europe/Paris", pricesIncludeTax: true },
   formats: {
-    phone: /^(\+33[\s-]?)?(0)?[1-9](?:[\s.-]?\d{2}){4}$/,
+    phone: /^(\+33)?0?[1-9]\d{8}$/,
     postalCode: /^\d{5}$/,
     taxId: [/^FR[A-Z0-9]{2}\d{9}$/i],
   },

@@ -20,6 +20,8 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
+import { contactSaveError } from "./-contact-save-error"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   component: EditContactPage,
@@ -111,14 +113,10 @@ function EditContactPage() {
         peppolEndpointId: peppol.peppolEndpointId,
         peppolEndpointScheme: peppol.peppolEndpointScheme,
         notes: (form.get("notes") as string) || undefined,
-      })
+      }, handledMutationError)
       navigate({ to: "/contacts" })
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("contacts.edit.error.updateFailed")
-      )
+      setError(contactSaveError(err, t, "contacts.edit.error.updateFailed"))
       setSaving(false)
     }
   }
@@ -221,8 +219,6 @@ function EditContactPage() {
                   id="phone"
                   name="phone"
                   maxLength={40}
-                  pattern="^\+?[0-9()\-\s.]{6,20}$"
-                  title={t("contacts.phone.invalid")}
                   defaultValue={contact.phone ?? ""}
                 />
               </div>

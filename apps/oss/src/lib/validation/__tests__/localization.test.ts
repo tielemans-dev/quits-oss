@@ -26,6 +26,24 @@ describe("localization validators", () => {
     expect(isValidPhoneForCountry("DK", "123")).toBe(false)
   })
 
+  it.each(["+45 12 34 56 78", "12 34 56 78", "+45 12345678", "0045 12 34 56 78", "12-34-56-78"])(
+    "accepts the Danish number %j",
+    (phone) => expect(isValidPhoneForCountry("DK", phone)).toBe(true)
+  )
+
+  it.each(["+45 12 34 56 7", "+46 12 34 56 78", "1234 5678 9", "12 34 56 78 ext", "+45 12 34 56 78 90"])(
+    "rejects the Danish number %j",
+    (phone) => expect(isValidPhoneForCountry("DK", phone)).toBe(false)
+  )
+
+  it("checks other countries on the normalized number", () => {
+    expect(isValidPhoneForCountry("DE", "+49 30 1234 5678")).toBe(true)
+    expect(isValidPhoneForCountry("DE", "0049 (0)30 12345678")).toBe(true)
+    expect(isValidPhoneForCountry("DE", "+49 12")).toBe(false)
+    expect(isValidPhoneForCountry("US", "+1 312-555-0199")).toBe(true)
+    expect(isValidPhoneForCountry("US", "555-0199")).toBe(false)
+  })
+
   it("validates postal codes by country", () => {
     expect(isValidPostalCodeForCountry("DK", "9220")).toBe(true)
     expect(isValidPostalCodeForCountry("US", "30301")).toBe(true)
@@ -47,6 +65,7 @@ describe("localization validators", () => {
     })
 
     expect(result.phone).toMatch(/phone/i)
+    expect(validateLocalizedFields("DK", { phone: "+45 12 34 56 78" }).phone).toBeUndefined()
     expect(result.postalCode).toMatch(/postal/i)
     expect(result.taxId).toMatch(/tax id/i)
   })

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { normalizePhone } from "./contacts"
 
 /** Danish CVR checksum, weights 2, 7, 6, 5, 4, 3, 2, 1. */
 export function isValidDanishCvr(value: string): boolean {
@@ -40,7 +41,7 @@ export const confirmOnboardingV2Schema = z.object({
   // Informational client metadata only. Registry contacts are scrubbed server-side.
   reklamebeskyttet: z.boolean().optional(),
   companyEmail: z.string().trim().email().max(254).nullish(),
-  companyPhone: z.string().trim().regex(/^(\+45\s?)?\d{8}$/).nullish(),
+  companyPhone: z.string().trim().refine(value => /^(\+45)?\d{8}$/.test(normalizePhone(value))).nullish(),
   // Editable review defaults, validated before the same confirmation transaction.
   settings: z.object({
     countryCode: z.literal("DK"),
