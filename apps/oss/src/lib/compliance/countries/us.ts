@@ -8,7 +8,7 @@ export const unitedStates: CountryModule = {
   regime: usSalesTaxRegime,
   defaults: { locale: "en-US", currency: "USD", timezone: "America/New_York", pricesIncludeTax: false },
   formats: {
-    phone: /^(\+1[\s-]?)?(\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}$/,
+    phone: /^(\+1)?\d{10}$/,
     postalCode: /^\d{5}(?:-\d{4})?$/,
     taxId: [/^\d{2}-\d{7}$/],
   },

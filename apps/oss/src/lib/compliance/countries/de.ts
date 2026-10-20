@@ -8,7 +8,7 @@ export const germany: CountryModule = {
   regime: euVatRegime,
   defaults: { locale: "de-DE", currency: "EUR", timezone: "Europe/Berlin", pricesIncludeTax: true },
   formats: {
-    phone: /^(\+49[\s-]?)?(0)?[1-9]\d{6,13}$/,
+    phone: /^(\+49)?0?[1-9]\d{6,13}$/,
     postalCode: /^\d{5}$/,
     taxId: [/^DE\d{9}$/i, /^\d{9}$/],
   },

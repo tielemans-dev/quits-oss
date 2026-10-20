@@ -50,6 +50,12 @@ describe("validateSettingsFormInput", () => {
     ).toBe("invalid_company_email")
   })
 
+  it("checks the company phone against the organization's country", () => {
+    const input = { timezone: "UTC", taxRateRaw: "", countryCode: "DK" }
+    expect(validateSettingsFormInput({ ...input, companyPhone: "0045 12 34 56 78" })).toBeNull()
+    expect(validateSettingsFormInput({ ...input, companyPhone: "+45 1234 567" })).toBe("invalid_company_phone")
+  })
+
   it("rejects invalid company phone", () => {
     expect(
       validateSettingsFormInput({

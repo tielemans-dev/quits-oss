@@ -23,6 +23,8 @@ import { countryName } from "../../../lib/country-names"
 import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
+import { contactSaveError } from "./-contact-save-error"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
@@ -124,16 +126,12 @@ function ContactPage() {
         peppolEndpointId: peppol.peppolEndpointId,
         peppolEndpointScheme: peppol.peppolEndpointScheme,
         notes: (form.get("notes") as string) || undefined,
-      })
+      }, handledMutationError)
       setContact(await trpc.contacts.get.query({ id: contactId }))
       setSaving(false)
       showSummary()
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("contacts.edit.error.updateFailed")
-      )
+      setError(contactSaveError(err, t, "contacts.edit.error.updateFailed"))
       setSaving(false)
     }
   }
@@ -271,8 +269,6 @@ function ContactPage() {
                   id="phone"
                   name="phone"
                   maxLength={40}
-                  pattern="^\+?[0-9()\-\s.]{6,20}$"
-                  title={t("contacts.phone.invalid")}
                   defaultValue={contact.phone ?? ""}
                 />
               </div>

@@ -7,6 +7,15 @@ const peppolEndpointSchemeSchema = z
   .trim()
   .refine(isPeppolEasCode, "Use a Peppol EAS code from the Peppol code list, e.g. 0088 or 0184")
 
+/**
+ * The stored form of a phone number: spacing and punctuation removed, and a leading 00 written as +.
+ * "+45 12 34 56 78", "0045 12345678" and "+4512345678" all become "+4512345678". Country checks run on this form.
+ */
+export function normalizePhone(value: string) {
+  const compact = value.trim().replace(/[\s().\-/]/g, "")
+  return compact.startsWith("00") ? `+${compact.slice(2)}` : compact
+}
+
 const contactFields = {
   email: z.string().trim().email().optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional(),

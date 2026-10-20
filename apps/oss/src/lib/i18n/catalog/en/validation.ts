@@ -12,6 +12,7 @@ export const enValidationMessages = {
   "validation.lines.empty": "Add at least one line",
   "validation.date.invalid": "Enter a date, like 24/10/2026",
   "validation.dueDate.beforeIssue": "Due date must be after the invoice date",
+  "validation.phone.invalid": "Enter a valid phone number, like +45 12 34 56 78",
   "validation.cvr.invalid": "A CVR number has 8 digits",
   "validation.iban.invalid": "Check your IBAN, like DK50 0040 0440 1162 43",
   "validation.tooLong": "{max} characters max",

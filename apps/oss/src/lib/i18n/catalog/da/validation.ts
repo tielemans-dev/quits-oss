@@ -12,6 +12,7 @@ export const daValidationMessages = {
   "validation.lines.empty": "Tilføj mindst én linje",
   "validation.date.invalid": "Indtast en dato, fx 24-10-2026",
   "validation.dueDate.beforeIssue": "Forfaldsdatoen skal ligge efter fakturadatoen",
+  "validation.phone.invalid": "Indtast et gyldigt telefonnummer, fx +45 12 34 56 78",
   "validation.cvr.invalid": "Et CVR-nummer har 8 cifre",
   "validation.iban.invalid": "Tjek dit IBAN, fx DK50 0040 0440 1162 43",
   "validation.tooLong": "Højst {max} tegn",

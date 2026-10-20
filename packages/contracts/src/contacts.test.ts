@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest"
-import { contactCreateInputSchema, contactUpdateInputSchema } from "./contacts"
+import { contactCreateInputSchema, contactUpdateInputSchema, normalizePhone } from "./contacts"
+
+describe("normalizePhone", () => {
+  it.each([
+    ["+45 12 34 56 78", "+4512345678"],
+    ["12 34 56 78", "12345678"],
+    ["+45 12345678", "+4512345678"],
+    ["0045 12 34 56 78", "+4512345678"],
+    [" (312) 555-0199 ", "3125550199"],
+    ["+49 (0)30 1234.5678", "+4903012345678"],
+    ["", ""],
+  ])("normalizes %j to %j", (input, expected) => {
+    expect(normalizePhone(input)).toBe(expected)
+  })
+})
 
 describe("contact contracts", () => {
   it("accepts Peppol endpoints whose scheme is on the EAS code list", () => {

@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { ComponentType } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 
 const trpcMock = vi.hoisted(() => ({
   settings: vi.fn<() => Promise<{ countryCode: string }>>(),
@@ -36,7 +37,7 @@ describe("new customer default country", () => {
     await waitFor(() => expect(submit().disabled).toBe(false))
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: "Synthetic buyer" } })
     fireEvent.click(submit())
-    await waitFor(() => expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ country: "XK" })))
+    await waitFor(() => expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ country: "XK" }), handledMutationError))
   })
   it("opens the form with no default country when the lookup never answers", async () => {
     vi.useFakeTimers()
@@ -52,7 +53,7 @@ describe("new customer default country", () => {
       fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: "Synthetic buyer" } })
       fireEvent.click(submit())
       await act(async () => { await vi.advanceTimersByTimeAsync(0) })
-      expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Synthetic buyer", country: undefined }))
+      expect(trpcMock.create).toHaveBeenCalledWith(expect.objectContaining({ name: "Synthetic buyer", country: undefined }), handledMutationError)
     } finally { vi.useRealTimers() }
   })
   it("opens the form with no default country when the lookup fails", async () => {

@@ -8,7 +8,7 @@ export const netherlands: CountryModule = {
   regime: euVatRegime,
   defaults: { locale: "nl-NL", currency: "EUR", timezone: "Europe/Amsterdam", pricesIncludeTax: true },
   formats: {
-    phone: /^(\+31[\s-]?)?(0)?[1-9]\d{8}$/,
+    phone: /^(\+31)?0?[1-9]\d{8}$/,
     postalCode: /^\d{4}\s?[A-Z]{2}$/i,
     taxId: [/^NL\d{9}B\d{2}$/i],
   },

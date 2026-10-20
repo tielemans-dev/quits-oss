@@ -53,6 +53,7 @@ import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { orgStripeAccountSchema, type OrgStripeAccount } from "@quits/contracts/payments"
 import {
   normalizeCountryCode,
+  normalizePhone,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 
@@ -513,6 +514,7 @@ export const settingsRouter = router({
             message: Object.values(localizedIssues).filter(Boolean).join(" "),
           })
         }
+        if (settingsInput.companyPhone !== undefined) settingsInput.companyPhone = normalizePhone(settingsInput.companyPhone)
 
         // A saved key belongs to the provider and endpoint it was entered for. Never send it to a
         // different one: changing either without entering a new key clears the old key.

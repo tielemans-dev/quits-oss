@@ -60,7 +60,6 @@ export const daSettingsMessages = {
   "settings.companyEmail.label": "Virksomheds-e-mail",
   "settings.companyEmail.placeholder": "faktura@acme.dk",
   "settings.companyPhone.label": "Virksomhedstelefon",
-  "settings.companyPhone.title": "Indtast et gyldigt telefonnummer",
   "settings.companyPhone.placeholder": "+45 12 34 56 78",
   "settings.companyLogo.label": "Virksomhedslogo",
   "settings.companyLogo.placeholder": "https://example.com/logo.png",

@@ -1,5 +1,6 @@
+import { isValidPhoneForCountry } from "./localization"
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_REGEX = /^\+?[0-9()\-\s.]{6,20}$/
 const PREFIX_REGEX = /^[A-Z0-9-]{1,10}$/
 
 export type SettingsFormValidationError =
@@ -14,6 +15,8 @@ export type SettingsFormValidationError =
 
 export type SettingsFormValidationInput = {
   timezone: string
+  /** The organization's country, which decides the phone number format. */
+  countryCode?: string | null
   taxRateRaw: string
   paymentTermsDaysRaw?: string
   companyEmail?: string
@@ -60,7 +63,7 @@ export function validateSettingsFormInput(
   }
 
   const companyPhone = input.companyPhone?.trim()
-  if (companyPhone && !PHONE_REGEX.test(companyPhone)) {
+  if (companyPhone && !isValidPhoneForCountry(input.countryCode ?? null, companyPhone)) {
     return "invalid_company_phone"
   }
 

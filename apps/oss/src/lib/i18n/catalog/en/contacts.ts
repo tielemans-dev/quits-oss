@@ -13,7 +13,6 @@ export const enContactsMessages = {
   "contacts.field.country": "Country",
   "contacts.field.taxId": "Tax ID",
   "contacts.field.notes": "Notes",
-  "contacts.phone.invalid": "Enter a valid phone number",
   "contacts.cvr.label": "CVR lookup",
   "contacts.cvr.action": "Look up",
   "contacts.cvr.looking": "Looking up…",

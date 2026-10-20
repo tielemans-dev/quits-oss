@@ -653,6 +653,7 @@ function SettingsPage() {
     }
     const formValidationError = validateSettingsFormInput({
       timezone: timezoneInput,
+      countryCode,
       taxRateRaw,
       paymentTermsDaysRaw: paymentTermsDaysInput,
       companyEmail: companyEmailInput,
@@ -1077,8 +1078,6 @@ function SettingsPage() {
                 name="companyPhone"
                 form={settingsFormId}
                 maxLength={40}
-                pattern="^\+?[0-9()\-\s.]{6,20}$"
-                title={t("settings.companyPhone.title")}
                 placeholder={t("settings.companyPhone.placeholder")}
                 defaultValue={settings.companyPhone ?? ""}
               />

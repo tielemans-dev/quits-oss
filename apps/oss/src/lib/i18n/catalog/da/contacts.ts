@@ -13,7 +13,6 @@ export const daContactsMessages = {
   "contacts.field.country": "Land",
   "contacts.field.taxId": "CVR/momsnummer",
   "contacts.field.notes": "Noter",
-  "contacts.phone.invalid": "Indtast et gyldigt telefonnummer",
   "contacts.cvr.label": "Slå op i CVR",
   "contacts.cvr.action": "Slå op",
   "contacts.cvr.looking": "Slår op…",
