@@ -96,7 +96,7 @@ export function TrialBanner() {
           <strong className="text-sm font-semibold">{title}</strong>
         </div>
         <p className={`mt-1 pl-5 text-sm ${ended ? "text-white/75" : "text-muted-foreground"}`}>{meta}</p>
-        {!ended && <div className="mt-3 ml-5 h-1 max-w-[360px] overflow-hidden rounded-full bg-black/10" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={title}>
+        {!ended && <div className="mt-3 ml-5 h-1 max-w-[360px] overflow-hidden rounded-full bg-neutral-22" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={title}>
           <div className={`h-full ${warning ? "bg-tone-warning" : "bg-settled"}`} style={{ width: `${progress}%` }} />
         </div>}
       </div>

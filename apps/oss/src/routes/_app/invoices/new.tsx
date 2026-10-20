@@ -421,8 +421,10 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
 
           <div className="grid gap-2">
             <Label htmlFor="aiPrompt">{t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}</Label>
-            <input
-              className="w-full rounded-md border bg-transparent px-3 py-2 text-base"
+            {/* A textarea, so the example prompt wraps instead of being cut off on narrow screens. */}
+            <Textarea
+              rows={2}
+              className="resize-none"
               aria-label={t(onComplete ? "invoices.flow.composer" : "invoices.new.ai.label")}
               onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); if (onComplete) compose(); else if (aiDraftAvailable) void handleGenerateInvoiceDraftFromAi() } }}
               id="aiPrompt"

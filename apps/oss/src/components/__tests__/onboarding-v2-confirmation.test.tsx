@@ -154,11 +154,11 @@ describe("production v2 seller confirmation", () => {
     await waitFor(() => expect(props.onComplete).toHaveBeenCalledOnce())
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, companyPhone: "40486480", settings: expect.objectContaining({ defaultCurrency: "EUR", locale: "en-GB" }) }))
   })
-  it("names languages and currencies instead of showing codes (QUI-56)", () => {
+  it("names languages and currencies instead of showing codes, own currency first (QUI-56, QUI-213)", () => {
     render(<I18nProvider locale="da-DK"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
     fireEvent.click(screen.getByRole("button", { name: /manuelt/i }))
     const labels = (name: string) => Array.from((screen.getByRole("combobox", { name }) as HTMLSelectElement).options).map(option => option.text)
-    expect(labels("Valuta")).toEqual(["Danske kroner", "Euro", "Amerikanske dollars", "Britiske pund"])
+    expect(labels("Valuta")).toEqual(["Danske kroner", "Amerikanske dollars", "Britiske pund", "Euro"])
     expect(labels("Sprog")).toEqual(["Dansk", "Engelsk"])
   })
   it("keeps the disabled extension's existing transport without preparing evidence", async () => {

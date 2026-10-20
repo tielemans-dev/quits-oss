@@ -29,7 +29,8 @@ import { Label } from '../../components/ui/label'
 import { I18nProvider, useI18n } from '../../lib/i18n/react'
 import { translateCvrError } from '../../lib/i18n/cvr-error'
 import { companyEmailIssue } from '../../lib/validation/company-email'
-import { canonicalLocale, countryOptionsIncluding, LOCALE_OPTIONS, localeOptionsIncluding, TAX_REGIMES } from '../../lib/compliance/countries'
+import { canonicalLocale, LOCALE_OPTIONS, TAX_REGIMES } from '../../lib/compliance/countries'
+import { countryPickerOptions, CURRENCY_CODES, currencyPickerOptions, localePickerOptions } from '../../lib/picker-options'
 import { getOnboardingRules, type OnboardingInvoicingIdentity } from '../../lib/onboarding/rules'
 import { B2bNotice } from "../../components/onboarding/b2b-notice"
 import { CompanySetup } from "../../components/onboarding/company-setup"
@@ -78,15 +79,6 @@ type CloudOnboardingValues = {
   invoicePrefix: string
   quotePrefix: string
 }
-
-const CURRENCIES = [
-  { value: 'USD', label: 'USD' },
-  { value: 'DKK', label: 'DKK' },
-  { value: 'EUR', label: 'EUR' },
-  { value: 'GBP', label: 'GBP' },
-  { value: 'CAD', label: 'CAD' },
-  { value: 'AUD', label: 'AUD' },
-] as const
 
 const DEFAULT_CLOUD_ONBOARDING_VALUES: CloudOnboardingValues = {
   companyName: '',
@@ -145,7 +137,6 @@ function OnboardingPage() {
 
 function OnboardingPageContent() {
   const { t, locale: uiLocale = 'en-US' } = useI18n()
-  const countryNames = useMemo(() => new Intl.DisplayNames([uiLocale], { type: 'region' }), [uiLocale])
   const search = Route.useSearch()
   const target = loginReturnTarget(search)
   const returnDestination = loginReturnDestination(target ?? '/', search.lang)
@@ -1050,9 +1041,9 @@ function OnboardingPageContent() {
                       applySuggestedDefaults(e.target.value, values.invoicingIdentity)
                     }
                   >
-                    {countryOptionsIncluding(values.countryCode).map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {countryNames.of(country.code) ?? country.label}
+                    {countryPickerOptions(values.countryCode, values.countryCode, uiLocale).map((country) => (
+                      <option key={country.value} value={country.value}>
+                        {country.label}
                       </option>
                     ))}
                   </select>
@@ -1117,9 +1108,9 @@ function OnboardingPageContent() {
                     value={values.locale}
                     onChange={(e) => updateValue('locale', e.target.value)}
                   >
-                    {localeOptionsIncluding(values.locale).map((locale) => (
-                      <option key={locale} value={locale}>
-                        {locale === 'da-DK' ? t('auth.onboarding.locale.da') : locale === 'en-US' ? t('auth.onboarding.locale.en') : locale}
+                    {localePickerOptions(values.locale, values.countryCode, uiLocale).map((locale) => (
+                      <option key={locale.value} value={locale.value}>
+                        {locale.label}
                       </option>
                     ))}
                   </select>
@@ -1143,9 +1134,9 @@ function OnboardingPageContent() {
                     value={values.defaultCurrency}
                     onChange={(e) => updateValue('defaultCurrency', e.target.value)}
                   >
-                    {CURRENCIES.map((currency) => (
+                    {currencyPickerOptions(CURRENCY_CODES, values.countryCode, uiLocale, (code) => t(`auth.onboarding.currency.${code}`)).map((currency) => (
                       <option key={currency.value} value={currency.value}>
-                        {t(`auth.onboarding.currency.${currency.value}`)}
+                        {currency.label}
                       </option>
                     ))}
                   </select>
