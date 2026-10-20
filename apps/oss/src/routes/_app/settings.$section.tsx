@@ -16,10 +16,9 @@ import {
 } from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
-  countryOptionsIncluding,
-  localeOptionsIncluding,
   TAX_REGIMES,
 } from "../../lib/compliance/countries"
+import { countryPickerOptions, CURRENCY_CODES, currencyPickerOptions, localePickerOptions } from "../../lib/picker-options"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
@@ -201,15 +200,6 @@ type SettingsData = {
   primaryTaxIdScheme: string | null
 }
 
-const CURRENCIES = [
-  { value: "USD", label: "USD - US Dollar" },
-  { value: "DKK", label: "DKK - Danish Krone" },
-  { value: "EUR", label: "EUR - Euro" },
-  { value: "GBP", label: "GBP - British Pound" },
-  { value: "CAD", label: "CAD - Canadian Dollar" },
-  { value: "AUD", label: "AUD - Australian Dollar" },
-]
-
 const DEFAULT_AI_MODEL = "openai/gpt-4o-mini"
 
 // Built-in OpenRouter model suggestions, used until the server returns a live list.
@@ -327,17 +317,17 @@ function SettingsPage() {
   const [inviteRole, setInviteRole] = useState("member")
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
-  const countryDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "region" }),
-    [locale]
+  const countryOptions = useMemo(
+    () => countryPickerOptions(settings?.countryCode, settings?.countryCode, displayLocale),
+    [settings?.countryCode, displayLocale]
   )
-  const currencyDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "currency" }),
-    [locale]
+  const localeOptions = useMemo(
+    () => localePickerOptions(settings?.locale, settings?.countryCode, displayLocale),
+    [settings?.locale, settings?.countryCode, displayLocale]
   )
-  const languageDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "language" }),
-    [locale]
+  const currencyOptions = useMemo(
+    () => currencyPickerOptions(CURRENCY_CODES, settings?.countryCode, displayLocale, (code) => `${t(`auth.onboarding.currency.${code}`)} (${code})`),
+    [settings?.countryCode, displayLocale, t]
   )
   const showVatStatus = normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
   const nonVatDanishSeller = showVatStatus && momsRegistered === false
@@ -1161,9 +1151,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.country.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {countryOptionsIncluding(settings?.countryCode).map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        {countryDisplayNames.of(country.code) ?? country.label}
+                    {countryOptions.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1176,9 +1166,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.locale.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {localeOptionsIncluding(settings?.locale).map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {`${item} — ${languageDisplayNames.of(item.split("-")[0] ?? item) ?? item}`}
+                    {localeOptions.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1298,7 +1288,7 @@ function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="baseCurrency">{t("settings.baseCurrency.label")}</Label>
-                <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled={settings.baseCurrencyLocked}><SelectTrigger id="baseCurrency"><SelectValue /></SelectTrigger><SelectContent>{CURRENCIES.map(c => <SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}</SelectContent></Select>
+                <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled={settings.baseCurrencyLocked}><SelectTrigger id="baseCurrency"><SelectValue /></SelectTrigger><SelectContent>{currencyOptions.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent></Select>
                 <p className="text-sm text-muted-foreground">{t("settings.baseCurrency.hint")}</p>
                 <Label htmlFor="defaultCurrency">{t("settings.currency.label")}</Label>
                 <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
@@ -1306,9 +1296,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.currency.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CURRENCIES.map((c) => (
+                    {currencyOptions.map((c) => (
                       <SelectItem key={c.value} value={c.value}>
-                        {`${c.value} - ${currencyDisplayNames.of(c.value) ?? c.label}`}
+                        {c.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

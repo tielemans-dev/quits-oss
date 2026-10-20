@@ -85,6 +85,14 @@ describe("invoice send controls", () => {
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("DK")
     expect(screen.getByRole("option", { name: "Danmark" })).toBeTruthy()
   })
+  it("lists the organization's country first, then the rest alphabetically in the UI language", () => {
+    render(<I18nProvider locale="da-DK"><CountrySelect id="country" name="country" defaultCountry="DK" /></I18nProvider>)
+    const names = screen.getAllByRole("option").map(option => option.textContent).filter(Boolean)
+    expect(names[0]).toBe("Danmark")
+    const rest = names.slice(1) as string[]
+    expect(rest).toEqual([...rest].sort(new Intl.Collator("da-DK").compare))
+    expect(rest.indexOf("Tyskland")).toBeLessThan(rest.indexOf("USA"))
+  })
   it.each(["20", "19", "7.5"])("restores configured self-host VAT %s from an exempt line", taxRate => {
     const onChange = vi.fn()
     render(<I18nProvider locale="en-US"><LineVatSelect item={{ ...line, vat: { treatment: "exempt", rate: "0" } }} taxRate={taxRate} index={0} onChange={onChange} /></I18nProvider>)
