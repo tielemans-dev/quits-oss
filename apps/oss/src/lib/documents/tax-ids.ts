@@ -14,7 +14,9 @@ export function formatTaxIds(ids: readonly DocumentTaxId[] | undefined, locale?:
     : `${translate("pdf.vatNumber", locale)} DK${cvr}`] : []
   return [...national, ...(ids ?? []).filter(id => id.value.trim() && !(national.length && sellerCvr([id]) === cvr)).map(id => {
     const scheme = id.scheme?.trim().toLowerCase() ?? ""
-    const label = ["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"].includes(scheme)
+    // A contact's legacy tax id is stored as "VAT", but a bare Danish 8-digit number is the CVR; DK-prefixed is the VAT number.
+    const danishCvr = scheme === "vat" && id.countryCode?.trim().toUpperCase() === "DK" && /^\d{8}$/.test(id.value.replace(/\s/g, ""))
+    const label = danishCvr ? translate("pdf.cvrNumber", locale) : ["vat", "dk_vat", "eu_vat", "vat_id", "vatin", "moms", "ust", "tva", "btw"].includes(scheme)
       ? translate("pdf.vatNumber", locale) : ["cvr", "dk_cvr"].includes(scheme)
         ? translate("pdf.cvrNumber", locale) : scheme === "se"
           ? translate("pdf.seNumber", locale) : scheme.replace(/_/g, " ").toUpperCase() || translate("creditNotes.pdf.taxId", locale)

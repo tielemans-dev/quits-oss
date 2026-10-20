@@ -1,6 +1,9 @@
 import { pdfBuyerAddress } from "./documents/invoice-identity"
 import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
-import { formatCurrency } from "./i18n/format"
+import { formatCurrency, formatDate, formatDateTime } from "./i18n/format"
+import { translate } from "./i18n/translate"
+import type { TranslationKey } from "./i18n/messages"
+import { agreementOfferTotals } from "./agreements/offer-totals"
 import { agreementVatPresentation } from "./agreements/vat-presentation"
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -30,6 +33,7 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   row: { marginBottom: 8 },
   heading: { fontSize: 14, marginBottom: 8 },
+  evidence: { marginTop: 8, fontSize: 7, color: "#6b6b6b" },
 })
 export type AgreementPdfInput = {
   snapshot: AgreementOfferSnapshot
@@ -40,89 +44,91 @@ export type AgreementPdfInput = {
 export function AgreementPdf({ snapshot, number, issueDate, acceptance }: AgreementPdfInput) {
   const vat = agreementVatPresentation(snapshot)
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
+  const totals = agreementOfferTotals(snapshot)
+  // Labels, money and dates follow the language the offer was written in, as on its page.
+  const t = (key: TranslationKey, vars?: Record<string, string | number>) => translate(key, snapshot.locale, vars)
+  const money = (amount: string) => formatCurrency(Number(amount), snapshot.currency, snapshot.locale)
+  // Validity and agreed dates are calendar dates: shown as stored, not shifted by a timezone.
+  const calendarDate = (value: string) => formatDate(value, snapshot.locale, "UTC")
+  const terms = agreementTermsText(snapshot.termsHtml).trim()
   return (
     <Document title={snapshot.title} creationDate={new Date(issueDate ?? 0)} modificationDate={new Date(issueDate ?? 0)}>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Agreement {number ?? "preview"}</Text>
+        <Text style={styles.title}>{t("agreements.document")}{number ? ` ${number}` : ""}</Text>
         <Text style={styles.heading}>{snapshot.title}</Text>
         <View style={styles.section}>
           <Text>{snapshot.sellerSnapshot?.companyName}</Text>
           <Text>{snapshot.sellerSnapshot?.companyAddress}</Text>
           {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <Text key={id}>{id}</Text>)}
           <Text>
-            Customer: {snapshot.buyerSnapshot?.name} {distinctCompany(snapshot.buyerSnapshot)}
+            {t("agreements.customer")}: {snapshot.buyerSnapshot?.name} {distinctCompany(snapshot.buyerSnapshot)}
           </Text>
           {pdfBuyerAddress(snapshot.buyerSnapshot ?? {}, snapshot.locale).map((line, index) => <Text key={index}>{line}</Text>)}
           {formatTaxIds(snapshot.buyerSnapshot?.taxIds, snapshot.locale).map(id => <Text key={id}>{id}</Text>)}
-          <Text>{snapshot.buyerSnapshot?.email}</Text>
-          {issueDate && <Text>Issued: {issueDate.slice(0, 10)}</Text>}
+          {snapshot.buyerSnapshot?.email && <Text>{snapshot.buyerSnapshot.email}</Text>}
+          {issueDate && <Text>{t("agreements.issued")}: {formatDate(issueDate, snapshot.locale, snapshot.timezone)}</Text>}
           <Text>
-            Valid until: {snapshot.validUntil.slice(0, 10)} ({snapshot.timezone})
+            {t("agreements.validUntil")}: {calendarDate(snapshot.validUntil)} ({snapshot.timezone})
           </Text>
-          <Text>{snapshot.summary}</Text>
+          {snapshot.summary && <Text>{snapshot.summary}</Text>}
         </View>
-        <Text style={styles.heading}>Deliverables</Text>
+        <Text style={styles.heading}>{t("agreements.deliverables")}</Text>
         {snapshot.deliverables.map((line, i) => v2 && line.isDeposit ? null : (
           <View key={i} style={styles.row} wrap={false}>
             <Text>
               {line.title}
-              {line.isDeposit ? " (deposit included in total)" : ""}
+              {line.isDeposit ? ` · ${t("agreements.deposit")}` : ""}
             </Text>
             <Text>{line.description}</Text>
             <Text>
               {line.quantity} × {line.unitPriceGross} = {line.lineGross} {snapshot.currency}
             </Text>
             {vat.lineLabel(line.taxRate) && <Text>{vat.lineLabel(line.taxRate)}</Text>}
-            {line.agreedDate && <Text>Agreed date: {line.agreedDate.slice(0, 10)}</Text>}
+            {line.agreedDate && <Text>{t("agreements.agreedDate")}: {calendarDate(line.agreedDate)}</Text>}
           </View>
         ))}
         <View style={styles.section}>
           {vat.totals && vat.status !== false ? <>
-            {vat.totals.lines.map((row, i) => <Text key={i}>{row.label}: {formatCurrency(Number(row.amount), snapshot.currency, snapshot.locale)}{row.reason ? ` · ${row.reason}` : ""}</Text>)}
-            <Text>Service total: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
+            {vat.totals.lines.map((row, i) => <Text key={i}>{row.label}: {money(row.amount)}{row.reason ? ` · ${row.reason}` : ""}</Text>)}
+            <Text>{t("agreements.serviceTotal")}: {money(vat.totals.total.amount)}</Text>
             {vat.totals.note && <Text>{vat.totals.note}</Text>}
           </> : <>
-          <Text>
-            Subtotal: {v2?.serviceTotal.net ?? snapshot.subtotalNet} {snapshot.currency}
-          </Text>
-          <Text>
-            {vat.status == null ? "Tax" : vat.taxLabel}: {v2?.serviceTotal.tax ?? snapshot.totalTax} {snapshot.currency}
-          </Text>
-          {v2 && Number(v2.serviceTotal.payableRounding) !== 0 && <Text>Payable rounding: {v2.serviceTotal.payableRounding} {snapshot.currency}</Text>}
-          <Text>
-            {v2 ? "Service total" : "Total"}: {v2?.serviceTotal.gross ?? snapshot.totalGross} {snapshot.currency}
-          </Text>
+          <Text>{t("agreements.subtotal")}: {money(totals.net)}</Text>
+          <Text>{vat.taxLabel}: {money(totals.tax)}</Text>
+          {totals.payableRounding && <Text>{t("agreements.payableRounding")}: {money(totals.payableRounding)}</Text>}
+          <Text>{t(totals.isV2 ? "agreements.serviceTotal" : "agreements.total")}: {money(totals.gross)}</Text>
           </>}
-          <Text>Payment due in {snapshot.dueInDays} days</Text>
+          <Text>{t("agreements.paymentDue", { days: snapshot.dueInDays })}</Text>
           <Text>
-            Billing:{" "}
-            {snapshot.billingTrigger === "on_acceptance" ? "After acceptance" : "After delivery"}
+            {t("agreements.billingTrigger")}:{" "}
+            {t(snapshot.billingTrigger === "on_acceptance" ? "agreements.onAcceptance" : "agreements.onDelivery")}
           </Text>
         </View>
-        {v2 && <View style={styles.section}>
-          <Text style={styles.heading}>Payment schedule</Text>
+        {v2 && v2.paymentSchedule.length > 0 && <View style={styles.section}>
+          <Text style={styles.heading}>{t("agreements.paymentSchedule")}</Text>
           {v2.paymentSchedule.map(line => <View key={line.sortOrder} style={styles.row}>
-            <Text>{line.title}: {line.amount} {snapshot.currency} ({vat.status == null ? line.vatBasis === "gross" ? "including VAT" : "excluding VAT" : vat.scheduleBasis(line.vatBasis)})</Text>
-            <Text>On agreement acceptance</Text>
+            <Text>{line.title}: {money(line.amount)} {vat.scheduleBasis(line.vatBasis)}</Text>
+            <Text>{t("agreements.scheduleTrigger")}</Text>
           </View>)}
         </View>}
         {vat.statement && <Text style={styles.section}>{vat.statement}</Text>}
-        <Text style={styles.heading}>Terms</Text>
-        <Text style={styles.section}>{agreementTermsText(snapshot.termsHtml)}</Text>
+        {terms && <>
+          <Text style={styles.heading}>{t("agreements.publicTerms")}</Text>
+          <Text style={styles.section}>{terms}</Text>
+        </>}
         {acceptance && (
           <View style={styles.section}>
-            <Text style={styles.heading}>Acceptance record</Text>
-            <Text>Name: {acceptance.name}</Text>
-            <Text>Intended recipient: {acceptance.intendedRecipient ?? "Not specified"}</Text>
-            <Text>Accepted at: {acceptance.at}</Text>
+            <Text style={styles.heading}>{t("agreements.acceptanceRecord")}</Text>
+            <Text>{t("agreements.acceptedBy")}: {acceptance.name}</Text>
+            <Text>{t("agreements.recipient")}: {acceptance.intendedRecipient ?? t("agreements.unspecified")}</Text>
+            <Text>{t("agreements.acceptedAt")}: {formatDateTime(acceptance.at, snapshot.locale, snapshot.timezone || "Europe/Copenhagen")}</Text>
             <Text>
-              Method:{" "}
-              {acceptance.method === "customer_link"
-                ? "Customer link"
-                : "Recorded by the freelancer"}
+              {t("agreements.method")}:{" "}
+              {t(acceptance.method === "customer_link" ? "agreements.customerLinkMethod" : "agreements.internalMethod")}
             </Text>
-            <Text>Offer revision: {acceptance.revision}</Text>
-            <Text>Offer hash: {acceptance.hash}</Text>
+            <Text>{t("agreements.revision")}: {acceptance.revision}</Text>
+            {/* Evidence of exactly what was accepted, in full but set apart from the reading text. */}
+            {acceptance.hash && <Text style={styles.evidence}>{t("agreements.hash")}: {acceptance.hash}</Text>}
           </View>
         )}
       </Page>

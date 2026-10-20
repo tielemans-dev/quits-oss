@@ -27,7 +27,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { useI18n } from "../../../lib/i18n/react"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
-import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
+import { agreementTermsAmounts, renderAgreementMarkdown } from "../../../lib/agreements/markdown"
 
 export const Route = createFileRoute("/_app/agreements/$agreementId")({
   component: AgreementDetail,
@@ -104,8 +104,7 @@ function AgreementDetail() {
           "seller.name": seller?.companyName ?? "",
           "buyer.name": buyer?.name ?? "",
           "agreement.title": agreement.title,
-          "agreement.validUntil": agreement.validUntil.toISOString().slice(0, 10),
-          "agreement.total": `${agreement.total.toFixed(2)} ${agreement.currency}`,
+          ...agreementTermsAmounts({ total: agreement.total, currency: agreement.currency, validUntil: agreement.validUntil, locale: agreement.locale }),
           deliverables: agreement.deliverables
             .map((line) => `${line.title}: ${line.description}`)
             .join("\n"),

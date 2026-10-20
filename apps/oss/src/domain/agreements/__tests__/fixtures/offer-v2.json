@@ -4,7 +4,7 @@
     "buyerSnapshot": null,
     "title": "Ledger-ready offer",
     "summary": null,
-    "termsHtml": "<p>Service price 0.02 DKK.</p>\n",
+    "termsHtml": "<p>Service price 0,02\u00a0kr.</p>\n",
     "validUntil": "2099-01-01T00:00:00.000Z",
     "timezone": "Europe/Copenhagen",
     "currency": "DKK",
@@ -167,5 +167,5 @@
       }
     ]
   },
-  "hash": "ab24f56026ca8986af8c4ff149833ec35beafce7a2230f70cd0f5cc8105999cd"
+  "hash": "ec3b44a3a3ba3fc2d2ad54abf4df77d81f6f3fbf40f3957100d7e2134733020a"
 }

@@ -59,3 +59,12 @@ export function formatShortDate(date: Date | string, locale?: string | null, tim
   const language = configuredLocale.toLowerCase().startsWith("en") ? "en-GB" : configuredLocale
   return formatDate(date, language, timeZone, { month: "short" })
 }
+
+/** A moment, such as an acceptance, with date and time in the given time zone. */
+export function formatDateTime(date: Date | string, locale?: string | null, timeZone?: string | null): string {
+  return new Intl.DateTimeFormat(normalizeLocale(locale), {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: normalizeTimeZone(timeZone),
+  }).format(new Date(date))
+}

@@ -10,10 +10,14 @@ export function defaultAgreementTemplates(locale?: string | null) {
   }))
 }
 
+/** Danish built-in terms once called the agreement "Tilbuddet"; seeded copies of that wording are still untouched. */
+const currentWording = (terms: string) =>
+  terms.replace("Tilbuddet er gyldigt til {{agreement.validUntil}}.", "Aftalen er gyldig til {{agreement.validUntil}}.")
+
 /** Translate only untouched built-in content, without updating the persisted template. */
 export function presentAgreementTemplate<T extends { name: string; termsMarkdown: string }>(template: T, locale?: string | null): T {
   for (const language of ["en", "da"]) {
-    const index = defaultAgreementTemplates(language).findIndex(seed => seed.name === template.name && seed.termsMarkdown === template.termsMarkdown)
+    const index = defaultAgreementTemplates(language).findIndex(seed => seed.name === template.name && seed.termsMarkdown === currentWording(template.termsMarkdown))
     if (index !== -1) return { ...template, ...defaultAgreementTemplates(locale)[index]! }
   }
   return template
