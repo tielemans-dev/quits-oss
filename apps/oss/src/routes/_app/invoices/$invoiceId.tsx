@@ -222,9 +222,9 @@ function toDateString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : value
 }
 
-async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
+async function downloadInvoicePdfFile(invoice: Invoice, locale: string) {
   const { downloadDocumentPdf } = await import("../../../lib/documents-download")
-  await downloadDocumentPdf("invoice", invoice.id, invoice.number)
+  await downloadDocumentPdf("invoice", invoice.id, invoice.number, { customer: invoice.contact.name, locale })
 }
 
 function InvoiceDetailPage() {
@@ -1149,7 +1149,7 @@ function InvoiceDetailPage() {
               if (!invoice) return
               setDownloading(true)
               try {
-                await downloadInvoicePdfFile(invoice, orgSettings)
+                await downloadInvoicePdfFile(invoice, locale)
               } catch {
                 setError(t("invoices.detail.error.pdfFailed"))
               } finally {
