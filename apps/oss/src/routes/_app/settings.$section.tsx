@@ -381,6 +381,7 @@ function SettingsPage() {
         setMomsRegistered(nextSettings.momsRegistered ?? null)
         setSellerVatChoice(nextSettings.momsRegistered ?? null)
         setTaxRateInput(nextSettings.taxRate == null ? "" : String(nextSettings.taxRate))
+        setPaymentTermsDaysInput(String(nextSettings.paymentTermsDays ?? 14))
         setTaxRegime(nextSettings.taxRegime)
         setPricesIncludeTax(nextSettings.pricesIncludeTax)
         setPrimaryTaxId(nextSettings.primaryTaxId ?? "")
