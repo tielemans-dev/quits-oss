@@ -94,6 +94,7 @@ describe("getting started", () => {
     })
     const { container } = renderView(summary)
     expect(container.querySelector("[data-slot=dashboard-getting-started]")).not.toBeNull()
+    expect(screen.getByRole("heading", { name: "Din første faktura er tæt på" })).toBeTruthy()
     expect(container.querySelector("[data-slot=dashboard-hero]")).toBeNull()
     expect(container.querySelector("[data-slot=amount]")).toBeNull()
     expect(screen.getAllByText("Fakturakladde oprettet")).toHaveLength(2)

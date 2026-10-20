@@ -101,7 +101,7 @@ export function GettingStarted({ drafts, className }: { drafts: Summary["drafts"
   return (
     <DashboardSection title={t("dashboard.hero.label")} data-slot="dashboard-getting-started" className={className}>
       <div className="border-hairline border-t pt-4">
-        <p className="text-base font-medium tracking-[-0.01em]">{t("dashboard.start.title")}</p>
+        <h3 className="text-base font-medium tracking-[-0.01em]">{t("dashboard.start.title")}</h3>
         <p className="text-muted-foreground mt-1 max-w-md text-sm">
           {drafts.count > 1 ? t("dashboard.start.descriptionDrafts", { count: drafts.count }) : t("dashboard.start.description")}
         </p>
