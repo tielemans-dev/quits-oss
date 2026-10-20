@@ -37,7 +37,7 @@ describe("Amount", () => {
     const tabular = Array.from(container.querySelectorAll(".tabular-nums")).map((el) => el.textContent)
     expect(tabular).toEqual(["5", "600", "00"])
     const fraction = container.querySelector<HTMLElement>(".relative.tabular-nums")!
-    expect(fraction.style.fontSize).toBe("var(--dec-fs, 0.68em)")
+    expect(fraction.style.fontSize).toBe("var(--dec-fs)")
   })
 
   it("draws no rule for none, one visible rule for single and two for double", () => {

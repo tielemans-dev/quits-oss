@@ -198,13 +198,6 @@ code {
   --dim: var(--scrim);
   --fg-title: var(--foreground);
   --fg-2: var(--muted-foreground);
-  --st-sent-bg: var(--neutral-6);
-  --st-seen-bg: var(--neutral-6);
-  --st-over-bg: var(--tone-warning-soft);
-  --st-paid-bg: var(--settled-soft);
-  --pill-pad: 0 6px;
-  --pill-fs: var(--text-xs);
-  --dot: none;
   --dec-fs: .74em;
   --dec-top: -.3em;
   --w-total: 500;
@@ -290,7 +283,6 @@ code {
   --toast-track: rgb(180 188 216/20%);
   --toast-ring: rgb(180 188 216/14%);
   --toast-shadow: rgb(4 5 14/55%);
-  --dot: none;
   --dec-fs: .74em;
   --dec-top: -.3em;
 }
@@ -582,12 +574,6 @@ html { background: var(--background); }
   }
 }
 
-/* Invoice statuses use tint only for viewed and overdue. */
-.invoice-status { border-radius: 4px; background: transparent; color: var(--muted-foreground); font-weight: 500; }
-.invoice-status > [aria-hidden] { display: none; }
-.invoice-status-paid { color: var(--settled-text); }
-.invoice-status-viewed { background: var(--st-seen-bg); color: var(--tone-info); }
-.invoice-status-overdue { background: var(--st-over-bg); color: var(--tone-warning); }
 body { caret-color: var(--caret); }
 
 [data-slot='amount'] { font-weight: var(--w-total); }

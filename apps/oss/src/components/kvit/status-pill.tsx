@@ -4,35 +4,33 @@ import type { StatusTone } from "../../lib/status-tones"
 import { cn } from "../../lib/utils"
 
 /**
- * A soft pill: the label (and dot) in the tone at full strength, on the tone at 14%; see styles.css.
- * Success is settled, so it sits on the Settled tint with a square green dot: the full stop.
+ * Four looks for the seven tones: green for settled, amber for what needs attention, red for what
+ * failed, and one quiet neutral for everything else, so a list screen shows three colours at most.
+ * Each is the label in the tone on the tone at 10% (see styles.css).
  */
 const toneClassName: Record<StatusTone, string> = {
-  neutral: "text-tone-neutral bg-tone-neutral/14",
-  info: "text-tone-info bg-tone-info/14",
-  progress: "text-tone-progress bg-tone-progress/14",
-  success: "text-tone-success bg-settled-soft",
-  warning: "text-tone-warning bg-tone-warning/14",
-  danger: "text-tone-danger bg-tone-danger/14",
-  muted: "text-tone-muted bg-tone-muted/14",
+  neutral: "text-muted-foreground bg-(--neutral-6)",
+  info: "text-muted-foreground bg-(--neutral-6)",
+  progress: "text-muted-foreground bg-(--neutral-6)",
+  muted: "text-muted-foreground bg-(--neutral-6)",
+  success: "text-tone-success bg-tone-success-soft",
+  warning: "text-tone-warning bg-tone-warning-soft",
+  danger: "text-tone-danger bg-tone-danger-soft",
 }
 
 /**
- * The Kvit soft pill for a tone, with a label the caller has already translated. Status colours
- * live only here. `StatusBadge` is this pill for a status of a domain.
+ * The status badge for a tone, with a label the caller has already translated. Status colours
+ * live only here. `StatusBadge` is this badge for a status of a domain.
  *
- * The dot is decoration: muted is a ring and every other tone a solid dot, so the shape differs
- * where the colour might not. Turn it off with `dot={false}` where the pill sits tight (chips).
+ * The label is always text, so colour is never the only signal.
  */
 export function StatusPill({
   tone,
   children,
-  dot = true,
   className,
 }: {
   tone: StatusTone
   children: ReactNode
-  dot?: boolean
   className?: string
 }) {
   return (
@@ -40,20 +38,11 @@ export function StatusPill({
       data-slot="status-badge"
       data-tone={tone}
       className={cn(
-        "inline-flex h-5.5 w-fit shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap",
+        "inline-flex h-5 w-fit shrink-0 items-center rounded-sm px-1.5 text-xs font-medium whitespace-nowrap",
         toneClassName[tone],
         className
       )}
     >
-      {dot ? (
-        <span
-          aria-hidden
-          className={cn(
-            "size-1.5 shrink-0 rounded-full",
-            tone === "muted" ? "border border-current" : tone === "success" ? "bg-current rounded-none" : "bg-current"
-          )}
-        />
-      ) : null}
       {children}
     </span>
   )

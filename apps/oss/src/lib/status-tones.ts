@@ -2,16 +2,16 @@ import type { TranslationKey } from "./i18n/messages"
 
 /**
  * One status system. Every status a Quits screen shows maps to a tone (how it reads at a glance)
- * and an i18n label key. The tone colours are defined in styles.css and drawn as soft pills (a 14%
- * tint with the label at full strength) by StatusBadge. Success alone sits on the Settled green tint.
+ * and an i18n label key. StatusBadge draws neutral, info, progress and muted alike, so a screen
+ * shows green, amber and red at most; the names stay so a status keeps its meaning.
  *
  * - neutral: not started or not yet decided (draft, planned)
  * - info: out with the customer, waiting on them (sent, open)
  * - progress: the customer has engaged (viewed, in progress)
  * - success: settled or running as intended (paid, accepted, active)
- * - warning: needs attention but is not broken (partially paid, paused, delivery unconfirmed)
- * - danger: failed, or past due (overdue, failed, rejected)
- * - muted: finished and no longer actionable (credited, cancelled, expired, ended)
+ * - warning: needs attention but is not broken (overdue, partially paid, paused, delivery unconfirmed)
+ * - danger: failed (payment, email, sending). Nothing else is red.
+ * - muted: finished and no longer actionable (credited, cancelled, expired, ended, rejected)
  */
 export type StatusTone =
   | "neutral"
@@ -42,7 +42,7 @@ export const statusTones = {
     viewed: { tone: "progress", labelKey: "status.viewed" },
     partially_paid: { tone: "warning", labelKey: "status.partially_paid" },
     paid: { tone: "success", labelKey: "status.paid" },
-    overdue: { tone: "danger", labelKey: "status.overdue" },
+    overdue: { tone: "warning", labelKey: "status.overdue" },
     reminder_sent: { tone: "progress", labelKey: "status.reminder_sent" },
     credited: { tone: "muted", labelKey: "status.credited" },
   },
@@ -51,7 +51,7 @@ export const statusTones = {
     draft: { tone: "neutral", labelKey: "quotes.status.draft" },
     sent: { tone: "info", labelKey: "quotes.status.sent" },
     accepted: { tone: "success", labelKey: "quotes.status.accepted" },
-    rejected: { tone: "danger", labelKey: "quotes.status.rejected" },
+    rejected: { tone: "muted", labelKey: "quotes.status.rejected" },
     expired: { tone: "muted", labelKey: "quotes.status.expired" },
   },
   creditNote: {
@@ -68,7 +68,7 @@ export const statusTones = {
     draft: { tone: "neutral", labelKey: "status.draft" },
     sent: { tone: "info", labelKey: "status.sent" },
     accepted: { tone: "success", labelKey: "status.accepted" },
-    declined: { tone: "danger", labelKey: "status.declined" },
+    declined: { tone: "muted", labelKey: "status.declined" },
     expired: { tone: "muted", labelKey: "status.expired" },
     completed: { tone: "success", labelKey: "status.completed" },
     cancelled: { tone: "muted", labelKey: "status.cancelled" },

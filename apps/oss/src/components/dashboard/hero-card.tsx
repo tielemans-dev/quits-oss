@@ -71,9 +71,6 @@ export function HeroCard({
           locale={locale}
           size="hero"
           precision={precision}
-          // A rule is money asked for or settled; when nothing valued is owed here it has no figure to sit under.
-          rule={kvit ? "double" : hero.outstanding ? "single" : "none"}
-          className="text-[32px]"
         />
         <p className="text-muted-foreground mt-1 text-sm">
           {kvit

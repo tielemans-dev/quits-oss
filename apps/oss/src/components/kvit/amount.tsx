@@ -8,19 +8,17 @@ export type AmountSize = "sm" | "md" | "hero"
 export type AmountRule = "none" | "single" | "double"
 
 /**
- * Per size: the type, how small the fraction is set, and where the two rules sit. Rules are drawn
- * on whole pixels so they stay crisp; `gap` is the air between the figure and the first rule.
- *
- * The hero fraction is 45% of the figure. At list size that would be 6px, so the list sets it at
- * 68% and the middle size at 58%: still raised, still reads as øre, but legible.
+ * Per size: the type, and where the two rules sit when a document draws them. Rules are drawn on
+ * whole pixels so they stay crisp; `gap` is the air between the figure and the first rule. The
+ * fraction is set raised and small by `--dec-fs` and `--dec-top` (styles.css), the same at every size.
  */
 const sizes: Record<
   AmountSize,
-  { text: string; fraction: number; stroke: number; first: number; second: number; height: number; gap: number }
+  { text: string; stroke: number; first: number; second: number; height: number; gap: number }
 > = {
-  sm: { text: "text-sm font-bold", fraction: 0.68, stroke: 1, first: 0.5, second: 3.5, height: 4, gap: 3 },
-  md: { text: "text-3xl font-extrabold tracking-[-0.025em]", fraction: 0.58, stroke: 2, first: 1, second: 5, height: 6, gap: 4 },
-  hero: { text: "figure text-5xl sm:text-6xl", fraction: 0.45, stroke: 3, first: 1.5, second: 8.5, height: 10, gap: 8 },
+  sm: { text: "text-sm", stroke: 1, first: 0.5, second: 3.5, height: 4, gap: 3 },
+  md: { text: "text-xl tracking-[-0.01em]", stroke: 2, first: 1, second: 5, height: 6, gap: 4 },
+  hero: { text: "text-3xl tracking-[-0.02em]", stroke: 3, first: 1.5, second: 8.5, height: 10, gap: 8 },
 }
 
 function clamp01(value: number) {
@@ -28,9 +26,10 @@ function clamp01(value: number) {
 }
 
 /**
- * Money in Geist with the fraction raised and small (`48.250,⁰⁰ kr.`), optionally on
- * the Quits signature: a rule under the figure. One rule asks for the money, a second one says it
- * has arrived. The second rule draws left to right when `rule` goes from single to double, and
+ * Money in Geist with the fraction raised and small (`48.250,⁰⁰ kr.`). A document (the invoice
+ * preview, the PDF, the public pay page) may set it on the Quits signature: a rule under the figure.
+ * One rule asks for the money, a second one says it has arrived. App screens draw no rule; a status
+ * badge next to the figure says where it stands. The second rule draws left to right when `rule` goes from single to double, and
  * only as far as `paidFraction` for a part payment; with reduced motion it just appears.
  *
  * Screen readers get the amount as plain text, as the locale writes it, plus `statusLabel` when
@@ -81,7 +80,7 @@ export function Amount({
       data-slot="amount"
       data-rule={rule}
       className={cn("relative inline-block whitespace-nowrap align-baseline", spec.text, className)}
-      style={{ paddingBottom: spec.height + spec.gap }}
+      style={rule === "none" ? undefined : { paddingBottom: spec.height + spec.gap }}
     >
       {parts === null ? AMOUNT_UNAVAILABLE : parts.map((part, index) => {
         if (part.type === "fraction") {
@@ -90,8 +89,8 @@ export function Amount({
               key={index}
               className="tabular-nums lining-nums relative"
               style={{
-                fontSize: `var(--dec-fs, ${spec.fraction}em)`,
-                top: `var(--dec-top, ${(-(1 - spec.fraction) * 0.72) / spec.fraction}em)`,
+                fontSize: "var(--dec-fs)",
+                top: "var(--dec-top)",
                 lineHeight: 1,
               }}
             >

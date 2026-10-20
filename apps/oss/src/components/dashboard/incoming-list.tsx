@@ -10,7 +10,7 @@ import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
-import { dueLabel, incomingRule, precisionOf, type DueLabel, type IncomingItem } from "./summary-model"
+import { dueLabel, precisionOf, type DueLabel, type IncomingItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
 export function dueText(due: DueLabel, t: Translate): string {
@@ -101,7 +101,7 @@ export function IncomingList({
                     <div className="relative">
                       <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
                         {item.number ? <span className="font-mono tracking-[0.01em]">{item.number}</span> : null}
-                        <span className={cn(late && "text-tone-danger font-semibold")}>{dueText(due, t)}</span>
+                        <span className={cn(late && "text-tone-warning font-medium")}>{dueText(due, t)}</span>
                       </p>
                       {offerReminder || reminderState ? (
                         <div
@@ -134,8 +134,6 @@ export function IncomingList({
                     locale={locale}
                     size="sm"
                     precision={precisionOf(item.amount)}
-                    {...incomingRule(item)}
-                    className="-mt-0.5"
                   />
                 </div>
               </li>
