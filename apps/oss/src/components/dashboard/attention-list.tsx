@@ -14,19 +14,11 @@ import { attentionAction, isLate, precisionOf, type AttentionItem } from "./summ
 import type { ReminderState } from "./use-reminders"
 
 const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: string }> = {
-  invoice_overdue: { icon: Clock, tone: "bg-tone-danger/14 text-tone-danger" },
+  invoice_overdue: { icon: Clock, tone: "bg-tone-warning/14 text-tone-warning" },
   draft_older_than_7_days: { icon: FilePenLine, tone: "bg-tone-muted/14 text-tone-muted" },
   quote_expiring: { icon: Hourglass, tone: "bg-tone-warning/14 text-tone-warning" },
   email_failed: { icon: MailWarning, tone: "bg-tone-danger/14 text-tone-danger" },
   email_unconfirmed: { icon: MailQuestion, tone: "bg-tone-warning/14 text-tone-warning" },
-}
-
-/**
- * Only invoices carry rules, as in the lists: money asked for gets a single one. A draft or a quote
- * has not asked for anything yet.
- */
-export function attentionRule(item: AttentionItem): "none" | "single" {
-  return item.kind === "invoice" && item.reason !== "draft_older_than_7_days" ? "single" : "none"
 }
 
 /**
@@ -108,7 +100,7 @@ export function AttentionList({
       ) : (
         <ul>
           {items.map((item) => {
-            // Red is a real arrear (`isOverdue` with days), whatever reason put the row here; due today is neutral.
+            // Amber is a real arrear (`isOverdue` with days), whatever reason put the row here; due today is neutral.
             const style = isLate(item)
               ? reasonStyle.invoice_overdue
               : item.reason === "invoice_overdue"
@@ -143,8 +135,6 @@ export function AttentionList({
                       locale={locale}
                       size="sm"
                       precision={precisionOf(item.amount)}
-                      rule={attentionRule(item)}
-                      className="-mt-0.5 -mb-1.5"
                     />
                   </div>
                   <p className="text-muted-foreground mt-0.5 text-xs">

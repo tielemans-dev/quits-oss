@@ -236,23 +236,7 @@ export function dueLabel(
   return { kind: "later", days }
 }
 
-/**
- * How much of an incoming invoice is settled, for the second rule: `1 - balance/total` from exact
- * minor units, so payments and credits both count, as in the lists. The share only draws the
- * rule; it never feeds an amount. Nothing settled is a single rule.
- */
-export function incomingRule(item: Pick<IncomingItem, "amount" | "total">): {
-  rule: "single" | "double"
-  paidFraction?: number
-} {
-  const total = toMinor(item.total)
-  const balance = toMinor(item.amount)
-  if (total <= 0n || balance >= total) return { rule: "single" }
-  if (balance <= 0n) return { rule: "double" }
-  return { rule: "double", paidFraction: Number(total - balance) / Number(total) }
-}
-
-/** Red only for a real arrear: the server's `isOverdue` with at least one day, never "0 days". */
+/** Amber only for a real arrear: the server's `isOverdue` with at least one day, never "0 days". */
 export function isLate(item: { isOverdue: boolean; daysOverdue: number | null }): boolean {
   return item.isOverdue && (item.daysOverdue ?? 0) > 0
 }

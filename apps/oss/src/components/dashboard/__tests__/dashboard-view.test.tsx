@@ -109,7 +109,8 @@ describe("with money", () => {
     expect(hero.textContent).toContain("1.800,00\u00a0€ udestående")
     // No sum across currencies anywhere on the page.
     expect(container.textContent).not.toContain("21.800")
-    expect(hero.querySelector("[data-slot=amount]")!.getAttribute("data-rule")).toBe("single")
+    // App screens draw no rule under a figure; documents do.
+    expect(container.querySelectorAll("[data-slot=amount]:not([data-rule=none])")).toHaveLength(0)
   })
 
   it("says the overdue amount once, in the split, and leaves the age to the attention list", () => {
@@ -119,15 +120,14 @@ describe("with money", () => {
     expect(hero.textContent).not.toContain("Den ældste")
   })
 
-  it("draws the second rule and says so when nothing is owed", () => {
+  it("says so when nothing is owed", () => {
     const summary = activeSummary({
       outstanding: emptyTotal(),
       overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
       incoming: [],
       attention: [],
     })
-    const { container } = renderView(summary)
-    expect(container.querySelector("[data-slot=dashboard-hero] [data-slot=amount]")!.getAttribute("data-rule")).toBe("double")
+    renderView(summary)
     expect(screen.getAllByText("Alt er betalt. Du er kvit.").length).toBeGreaterThan(0)
   })
 
@@ -163,13 +163,11 @@ describe("with money", () => {
 })
 
 describe("incoming list", () => {
-  it("shows how late or how soon each invoice is, with its amount on a single rule", () => {
+  it("shows how late or how soon each invoice is", () => {
     const { container } = renderView(activeSummary())
     const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
     expect(within(incoming).getByText("14 dage over tid")).toBeTruthy()
     expect(within(incoming).getByText("Forfalder om 3 dage")).toBeTruthy()
-    const rules = Array.from(incoming.querySelectorAll("[data-slot=amount]")).map((el) => el.getAttribute("data-rule"))
-    expect(rules).toEqual(["single", "single"])
   })
 
   it("does not offer a second reminder for what the attention list already offers", () => {
@@ -211,19 +209,18 @@ describe("attention reasons and actions", () => {
     expect(link.getAttribute("href")).toBe(overrides.kind === "quote" ? "/quotes/doc-1" : "/invoices/doc-1")
   })
 
-  it("colours a row red for a real arrear only, never for zero days", () => {
-    const red = (attention: Summary["attention"]) => {
+  it("colours a row amber for a real arrear only, never for zero days", () => {
+    const tones = (attention: Summary["attention"]) => {
       const { container } = renderView(emptySummary({ outstanding: total(bucket("DKK", "100.00")), attention }))
-      const flags = Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map((el) =>
-        el.className.includes("text-tone-danger")
+      const found = Array.from(container.querySelectorAll("[data-slot=dashboard-attention] li > span")).map(
+        (el) => el.className.match(/text-tone-(\w+)/)?.[1]
       )
       cleanup()
-      return flags
+      return found
     }
-    expect(red([item({ isOverdue: true, daysOverdue: 3 })])).toEqual([true])
+    expect(tones([item({ isOverdue: true, daysOverdue: 3 })])).toEqual(["warning"])
     // Due today but flagged overdue by the server for now: neutral.
-    expect(red([item({ isOverdue: true, daysOverdue: 0 })])).toEqual([false])
-    expect(red([item({ reason: "email_unconfirmed" })])).toEqual([false])
+    expect(tones([item({ isOverdue: true, daysOverdue: 0 })])).toEqual(["muted"])
   })
 })
 
@@ -371,20 +368,6 @@ describe("page subtitle", () => {
   })
 })
 
-describe("attention rules", () => {
-  it("gives only invoices that are asked for a rule: not drafts, not quotes", () => {
-    const base = activeSummary()
-    const quote = quoteAttention()
-    const failed = { ...base.attention[0]!, documentId: "inv-failed", reason: "email_failed" as const, canRemind: false }
-    const { container } = renderView({ ...base, attention: [...base.attention, quote, failed] })
-    const rules = Array.from(
-      container.querySelectorAll("[data-slot=dashboard-attention] [data-slot=amount]")
-    ).map((el) => el.getAttribute("data-rule"))
-    // overdue invoice, invoice draft, quote, failed email
-    expect(rules).toEqual(["single", "none", "none", "single"])
-  })
-})
-
 describe("getting started actions", () => {
   const drafted = (count: number, newestId: string | null, newestKind: "invoice" | "quote" | null) =>
     emptySummary({ drafts: { count, newestId, newestKind } })
@@ -426,19 +409,7 @@ describe("getting started actions", () => {
   })
 })
 
-describe("incoming rules and days", () => {
-  it("draws the second rule as far as a partly paid invoice is settled", () => {
-    const summary = activeSummary()
-    summary.incoming[0] = { ...summary.incoming[0]!, amount: money("DKK", "6000.00"), total: money("DKK", "18000.00") }
-    const { container } = renderView(summary)
-    const [first, second] = Array.from(
-      container.querySelectorAll("[data-slot=dashboard-incoming] [data-slot=amount]")
-    ) as HTMLElement[]
-    expect(first!.getAttribute("data-rule")).toBe("double")
-    expect(first!.querySelectorAll("line")[1]!.getAttribute("stroke-dasharray")).toBe(`${12000 / 18000} 1`)
-    expect(second!.getAttribute("data-rule")).toBe("single")
-  })
-
+describe("incoming days", () => {
   it("says due today, neutral, and never zero days overdue, for a zero-day arrear", () => {
     const summary = activeSummary()
     summary.incoming[0] = { ...summary.incoming[0]!, daysOverdue: 0, isOverdue: true }
@@ -567,8 +538,6 @@ describe("unvalued-only and three-decimal currencies", () => {
     const hero = container.querySelector("[data-slot=dashboard-hero]")!
     const figure = hero.querySelector("[data-slot=amount]")!
     expect(figure.textContent).toBe("0,00\u00a0kr.")
-    // Nothing valued is owed, so no rule: the figure asks for nothing.
-    expect(figure.getAttribute("data-rule")).toBe("none")
     expect(hero.querySelector("[role=img]")).toBeNull()
     const lines = Array.from(hero.querySelectorAll("ul")).pop()!.textContent!
     expect(lines).toContain("12.345,678\u00a0BHD udestående")

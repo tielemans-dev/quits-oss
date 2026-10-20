@@ -20,7 +20,7 @@ export function StatusBadge({
 }) {
   const { t } = useI18n()
   return (
-    <ToneBadge tone={getStatusTone(domain, status)} className={[domain === "invoice" ? `invoice-status invoice-status-${status}` : "", className].filter(Boolean).join(" ")}>
+    <ToneBadge tone={getStatusTone(domain, status)} className={className}>
       {getStatusLabel(t, domain, status)}
     </ToneBadge>
   )

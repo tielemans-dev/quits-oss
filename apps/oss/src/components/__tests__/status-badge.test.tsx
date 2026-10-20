@@ -35,7 +35,7 @@ describe("StatusBadge", () => {
         new Date("2026-10-12T10:00:00Z")
       )
       render(<StatusBadge domain="invoice" status={status} />)
-      expect(screen.getByText(label).dataset.tone).toBe("danger")
+      expect(screen.getByText(label).dataset.tone).toBe("warning")
     }
   )
 
@@ -57,48 +57,35 @@ describe("StatusBadge", () => {
     render(<StatusBadge domain="invoice" status="overdue" />)
 
     const badge = screen.getByText("Overdue")
-    expect(badge.dataset.tone).toBe("danger")
-    expect(badge.className).toContain("text-tone-danger")
-    // A soft pill: the same 14% tint in light and dark, the label at full strength.
-    expect(badge.className).toContain("bg-tone-danger/14")
+    expect(badge.dataset.tone).toBe("warning")
+    // The label in the tone on the tone at 10%, the same in light and dark, on a 4px badge.
+    expect(badge.className).toContain("text-tone-warning")
+    expect(badge.className).toContain("bg-tone-warning-soft")
     expect(badge.className).not.toContain("dark:")
-    expect(badge.className).toContain("rounded-full")
+    expect(badge.className).toContain("rounded-sm")
   })
 
-  it("draws a dot in the tone colour that assistive technology skips", () => {
+  it("draws no dot: the label alone says the status", () => {
     render(<StatusBadge domain="invoice" status="sent" />)
 
-    const dot = screen.getByText("Sent").querySelector("[aria-hidden]")
-    expect(dot).not.toBeNull()
-    expect(dot?.className).toContain("bg-current")
+    expect(screen.getByText("Sent").querySelector("[aria-hidden]")).toBeNull()
   })
 
-  it("draws settled as the full stop: a square green dot on the Settled tint", () => {
-    render(<StatusBadge domain="quote" status="accepted" />)
-
-    const badge = screen.getByText("Accepted")
-    expect(badge.className).toContain("text-tone-success")
-    expect(badge.className).toContain("bg-settled-soft")
-    const dot = badge.querySelector("[aria-hidden]")
-    expect(dot?.className).toContain("bg-current")
-    expect(dot?.className).toContain("rounded-none")
-    expect(dot?.className).not.toContain("rounded-full")
-  })
-
-  it("draws muted as a ring and every other tone as a solid dot", () => {
+  it("keeps a screen to green, amber and red: every other tone is one quiet neutral", () => {
     render(
       <>
-        <StatusBadge domain="invoice" status="credited" />
         <StatusBadge domain="invoice" status="draft" />
+        <StatusBadge domain="invoice" status="sent" />
+        <StatusBadge domain="invoice" status="viewed" />
+        <StatusBadge domain="invoice" status="credited" />
+        <StatusBadge domain="quote" status="accepted" />
       </>
     )
 
-    const ring = screen.getByText("Credited").querySelector("[aria-hidden]")
-    expect(ring?.className).toContain("border-current")
-    expect(ring?.className).not.toContain("bg-current")
-    const solid = screen.getByText("Draft").querySelector("[aria-hidden]")
-    expect(solid?.className).toContain("bg-current")
-    expect(solid?.className).not.toContain("border-current")
+    const neutral = ["Draft", "Sent", "Viewed", "Credited"].map((label) => screen.getByText(label).className)
+    expect(new Set(neutral).size).toBe(1)
+    expect(neutral[0]).toContain("text-muted-foreground")
+    expect(screen.getByText("Accepted").className).toContain("text-tone-success")
   })
 
   it.each([["en-US", "Sending"], ["da-DK", "Sender"]])(

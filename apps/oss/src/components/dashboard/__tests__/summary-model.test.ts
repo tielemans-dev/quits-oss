@@ -5,7 +5,6 @@ import {
   classifyDashboard,
   dueLabel,
   localToday,
-  incomingRule,
   isLate,
   presentChart,
   presentHero,
@@ -268,27 +267,6 @@ describe("due dates", () => {
       isLate({ isOverdue: true, daysOverdue: null }),
       isLate({ isOverdue: false, daysOverdue: 5 }),
     ]).toEqual([true, false, false, false])
-  })
-})
-
-describe("incomingRule", () => {
-  const rule = (balance: string, totalAmount: string) => incomingRule({ amount: money("DKK", balance), total: money("DKK", totalAmount) })
-
-  it("is a single rule while nothing is settled", () => {
-    expect(rule("1000.00", "1000.00")).toEqual({ rule: "single" })
-  })
-
-  it("draws the second rule as far as it is paid or credited: 1 - balance/total", () => {
-    expect(rule("6000.00", "18000.00")).toEqual({ rule: "double", paidFraction: 12000 / 18000 })
-    expect(rule("250.00", "1000.00")).toEqual({ rule: "double", paidFraction: 0.75 })
-  })
-
-  it("never draws past the total, and treats a balance above it as nothing settled", () => {
-    expect(rule("1200.00", "1000.00")).toEqual({ rule: "single" })
-  })
-
-  it("is exact on small cents", () => {
-    expect(rule("0.10", "0.30")).toEqual({ rule: "double", paidFraction: 20 / 30 })
   })
 })
 

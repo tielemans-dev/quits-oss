@@ -43,10 +43,7 @@ import {
 import { Plus, Trash2 } from "lucide-react"
 import { cn } from "../../../lib/utils"
 import { useI18n } from "../../../lib/i18n/react"
-import {
-  invoiceAmountRule,
-  invoiceDisplayStatus,
-} from "../../../lib/payments/invoice-display-status"
+import { invoiceDisplayStatus } from "../../../lib/payments/invoice-display-status"
 import { PILL_STAGGER_MS, SwappingStatusBadge } from "../../../components/jobs/swapping-status-badge"
 import { useReminderJobs } from "../../../components/jobs/reminder-jobs-store"
 import { remindedInvoiceIds } from "../../../lib/jobs/reminder-tracker"
@@ -175,7 +172,6 @@ function InvoicesListPage() {
           </ListHead>
           <ListBody>
             {invoices.map((invoice) => {
-              const { rule, paidFraction } = invoiceAmountRule(invoice)
               const partlyPaid = invoice.balanceDue > 0 && invoice.balanceDue < invoice.total
               const dueDate = formatDate(invoice.dueDate, locale)
               return (
@@ -201,7 +197,7 @@ function InvoicesListPage() {
                         <span
                           className={cn(
                             "text-muted-foreground block truncate text-xs @4xl:hidden",
-                            invoice.status === "overdue" && "text-tone-danger"
+                            invoice.status === "overdue" && "text-tone-warning"
                           )}
                         >
                           {t("invoices.table.dueDate")} {dueDate}
@@ -225,7 +221,7 @@ function InvoicesListPage() {
                   <ListCell
                     className={cn(
                       "text-muted-foreground hidden @4xl:block",
-                      invoice.status === "overdue" && "text-tone-danger"
+                      invoice.status === "overdue" && "text-tone-warning"
                     )}
                   >
                     {dueDate}
@@ -236,8 +232,6 @@ function InvoicesListPage() {
                         value={decimalFromNumber(invoice.total, invoice.currency)}
                         currency={invoice.currency}
                         locale={locale}
-                        rule={rule}
-                        paidFraction={paidFraction}
                       />
                       {partlyPaid ? (
                         <span className="text-muted-foreground num -mt-0.5 text-xs">

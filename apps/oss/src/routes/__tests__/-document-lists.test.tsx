@@ -109,8 +109,8 @@ describe("invoice list", () => {
     const rows = within(table).getAllByRole("row").slice(1)
     expect(rows).toHaveLength(2)
     expect(within(rows[0]).getByRole("link", { name: locale === "da-DK" ? "Faktura 1042, Acme" : "Invoice 1042, Acme" })).toBeTruthy()
-    expect(within(rows[0]).getByText(dueTodayLabel).dataset.tone).toBe(settingsFail ? "info" : "danger")
-    expect(within(rows[1]).getByText(pastDueLabel).dataset.tone).toBe("danger")
+    expect(within(rows[0]).getByText(dueTodayLabel).dataset.tone).toBe(settingsFail ? "info" : "warning")
+    expect(within(rows[1]).getByText(pastDueLabel).dataset.tone).toBe("warning")
     expect(state.settings).toHaveBeenCalledTimes(1)
   })
 
@@ -131,7 +131,7 @@ describe("invoice list", () => {
       const rows = within(table).getAllByRole("row").slice(1)
       expect(rows).toHaveLength(3)
       expect(within(rows[0]).getByText(sentLabel).dataset.tone).toBe("info")
-      expect(within(rows[1]).getByText(overdueLabel).dataset.tone).toBe("danger")
+      expect(within(rows[1]).getByText(overdueLabel).dataset.tone).toBe("warning")
       expect(within(rows[2]).getByText(sentLabel).dataset.tone).toBe("info")
     }
   )
