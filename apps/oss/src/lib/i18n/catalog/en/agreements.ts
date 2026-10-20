@@ -53,8 +53,8 @@ export const enAgreementsMessages = {
   "agreements.unspecified": "Not specified",
   "agreements.acceptedAt": "Accepted at",
   "agreements.method": "Method",
-  "agreements.revision": "Offer revision",
-  "agreements.hash": "Offer hash",
+  "agreements.revision": "Agreement revision",
+  "agreements.hash": "Agreement hash",
   "agreements.identityNotice": "The intended recipient is not proof of signer identity.",
   "agreements.pdf": "Download PDF",
   "agreements.confirmTerms":
@@ -188,4 +188,12 @@ export const enAgreementsMessages = {
   "agreements.templates.milestone.name": "Milestone project",
   "agreements.templates.fixed.terms": "# {{agreement.title}}\n\n{{seller.name}} will provide the following work for {{buyer.name}}.\n\n{{deliverables}}\n\nThe agreed total is {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nChanges to the agreed scope require a new agreement. Payment is due according to the agreement's payment terms.\n\nThis template is not legal advice.",
   "agreements.templates.milestone.terms": "# {{agreement.title}}\n\n{{seller.name}} will provide these milestones for {{buyer.name}}.\n\n{{deliverables}}\n\nThe milestones, including any deposit, total {{agreement.total}}. This offer is valid until {{agreement.validUntil}}.\n\nEach milestone follows its agreed date and payment terms. Changes to scope require a new agreement.\n\nThis template is not legal advice.",
+  "agreements.issued": "Issued",
+  "agreements.acceptedBy": "Accepted by",
+  "agreements.validation.validUntil": "Choose the date the agreement is valid until",
+  "agreements.email.reason.sent": "The agreement email was sent.",
+  "agreements.email.reason.provider_missing": "Email delivery is not configured.",
+  "agreements.email.reason.send_failed": "Email delivery failed.",
+  "agreements.email.reason.sending": "The email provider has not confirmed delivery yet. It is retried automatically, and the customer will not get a duplicate.",
+  "agreements.email.reason.unconfirmed": "The email provider never confirmed delivery. The customer may or may not have received it; resend the email if in doubt.",
 } as const

@@ -36,7 +36,7 @@ describe("v2 offer rendering", () => {
     expect(page).toContain("Rounding"); expect(page).toContain("Service total"); expect(page).toContain("Payment schedule"); expect(page).toContain("including VAT"); expect(page).toContain("On agreement acceptance")
     expect(page).not.toContain("included in the total")
     const pdf = renderToStaticMarkup(<AgreementPdf snapshot={snapshot} number="AGR-1" />)
-    expect(pdf).toContain("Afrunding"); expect(pdf).toContain("Service total"); expect(pdf).toContain("Payment schedule"); expect(pdf).toContain("20.00"); expect(pdf).toContain("including VAT")
+    expect(pdf).toContain("Afrunding"); expect(pdf).toContain("Ydelser i alt"); expect(pdf).toContain("Betalingsplan"); expect(pdf).toContain("Deposit: 20,00\u00a0kr. inkl. moms"); expect(pdf).toContain("Ved accept af aftalen")
     expect(pdf).not.toContain("deposit included in total")
     for (const output of [page, pdf]) { expect(output).toContain("Frozen buyer road 2"); expect(output).toContain("2200 København N") }
   })

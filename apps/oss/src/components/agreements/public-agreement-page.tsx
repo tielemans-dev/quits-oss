@@ -129,7 +129,7 @@ export function PublicAgreementPage({
           {money(totals.gross)}
         </p>
           </>}
-        {v2 && <section className="grid gap-3">
+        {v2 && v2.paymentSchedule.length > 0 && <section className="grid gap-3">
           <h2 className="text-xl font-semibold">{t("agreements.paymentSchedule")}</h2>
           {v2.paymentSchedule.map(line => <div key={line.sortOrder} className="border-b pb-3">
             <h3 className="font-medium">{line.title}</h3>
@@ -155,7 +155,7 @@ export function PublicAgreementPage({
           dangerouslySetInnerHTML={{ __html: snapshot.termsHtml }}
         />
       </section>
-      <AcceptanceRecord record={document.acceptance} />
+      <AcceptanceRecord record={document.acceptance} timeZone={snapshot.timezone} />
       <a
         href={`/a/${encodeURIComponent(token)}/pdf`}
         target="_blank"

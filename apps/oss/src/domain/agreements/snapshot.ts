@@ -3,7 +3,7 @@ import type { VatTreatment, VatReasonCode } from "@quits/contracts/vat"
 import { createHash } from "node:crypto"
 import { agreementOfferSnapshotV1Schema, agreementOfferSnapshotV2Schema } from "@quits/contracts/agreements"
 import type { Agreement, Deliverable } from "../../../generated/prisma/client"
-import { renderAgreementMarkdown } from "../../lib/agreements/markdown"
+import { agreementTermsAmounts, renderAgreementMarkdown } from "../../lib/agreements/markdown"
 
 /** Recursively sorted object keys; array order is part of the offer. */
 export function canonicalizeOffer(value: unknown): string {
@@ -24,8 +24,7 @@ export function agreementPlaceholders(agreement: Agreement & { deliverables: Del
     "seller.name": seller?.companyName ?? "",
     "buyer.name": buyer?.name ?? "",
     "agreement.title": agreement.title,
-    "agreement.validUntil": agreement.validUntil.toISOString().slice(0, 10),
-    "agreement.total": `${agreement.totalGross.toFixed(2)} ${agreement.currency}`,
+    ...agreementTermsAmounts({ total: agreement.totalGross.toString(), currency: agreement.currency, validUntil: agreement.validUntil, locale: agreement.locale }),
     deliverables: agreement.deliverables
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)

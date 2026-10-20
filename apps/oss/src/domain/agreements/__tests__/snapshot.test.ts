@@ -75,7 +75,7 @@ describe("canonical offer snapshot", () => {
       subtotalNet: "100.50",
       totalTax: "25.13",
       totalGross: "125.63",
-      termsHtml: "<p><strong>Buyer</strong> agrees to Design project for 125.63 DKK.</p>\n",
+      termsHtml: "<p><strong>Buyer</strong> agrees to Design project for 125,63\u00a0kr.</p>\n",
     })
     expect(snapshot.deliverables[0]).toMatchObject({
       quantity: "1.00",
@@ -124,7 +124,7 @@ describe("canonical offer snapshot", () => {
         "sortOrder",
       ].sort(),
     )
-    expect(hash(fixture())).toBe("2c732d477e0848a3c6bbf605cec37bded75a5348c233d4c046bc073464228909")
+    expect(hash(fixture())).toBe("0eecc63588997d586802fa9adcf0522c6bfac735b7a553b70c380e7c2f6a12a4")
   })
   it("changes the hash for agreed dates and validity, not forecasts, notes or lifecycle metadata", () => {
     const original = fixture()

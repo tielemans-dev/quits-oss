@@ -17,7 +17,9 @@ import {
 } from "../../../components/ui/select"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { useI18n } from "../../../lib/i18n/react"
-import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
+import type { TranslationKey } from "../../../lib/i18n/messages"
+import { agreementDraftFieldErrors } from "../../../lib/agreements/draft-validation"
+import { agreementTermsAmounts, omitSentencesNaming, renderAgreementMarkdown } from "../../../lib/agreements/markdown"
 import { calculateLegacyDocument, previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import { currencyFractionDigits } from "../../../lib/payments/stripe-amounts"
 import { formatCurrency } from "../../../lib/i18n/format"
@@ -78,6 +80,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, TranslationKey>>({})
   useEffect(() => {
     setLoading(true)
     setLoadError(null)
@@ -166,14 +169,14 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const preview = useMemo(() => {
     try {
       return {
-        html: renderAgreementMarkdown(deferred.termsMarkdown, {
+        // Until the draft has a validity date, its sentence stays out of the preview.
+        html: renderAgreementMarkdown(deferred.validUntil ? deferred.termsMarkdown : omitSentencesNaming(deferred.termsMarkdown, ["agreement.validUntil"]), {
           "seller.name": sellerName,
           "buyer.name": contacts.find((item) => item.id === deferred.contactId)?.name ?? "",
           "agreement.title": deferred.title,
-          "agreement.validUntil": deferred.validUntil,
-          "agreement.total": `${offerFormatVersion === 2 ? previewDraft({ items: deferred.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: deferred.taxRate, currency: deferred.currency, pricesIncludeTax }).result?.gross ?? "" : calculateLegacyDocument({
+          ...agreementTermsAmounts({ currency: deferred.currency, validUntil: deferred.validUntil || null, locale, total: offerFormatVersion === 2 ? previewDraft({ items: deferred.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: deferred.taxRate, currency: deferred.currency, pricesIncludeTax }).result?.gross ?? null : calculateLegacyDocument({
             items: deferred.deliverables.map(line => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(deferred.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(deferred.currency), 2),
-          }).totalGross.toFixed(2)} ${deferred.currency}`,
+          }).totalGross }),
           deliverables: deferred.deliverables
             .map((line) => `${line.title}: ${line.description ?? ""}`)
             .join("\n"),
@@ -183,14 +186,17 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     } catch (err) {
       return { html: "", error: err instanceof Error ? err.message : t("agreements.error") }
     }
-  }, [deferred, sellerName, contacts, t, pricesIncludeTax, offerFormatVersion])
+  }, [deferred, sellerName, contacts, t, locale, pricesIncludeTax, offerFormatVersion])
   async function save() {
     setError(null)
+    setFieldErrors({})
     const parsed = agreementCreateDraftDecimalInputSchema.safeParse(form)
     if (!parsed.success) {
-      setError(
-        parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join(" "),
-      )
+      const { validUntil, ...rest } = agreementDraftFieldErrors(parsed.error.issues)
+      // The validity date shows its message at the field; the others are listed with the save error.
+      setFieldErrors(validUntil ? { validUntil } : {})
+      const others = [...new Set(Object.values(rest).map(key => t(key)))]
+      if (others.length) setError(others.join(" "))
       return
     }
     setSaving(true)
@@ -251,8 +257,11 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                 placeholder={t("docForm.selectDate")}
                 value={form.validUntil}
                 onChange={(value) => change("validUntil", value)}
+                invalid={Boolean(fieldErrors.validUntil)}
+                describedBy={fieldErrors.validUntil ? "validUntil-error" : undefined}
                 required
               />
+              {fieldErrors.validUntil && <p id="validUntil-error" className="text-sm text-destructive">{t(fieldErrors.validUntil)}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="currency">{t("agreements.currency")}</Label>

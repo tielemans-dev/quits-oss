@@ -1,5 +1,6 @@
 import { readAgreementOfferSnapshot } from "@quits/contracts/agreements"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
+import { agreementEmailReasonKey } from "../../lib/agreements/email-reason"
 import { useState } from "react"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
@@ -71,6 +72,7 @@ export function AgreementActions({
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
   const disabled = busy || agreement.lastEmailAttemptOutcome === "sending"
+  const emailReason = agreementEmailReasonKey(agreement)
   const canAccept = capabilities.depositsEnabled ||
     (agreement.offerSnapshot != null && !offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)))
   const id = agreement.id
@@ -233,7 +235,7 @@ export function AgreementActions({
         </div>
       </details>}
       {agreement.lastEmailAttemptMessage && (
-        <p className="text-sm text-muted-foreground">{agreement.lastEmailAttemptMessage}</p>
+        <p className="text-sm text-muted-foreground">{emailReason ? t(emailReason) : agreement.lastEmailAttemptMessage}</p>
       )}
     </section>
   )
