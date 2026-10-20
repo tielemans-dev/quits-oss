@@ -4,9 +4,10 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { I18nProvider } from "../../../lib/i18n/react"
 import type { BillingSubscription } from "../../../lib/billing/types"
 
-const state = vi.hoisted(() => ({ subscription: null as BillingSubscription | null, fail: false }))
+const state = vi.hoisted(() => ({ subscription: null as BillingSubscription | null, fail: false, pathname: "/" }))
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => <a href={to} {...props}>{children}</a>,
+  useRouterState: ({ select }: { select: (s: { location: { pathname: string } }) => unknown }) => select({ location: { pathname: state.pathname } }),
 }))
 vi.mock("../../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: true }) }))
 vi.mock("../../../trpc/client", () => ({ trpc: { billing: { getSubscription: { query: async () => {
@@ -16,7 +17,7 @@ vi.mock("../../../trpc/client", () => ({ trpc: { billing: { getSubscription: { q
 
 import { blockedResource, PaywallBlock, TrialAccessProvider, TrialBanner, TrialRouteGate } from "../trial-access"
 
-afterEach(() => { cleanup(); state.subscription = null; state.fail = false })
+afterEach(() => { cleanup(); state.subscription = null; state.fail = false; state.pathname = "/" })
 
 describe("trial form gate", () => {
   it("blocks only the initial failure, preserves form edits on refresh failure, and accepts recovery", async () => {
@@ -138,5 +139,36 @@ describe("trial form gate", () => {
     expect(blockedResource("/invoices/issued-id")).toBeNull()
     expect(blockedResource("/contacts/customer-id")).toBe("contacts")
     expect(blockedResource("/agreements/draft-id/edit")).toBe("agreements")
+  })
+
+  it.each([
+    ["da-DK", "Gør opsætningen færdig", "Din prøveperiode starter, når opsætningen er færdig. Indtil da kan du ikke oprette noget.", "Fortsæt opsætningen"],
+    ["en-US", "Finish setting up", "Your trial starts when setup is finished. Until then you can't create anything.", "Continue setup"],
+  ])("shows unfinished onboarding as setup, not as read-only, in %s", async (locale, title, meta, action) => {
+    state.subscription = { status: "canceled", priceId: null, organizationAccess: { state: "read_only", reason: "canceled" },
+      access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
+    render(<I18nProvider locale={locale}><TrialAccessProvider onboardingPending><TrialBanner /></TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByText(title)).toBeTruthy()
+    expect(screen.getByText(meta)).toBeTruthy()
+    expect(screen.getByRole("link", { name: action }).getAttribute("href")).toBe("/onboarding")
+    expect(screen.queryByText(locale === "da-DK" ? "Din organisation er skrivebeskyttet" : "Your organization is read-only")).toBeNull()
+    expect(screen.queryByRole("link", { name: locale === "da-DK" ? "Gå til abonnement" : "Go to billing" })).toBeNull()
+  })
+
+  it("offers no link back to setup on the onboarding page itself", async () => {
+    state.pathname = "/onboarding"
+    state.subscription = { status: "canceled", priceId: null, organizationAccess: { state: "read_only", reason: "canceled" },
+      access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
+    render(<I18nProvider locale="en-US"><TrialAccessProvider onboardingPending><TrialBanner /></TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByText("Finish setting up")).toBeTruthy()
+    expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it.each(["trial_ended", "payment_failed"] as const)("still shows %s as read-only while onboarding is unfinished", async reason => {
+    state.subscription = { status: "expired", priceId: null, organizationAccess: { state: "read_only", reason, trialEnd: 1 },
+      access: { paidOnly: true, hasSubscription: false, checkoutAvailable: true, portalAvailable: false } }
+    render(<I18nProvider locale="en-US"><TrialAccessProvider onboardingPending><TrialBanner /></TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByText(reason === "trial_ended" ? "Your trial has ended" : "Your organization is read-only")).toBeTruthy()
+    expect(screen.queryByText("Finish setting up")).toBeNull()
   })
 })

@@ -20,13 +20,15 @@ type Props = {
   /** False while the member's role is still loading. */
   ready: boolean
   readOnly?: boolean
+  /** Writes wait for onboarding to finish; the banner explains it, so no read-only badge. */
+  setupPending?: boolean
 }
 
 /**
  * The global "+ Ny" button: the one place to start a new document from, on every page. Offers
  * only what the member may create, and is opened by the `N` key (see `useShellHotkeys`).
  */
-export function NewMenu({ open, onOpenChange, can, ready, readOnly = false }: Props) {
+export function NewMenu({ open, onOpenChange, can, ready, readOnly = false, setupPending = false }: Props) {
   const { t } = useI18n()
   const actions = createActions.filter((action) => can(action.capability))
 
@@ -47,7 +49,7 @@ export function NewMenu({ open, onOpenChange, can, ready, readOnly = false }: Pr
       >
         <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
         <span className="max-sm:sr-only">{t('shell.new')}</span>
-        {readOnly && <span className="font-mono text-2xs tracking-wide">{t('trial.lock')}</span>}
+        {readOnly && !setupPending && <span className="font-mono text-2xs tracking-wide">{t('trial.lock')}</span>}
         <kbd className="rounded-sm border border-hairline px-1 font-mono text-2xs font-medium text-muted-foreground max-md:hidden" aria-hidden="true">
           N
         </kbd>
