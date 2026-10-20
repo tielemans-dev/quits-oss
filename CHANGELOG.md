@@ -2,7 +2,21 @@
 
 ## Unreleased
 
-- Return safe, localized client errors for expected managed sending-domain rejections in the source available, self-hostable app. Export the typed rejection contract for runtime providers; unexpected failures remain server errors.
+## [0.14.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.14.0)
+
+Changes since the published v0.13.0 tag, covering 36 merged PRs.
+
+- **Breaking runtime contract:** billing providers must return the server-resolved `organizationAccess` decision and explicit `access` billing capabilities. Writes are refused when the decision is missing. The trial hook now runs on every successful onboarding with a `cvrVerified` flag.
+- Return safe, localized client errors for expected managed sending-domain rejections. Export the typed rejection contract for runtime providers; unexpected failures remain server errors.
+- Restyle the app shell, sidebar, top bar, Overblik and Settings, with Settings split into its own pages.
+- Grow the command palette out of the Overblik field: complete half-typed requests, open request cards for what is typed, and optionally read whole sentences with a decision model when the operator configures one.
+- Report whether email delivery is configured, refuse email jobs without delivery configuration, and run scheduler ticks during local development.
+- Refresh document lists, details, Settings and financial panels after changes.
+- Adopt the Vite+ toolchain and pin the Nitro build dependency.
+
+See the [release notes](docs/releases/v0.14.0.md) for upgrade requirements.
+
+[Compare with v0.13.0](https://github.com/tielemans-dev/quits-oss/compare/v0.13.0...v0.14.0).
 
 ## [0.13.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.13.0)
 
