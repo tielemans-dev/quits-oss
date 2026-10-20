@@ -1,24 +1,24 @@
-import { Clock, FilePenLine, Hourglass, MailQuestion, MailWarning, type LucideIcon } from "lucide-react"
-
 import { useI18n } from "../../lib/i18n/react"
 import { cn } from "../../lib/utils"
 import { Amount } from "../kvit/amount"
 import { listRowLinkClass } from "../kvit/list"
-import { Panel } from "../kvit/panel"
 import { Button } from "../ui/button"
 import { DocLink } from "./doc-link"
 import { formatShortDate } from "./format-relative"
 import { tCount, type Translate } from "./i18n"
 import { ReminderFailureNote, RemindAction } from "./remind-action"
+import { DashboardSection, SectionEmpty, sectionRowClass } from "./section"
 import { attentionAction, isLate, precisionOf, type AttentionItem } from "./summary-model"
 import type { ReminderState } from "./use-reminders"
 
-const reasonStyle: Record<AttentionItem["reason"], { icon: LucideIcon; tone: string }> = {
-  invoice_overdue: { icon: Clock, tone: "bg-tone-warning/14 text-tone-warning" },
-  draft_older_than_7_days: { icon: FilePenLine, tone: "bg-tone-muted/14 text-tone-muted" },
-  quote_expiring: { icon: Hourglass, tone: "bg-tone-warning/14 text-tone-warning" },
-  email_failed: { icon: MailWarning, tone: "bg-tone-danger/14 text-tone-danger" },
-  email_unconfirmed: { icon: MailQuestion, tone: "bg-tone-warning/14 text-tone-warning" },
+/**
+ * The tone of a row's reason: amber for a real arrear (`isOverdue` with days, whatever reason put
+ * the row here) and a quote about to lapse, red for an email that failed, quiet for the rest. Due
+ * today is not late yet, so it is quiet.
+ */
+export function attentionTone(item: AttentionItem): "warning" | "danger" | "muted" {
+  if (isLate(item) || item.reason === "quote_expiring") return "warning"
+  return item.reason === "email_failed" ? "danger" : "muted"
 }
 
 /**
@@ -62,8 +62,9 @@ export function attentionOpenLabel(item: AttentionItem, t: Translate): string {
 
 /**
  * What needs the person today: overdue invoices, old drafts, quotes about to lapse and emails that
- * may not have arrived. Each row says why in one sentence and offers one action: the reminder
- * where the server says one can be sent, otherwise opening the document.
+ * may not have arrived. Each row is one line: who, why in a muted sentence, the amount, and one
+ * quiet action on the right: the reminder where the server says one can be sent, otherwise
+ * opening the document. The whole row opens the document.
  */
 export function AttentionList({
   items,
@@ -83,87 +84,76 @@ export function AttentionList({
   const remindable = items.filter((item) => attentionAction(item) === "remind").map((item) => item.documentId)
 
   return (
-    <Panel
-      label={t("dashboard.attention.title")}
+    <DashboardSection
+      title={t("dashboard.attention.title")}
       data-slot="dashboard-attention"
       className={className}
       action={
         onRemindAll && remindable.length > 1 ? (
-          <Button type="button" variant="outline" size="xs" onClick={() => onRemindAll(remindable)}>
-            {t("reminders.batch.send", { count: remindable.length })}
+          <Button type="button" variant="ghost" size="xs" className="text-brand-text -mr-2" onClick={() => onRemindAll(remindable)}>
+            {t("dashboard.attention.remindAll", { count: remindable.length })}
           </Button>
         ) : null
       }
     >
       {items.length === 0 ? (
-        <p className="text-muted-foreground px-4 pt-1 pb-5 text-sm">{t("dashboard.attention.empty")}</p>
+        <SectionEmpty>{t("dashboard.attention.empty")}</SectionEmpty>
       ) : (
         <ul>
           {items.map((item) => {
-            // Amber is a real arrear (`isOverdue` with days), whatever reason put the row here; due today is neutral.
-            const style = isLate(item)
-              ? reasonStyle.invoice_overdue
-              : item.reason === "invoice_overdue"
-                ? { icon: Clock, tone: "bg-tone-muted/14 text-tone-muted" }
-                : reasonStyle[item.reason]
-            const Icon = style.icon
             const action = attentionAction(item)
             const refusal = reminders[item.documentId]
+            const tone = attentionTone(item)
             return (
               <li
                 key={`${item.kind}-${item.documentId}-${item.reason}`}
-                className="group/row border-hairline hover:bg-foreground/[0.035] has-[a:focus-visible]:bg-foreground/[0.035] relative flex gap-3 border-t px-4 py-3 transition-colors duration-(--duration-fade) first:border-t-0"
+                className={cn(sectionRowClass, "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 @md:grid-cols-[minmax(0,1fr)_auto_minmax(9rem,auto)]")}
               >
-                <span
-                  aria-hidden="true"
-                  className={cn("mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg", style.tone)}
-                >
-                  <Icon className="size-3.5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <DocLink
-                      kind={item.kind}
-                      id={item.documentId}
-                      className={cn(listRowLinkClass, "block min-w-0 truncate text-sm font-semibold")}
-                    >
-                      {item.customerName}
-                    </DocLink>
-                    <Amount
-                      value={item.amount.amount}
-                      currency={item.amount.currency}
-                      locale={locale}
-                      size="sm"
-                      precision={precisionOf(item.amount)}
-                    />
-                  </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
+                <div className="min-w-0">
+                  <DocLink
+                    kind={item.kind}
+                    id={item.documentId}
+                    className={cn(listRowLinkClass, "block truncate text-sm font-medium")}
+                  >
+                    {item.customerName}
+                  </DocLink>
+                  <p
+                    data-tone={tone}
+                    className={cn(
+                      "truncate text-xs",
+                      tone === "warning" ? "text-tone-warning" : tone === "danger" ? "text-tone-danger" : "text-muted-foreground"
+                    )}
+                  >
                     {attentionReason(item, locale, t)}
                   </p>
-                  <div className="relative z-10 mt-2">
-                    {action === "remind" || reminders[item.documentId]?.status === "sent" ? (
-                      <RemindAction
-                        state={reminders[item.documentId]}
-                        onRemind={() => onRemind(item.documentId)}
-                      />
-                    ) : (
-                      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <Button asChild variant="outline" size="sm">
-                          <DocLink kind={item.kind} id={item.documentId}>
-                            {attentionOpenLabel(item, t)}
-                          </DocLink>
-                        </Button>
-                        {/* The refusal stays after the reload took the reminder away (it was already sent today). */}
-                        {refusal?.status === "error" ? <ReminderFailureNote failure={refusal.failure} /> : null}
-                      </span>
-                    )}
-                  </div>
+                </div>
+                <Amount
+                  value={item.amount.amount}
+                  currency={item.amount.currency}
+                  locale={locale}
+                  size="sm"
+                  precision={precisionOf(item.amount)}
+                />
+                <div className="relative z-10 col-span-2 flex @md:col-span-1 @md:justify-end">
+                  {action === "remind" || refusal?.status === "sent" ? (
+                    <RemindAction state={refusal} onRemind={() => onRemind(item.documentId)} size="xs" />
+                  ) : (
+                    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 @md:justify-end">
+                      {/* The refusal stays after the reload took the reminder away (it was already sent today). */}
+                      {refusal?.status === "error" ? <ReminderFailureNote failure={refusal.failure} /> : null}
+                      <Button asChild variant="outline" size="xs">
+                        <DocLink kind={item.kind} id={item.documentId}>
+                          {attentionOpenLabel(item, t)}
+                        </DocLink>
+                      </Button>
+                    </span>
+                  )}
                 </div>
               </li>
             )
           })}
         </ul>
       )}
-    </Panel>
+    </DashboardSection>
   )
 }
