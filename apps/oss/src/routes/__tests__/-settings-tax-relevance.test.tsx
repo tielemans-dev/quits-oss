@@ -910,3 +910,15 @@ describe("Settings UI extension", () => {
     expect((await screen.findByTestId("company-extension")).textContent).toBe("org_1:da-DK")
   })
 })
+
+describe("Settings stored payment terms", () => {
+  it.each(["companyName", "vatStatus"])("shows the stored payment terms and keeps them when saving %s", async edit => {
+    await renderDanishSettings(true, { paymentTermsDays: 30 })
+    expect((screen.getByLabelText("settings.paymentTermsDays.label") as HTMLInputElement).value).toBe("30")
+    if (edit === "companyName") fireEvent.change(screen.getByLabelText("settings.companyName.label"), { target: { value: "Acme ApS" } })
+    else fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
+    submitSettingsForm()
+    expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ paymentTermsDays: 30 }))
+  })
+})
