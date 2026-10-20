@@ -34,3 +34,22 @@ describe("invoice selection with deposits disabled", () => {
     expect(screen.getByText("agreements.scheduleAsSaleChoice")).toBeTruthy()
   })
 })
+
+describe("an Invoice button with nothing billable", () => {
+  const line = (status: string, billingStatus = "unbilled") => ({ id: status, title: status, status, billingStatus, isDeposit: false, lineGross: 100, allocation: { state: "unbilled" } })
+  const withLines = (billingTrigger: string, lines: ReturnType<typeof line>[]) => ({ ...agreement, billingTrigger, deliverables: lines }) as unknown as Parameters<typeof InvoiceDeliverables>[0]["agreement"]
+  it.each([
+    ["on_acceptance", [line("delivered")], "agreements.invoice.waitAcceptance"],
+    ["on_delivery", [line("in_progress")], "agreements.invoice.waitDelivery"],
+    ["on_acceptance", [line("accepted", "billed"), line("cancelled")], "agreements.invoice.nothingLeft"],
+  ])("says what has to happen first (%s)", (trigger, lines, reason) => {
+    render(<InvoiceDeliverables agreement={withLines(trigger, lines)} depositsEnabled={false} onChanged={async () => {}} />)
+    const button = screen.getByRole("button", { name: "agreements.invoice" }) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(screen.getByText(reason).id).toBe(button.getAttribute("aria-describedby"))
+  })
+  it("gives no reason while something can be billed", () => {
+    render(<InvoiceDeliverables agreement={agreement} depositsEnabled={false} onChanged={async () => {}} />)
+    expect(screen.getByRole("button", { name: "agreements.invoice" }).getAttribute("aria-describedby")).toBeNull()
+  })
+})

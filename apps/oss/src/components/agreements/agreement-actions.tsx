@@ -62,20 +62,23 @@ export function AgreementActions({
   agreement: Agreement
   capabilities: Capabilities
   onChanged: () => Promise<void>
-  onError: (message: string) => void
+  onError: (message: string | null) => void
 }) {
   const { t } = useI18n()
   const [recipient, setRecipient] = useState("")
   const [name, setName] = useState("")
   const [note, setNote] = useState("")
   const [reason, setReason] = useState("")
-  const [busy, setBusy] = useState(false)
-  const disabled = busy || agreement.lastEmailAttemptOutcome === "sending"
+  // The running action, so its button can say what is happening.
+  const [pending, setPending] = useState<"send" | "issue" | "other" | null>(null)
+  const sending = agreement.lastEmailAttemptOutcome === "sending"
+  const disabled = pending !== null || sending
   const canAccept = capabilities.depositsEnabled ||
     (agreement.offerSnapshot != null && !offerHasDeposits(readAgreementOfferSnapshot(agreement.offerSnapshot)))
   const id = agreement.id
-  async function run(action: () => Promise<unknown>) {
-    setBusy(true)
+  async function run(action: () => Promise<unknown>, kind: "send" | "issue" | "other" = "other") {
+    setPending(kind)
+    onError(null)
     try {
       await action()
       await onChanged()
@@ -83,7 +86,7 @@ export function AgreementActions({
       onError(error instanceof Error ? error.message : t("agreements.error"))
       await onChanged()
     } finally {
-      setBusy(false)
+      setPending(null)
     }
   }
   const canRead = Boolean(
@@ -95,9 +98,9 @@ export function AgreementActions({
         {agreement.status === "draft" && capabilities.send && (
           <Button
             disabled={disabled}
-            onClick={() => void run(() => trpc.agreements.send.mutate({ id }))}
+            onClick={() => void run(() => trpc.agreements.send.mutate({ id }), "send")}
           >
-            {t("agreements.send")}
+            {t(pending === "send" ? "agreements.sending" : "agreements.send")}
           </Button>
         )}
         {["sent", "expired", "declined"].includes(agreement.status) && capabilities.update && (
@@ -158,10 +161,11 @@ export function AgreementActions({
                       id,
                       ...(recipient.trim() ? { recipient: recipient.trim() } : {}),
                     }),
+                agreement.status === "draft" ? "issue" : "send",
               )
             }
           >
-            {t(agreement.status === "draft" ? "agreements.issue" : "agreements.resend")}
+            {t(pending === "issue" ? "agreements.issuing" : pending === "send" && agreement.status !== "draft" ? "agreements.sending" : agreement.status === "draft" ? "agreements.issue" : "agreements.resend")}
           </Button>
         </div>
       )}
@@ -232,7 +236,10 @@ export function AgreementActions({
           <ConfirmAction label={t("agreements.completeAgreement")} description={t("agreements.completeConfirm")} disabled={disabled || !reason.trim()} run={() => void run(() => trpc.agreements.close.mutate({ id, disposition: "completed", reason }))} />
         </div>
       </details>}
-      {agreement.lastEmailAttemptMessage && (
+      {/* While the outbox delivers, the actions stay locked; the page follows the email until it settles. */}
+      {sending ? (
+        <p role="status" className="text-sm text-muted-foreground">{t("agreements.emailSending")}</p>
+      ) : agreement.lastEmailAttemptMessage && (
         <p className="text-sm text-muted-foreground">{agreement.lastEmailAttemptMessage}</p>
       )}
     </section>

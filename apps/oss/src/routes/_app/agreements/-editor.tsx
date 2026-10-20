@@ -244,7 +244,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="validUntil">{t("agreements.validUntil")}</Label>
+              <Label htmlFor="validUntil">{t("agreements.validUntil")} <span aria-hidden="true">*</span></Label>
               <LocalizedDateField
                 id="validUntil"
                 locale={locale}
