@@ -71,7 +71,8 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
   await page.addInitScript(language => Object.defineProperty(navigator, "language", { value: language }), locale)
   await page.goto("/onboarding")
   await waitForClientReady(page)
-  await expect(page.getByLabel(translate("auth.onboarding.field.companyName", locale), { exact: true })).toBeVisible()
+  // The label shows an aria-hidden required star; match the field by its accessible name.
+  await expect(page.getByRole("textbox", { name: translate("auth.onboarding.field.companyName", locale), exact: true })).toBeVisible()
   expect(await page.getByRole("radio").count()).toBe(0)
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme })
