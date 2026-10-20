@@ -13,6 +13,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   invoices: { sendReadiness: { query: async () => ({ businessBuyersOnly: readiness.businessBuyersOnly }) } },
   contacts: { get: { query: async () => ({ id: "synthetic-buyer", name: "Synthetic Buyer", country: "DK" }) } },
   settings: { get: { query: async () => ({ countryCode: "DK" }) } },
+  cvr: { customerAvailable: { query: async () => ({ enabled: false }) } },
 } }))
 import { Route as NewRoute } from "../_app/contacts/new"
 import { Route as EditRoute } from "../_app/contacts/$contactId"
