@@ -9,7 +9,7 @@ const route = vi.hoisted(() => ({ pathname: "/invoices" }))
 
 vi.mock("../../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: false }) }))
 vi.mock("../../ui/sidebar", () => ({
-  SidebarTrigger: () => null,
+  SidebarTrigger: () => <button type="button" data-testid="menu-trigger" />,
   useSidebar: () => ({ setOpenMobile: sidebar.setOpenMobile }),
 }))
 vi.mock("../search-field", () => ({ SearchField: () => <div data-testid="search-field" /> }))
@@ -114,5 +114,11 @@ describe("app main on Overblik", () => {
   it("keeps the search field everywhere else", () => {
     render(<AppMain>page</AppMain>)
     expect(screen.getByTestId("search-field")).not.toBeNull()
+  })
+
+  it.each(["/", "/invoices"])("starts the top bar with the menu button on %s", (pathname) => {
+    route.pathname = pathname
+    render(<AppMain>page</AppMain>)
+    expect(screen.getByRole("banner").firstElementChild?.firstElementChild).toBe(screen.getByTestId("menu-trigger"))
   })
 })

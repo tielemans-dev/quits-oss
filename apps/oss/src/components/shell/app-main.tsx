@@ -76,11 +76,12 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="sticky top-0 z-20 bg-background">
+      <header className="sticky top-(--app-inset-top) z-20 bg-background">
         {/* The bar shares the content's width, so search starts where the page does. */}
         <div className="mx-auto flex h-(--topbar-height) w-full max-w-[calc(var(--content-width)+2*var(--gutter))] items-center gap-2 px-(--gutter)">
-          {overview ? null : <SearchField ref={searchRef} onOpen={openPalette} className="max-w-[360px]" />}
+          {/* First, so it is in the same place on Overblik, which has no search field here. */}
           {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:hidden" /> : null}
+          {overview ? null : <SearchField ref={searchRef} onOpen={openPalette} className="max-w-[360px]" />}
           <div className="flex-1" />
           <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
           {sidebar ? (
