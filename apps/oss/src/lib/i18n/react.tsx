@@ -24,8 +24,8 @@ function detectBrowserLocale() {
  * Without `locale`, the language follows the signed-in organization (or the browser until it is
  * known). With `locale`, the subtree is fixed to it: the server render and the hydrated page agree
  * and the browser language is ignored. Pages for a document opened from a link use this so they
- * speak the document's language. A fixed subtree leaves `<html lang>` alone; the page marks its
- * own `lang` instead (see `LocalizedDocument`).
+ * speak the document's language, and `<html lang>` says so too (QUI-215); the page also marks the
+ * full tag on its own wrapper (see `LocalizedDocument`).
  */
 export function I18nProvider({
   children,
@@ -62,14 +62,14 @@ export function I18nProvider({
     setLocale((current) => (cleared || current === SERVER_LOCALE ? detectBrowserLocale() : current))
   }, [isFixed, initialLocale])
 
-  // Editable subtrees publish their language to the root. Only the root writes <html lang>,
-  // so its browser detection cannot overwrite the loaded organization's language.
+  // Subtrees, fixed ones included, publish their language to the root. Only the root writes
+  // <html lang>, so its browser detection cannot overwrite the organization's or document's.
   const publishDocumentLocale = parent?.setDocumentLocale ?? setDocumentLocale
   useEffect(() => {
-    if (!parent || isFixed) return
+    if (!parent) return
     publishDocumentLocale(locale)
     return () => publishDocumentLocale(null)
-  }, [parent !== null, isFixed, locale, publishDocumentLocale])
+  }, [parent !== null, locale, publishDocumentLocale])
 
   useEffect(() => {
     if (parent || isFixed) return

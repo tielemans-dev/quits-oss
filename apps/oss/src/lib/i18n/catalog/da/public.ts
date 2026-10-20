@@ -1,7 +1,5 @@
 /** Owned by the pages a customer opens from a link: the invoice, quote and agreement pages. */
 export const daPublicMessages = {
-  "public.document.customer": "Kunde",
-  "public.document.company": "Virksomhed",
   "public.document.notProvided": "Ikke oplyst",
   "public.document.total": "Total",
   "public.document.notes": "Noter",
