@@ -1,5 +1,6 @@
 export const daUiMessages = {
   "ui.queryError": "Dataene kunne ikke hentes",
+  "ui.queryError.body": "Intet er ændret. Prøv igen om et øjeblik.",
   "ui.retry": "Prøv igen",
   "ui.loading": "Indlæser…",
   "ui.mutationError": "Dine ændringer kunne ikke gemmes. Prøv igen.",

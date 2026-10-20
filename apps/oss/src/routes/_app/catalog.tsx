@@ -114,7 +114,7 @@ function CatalogPage() {
     }
   }
 
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
+  if (list.error) return <QueryError error={list.error} retry={list.refresh} />
 
   return (
     <div>

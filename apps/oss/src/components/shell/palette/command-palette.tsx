@@ -396,7 +396,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
             <X className="size-3.5" aria-hidden="true" />
           </button>
         )}
-        {!inline && <kbd className="mono-label rounded-sm border border-hairline px-1.5 py-px text-2xs">esc</kbd>}
+        {!inline && <kbd className="text-muted-foreground rounded-sm border border-hairline px-1.5 py-px font-mono text-2xs">esc</kbd>}
       </div>
       <div
         id={listboxId}
@@ -413,7 +413,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
         {offered.length === 0 &&
           (pending ? (
             // Nothing has matched yet, but a provider is still answering: not "no results" yet.
-            <p className="mono-label px-3 py-8 text-center">{t('shell.palette.searching')}</p>
+            <p className="text-muted-foreground px-3 py-8 text-center text-sm">{t('shell.palette.searching')}</p>
           ) : (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">
               {t('shell.palette.empty', { query: query.trim() })}
@@ -427,7 +427,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
             className="pb-1"
           >
             {section.heading && (
-              <div id={`${listboxId}-heading-${section.id}`} className="mono-label px-3 pt-2 pb-1.5">
+              <div id={`${listboxId}-heading-${section.id}`} className="text-muted-foreground px-3 pt-2 pb-1.5 text-xs font-medium">
                 {section.heading}
               </div>
             )}
@@ -451,7 +451,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
                 >
                   {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                   <span className="min-w-0 flex-1 truncate">{item.content ?? item.label}</span>
-                  {item.hint && <span className="mono-label shrink-0 text-2xs">{item.hint}</span>}
+                  {item.hint && <span className="text-muted-foreground shrink-0 text-xs">{item.hint}</span>}
                 </div>
               )
             })}
@@ -479,7 +479,7 @@ export function CommandPalette({ open: openProp, onOpenChange, can, billingEnabl
         </div>
       )}
       {unfolded && shown}
-      <div className={cn('mono-label flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-2xs', (shown !== null || !unfolded) && 'hidden')} aria-hidden="true">
+      <div className={cn('text-muted-foreground flex items-center gap-4 border-t border-hairline px-4 py-2.5 text-xs', (shown !== null || !unfolded) && 'hidden')} aria-hidden="true">
         <span>↑↓ {t('shell.palette.hint.select')}</span>
         <span>↵ {t('shell.palette.hint.open')}</span>
         <span>esc {t('shell.palette.hint.close')}</span>

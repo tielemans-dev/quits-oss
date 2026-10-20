@@ -117,7 +117,7 @@ function InvoicesListPage() {
     }
   }
 
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={loadInvoices} /></div>
+  if (list.error) return <QueryError error={list.error} retry={loadInvoices} />
 
   if (loading) {
     return (

@@ -53,7 +53,7 @@ function RecurringSchedulePage() {
     </Button>
   )
 
-  if (query.error && !notFound) return <div className="p-6"><QueryError error={query.error} retry={load} /></div>
+  if (query.error && !notFound) return <QueryError error={query.error} retry={load} />
 
   if (loading) {
     return (

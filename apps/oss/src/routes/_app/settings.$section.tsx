@@ -958,7 +958,7 @@ function SettingsPage() {
     setLogoError(null)
   }
 
-  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={() => setSettingsAttempt(value => value + 1)} /></div>
+  if (loadError) return <QueryError error={loadError} retry={() => setSettingsAttempt(value => value + 1)} />
 
   if (loading) {
     return (

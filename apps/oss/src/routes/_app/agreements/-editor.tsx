@@ -204,7 +204,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
       setSaving(false)
     }
   }
-  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={() => setLoadAttempt(value => value + 1)} /></div>
+  if (loadError) return <QueryError error={loadError} retry={() => setLoadAttempt(value => value + 1)} />
   if (loading) return <div><QuerySkeleton /></div>
   return (
     <div>

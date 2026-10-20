@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { HeadContent, Scripts, createRootRoute, Link, redirect, useRouterState } from '@tanstack/react-router'
 import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
+import { Button } from '../components/ui/button'
 import { useI18n, I18nProvider } from '../lib/i18n/react'
 import { resolveLanguage } from '../lib/i18n/translate'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
@@ -20,11 +21,14 @@ function NotFound() {
   const { t } = useI18n()
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-4xl font-bold">404</h1>
-      <p className="text-muted-foreground">{t('root.notFound.title')}</p>
-      <Link to="/" className="underline text-sm">{t('root.notFound.goHome')}</Link>
-    </div>
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+      <p className="text-muted-foreground font-mono text-xs">404</p>
+      <h1 className="mt-2 text-2xl font-medium tracking-[-0.01em]">{t('root.notFound.title')}</h1>
+      <p className="text-muted-foreground mt-2 text-sm">{t('root.notFound.body')}</p>
+      <Button asChild className="mt-6 self-start">
+        <Link to="/">{t('root.notFound.goHome')}</Link>
+      </Button>
+    </main>
   )
 }
 

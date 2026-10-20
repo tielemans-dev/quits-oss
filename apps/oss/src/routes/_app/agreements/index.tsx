@@ -21,7 +21,7 @@ function AgreementsPage() {
   const { t, locale } = useI18n()
   const list = useAppQuery(["agreements"], () => trpc.agreements.list.query())
   const agreements = list.data ?? []
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
+  if (list.error) return <QueryError error={list.error} retry={list.refresh} />
   return (
     <div className="grid gap-6">
       <div className="flex items-center justify-between gap-4">

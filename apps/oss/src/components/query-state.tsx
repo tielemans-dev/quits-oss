@@ -9,10 +9,11 @@ import { ListSkeleton } from "./kvit/list"
 
 export function QueryError({ error, retry }: { error: unknown; retry: () => void }) {
   const { t } = useI18n()
-  return <div role="alert" className="grid gap-3 rounded-md border p-4">
-    <p className="font-medium">{t("ui.queryError")}</p>
-    {error instanceof Error && error.message && <p className="text-sm text-muted-foreground">{error.message}</p>}
-    <Button variant="outline" className="justify-self-start" onClick={retry}>{t("ui.retry")}</Button>
+  return <div role="alert" className="grid max-w-160 justify-items-start gap-1 py-6">
+    <p className="text-base font-medium">{t("ui.queryError")}</p>
+    <p className="text-muted-foreground text-sm">{t("ui.queryError.body")}</p>
+    {error instanceof Error && error.message && <p className="text-muted-foreground font-mono text-xs">{error.message}</p>}
+    <Button variant="outline" className="mt-3" onClick={retry}>{t("ui.retry")}</Button>
   </div>
 }
 
