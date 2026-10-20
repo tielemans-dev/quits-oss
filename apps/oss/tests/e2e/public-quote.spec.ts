@@ -131,7 +131,8 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.goto(seeded.url)
       await waitForClientReady(page)
       const money = (value: number) => new Intl.NumberFormat(locale.locale, { style: "currency", currency: "DKK" }).format(value)
-      const summary = page.locator("h2").first().locator("..")
+      // The party blocks also have h2 headings, so find the summary by its own heading.
+      const summary = page.getByRole("heading", { name: locale.locale === "da-DK" ? "Tilbudsoversigt" : "Quote summary", exact: true }).locator("..")
       const assertLines = async () => {
         await expect(summary.getByText(money(pricesIncludeTax ? 22500 : 18000), { exact: true })).toBeVisible()
         await expect(summary.getByText(money(pricesIncludeTax ? 5625 : 4500), { exact: true })).toBeVisible()

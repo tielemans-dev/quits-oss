@@ -5,6 +5,7 @@ export const daDocFormMessages = {
   "docForm.selectContact": "Vælg en kunde",
   "docForm.selectDate": "Vælg en dato",
   "docForm.clear": "Ryd",
+  "dateField.openCalendar": "Åbn kalender",
   "docForm.lineItems": "Linjer",
   "docForm.column.item": "Vare",
   "docForm.column.description": "Beskrivelse",

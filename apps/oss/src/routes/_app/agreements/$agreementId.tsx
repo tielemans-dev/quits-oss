@@ -6,6 +6,8 @@ import { DeliverableControls } from "../../../components/agreements/deliverable-
 import { AgreementActions } from "../../../components/agreements/agreement-actions"
 import { AcceptanceRecord } from "../../../components/agreements/acceptance-record"
 import { ActivityList } from "../../../components/activity/activity-list"
+import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
+import { usePollWhile } from "../../../hooks/use-poll-while"
 import type { ActivityEntry } from "../../../lib/exports/activity"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
@@ -28,6 +30,7 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
+import { agreementLineAmounts } from "../../../lib/agreements/offer-totals"
 
 export const Route = createFileRoute("/_app/agreements/$agreementId")({
   component: AgreementDetail,
@@ -61,6 +64,8 @@ function AgreementDetail() {
   }
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // A sent or resent agreement settles in the background; follow it instead of waiting for a reload.
+  const pollFailure = usePollWhile(agreement?.lastEmailAttemptOutcome === "sending", refresh)
   useEffect(() => {
     setLoadError(null)
     let cancelled = false
@@ -185,6 +190,7 @@ function AgreementDetail() {
           )}
         </div>
       </div>
+      <ReloadRequiredNotice failure={pollFailure} />
       {capabilities && (
         <AgreementActions
           agreement={agreement}
@@ -284,7 +290,7 @@ function AgreementDetail() {
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
               </p>
-              <p className="num">{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
+              <p className="num">{formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)}</p>
               {capabilities && <DeliverableAllocation agreement={agreement} line={line} capabilities={capabilities} onChanged={refresh} onError={setError} />}
               {line.agreedDate && (
                 <p className="text-sm">

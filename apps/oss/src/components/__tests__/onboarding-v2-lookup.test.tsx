@@ -100,3 +100,17 @@ describe("addressLines", () => {
     expect(addressLines("Vestergade 1\n2100 København Ø")).toEqual(["Vestergade 1", "2100 København Ø"])
   })
 })
+
+describe("search as you type", () => {
+  it("does not time out on behalf of a search the user typed past", async () => {
+    // A request that ignores its abort signal must not end the next search after 10 seconds.
+    const hung: OnboardingV2Client = { ...client(), search: () => new Promise(() => {}) }
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="u" organizationId="o" signupEmail="s@example.test" client={hung} onComplete={() => {}} /></I18nProvider>)
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Synthetic" } })
+    await advance(300)
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Sy" } })
+    await advance(10_000)
+    expect(screen.queryByText("The lookup is taking too long")).toBeNull()
+    expect(screen.getByRole("textbox")).toBeTruthy()
+  })
+})

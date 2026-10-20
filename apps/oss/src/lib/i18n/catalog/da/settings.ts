@@ -11,6 +11,7 @@ export const daSettingsMessages = {
   "settings.vatStatus.question": "Er du momsregistreret?",
   "settings.vatStatus.registered": "Jeg er momsregistreret",
   "settings.vatStatus.notRegistered": "Jeg er ikke momsregistreret",
+  "settings.vatStatus.unanswered": "Ikke besvaret endnu. Vælg et svar, og gem det.",
   "settings.baseCurrency.label": "Basisvaluta",
   "settings.baseCurrency.hint": "Regnskabet bruger denne valuta. Den låses efter udstedelse af et dokument. Kladdevalutaen er uafhængig.",
   "settings.title": "Indstillinger",

@@ -130,11 +130,17 @@ describe("invoice PDF payment details", () => {
     expect(text).not.toContain("Payment message: INV-0042")
   })
 
-  it("leaves the reference row out of a draft, which has no reference yet", () => {
-    const text = renderedText({ ...invoice, number: "draft", status: "draft", ...payment, paymentReference: null }, "en-US")
-    expect(text).toContain("Payment details")
-    expect(text).not.toContain("Payment message")
-    expect(text).not.toContain(": draft")
+  it.each([["en-US", "Payment message: The invoice number, once the invoice is sent"], ["da-DK", "Betalingsbesked: Fakturanummeret, når fakturaen sendes"]])("tells a draft's reader in %s that the reference is the number it gets when sent", (locale, line) => {
+    for (const draft of [{ number: "", paymentReference: null }, { number: "" }]) {
+      const text = renderedText({ ...invoice, ...draft, status: "draft", ...payment }, locale)
+      expect(text).toContain(locale === "da-DK" ? "Betalingsoplysninger" : "Payment details")
+      expect(text.split("\n")).toContain(line)
+      expect(text).not.toContain("INV-0042")
+    }
+  })
+
+  it("prints a draft's own payment reference, which is already known", () => {
+    expect(renderedText({ ...invoice, number: "", status: "draft", ...payment, paymentReference: "+71 1234 5678" }, "en-US").split("\n")).toContain("Payment message: +71 1234 5678")
   })
 
   it("is localized", () => {

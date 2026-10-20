@@ -105,6 +105,7 @@ export function AgreementTemplateManager() {
         <Label htmlFor="template-terms">{t("agreements.terms")}</Label>
         <Textarea
           id="template-terms"
+          aria-describedby="template-terms-format-hint"
           rows={10}
           maxLength={50_000}
           value={form.termsMarkdown}
@@ -113,6 +114,7 @@ export function AgreementTemplateManager() {
             setForm((prev) => ({ ...prev, termsMarkdown: e.target.value }))
           }
         />
+        <p id="template-terms-format-hint" className="text-sm text-muted-foreground">{t("agreements.termsFormatHint")}</p>
         <p className="text-sm text-muted-foreground">
           {t("agreements.templatePlaceholders")}
         </p>

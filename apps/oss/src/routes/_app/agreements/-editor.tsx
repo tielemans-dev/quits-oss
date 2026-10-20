@@ -244,7 +244,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="validUntil">{t("agreements.validUntil")}</Label>
+              <Label htmlFor="validUntil">{t("agreements.validUntil")} <span aria-hidden="true">*</span></Label>
               <LocalizedDateField
                 id="validUntil"
                 locale={locale}
@@ -450,8 +450,10 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
               rows={10}
               maxLength={50_000}
               value={form.termsMarkdown}
+              aria-describedby="terms-format-hint"
               onChange={(e) => change("termsMarkdown", e.target.value)}
             />
+            <p id="terms-format-hint" className="text-sm text-muted-foreground">{t("agreements.termsFormatHint")}</p>
           </div>
           <div className="grid gap-2">
             <Label>{t("agreements.preview")}</Label>

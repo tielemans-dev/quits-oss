@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency } from "../../lib/i18n/format"
+import { agreementLineAmounts } from "../../lib/agreements/offer-totals"
 import { isBillable } from "../../domain/agreements/billing-rules"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
@@ -18,6 +19,11 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
   const [drafts, setDrafts] = useState<{ saleInvoiceId?: string; prepaymentInvoiceId?: string } | null>(null)
   const billable = agreement.deliverables.filter(line => isBillable(agreement, line) && (depositsEnabled || !line.isDeposit))
   const held = agreement.deliverables.filter(line => line.allocation.state !== "unbilled" && line.status !== "cancelled")
+  // With nothing billable, say what has to happen first instead of only disabling the button.
+  const waiting = agreement.deliverables.some(line => !line.isDeposit && line.status !== "cancelled" && line.billingStatus === "unbilled")
+  const notReady = billable.length ? null
+    : !waiting ? "agreements.invoice.nothingLeft"
+    : agreement.billingTrigger === "on_delivery" ? "agreements.invoice.waitDelivery" : "agreements.invoice.waitAcceptance"
   async function create() {
     setBusy(true); setError(null)
     try {
@@ -28,12 +34,13 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
     finally { setBusy(false) }
   }
   return <section className="grid gap-3">
-    <Button disabled={!billable.length || busy} onClick={() => { setSelected(billable.map(line => line.id)); setScheduleAsSale(false); setOpen(true) }}>{t("agreements.invoice")}</Button>
+    <Button className="justify-self-start" disabled={!billable.length || busy} aria-describedby={notReady ? "invoice-deliverables-not-ready" : undefined} onClick={() => { setSelected(billable.map(line => line.id)); setScheduleAsSale(false); setOpen(true) }}>{t("agreements.invoice")}</Button>
+    {notReady && <p id="invoice-deliverables-not-ready" className="text-sm text-muted-foreground">{t(notReady)}</p>}
     {open && <div className="grid gap-3 rounded-md border p-4">
       <p>{t("agreements.selectBillable")}</p>
       {billable.map(line => <Label key={line.id} className="flex items-center gap-3">
         <input type="checkbox" checked={selected.includes(line.id)} disabled={busy} onChange={event => setSelected(ids => event.target.checked ? [...ids, line.id] : ids.filter(id => id !== line.id))} />
-        {line.title} ({formatCurrency(line.lineGross, agreement.currency, locale)})
+        {line.title} ({formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)})
       </Label>)}
       {billable.some(line => line.isDeposit && selected.includes(line.id)) && <>
         <p className="text-sm text-muted-foreground">{t("agreements.prepaymentNotice")}</p>

@@ -28,6 +28,11 @@ export function invoiceTaxIds(taxIds: readonly DocumentTaxId[] | undefined, cvrL
   return cvr ? [`${cvrLabel} ${cvr}`] : (ids ?? []).filter(id => id.value.trim()).map(id => `${id.scheme?.toUpperCase() ?? "ID"}: ${id.value}`)
 }
 
+/** A seller's free-text postal address, one line for each line the seller wrote. */
+export function sellerAddressLines(address: string | null | undefined): string[] {
+  return (address ?? "").split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+}
+
 export function buyerAddress(buyer: BuyerSnapshot | null | undefined, locale: string | null | undefined = "en-US"): string[] {
   return [buyer?.address, [buyer?.zip, buyer?.city, buyer?.state].filter(Boolean).join(" "), countryName(buyer?.country, locale)].filter((value): value is string => Boolean(value))
 }

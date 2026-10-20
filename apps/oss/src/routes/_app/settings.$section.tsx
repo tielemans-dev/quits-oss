@@ -16,10 +16,9 @@ import {
 } from "../../lib/validation/settings-form"
 import {
   COUNTRY_OPTIONS,
-  countryOptionsIncluding,
-  localeOptionsIncluding,
   TAX_REGIMES,
 } from "../../lib/compliance/countries"
+import { countryPickerOptions, CURRENCY_CODES, currencyPickerOptions, localePickerOptions } from "../../lib/picker-options"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
@@ -111,6 +110,23 @@ function SettingsPane({ id, open, children }: { id: SettingsSection; open: Setti
 /** The pages with fields in the shared form, which need its Save button. Company rows save themselves. */
 const FORM_SECTIONS: readonly SettingsSection[] = ["invoicing", "payments", "ai"]
 
+/**
+ * Where a save came from, so its result shows there: the nearest `data-save-origin` around the button
+ * that submitted. Enter in a field submits through the form's first submit button, which can be hidden
+ * on another page; the field in use is the origin then. Without either, the result shows atop the page.
+ */
+function saveOrigin(event: React.FormEvent<HTMLFormElement>) {
+  const submitter = (event.nativeEvent as SubmitEvent).submitter
+  const origin = submitter && submitter.checkVisibility?.() !== false ? submitter : document.activeElement
+  return origin?.closest<HTMLElement>("[data-save-origin]")?.dataset.saveOrigin ?? "page"
+}
+
+/** A save's result, under the action that made it. */
+function SaveResult({ error, message }: { error: string | null; message: string | null }) {
+  if (error) return <p role="alert" className="text-sm text-destructive">{error}</p>
+  return message ? <p role="status" className="text-sm text-tone-success">{message}</p> : null
+}
+
 type OrgMember = {
   id: string
   role: string
@@ -201,15 +217,6 @@ type SettingsData = {
   primaryTaxIdScheme: string | null
 }
 
-const CURRENCIES = [
-  { value: "USD", label: "USD - US Dollar" },
-  { value: "DKK", label: "DKK - Danish Krone" },
-  { value: "EUR", label: "EUR - Euro" },
-  { value: "GBP", label: "GBP - British Pound" },
-  { value: "CAD", label: "CAD - Canadian Dollar" },
-  { value: "AUD", label: "AUD - Australian Dollar" },
-]
-
 const DEFAULT_AI_MODEL = "openai/gpt-4o-mini"
 
 // Built-in OpenRouter model suggestions, used until the server returns a live list.
@@ -245,6 +252,7 @@ function SettingsPage() {
   const { settingsCompanyDetails: CompanyDetails } = useRuntimeUi()
   const organizationId = useRequestOrganizationId()
   const settingsFormId = useId()
+  const vatUnansweredId = useId()
   const { data: session, isPending: sessionPending } = useSession()
   const liveUserId = useRef<string | undefined>(undefined)
   useLayoutEffect(() => {
@@ -259,6 +267,8 @@ function SettingsPage() {
   const [savedVersion, setSavedVersion] = useState(0)
   // Confirms changes that save on their own (Connect, AI drafts) outside the form's Save button.
   const [notice, setNotice] = useState<string | null>(null)
+  // The `data-save-origin` of the last save, where its result is shown.
+  const [resultOrigin, setResultOrigin] = useState("page")
   const [savingAiDrafts, setSavingAiDrafts] = useState(false)
   const [savingVatPeriod, setSavingVatPeriod] = useState(false)
   const [taxRateInput, setTaxRateInput] = useState("")
@@ -327,17 +337,17 @@ function SettingsPage() {
   const [inviteRole, setInviteRole] = useState("member")
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
-  const countryDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "region" }),
-    [locale]
+  const countryOptions = useMemo(
+    () => countryPickerOptions(settings?.countryCode, settings?.countryCode, displayLocale),
+    [settings?.countryCode, displayLocale]
   )
-  const currencyDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "currency" }),
-    [locale]
+  const localeOptions = useMemo(
+    () => localePickerOptions(settings?.locale, settings?.countryCode, displayLocale),
+    [settings?.locale, settings?.countryCode, displayLocale]
   )
-  const languageDisplayNames = useMemo(
-    () => new Intl.DisplayNames([locale || "en-US"], { type: "language" }),
-    [locale]
+  const currencyOptions = useMemo(
+    () => currencyPickerOptions(CURRENCY_CODES, settings?.countryCode, displayLocale, (code) => `${t(`auth.onboarding.currency.${code}`)} (${code})`),
+    [settings?.countryCode, displayLocale, t]
   )
   const showVatStatus = normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
   const nonVatDanishSeller = showVatStatus && momsRegistered === false
@@ -553,9 +563,16 @@ function SettingsPage() {
     setWithdrawSellerVatEvidence(false)
   }
 
-  async function saveAiDrafts(enabled: boolean) {
+  /** A save from `origin` starts: the last result goes, and this one shows there. */
+  function startSave(origin: string) {
     setError(null)
     setNotice(null)
+    setSuccess(false)
+    setResultOrigin(origin)
+  }
+
+  async function saveAiDrafts(enabled: boolean) {
+    startSave("aiDrafts")
     setSavingAiDrafts(true)
     try {
       await trpc.settings.update.mutate({ aiDraftsEnabled: enabled })
@@ -569,8 +586,7 @@ function SettingsPage() {
   }
 
   async function saveVatPeriod(vatPeriod: VatPeriod | null) {
-    setError(null)
-    setNotice(null)
+    startSave("vatPeriod")
     setSavingVatPeriod(true)
     try {
       await trpc.settings.update.mutate({ vatPeriod })
@@ -585,9 +601,7 @@ function SettingsPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
-    setNotice(null)
-    setSuccess(false)
+    startSave(saveOrigin(e))
     setSaving(true)
 
     const form = new FormData(e.currentTarget)
@@ -740,13 +754,14 @@ function SettingsPage() {
             }
           : prev ? { ...prev, momsRegistered: savedSettings.momsRegistered } : prev
       )
-      // The company rows show what was saved.
+      // The company rows show what was saved. An empty tax ID keeps the stored one, as settings.update does.
       setSettings((prev) => prev && {
         ...prev,
         companyName: savedSettings.companyName,
         companyAddress: savedSettings.companyAddress,
         companyEmail: savedSettings.companyEmail,
         companyPhone: savedSettings.companyPhone,
+        primaryTaxId: primaryTaxId.trim() || prev.primaryTaxId,
       })
       setClearAiApiKey(false)
       setAiApiKeyDraft("")
@@ -958,6 +973,11 @@ function SettingsPage() {
     setLogoError(null)
   }
 
+  /** The last save's result, shown only where that save came from. */
+  function saveResult(origin: string) {
+    return resultOrigin === origin ? <SaveResult error={error} message={notice ?? (success ? t("settings.success.saved") : null)} /> : null
+  }
+
   if (loadError) return <QueryError error={loadError} retry={() => setSettingsAttempt(value => value + 1)} />
 
   if (loading) {
@@ -991,26 +1011,12 @@ function SettingsPage() {
       </div>}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {refreshError ? <QueryError error={refreshError} retry={refreshSettings} /> : null}
-        {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
-        {success && (
-          <p className="text-sm text-tone-success" role="status">
-            {t("settings.success.saved")}
-          </p>
-        )}
-        {notice && (
-          <p className="text-sm text-tone-success" role="status">
-            {notice}
-          </p>
-        )}
+        {saveResult("page")}
 
         <SettingsPane id="company" open={section}>
         {/* Company profile: Mercury-style rows that edit in place and save through the shared form. */}
         <SettingsRows>
-          <SettingsRow label={t("settings.companyName.label")} value={settings.companyName || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+          <SettingsRow label={t("settings.companyName.label")} value={settings.companyName || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyName" result={saveResult("companyName")}>
             <Label htmlFor="companyName" className="sr-only">{t("settings.companyName.label")}</Label>
             <Input
               id="companyName"
@@ -1022,7 +1028,7 @@ function SettingsPage() {
               onChange={clearSellerVatReview}
             />
           </SettingsRow>
-          <SettingsRow label={t("settings.companyAddress.label")} value={settings.companyAddress ? <span className="whitespace-pre-line">{settings.companyAddress}</span> : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+          <SettingsRow label={t("settings.companyAddress.label")} value={settings.companyAddress ? <span className="whitespace-pre-line">{settings.companyAddress}</span> : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyAddress" result={saveResult("companyAddress")}>
             <Label htmlFor="companyAddress" className="sr-only">{t("settings.companyAddress.label")}</Label>
             <Textarea
               id="companyAddress"
@@ -1035,7 +1041,24 @@ function SettingsPage() {
               onChange={clearSellerVatReview}
             />
           </SettingsRow>
-          <SettingsRow label={t("settings.companyEmail.label")} value={settings.companyEmail || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+          {taxRules.showPrimaryTaxId ? (
+            // The same tax ID as on the invoicing page, so it is checked and saved the same way.
+            <SettingsRow label={primaryTaxIdLabel} value={settings.primaryTaxId || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}
+              origin="primaryTaxId" result={saveResult("primaryTaxId")} onCancel={() => setPrimaryTaxId(settings.primaryTaxId ?? "")}>
+              <Label htmlFor="companyPrimaryTaxId" className="sr-only">{primaryTaxIdLabel}</Label>
+              <Input
+                id="companyPrimaryTaxId"
+                form={settingsFormId}
+                maxLength={countryCode === "DK" ? 8 : 40}
+                inputMode={countryCode === "DK" ? "numeric" : undefined}
+                aria-invalid={fieldIssues.some(issue => issue.field === "primaryTaxId")}
+                value={primaryTaxId}
+                onChange={(event) => { setPrimaryTaxId(event.target.value); clearSellerVatReview() }}
+              />
+              {fieldIssues.filter(issue => issue.field === "primaryTaxId").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+            </SettingsRow>
+          ) : null}
+          <SettingsRow label={t("settings.companyEmail.label")} value={settings.companyEmail || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyEmail" result={saveResult("companyEmail")}>
             <Label htmlFor="companyEmail" className="sr-only">{t("settings.companyEmail.label")}</Label>
               <Input
                 id="companyEmail"
@@ -1047,7 +1070,7 @@ function SettingsPage() {
                 defaultValue={settings.companyEmail ?? ""}
               />
           </SettingsRow>
-          <SettingsRow label={t("settings.companyPhone.label")} value={settings.companyPhone || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+          <SettingsRow label={t("settings.companyPhone.label")} value={settings.companyPhone || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyPhone" result={saveResult("companyPhone")}>
             <Label htmlFor="companyPhone" className="sr-only">{t("settings.companyPhone.label")}</Label>
               <Input
                 id="companyPhone"
@@ -1062,8 +1085,12 @@ function SettingsPage() {
           </SettingsRow>
           {(isSelfHostDistribution || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (
             // Answered in place: invoices cannot be sent until it is, so it is never behind an edit step.
-            <SettingsRow label={t("settings.row.vat")} description={t("sellerCard.body")} value={
-              <div className="grid gap-3"><SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving} />
+            <SettingsRow label={t("settings.row.vat")} description={t("sellerCard.body")} origin="vat" result={saveResult("vat")} value={
+              <div className="grid gap-3">
+                {/* Onboarding asks this only where it takes the same confirmation, so it can arrive unanswered. */}
+                {settings.momsRegistered == null ? <p id={vatUnansweredId} className="text-sm text-muted-foreground">{t("settings.vatStatus.unanswered")}</p> : null}
+                <SellerVatStatus nonVatEnabled={isSelfHostDistribution || nonVatEnabled} value={sellerVatConfirmationEnabled ? sellerVatChoice : momsRegistered} onChange={value => { setSellerVatChoice(value); setSellerVatChoiceReviewed(true); setMomsRegistered(value); setTaxRateInput(value ? "25" : "0"); setPricesIncludeTax(false); setWithdrawSellerVatEvidence(false) }} disabled={saving}
+                  aria-describedby={settings.momsRegistered == null ? vatUnansweredId : undefined} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
                 {/* Saving the choice shown also confirms it, so this is offered even without a change. */}
                 <Button type="submit" form={settingsFormId} size="sm" className="justify-self-start" disabled={saving}>
@@ -1074,7 +1101,7 @@ function SettingsPage() {
           ) : null}
           <SettingsRow label={t("settings.companyLogo.label")} description={t("settings.companyLogo.help")} value={companyLogo
             ? <img src={companyLogo} alt={t("settings.companyLogo.previewAlt")} className="h-10 w-auto max-w-40 object-contain" />
-            : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}>
+            : <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyLogo" result={saveResult("companyLogo")}>
             <Label htmlFor="companyLogoUrl" className="sr-only">{t("settings.companyLogo.label")}</Label>
             <Input
               id="companyLogoUrl"
@@ -1128,7 +1155,7 @@ function SettingsPage() {
         )}
         </SettingsPane>
 
-        <form id={settingsFormId} onSubmit={handleSubmit} className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <form id={settingsFormId} onSubmit={handleSubmit} data-save-origin="form" className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <SettingsPane id="invoicing" open={section}>
         {/* Billing Defaults */}
         <Card>
@@ -1161,9 +1188,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.country.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {countryOptionsIncluding(settings?.countryCode).map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        {countryDisplayNames.of(country.code) ?? country.label}
+                    {countryOptions.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1176,9 +1203,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.locale.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {localeOptionsIncluding(settings?.locale).map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {`${item} — ${languageDisplayNames.of(item.split("-")[0] ?? item) ?? item}`}
+                    {localeOptions.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1298,7 +1325,7 @@ function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="baseCurrency">{t("settings.baseCurrency.label")}</Label>
-                <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled={settings.baseCurrencyLocked}><SelectTrigger id="baseCurrency"><SelectValue /></SelectTrigger><SelectContent>{CURRENCIES.map(c => <SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}</SelectContent></Select>
+                <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled={settings.baseCurrencyLocked}><SelectTrigger id="baseCurrency"><SelectValue /></SelectTrigger><SelectContent>{currencyOptions.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent></Select>
                 <p className="text-sm text-muted-foreground">{t("settings.baseCurrency.hint")}</p>
                 <Label htmlFor="defaultCurrency">{t("settings.currency.label")}</Label>
                 <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
@@ -1306,9 +1333,9 @@ function SettingsPage() {
                     <SelectValue placeholder={t("settings.currency.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CURRENCIES.map((c) => (
+                    {currencyOptions.map((c) => (
                       <SelectItem key={c.value} value={c.value}>
-                        {`${c.value} - ${currencyDisplayNames.of(c.value) ?? c.label}`}
+                        {c.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1442,7 +1469,8 @@ function SettingsPage() {
           onClearStripeSecretKeyChange={setClearStripeSecretKey}
           onClearStripeWebhookSecretChange={setClearStripeWebhookSecret}
           connectActions={settings.stripeConnectActions}
-          onConnectError={setError}
+          // Each Connect action begins by clearing its error.
+          onConnectError={(message) => { if (message === null) startSave("connect"); else setError(message) }}
           onConnectDone={(action) => { if (action === "disconnect") setNotice(t("settings.payments.connect.disconnected")) }}
           onConnectSettings={(next) => setSettings((current) => current ? { ...current, ...next } : current)}
         >
@@ -1540,12 +1568,14 @@ function SettingsPage() {
           </CardContent>
         </Card>
         </StripePaymentsSection>
+        {saveResult("connect")}
         </SettingsPane>
 
         {/* The moms period behind the Overblik deadline; only for a moms-registered Danish seller. */}
         {settings.momsRegistered === true && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat" ? (
           <SettingsPane id="invoicing" open={section}>
             <VatPeriodCard value={settings.vatPeriod ?? null} busy={savingVatPeriod} onChange={(period) => { void saveVatPeriod(period) }} />
+            {saveResult("vatPeriod")}
           </SettingsPane>
         ) : null}
 
@@ -1553,7 +1583,10 @@ function SettingsPage() {
         {/* AI invoice drafting */}
         {settings.aiDrafts?.managed ? (
           settings.aiDrafts.available ? (
-            <AiDraftsCard enabled={settings.aiDrafts.enabled} busy={savingAiDrafts} onChange={(enabled) => { void saveAiDrafts(enabled) }} />
+            <>
+              <AiDraftsCard enabled={settings.aiDrafts.enabled} busy={savingAiDrafts} onChange={(enabled) => { void saveAiDrafts(enabled) }} />
+              {saveResult("aiDrafts")}
+            </>
           ) : null
         ) : (
         <Card>
@@ -1768,10 +1801,11 @@ function SettingsPage() {
         </SettingsPane>
 
         {/* Save */}
-        <div className={FORM_SECTIONS.includes(section) ? "flex justify-end" : "hidden"}>
+        <div className={FORM_SECTIONS.includes(section) ? "grid justify-items-end gap-2" : "hidden"}>
           <Button type="submit" disabled={saving}>
             {saving ? t("settings.action.saving") : t("settings.action.save")}
           </Button>
+          {saveResult("form")}
         </div>
         </form>
       </div>

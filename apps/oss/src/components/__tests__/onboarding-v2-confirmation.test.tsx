@@ -154,11 +154,11 @@ describe("production v2 seller confirmation", () => {
     await waitFor(() => expect(props.onComplete).toHaveBeenCalledOnce())
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, companyPhone: "40486480", settings: expect.objectContaining({ defaultCurrency: "EUR", locale: "en-GB" }) }))
   })
-  it("names languages and currencies instead of showing codes (QUI-56)", () => {
+  it("names languages and currencies instead of showing codes, own currency first (QUI-56, QUI-213)", () => {
     render(<I18nProvider locale="da-DK"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
     fireEvent.click(screen.getByRole("button", { name: /manuelt/i }))
     const labels = (name: string) => Array.from((screen.getByRole("combobox", { name }) as HTMLSelectElement).options).map(option => option.text)
-    expect(labels("Valuta")).toEqual(["Danske kroner", "Euro", "Amerikanske dollars", "Britiske pund"])
+    expect(labels("Valuta")).toEqual(["Danske kroner", "Amerikanske dollars", "Britiske pund", "Euro"])
     expect(labels("Sprog")).toEqual(["Dansk", "Engelsk"])
   })
   it("keeps the disabled extension's existing transport without preparing evidence", async () => {
@@ -300,10 +300,15 @@ describe("review page CVR errors (QUI-39)", () => {
     const { cvr, form } = await review("da-DK")
     fireEvent.change(cvr, { target: { value: "24256790" } })
     const email = screen.getByLabelText(translate("onboardingV2.field.email", "da-DK"))
+    // Marked before submitting, with a visual-only star next to its label.
+    const label = email.closest(".ob-field")!.querySelector(".ob-field-label")!
+    expect(label.querySelector("[aria-hidden=true]")?.textContent).toBe(" *")
     fireEvent.change(email, { target: { value: "" } })
     fireEvent.submit(form)
-    expect(await screen.findByText("Indtast en e-mail")).toBeTruthy()
+    const error = await screen.findByText("Indtast en e-mail")
     expect(email.getAttribute("aria-invalid")).toBe("true")
+    // The error sits with the field, not only in the summary.
+    expect(email.closest(".ob-field")!.contains(error)).toBe(true)
     expect(api.confirm).not.toHaveBeenCalled()
   })
 

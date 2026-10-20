@@ -108,10 +108,11 @@ function AppLayoutContent() {
   }, [loadedOrgId])
 
   const hasOrganization = Boolean(loadedOrgId)
+  const onboardingPending = hasOrganization && layoutContext.runtime.distribution === 'cloud' && layoutContext.cloudOnboardingComplete !== true
   return (
     <SidebarProvider>
       {hasOrganization ? <AppSidebar /> : null}
-      <TrialAccessProvider>
+      <TrialAccessProvider onboardingPending={onboardingPending}>
         <AppMain sidebar={hasOrganization} banner={<><OrganizationChangedBanner /><TrialBanner /></>}>
           {organizationReady ? <TrialRouteGate pathname={pathname}><MutationErrors /><Outlet /></TrialRouteGate> : <div aria-busy="true" className="p-6" />}
         </AppMain>

@@ -5,6 +5,7 @@ import { B2bNotice } from "../onboarding/b2b-notice"
 import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
 import { useI18n } from "../../lib/i18n/react"
+import { currencyPickerOptions } from "../../lib/picker-options"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { SellerVatStatus } from "../seller-vat-status"
 import { Button } from "../ui/button"
@@ -78,16 +79,18 @@ function StateNotice({
 function SourceField({
   label,
   tag,
+  required = false,
   children,
 }: {
   label: string
   tag: string
+  required?: boolean
   children: ReactNode
 }) {
   return (
     <div className="ob-field">
       <div className="ob-field-label">
-        {label}
+        <span>{label}{required ? <span aria-hidden="true"> *</span> : null}</span>
         <span className="ob-tag">{tag}</span>
       </div>
       {children}
@@ -231,9 +234,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     const controller = new AbortController()
+    let timeout: ReturnType<typeof setTimeout> | undefined
     const timer = setTimeout(() => {
       setSearching(true)
-      const timeout = setTimeout(() => {
+      timeout = setTimeout(() => {
         controller.abort()
         setScreen("timeout")
       }, 10_000)
@@ -254,6 +258,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     }, 250)
     return () => {
       clearTimeout(timer)
+      // An edited query must not time out on the abandoned request's behalf.
+      clearTimeout(timeout)
       controller.abort()
     }
   }, [query, screen, client])
@@ -511,7 +517,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   ) {
     const value = draft!.values[name]
     return (
-      <SourceField label={TT(suffix)} tag={tag}>
+      <SourceField label={TT(suffix)} tag={tag} required={options.required}>
         <Input
           aria-label={TT(suffix)}
           name={name}
@@ -736,7 +742,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               maxLength: 8,
               pattern: "[0-9]{8}",
             })}
-            <SourceField label={TT("field.address")} tag={factsTag}>
+            <SourceField label={TT("field.address")} tag={factsTag} required>
               <textarea
                 aria-label={TT("field.address")}
                 aria-invalid={validationErrors.includes("companyAddress") || undefined}
@@ -820,9 +826,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 disabled={busy}
                 onChange={(e) => update("defaultCurrency", e.target.value)}
               >
-                {(["DKK", "EUR", "USD", "GBP"] as const).map((currency) => (
-                  <option key={currency} value={currency}>
-                    {t(`auth.onboarding.currency.${currency}`)}
+                {currencyPickerOptions(["DKK", "EUR", "USD", "GBP"], draft.values.countryCode, locale, (code) => t(`auth.onboarding.currency.${code}`)).map((currency) => (
+                  <option key={currency.value} value={currency.value}>
+                    {currency.label}
                   </option>
                 ))}
               </select>

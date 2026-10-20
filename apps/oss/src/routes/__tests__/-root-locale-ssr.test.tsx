@@ -7,7 +7,7 @@ import type { UiLanguage } from "../../lib/i18n/ui-language"
 
 const { routerState } = vi.hoisted(() => ({
   routerState: {
-    matches: [] as Array<{ routeId: string; context: { locale?: string; language?: UiLanguage } }>,
+    matches: [] as Array<{ routeId: string; context: { locale?: string; language?: UiLanguage }; loaderData?: { locale?: string } }>,
     location: { pathname: "/", search: {} as Record<string, unknown> },
   },
 }))
@@ -91,11 +91,30 @@ describe("root document SSR language", () => {
     expect(html).toContain(`<nav>${navigation}</nav>`)
   })
 
-  it("does not adopt a fixed public document's locale as the editable shell language", () => {
-    routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/q/$token", context: { locale: "da-DK" } }]
-    const html = renderToStaticMarkup(<Shell><LocalizedDocument locale="da-DK"><Navigation /></LocalizedDocument></Shell>)
+  it.each([
+    ["/q/$token", "da-DK", "da"],
+    ["/a/$token", "da-DK", "da"],
+    ["/pay/$token", "da-DK", "da"],
+    ["/reminders/unsubscribe", "da-DK", "da"],
+    ["/q/$token", "en-US", "en"],
+  ])("declares the language of the public document on %s (%s) over the organization's (QUI-215)", (routeId, locale, language) => {
+    routerState.matches = [{ routeId: "__root__", context: {} }, { routeId, context: {}, loaderData: { locale } }]
+    const html = renderToStaticMarkup(<Shell><LocalizedDocument locale={locale}><Navigation /></LocalizedDocument></Shell>)
+    expect(html).toContain(`<html lang="${language}">`)
+    expect(html).toContain(`lang="${locale}"`)
+  })
+
+  it("keeps English for a public document whose language has no catalog", () => {
+    routerState.matches = [{ routeId: "__root__", context: {} }, { routeId: "/q/$token", context: {}, loaderData: { locale: "de-DE" } }]
+    const html = renderToStaticMarkup(<Shell><LocalizedDocument locale="de-DE"><Navigation /></LocalizedDocument></Shell>)
     expect(html).toContain('<html lang="en">')
-    expect(html).toContain('lang="da-DK"')
-    expect(html).toContain("<nav>Fakturaer</nav>")
+  })
+
+  // The root's beforeLoad turns `?lang` into the chosen language; this mock skips beforeLoad.
+  it.each([["/login", "da", "da"], ["/signup/", "da", "da"], ["/reset-password", "en", "en"], ["/login", undefined, "en"]] as const)("declares %s's lang=%s on the document", (pathname, lang, language) => {
+    routerState.matches = [{ routeId: "__root__", context: { language: { chosen: lang, browser: "en-US" } } }]
+    routerState.location = { pathname, search: lang ? { lang } : {} }
+    const html = renderToStaticMarkup(<Shell><Navigation /></Shell>)
+    expect(html).toContain(`<html lang="${language}">`)
   })
 })

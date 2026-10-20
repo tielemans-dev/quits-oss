@@ -65,6 +65,7 @@ import { Pencil, Trash2, Plus, ArrowLeft, ArrowRight, XCircle, Download } from "
 import { useI18n } from "../../../lib/i18n/react"
 import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { distinctCompany } from "../../../lib/documents/tax-ids"
 import { storedDocumentTaxRate } from "../../../lib/documents/stored-tax-rate"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { lineColumnKeys, type PriceBasis, type VatRow } from "../../../lib/documents/line-amounts"
@@ -616,7 +617,7 @@ function QuoteDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} defaultCountry={quote.countryCode} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
             <VatGroupPreview {...preview} />
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -741,7 +742,7 @@ function QuoteDetailPage() {
         : undefined,
       fixAction: (
         <Button asChild variant="outline">
-          <Link to="/contacts/$contactId" params={{ contactId: contact.id }}>
+          <Link to="/contacts/$contactId" params={{ contactId: contact.id }} search={{ edit: true }}>
             {t("quotes.detail.email.fallback.invalidRecipient.fix")}
           </Link>
         </Button>
@@ -770,7 +771,7 @@ function QuoteDetailPage() {
             setError(null)
             try {
               const { downloadDocumentPdf } = await import("../../../lib/documents-download")
-              await downloadDocumentPdf("quote", quote.id, quote.number)
+              await downloadDocumentPdf("quote", quote.id, quote.number, { customer: quote.contact.name, locale })
             } catch {
               if (isCurrent()) setError(t("quotes.detail.error.downloadFailed"))
             } finally {
@@ -978,7 +979,7 @@ function QuoteDetailPage() {
               {t("quotes.detail.quoteTo")}
             </h3>
             <p className="font-semibold">{contact.name}</p>
-            {contact.company && <p className="text-sm">{contact.company}</p>}
+            {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
             {contact.email && (
               <p className="text-sm text-muted-foreground">{contact.email}</p>
             )}

@@ -71,9 +71,10 @@ describe("LocalizedDocument", () => {
     expect(markup("fr-FR")).toBe(english)
   })
 
-  it("marks the language of the content and leaves the page's own language alone", () => {
+  it("marks the language of the content and gives the page the document's language (QUI-215)", () => {
+    browserLanguage("en-US")
     document.documentElement.lang = "en"
-    const { container } = render(
+    const { container, unmount } = render(
       <I18nProvider>
         <LocalizedDocument locale="da-DK">
           <Probe />
@@ -82,6 +83,20 @@ describe("LocalizedDocument", () => {
     )
 
     expect(container.querySelector("[lang]")?.getAttribute("lang")).toBe("da-DK")
+    expect(document.documentElement.lang).toBe("da")
+    unmount()
+  })
+
+  it("keeps the page English for a document language without a catalog", () => {
+    browserLanguage("da-DK")
+    render(
+      <I18nProvider>
+        <LocalizedDocument locale="nl-NL">
+          <Probe />
+        </LocalizedDocument>
+      </I18nProvider>
+    )
+
     expect(document.documentElement.lang).toBe("en")
   })
 

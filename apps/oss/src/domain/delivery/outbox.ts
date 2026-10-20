@@ -48,6 +48,13 @@ export const EMAIL_DELIVERY_ATTEMPTS = 4
  * made once this much time has passed, because a retry could then deliver a second copy.
  */
 export const IDEMPOTENCY_WINDOW_MS = 23 * 60 * 60 * 1000
+/**
+ * How long the operation policy may keep refusing a delivery, counted from when it was queued. Its
+ * document reads "sending" all that time, so the delivery is then given up and settled like any
+ * abandoned delivery: one that never made a request settles as nothing sent, and its document can
+ * be sent again.
+ */
+export const POLICY_REFUSAL_LIMIT_MS = 15 * 60 * 1000
 
 /**
  * A provider request that has not answered after this long is treated as unanswered (it may still
@@ -437,11 +444,12 @@ registerJobHandler(EMAIL_DELIVERY_JOB, async (job) => {
   // Recorded first, so a settlement that fails is retried without sending again.
   await recordOnJob(job, { ...requested, providerMessageId: accepted.id })
   await settle(job, payload, completion, { delivered: true })
-})
+}, { policyDeferralLimitMs: POLICY_REFUSAL_LIMIT_MS })
 
 /**
  * Settles deliveries whose job ended without settling: a runner that stopped on the last allowed
- * attempt, or a settlement that kept failing. An accepted message settles as delivered and a
+ * attempt, a settlement that kept failing, or a delivery the operation policy refused past
+ * `POLICY_REFUSAL_LIMIT_MS`. An accepted message settles as delivered and a
  * decided failure as decided; otherwise a delivery that made a request may have been delivered
  * (unconfirmed), and one that never made a request delivered nothing. Runs on every scheduler tick.
  */

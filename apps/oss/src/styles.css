@@ -92,6 +92,9 @@ code {
   --shadow-menu: 0 0 0 1px var(--neutral-10), 0 4px 12px -2px rgb(22 23 42 / 12%);
   --scrim: rgb(22 23 42 / 22%);
   --sidebar-width: 232px; --topbar-height: 48px;
+  /* Height of a bar the host pins above the app, such as a deployment's environment marker. The
+     sticky top bar, the sidebar and the mobile drawer start below it. */
+  --app-inset-top: 0px;
   --content-width: 968px; --content-wide: 1200px;
   --gutter: 24px; --row-height: 52px; --control-height: 32px;
 

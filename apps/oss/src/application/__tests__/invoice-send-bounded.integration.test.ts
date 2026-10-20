@@ -11,7 +11,7 @@ import { issueDocument } from "../issuance"
 
 afterEach(() => { resetRuntimePlatform(); vi.unstubAllEnvs(); vi.mocked(deliver).mockClear() })
 ;(hasTestDatabase ? describe : describe.skip)("bounded invoice send", () => {
-  it("leaves Worker delivery unclaimed at response end, then the scheduler settles once", async () => {
+  it("delivers a Worker send before the response ends, issuing and sending it once", async () => {
     // MOCK: synthetic provider and Worker request/client lifetime; real command, jobs and DB writes.
     vi.stubEnv("RESEND_API_KEY", "synthetic-key")
     vi.stubEnv("FROM_EMAIL", "billing@example.test")
@@ -30,38 +30,29 @@ afterEach(() => { resetRuntimePlatform(); vi.unstubAllEnvs(); vi.mocked(deliver)
       if (requestScope.getStore()?.ended) throw new Error("Request database clients released at response end")
       return database
     } })
-    let sweep: ReturnType<typeof runDueJobs> | undefined
     try {
       const caller = appRouter.createCaller({ session: { user: { id: org.actors.admin.userId, email: "admin@example.test", name: "Test" }, session: { activeOrganizationId: org.organizationId } } } as never)
       const contact = await prisma.contact.create({ data: { organizationId: org.organizationId, name: "Synthetic Buyer", company: "Synthetic Buyer ApS", email: "buyer@example.test" } })
       const invoice = await caller.invoices.create({ contactId: contact.id, dueDate: "2099-01-01", items: [{ description: "Work", quantity: 1, unitPrice: 100 }] })
       const send = () => issueDocument({ kind: "invoice", actor: org.actors.admin, commandInput: { id: invoice.id }, options: { jobWaitTimeoutMs: 25 } })
-      const result = await requestScope.run(request, send)
-      request.ended = true
-      expect(() => requestScope.run(request, getPrisma)).toThrow("Request database clients released at response end")
-      expect(result).toMatchObject({ status: "completed", result: { emailPending: true } })
-      const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId, type: "email.deliver" } })
-      expect(job).toMatchObject({ status: "pending", attempts: 0, claimToken: null })
-      expect(vi.mocked(deliver)).not.toHaveBeenCalled()
-      // Retry after the response still reuses the committed issuance and delivery.
-      await send()
-      expect(await prisma.job.count({ where: { organizationId: org.organizationId, type: "email.deliver" } })).toBe(1)
-      sweep = runDueJobs({ organizationIds: [org.organizationId] })
+      const response = requestScope.run(request, send).finally(() => { request.ended = true })
       await started
+      // The bound does not end a Worker request while its delivery still needs the request's clients.
+      await new Promise(resolve => setTimeout(resolve, 100))
+      expect(request.ended).toBe(false)
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).lastEmailAttemptOutcome).toBe("sending")
-      expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ processed: 0 })
       release()
-      expect(await sweep).toMatchObject({ processed: 1, succeeded: 1 })
-      expect(await prisma.job.findUniqueOrThrow({ where: { id: job.id } })).toMatchObject({ status: "done", attempts: 1, result: { outcome: "delivered" }, payload: { providerMessageId: "synthetic-worker-email" } })
-      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).lastEmailAttemptOutcome).toBe("sent")
-      await runDueJobs({ organizationIds: [org.organizationId] })
+      expect(await response).toMatchObject({ status: "completed" })
+      const job = await prisma.job.findFirstOrThrow({ where: { organizationId: org.organizationId, type: "email.deliver" } })
+      expect(job).toMatchObject({ status: "done", attempts: 1, result: { outcome: "delivered" }, payload: { providerMessageId: "synthetic-worker-email" } })
+      expect(await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).toMatchObject({ status: "sent", lastEmailAttemptOutcome: "sent" })
+      expect(await runDueJobs({ organizationIds: [org.organizationId] })).toMatchObject({ processed: 0 })
       expect(vi.mocked(deliver)).toHaveBeenCalledTimes(1)
       expect(await prisma.domainEvent.count({ where: { aggregateId: invoice.id, type: "invoice.issued" } })).toBe(1)
       expect(await prisma.domainEvent.count({ where: { aggregateId: invoice.id, type: "invoice.sent" } })).toBe(1)
     } finally {
       resetRuntimePlatform()
       release()
-      await sweep
       // Let any inline delivery finish before cleanup.
       await new Promise(resolve => setTimeout(resolve, 100))
       await org.cleanup()

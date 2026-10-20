@@ -7,6 +7,7 @@ import { SellerVatStatus } from "../seller-vat-status"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
+import { Textarea } from "../ui/textarea"
 
 /** A lookup result or manual fallback enters the same review. Lookup never implies VAT status. */
 export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = false, onComplete }: {
@@ -46,10 +47,14 @@ export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = fa
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {([ ["companyName", t("settings.companyName.label")], ["companyAddress", t("settings.companyAddress.label")],
       ["cvr", "CVR"], ["companyForm", t("onboardingV2.companyForm")] ] as const).map(([field, label]) =>
-      <div className="grid gap-2" key={field}><Label htmlFor={`review-${field}`}>{label}</Label>
-        <Input id={`review-${field}`} value={values[field]} required disabled={saving}
-          maxLength={field === "companyAddress" ? 240 : field === "companyName" ? 120 : field === "companyForm" ? 80 : 8}
-          onChange={event => { setValues(current => ({ ...current, [field]: event.target.value })); setRegistered(null) }} /></div>)}
+      <div className="grid gap-2" key={field}><Label htmlFor={`review-${field}`}>{label} <span aria-hidden="true">*</span></Label>
+        {/* A registry address keeps its line break between street and postal district. */}
+        {field === "companyAddress"
+          ? <Textarea id="review-companyAddress" rows={2} value={values.companyAddress} required disabled={saving} maxLength={240}
+            onChange={event => { setValues(current => ({ ...current, companyAddress: event.target.value })); setRegistered(null) }} />
+          : <Input id={`review-${field}`} value={values[field]} required disabled={saving}
+            maxLength={field === "companyName" ? 120 : field === "companyForm" ? 80 : 8}
+            onChange={event => { setValues(current => ({ ...current, [field]: event.target.value })); setRegistered(null) }} />}</div>)}
     <p className="text-sm text-muted-foreground">{t("sellerCard.body")}</p>
     <SellerVatStatus nonVatEnabled={nonVatEnabled} value={registered} onChange={setRegistered} disabled={saving} required />
     <Button type="submit" disabled={saving || registered === null}>{t("settings.action.save")}</Button>

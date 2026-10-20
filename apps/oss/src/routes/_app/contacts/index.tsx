@@ -117,7 +117,7 @@ function ContactsListPage() {
                   key={contact.id}
                   className="cursor-pointer"
                   onClick={() =>
-                    navigate({ to: "/contacts/$contactId", params: { contactId: contact.id } })
+                    navigate({ to: "/contacts/$contactId", params: { contactId: contact.id }, search: {} })
                   }
                 >
                   <TableCell className="font-medium">{contact.name}</TableCell>

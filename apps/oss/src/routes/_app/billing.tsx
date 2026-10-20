@@ -145,7 +145,7 @@ function HostedBillingPage({ subscription, actionLoading, error, success, cancel
         </div>
         {isTrial && trialEnd && <>
           <p className="mt-3 text-sm text-muted-foreground">{t("trial.billing.end", { date: trialEnd })}</p>
-          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={t("trial.banner.active", { days })}>
+          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-neutral-22" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={t("trial.banner.active", { days })}>
             <div className="h-full bg-settled" style={{ width: `${progress}%` }} />
           </div>
           <p className="mt-5 text-sm text-muted-foreground">{t("trial.billing.data")}</p>

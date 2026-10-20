@@ -160,7 +160,7 @@ describe("invoice request card", () => {
 
     await waitFor(() => expect(text()).toContain("3.156,25 kr."))
     expect(text()).toContain("rejse")
-    expect(text()).toContain("01.12.2026")
+    expect((screen.getByLabelText("Forfaldsdato") as HTMLInputElement).value).toBe("01.12.2026")
     await send()
     await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
       notes: "Tak",
@@ -219,8 +219,8 @@ describe("invoice request card", () => {
       renderCard(request)
       await screen.findByText("som sidst · 8 dage")
 
-      fireEvent.click(screen.getByRole("button", { name: "Forfaldsdato" }))
-      fireEvent.click(await screen.findByRole("button", { name: /Ryd/ }))
+      fireEvent.change(screen.getByLabelText("Forfaldsdato"), { target: { value: "" } })
+      fireEvent.blur(screen.getByLabelText("Forfaldsdato"))
 
       await waitFor(() => expect(text()).not.toContain("som sidst"))
       expect(api.clear).not.toHaveBeenCalled()

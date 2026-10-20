@@ -49,7 +49,17 @@ export class TerminalJobError extends Error {
 /** A multi-step job is waiting for its outbox, without consuming a failure attempt. */
 export class WaitingJobError extends Error {}
 
+export type JobHandlerOptions = {
+  /**
+   * How long the operation policy may keep deferring a job of this type, counted from when it was
+   * queued. Past it the job fails as if out of attempts. Without it, a refused job waits until it
+   * is allowed.
+   */
+  policyDeferralLimitMs?: number
+}
+
 const handlers = new Map<string, JobHandler>()
+const policyDeferralLimits = new Map<string, number>()
 
 /**
  * Set while a job handler runs. Jobs a handler creates (for example the email a recurring send
@@ -58,8 +68,10 @@ const handlers = new Map<string, JobHandler>()
  */
 const insideJob = new AsyncLocalStorage<true>()
 
-export function registerJobHandler(type: string, handler: JobHandler) {
+export function registerJobHandler(type: string, handler: JobHandler, options: JobHandlerOptions = {}) {
   handlers.set(type, handler)
+  if (options.policyDeferralLimitMs === undefined) policyDeferralLimits.delete(type)
+  else policyDeferralLimits.set(type, options.policyDeferralLimitMs)
 }
 
 function backoffMs(attempts: number) {
@@ -106,6 +118,15 @@ async function runJob(id: string, now: Date): Promise<JobRunOutcome> {
       return "waiting"
     }
     if (error instanceof OperationDenied) {
+      // Nothing ran, so the claim is not an attempt.
+      const limit = policyDeferralLimits.get(job.type)
+      if (limit !== undefined && now.getTime() - job.createdAt.getTime() >= limit) {
+        await prisma.job.updateMany({ where: owned, data: {
+          status: "failed", attempts: { decrement: 1 }, claimToken: null, lastError: error.message.slice(0, 1000),
+        } })
+        jobsLogger.warn("job.refused", { organizationId: job.organizationId, jobId: id, type: job.type })
+        return "exhausted"
+      }
       await prisma.job.updateMany({ where: owned, data: {
         status: "pending", attempts: { decrement: 1 }, claimToken: null,
         runAfter: new Date(now.getTime() + backoffMs(0)), lastError: error.message.slice(0, 1000),

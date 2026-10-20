@@ -1,10 +1,10 @@
-import { pdfBuyerAddress } from "../../lib/documents/invoice-identity"
+import { pdfBuyerAddress, sellerAddressLines } from "../../lib/documents/invoice-identity"
 import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import type { z } from "zod"
 import { agreementStatusSchema } from "@quits/contracts/agreements"
-import { agreementOfferTotals } from "../../lib/agreements/offer-totals"
+import { agreementLineAmounts, agreementOfferTotals } from "../../lib/agreements/offer-totals"
 import type { PublicAgreementDto } from "../../lib/agreements/public"
 import type { PublicSeller } from "../../lib/documents/public-presentation"
 import type { TranslationKey } from "../../lib/i18n/messages"
@@ -70,7 +70,7 @@ export function PublicAgreementPage({
       </header>
       <section className="grid gap-2">
         <p>{snapshot.sellerSnapshot?.companyName}</p>
-        <p>{snapshot.sellerSnapshot?.companyAddress}</p>
+        {sellerAddressLines(snapshot.sellerSnapshot?.companyAddress).map((line, index) => <p key={index}>{line}</p>)}
           {formatTaxIds(snapshot.sellerSnapshot?.taxIds, snapshot.locale, snapshot.buyerSnapshot?.country ?? "DK", vat.status).map(id => <p key={id}>{id}</p>)}
         <p>
           {t("agreements.customer")}: {snapshot.buyerSnapshot?.name}{" "}
@@ -92,9 +92,9 @@ export function PublicAgreementPage({
             <p>
               {t("public.document.lineQuantity", {
                 quantity: formatNumber(Number(line.quantity), locale),
-                price: money(line.unitPriceGross),
+                price: money(agreementLineAmounts(snapshot, line).unitPrice),
               })}{" "}
-              = {money(line.lineGross)}
+              = {money(agreementLineAmounts(snapshot, line).amount)}
             </p>
             {vat.lineLabel(line.taxRate) && <p className="text-sm text-muted-foreground">{vat.lineLabel(line.taxRate)}</p>}
             {line.agreedDate && (

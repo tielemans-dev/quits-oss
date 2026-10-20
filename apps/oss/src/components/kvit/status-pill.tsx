@@ -9,10 +9,10 @@ import { cn } from "../../lib/utils"
  * Each is the label in the tone on the tone at 10% (see styles.css).
  */
 const toneClassName: Record<StatusTone, string> = {
-  neutral: "text-muted-foreground bg-(--neutral-6)",
-  info: "text-muted-foreground bg-(--neutral-6)",
-  progress: "text-muted-foreground bg-(--neutral-6)",
-  muted: "text-muted-foreground bg-(--neutral-6)",
+  neutral: "text-muted-foreground bg-tone-neutral-soft",
+  info: "text-muted-foreground bg-tone-neutral-soft",
+  progress: "text-muted-foreground bg-tone-neutral-soft",
+  muted: "text-muted-foreground bg-tone-neutral-soft",
   success: "text-tone-success bg-tone-success-soft",
   warning: "text-tone-warning bg-tone-warning-soft",
   danger: "text-tone-danger bg-tone-danger-soft",

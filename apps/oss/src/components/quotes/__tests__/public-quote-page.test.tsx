@@ -73,6 +73,21 @@ function page(locale: string, children: ReactNode) {
   return renderToStaticMarkup(<LocalizedDocument locale={locale}>{children}</LocalizedDocument>)
 }
 
+/** The rendered text, so amounts split into digit spans read as one figure. */
+function textOf(html: string) {
+  const container = document.createElement("div")
+  container.innerHTML = html
+  return container.textContent!
+}
+
+/** The lines under a party heading, in order. */
+function partyLines(html: string, title: string) {
+  const container = document.createElement("div")
+  container.innerHTML = html
+  const heading = [...container.querySelectorAll("h2")].find(element => element.textContent === title)!
+  return [...heading.parentElement!.querySelectorAll("p")].map(line => line.textContent)
+}
+
 function pdfText(node: ReactNode): string[] {
   if (Array.isArray(node)) return node.flatMap(pdfText)
   if (isValidElement<{ children?: ReactNode }>(node)) {
@@ -254,19 +269,37 @@ describe("PublicQuotePage", () => {
     expect(html).toContain("87654321")
     expect(html).not.toContain("Renamed")
   })
-  it("keeps the seller's tax IDs out of the customer card", () => {
+  it("keeps the seller's tax IDs out of the customer's party block", () => {
     const html = page("en-US", <PublicQuotePage token="signed-token" state={{
       kind: "ready", decisionState: "pending", seller,
       quote: { ...baseQuote,
         sellerSnapshot: { ...baseQuote.sellerSnapshot, taxIds: [{ scheme: "cvr", value: "12345678", countryCode: "DK" }] },
         buyerSnapshot: { ...baseQuote.buyerSnapshot, country: "DK", taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
     }} />)
-    const container = document.createElement("div")
-    container.innerHTML = html
-    const customerCard = [...container.querySelectorAll("div.rounded-lg.border")].find(card => card.textContent?.includes("Buyer Name"))!
-    expect(customerCard.textContent).toContain("87654321")
-    expect(customerCard.textContent).not.toContain("12345678")
-    expect(container.textContent).toContain("12345678")
+    expect(partyLines(html, "Quote To").join()).toContain("87654321")
+    expect(partyLines(html, "Quote To").join()).not.toContain("12345678")
+    expect(partyLines(html, "From").join()).toContain("12345678")
+  })
+  it.each([["da-DK", "Tilbud til", "CVR-nr. 87654321"], ["en-US", "Quote To", "CVR no. 87654321"]])("shows the customer as the quote PDF does in %s (QUI-215)", (locale, title, cvr) => {
+    const html = page(locale, <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, buyerSnapshot: { ...baseQuote.buyerSnapshot, address: "Kundevej 2", zip: "8000", city: "Aarhus C", country: "DK",
+        taxIds: [{ scheme: "cvr", value: "87654321", countryCode: "DK" }] } },
+    }} />)
+    expect(partyLines(html, title)).toEqual(["Buyer Name", "Buyer Co", cvr, "buyer@example.com", "Kundevej 2", "8000 Aarhus C", locale === "da-DK" ? "Danmark" : "Denmark"])
+  })
+  it("shows each line of the seller's address on its own line, as /a does (QUI-215)", () => {
+    const html = page("da-DK", <PublicQuotePage token="signed-token" state={{
+      kind: "ready", decisionState: "pending", seller,
+      quote: { ...baseQuote, sellerSnapshot: { ...baseQuote.sellerSnapshot, companyAddress: "Nordlysvej 1\n2100 København Ø" } },
+    }} />)
+    expect(partyLines(html, "Fra")).toEqual(["Acme Studio", "Nordlysvej 1", "2100 København Ø"])
+  })
+  it("shows the total only with its label, never as a bare seller and amount line (QUI-215)", () => {
+    const html = page("da-DK", <PublicQuotePage token="signed-token" state={{ kind: "ready", decisionState: "pending", seller, quote: baseQuote }} />)
+    expect(html).not.toContain('data-slot="card-footer"')
+    expect(textOf(html).split(formatCurrency(1250, "USD", "da-DK"))).toHaveLength(2)
+    expect(textOf(html)).toContain(`Total inkl. moms${formatCurrency(1250, "USD", "da-DK")}`)
   })
   it("top-aligns content-sized cards, uses micro labels and right-aligned tabular amounts", () => {
     const html = page("en-US", <PublicQuotePage token="test" state={{ kind: "ready", decisionState: "pending", seller, quote: baseQuote }} />)
@@ -285,7 +318,7 @@ describe("PublicQuotePage", () => {
       }} />)
       expect(html.split(nonVatStatement(locale))).toHaveLength(2)
       expect(html).toContain("Synthetic instructions")
-      expect(html).toContain(formatCurrency(1250, "USD", locale))
+      expect(textOf(html)).toContain(formatCurrency(1250, "USD", locale))
       if (taxRate === 0) expect(html).toContain(translate("line.noVat", locale))
       else { expect(html).toContain("25 % moms"); expect(html).not.toContain(translate("line.noVat", locale)) }
     }
@@ -328,7 +361,7 @@ describe("PublicQuotePage", () => {
     expect(html).toContain("Reject quote")
     expect(html).toContain("QTE-0001")
     expect(html).toContain("Quote from Acme Studio")
-    expect(html).toContain("$1,250.00")
+    expect(textOf(html)).toContain("$1,250.00")
     expect(html).toContain("15 Mar 2026")
   })
 
@@ -393,7 +426,7 @@ describe("PublicQuotePage", () => {
       expect(html).toContain("Acceptér tilbud")
       expect(html).toContain("Afvis tilbud")
       expect(html).toContain("Noter")
-      expect(html).toContain("1.250,00 kr.")
+      expect(textOf(html)).toContain("1.250,00 kr.")
       expect(html).toContain("2\u00a0×\u00a0500,00 kr.")
       expect(html).toContain("1. mar. 2026")
       expect(html).toContain("15. mar. 2026")
