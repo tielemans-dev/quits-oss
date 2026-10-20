@@ -24,7 +24,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       await page.goto(`/invoices/${invoice.id}`)
       await waitForClientReady(page)
       await edit.click()
-      await expect(delivery).toHaveText(da ? "05.10.2026" : "10/05/2026")
+      await expect(delivery).toHaveValue(da ? "05.10.2026" : "10/05/2026")
       await delivery.click()
       await page.locator('button[data-day="10/7/2026"]').click()
       await page.keyboard.press("Escape")
@@ -33,7 +33,7 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).supplyDate?.toISOString()).toBe("2026-10-07T00:00:00.000Z")
       await page.reload()
       await edit.click()
-      await expect(delivery).toHaveText(da ? "07.10.2026" : "10/07/2026")
+      await expect(delivery).toHaveValue(da ? "07.10.2026" : "10/07/2026")
       await delivery.click()
       await page.getByRole("button", { name: da ? "Ryd" : "Clear", exact: true }).click()
       await page.keyboard.press("Escape")
@@ -42,7 +42,8 @@ for (const locale of [danishLocale, usEnglishLocale]) {
       expect((await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } })).supplyDate).toBeNull()
       await page.reload()
       await edit.click()
-      await expect(delivery).toHaveText(da ? "Vælg en dato" : "Select a date")
+      await expect(delivery).toHaveValue("")
+      await expect(delivery).toHaveAttribute("placeholder", da ? "Vælg en dato" : "Select a date")
     } finally {
       await context.close()
     }

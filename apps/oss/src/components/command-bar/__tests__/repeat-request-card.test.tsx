@@ -88,7 +88,7 @@ describe("repeat last invoice card", () => {
     expect(text()).toContain("Kopieret fra INV-0146")
     await waitFor(() => expect(text()).toContain("22.500,00 kr."))
     expect(text()).toMatch(/Subtotal18\.000,00 kr\.Moms 25 %4\.500,00 kr\./)
-    expect(text()).toContain("29.10.2026")
+    expect((screen.getByLabelText("Forfaldsdato") as HTMLInputElement).value).toBe("29.10.2026")
     expect(api.create).not.toHaveBeenCalled()
   })
 
