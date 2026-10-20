@@ -4,7 +4,7 @@ import { agreementVatPresentation } from "../../lib/agreements/vat-presentation"
 import { offerHasDeposits } from "../../lib/agreements/offer-deposits"
 import type { z } from "zod"
 import { agreementStatusSchema } from "@quits/contracts/agreements"
-import { agreementOfferTotals } from "../../lib/agreements/offer-totals"
+import { agreementLineAmounts, agreementOfferTotals } from "../../lib/agreements/offer-totals"
 import type { PublicAgreementDto } from "../../lib/agreements/public"
 import type { PublicSeller } from "../../lib/documents/public-presentation"
 import type { TranslationKey } from "../../lib/i18n/messages"
@@ -92,9 +92,9 @@ export function PublicAgreementPage({
             <p>
               {t("public.document.lineQuantity", {
                 quantity: formatNumber(Number(line.quantity), locale),
-                price: money(line.unitPriceGross),
+                price: money(agreementLineAmounts(snapshot, line).unitPrice),
               })}{" "}
-              = {money(line.lineGross)}
+              = {money(agreementLineAmounts(snapshot, line).amount)}
             </p>
             {vat.lineLabel(line.taxRate) && <p className="text-sm text-muted-foreground">{vat.lineLabel(line.taxRate)}</p>}
             {line.agreedDate && (

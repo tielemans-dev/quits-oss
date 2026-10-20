@@ -1,6 +1,8 @@
 import { pdfBuyerAddress } from "./documents/invoice-identity"
 import { formatTaxIds, distinctCompany } from "./documents/tax-ids"
-import { formatCurrency } from "./i18n/format"
+import { formatCurrency, formatNumber } from "./i18n/format"
+import { translate } from "./i18n/translate"
+import { agreementLineAmounts } from "./agreements/offer-totals"
 import { agreementVatPresentation } from "./agreements/vat-presentation"
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
@@ -70,7 +72,11 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
             </Text>
             <Text>{line.description}</Text>
             <Text>
-              {line.quantity} × {line.unitPriceGross} = {line.lineGross} {snapshot.currency}
+              {translate("public.document.lineQuantity", snapshot.locale, {
+                quantity: formatNumber(Number(line.quantity), snapshot.locale),
+                price: formatCurrency(Number(agreementLineAmounts(snapshot, line).unitPrice), snapshot.currency, snapshot.locale),
+              })}{" "}
+              = {formatCurrency(Number(agreementLineAmounts(snapshot, line).amount), snapshot.currency, snapshot.locale)}
             </Text>
             {vat.lineLabel(line.taxRate) && <Text>{vat.lineLabel(line.taxRate)}</Text>}
             {line.agreedDate && <Text>Agreed date: {line.agreedDate.slice(0, 10)}</Text>}

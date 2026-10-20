@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency } from "../../lib/i18n/format"
+import { agreementLineAmounts } from "../../lib/agreements/offer-totals"
 import { isBillable } from "../../domain/agreements/billing-rules"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
@@ -33,7 +34,7 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
       <p>{t("agreements.selectBillable")}</p>
       {billable.map(line => <Label key={line.id} className="flex items-center gap-3">
         <input type="checkbox" checked={selected.includes(line.id)} disabled={busy} onChange={event => setSelected(ids => event.target.checked ? [...ids, line.id] : ids.filter(id => id !== line.id))} />
-        {line.title} ({formatCurrency(line.lineGross, agreement.currency, locale)})
+        {line.title} ({formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)})
       </Label>)}
       {billable.some(line => line.isDeposit && selected.includes(line.id)) && <>
         <p className="text-sm text-muted-foreground">{t("agreements.prepaymentNotice")}</p>

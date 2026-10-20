@@ -28,6 +28,7 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
+import { agreementLineAmounts } from "../../../lib/agreements/offer-totals"
 
 export const Route = createFileRoute("/_app/agreements/$agreementId")({
   component: AgreementDetail,
@@ -284,7 +285,7 @@ function AgreementDetail() {
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
               </p>
-              <p className="num">{formatCurrency(line.lineGross, agreement.currency, locale)}</p>
+              <p className="num">{formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)}</p>
               {capabilities && <DeliverableAllocation agreement={agreement} line={line} capabilities={capabilities} onChanged={refresh} onError={setError} />}
               {line.agreedDate && (
                 <p className="text-sm">
