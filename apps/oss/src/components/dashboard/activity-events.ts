@@ -79,8 +79,13 @@ export type ActivityTarget =
   | { to: "agreement"; id: string }
   | { to: "none" }
 
-/** The document an event is about, by the server's `documentKind`. */
-export function activityTarget(event: Pick<ActivityEvent, "documentKind" | "aggregateId">): ActivityTarget {
+/**
+ * The document an event is about, by the server's `documentKind`. An older payment event is
+ * about the payment: the server names its invoice but not the invoice's id, so it links nowhere
+ * rather than to a page that does not exist.
+ */
+export function activityTarget(event: Pick<ActivityEvent, "documentKind" | "aggregateId"> & { aggregateType?: string }): ActivityTarget {
+  if (event.aggregateType === "payment") return { to: "none" }
   switch (event.documentKind) {
     case "invoice":
       return { to: "invoice", id: event.aggregateId }
@@ -110,16 +115,18 @@ export type ActivityLine = {
  * paid, and a repeat of the same kind for the same document (an invoice both issued and sent).
  */
 export function describeActivity(events: ActivityEvent[]): ActivityLine[] {
-  const paidInvoices = new Set(
-    events.filter((event) => event.type === "invoice.paid").map((event) => event.aggregateId)
-  )
+  // An older payment event aggregates on the payment, so one document is known by its kind and
+  // number where it has one, and by its aggregate otherwise.
+  const documentOf = (event: ActivityEvent) =>
+    event.documentKind && event.documentNumber ? `${event.documentKind}:${event.documentNumber}` : `${event.aggregateType}:${event.aggregateId}`
+  const paidInvoices = new Set(events.filter((event) => event.type === "invoice.paid").map(documentOf))
   const lines: ActivityLine[] = []
   const seen = new Set<string>()
   for (const event of events) {
     const kind = activityKind(event.type)
     if (!kind) continue
-    if (event.type === "payment.recorded" && paidInvoices.has(event.aggregateId)) continue
-    const once = `${kind}:${event.aggregateId}`
+    if (event.type === "payment.recorded" && paidInvoices.has(documentOf(event))) continue
+    const once = `${kind}:${documentOf(event)}`
     if (seen.has(once)) continue
     seen.add(once)
     lines.push({

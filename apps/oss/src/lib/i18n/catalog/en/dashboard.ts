@@ -89,6 +89,7 @@ export const enDashboardMessages = {
   "dashboard.incoming.title": "On its way in",
   "dashboard.incoming.all": "All invoices",
   "dashboard.incoming.empty": "No payments are on their way right now.",
+  "dashboard.incoming.allAbove": "They are all under Needs your attention.",
   "dashboard.incoming.overdue.one": "1 day late",
   "dashboard.incoming.overdue.other": "{days} days late",
   "dashboard.incoming.today": "Due today",

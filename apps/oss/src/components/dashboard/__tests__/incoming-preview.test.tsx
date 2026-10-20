@@ -43,6 +43,6 @@ describe("IncomingList preview", () => {
 
     act(() => previewRequest({ kind: "reminded", invoiceIds: ["inv-overdue", "inv-soon"] }))
     expect(row("Nordlys ApS").getAttribute("data-preview")).toBe("reminded")
-    expect(screen.getAllByText("Får en rykker")).toHaveLength(2)
+    expect(screen.getAllByText("Får en påmindelse")).toHaveLength(2)
   })
 })

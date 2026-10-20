@@ -164,10 +164,21 @@ describe("with money", () => {
 
 describe("incoming list", () => {
   it("shows how late or how soon each invoice is", () => {
-    const { container } = renderView(activeSummary())
+    const { container } = renderView(activeSummary({ attention: [] }))
     const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
     expect(within(incoming).getByText("14 dage over tid")).toBeTruthy()
     expect(within(incoming).getByText("Forfalder om 3 dage")).toBeTruthy()
+  })
+
+  it("leaves out what the attention list already shows, and says so when that is everything", () => {
+    const { container } = renderView(activeSummary())
+    const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
+    expect(within(incoming).queryByText("Havn Studio")).toBeNull()
+    expect(within(incoming).getByText("Nordlys ApS")).toBeTruthy()
+    cleanup()
+    const summary = activeSummary()
+    const { container: all } = renderView({ ...summary, incoming: summary.incoming.filter((item) => item.documentId === "inv-overdue") })
+    expect(within(all.querySelector("[data-slot=dashboard-incoming]") as HTMLElement).getByText("De står alle under Kræver din opmærksomhed.")).toBeTruthy()
   })
 
   it("does not offer a second reminder for what the attention list already offers", () => {
@@ -409,7 +420,7 @@ describe("getting started actions", () => {
 
 describe("incoming days", () => {
   it("says due today, neutral, and never zero days overdue, for a zero-day arrear", () => {
-    const summary = activeSummary()
+    const summary = activeSummary({ attention: [] })
     summary.incoming[0] = { ...summary.incoming[0]!, daysOverdue: 0, isOverdue: true }
     const { container } = renderView(summary)
     const incoming = container.querySelector("[data-slot=dashboard-incoming]") as HTMLElement
