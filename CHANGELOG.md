@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## [0.15.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.15.0)
+
+Changes since the published v0.14.0 tag, covering 36 merged PRs.
+
+- Explain why Send did nothing on invoices, and what Send, Issue and Invoice are doing or waiting for on agreements. On Workers, an invoice send now waits for its email delivery. A delivery the host's operation policy refuses for 15 minutes ends as failed.
+- Paste bank statement lines into the palette to record payments, and preview on Overblik what an open card would do.
+- Rebuild Overblik's sections, lists, status badges, headings, error and 404 pages as plain sections between hairlines.
+- Let people choose the interface language from the user menu and keep it in a cookie. Public document pages set `<html lang>` to the document's language.
+- Sweep the forms: line VAT as a percent, typed dates in the locale's order, a customer summary page, CVR lookup on new customers where the runtime has one, spaced phone numbers, and clearer agreement lists and labels.
+- Fix onboarding and Settings: a setup banner for unfinished hosted onboarding, required-field marks, the CVR on Firmaprofil, save results by their buttons, and stored payment terms.
+
+See the [release notes](docs/releases/v0.15.0.md) for upgrade notes.
+
+[Compare with v0.14.0](https://github.com/tielemans-dev/quits-oss/compare/v0.14.0...v0.15.0).
+
 ## [0.14.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.14.0)
 
 Changes since the published v0.13.0 tag, covering 36 merged PRs.
