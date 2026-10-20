@@ -82,7 +82,7 @@ export function AppMain({ banner, children, sidebar = true }: { banner?: ReactNo
           {overview ? null : <SearchField ref={searchRef} onOpen={openPalette} className="max-w-[360px]" />}
           {sidebar ? <SidebarTrigger className="size-8 shrink-0 md:hidden" /> : null}
           <div className="flex-1" />
-          <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} />
+          <NewMenu open={newMenuOpen} onOpenChange={setNewMenuOpen} can={can} ready={ready} readOnly={readOnly} setupPending={trial?.setupPending} />
           {sidebar ? (
             <Link
               to="/settings"

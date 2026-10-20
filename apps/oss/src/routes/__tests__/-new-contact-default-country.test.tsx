@@ -16,6 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../../trpc/client", () => ({ trpc: {
   invoices: { sendReadiness: { query: async () => ({ businessBuyersOnly: false }) } },
   settings: { get: { query: trpcMock.settings } },
+  cvr: { customerAvailable: { query: async () => ({ enabled: false }) } },
   contacts: { create: { mutate: trpcMock.create } },
 } }))
 import { Route } from "../_app/contacts/new"

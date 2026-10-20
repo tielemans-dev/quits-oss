@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a> }))
+vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to, params }: { children: React.ReactNode; to: string; params?: { section?: string } }) => <a href={params?.section ? to.replace("$section", params.section) : to}>{children}</a> }))
 import { I18nProvider } from "../../../lib/i18n/react"
 import { LineVatSelect } from "../line-vat-select"
 import { OrganizationGaps } from "../organization-gaps"
@@ -65,6 +65,12 @@ describe("invoice send controls", () => {
     expect(screen.getByText(shown)).toBeTruthy()
     for (const text of hidden) expect(screen.queryByText(text, { exact: false })).toBeNull()
   })
+  it("links seller gaps to the company settings and a bank-only gap to the payment settings", () => {
+    const view = render(<I18nProvider locale="en-US"><OrganizationGaps issues={[{ code: "seller.vatRegistration.required", field: "seller.vatRegistered", params: {} }, { code: "seller.bank.required", field: "seller.bankAccount", params: {} }]} /></I18nProvider>)
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/settings/company")
+    view.rerender(<I18nProvider locale="en-US"><OrganizationGaps issues={[{ code: "seller.bank.required", field: "seller.bankAccount", params: {} }]} /></I18nProvider>)
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/settings/payments")
+  })
   it("keeps the combined CVR and VAT wording when both are missing", () => {
     render(<I18nProvider locale="en-US"><OrganizationGaps issues={[{ code: "cvr.invalid", field: "seller.cvr", params: {} }, { code: "seller.vatRegistration.required", field: "seller.vatRegistered", params: {} }]} /></I18nProvider>)
     expect(screen.getByText(/needs your CVR number, and you need to confirm whether you're VAT-registered/)).toBeTruthy()
@@ -84,6 +90,14 @@ describe("invoice send controls", () => {
     render(<I18nProvider locale="da-DK"><CountrySelect id="country" name="country" defaultCountry="DK" /></I18nProvider>)
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("DK")
     expect(screen.getByRole("option", { name: "Danmark" })).toBeTruthy()
+  })
+  it("lists the organization's country first, then the rest alphabetically in the UI language", () => {
+    render(<I18nProvider locale="da-DK"><CountrySelect id="country" name="country" defaultCountry="DK" /></I18nProvider>)
+    const names = screen.getAllByRole("option").map(option => option.textContent).filter(Boolean)
+    expect(names[0]).toBe("Danmark")
+    const rest = names.slice(1) as string[]
+    expect(rest).toEqual([...rest].sort(new Intl.Collator("da-DK").compare))
+    expect(rest.indexOf("Tyskland")).toBeLessThan(rest.indexOf("USA"))
   })
   it.each(["20", "19", "7.5"])("restores configured self-host VAT %s from an exempt line", taxRate => {
     const onChange = vi.fn()

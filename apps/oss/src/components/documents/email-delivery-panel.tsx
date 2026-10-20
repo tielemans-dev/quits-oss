@@ -35,6 +35,8 @@ export type EmailDeliveryPanelAction = {
   pendingLabel: string
   pending: boolean
   disabled?: boolean
+  /** Why the last click did nothing, shown under the button. */
+  notice?: string | null
   onClick: () => void
 }
 
@@ -116,10 +118,13 @@ export function EmailDeliveryPanel({
         ) : null}
 
         {action ? (
-          <div className="flex flex-wrap gap-2 pb-4 last:pb-0">
-            <Button disabled={action.disabled || action.pending} onClick={action.onClick}>
-              {action.pending ? action.pendingLabel : action.label}
-            </Button>
+          <div className="grid gap-2 pb-4 last:pb-0">
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={action.disabled || action.pending} onClick={action.onClick}>
+                {action.pending ? action.pendingLabel : action.label}
+              </Button>
+            </div>
+            {action.notice ? <p role="alert" className="text-sm text-destructive">{action.notice}</p> : null}
           </div>
         ) : null}
 

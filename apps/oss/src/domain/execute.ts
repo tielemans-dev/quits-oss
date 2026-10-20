@@ -45,7 +45,7 @@ export type ExecuteOptions = {
   /** Application orchestration runs this after authorization, receipt lookup and approval gating. */
   prepareIssuance?: (input: unknown, now: Date) => Promise<string | undefined>
   issuanceStagingId?: string
-  /** UI requests may return queued delivery. Workers leave it unclaimed for the scheduler. */
+  /** UI requests may return queued delivery. Workers ignore it and await delivery in full. */
   jobWaitTimeoutMs?: number
 }
 
@@ -494,13 +494,13 @@ async function executeCommandOnce<Input, Result>(
       return { result: exit.value, jobIds: createdJobs.map((job) => job.id) }
     }, TRANSACTION_OPTIONS)
 
-    // A bounded Worker request can end before the provider settles. There is no general job
-    // lifetime/client-retention hook, so keep these jobs pending for the scheduler's own request.
-    // Node uses a process-wide database pool; unbounded calls await every job before returning.
-    const runInlineJobs = options.jobWaitTimeoutMs === undefined || getRuntimePlatform().getRuntimeKind() === "node"
-    if (jobIds.length > 0 && runInlineJobs) {
+    // A Worker releases its request's database clients when the response ends, so it awaits every
+    // job in full; the outbox bounds each provider request itself. Leaving them to the scheduler
+    // kept a sent invoice in "sending" until the next tick. Node uses a process-wide database pool,
+    // so a bounded call there may return while delivery continues.
+    if (jobIds.length > 0) {
       const jobs = runJobsNow(jobIds)
-      if (options.jobWaitTimeoutMs === undefined) await jobs
+      if (options.jobWaitTimeoutMs === undefined || getRuntimePlatform().getRuntimeKind() !== "node") await jobs
       else {
         let timer: ReturnType<typeof setTimeout> | undefined
         try {
