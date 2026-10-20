@@ -53,7 +53,7 @@ export function NewMenu({ open, onOpenChange, can, ready, readOnly = false }: Pr
         </kbd>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="min-w-44 rounded-xl p-1.5">
-        <DropdownMenuLabel className="mono-label px-2 py-1.5">{t('shell.new.menuLabel')}</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">{t('shell.new.menuLabel')}</DropdownMenuLabel>
         {actions.map((action) => (
           <DropdownMenuItem key={action.id} asChild className="rounded-md px-2 py-2 text-sm">
             <Link to={action.to as LinkProps['to']}>

@@ -43,7 +43,7 @@ function RecurringInvoicesPage() {
   const [message, setMessage] = useState<Message | null>(null)
   const { canCreate, canUpdate } = useRecurringCapabilities()
 
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={load} /></div>
+  if (list.error) return <QueryError error={list.error} retry={load} />
 
   const newButton = canCreate ? (
     <Button onClick={() => setCreating(true)}>

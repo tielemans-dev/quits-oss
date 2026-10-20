@@ -18,7 +18,7 @@ function CreditNotesPage() {
   const list = useAppQuery(["creditNotes"], () => trpc.creditNotes.list.query())
   const creditNotes: CreditNoteListItem[] = list.data ?? []
   const loading = list.loading
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={list.refresh} /></div>
+  if (list.error) return <QueryError error={list.error} retry={list.refresh} />
 
   return (
     <div>

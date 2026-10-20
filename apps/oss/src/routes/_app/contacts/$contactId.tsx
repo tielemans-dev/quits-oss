@@ -123,7 +123,7 @@ function EditContactPage() {
     }
   }
 
-  if (loadError && (!contact || contact.id !== contactId)) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+  if (loadError && (!contact || contact.id !== contactId)) return <QueryError error={loadError} retry={query.refresh} />
 
   if (loading || (contact && contact.id !== contactId)) {
     return (

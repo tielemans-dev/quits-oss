@@ -447,7 +447,7 @@ function QuoteDetailPage() {
     }
   }
 
-  if (loadError) return <div className="p-6"><QueryError error={loadError} retry={query.refresh} /></div>
+  if (loadError) return <QueryError error={loadError} retry={query.refresh} />
 
   if (loading) {
     return (

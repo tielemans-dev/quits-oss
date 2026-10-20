@@ -1,5 +1,6 @@
 export const enUiMessages = {
   "ui.queryError": "Couldn't load the data",
+  "ui.queryError.body": "Nothing was changed. Try again in a moment.",
   "ui.retry": "Try again",
   "ui.loading": "Loading…",
   "ui.mutationError": "Couldn't save your changes. Try again.",

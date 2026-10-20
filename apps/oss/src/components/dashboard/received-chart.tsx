@@ -95,11 +95,11 @@ export function ReceivedChart({ chart, streak }: { chart: ChartModel; streak: nu
           })}
         </ul>
 
-        <ul aria-hidden="true" className="mono-label mt-2 flex gap-1 text-2xs @sm:gap-1.5">
+        <ul aria-hidden="true" className="text-muted-foreground mt-2 flex gap-1 text-2xs @sm:gap-1.5">
           {chart.months.map((month) => (
             <li
               key={month.month}
-              className={cn("min-w-0 flex-1 text-center", month.isCurrent && "text-foreground font-semibold")}
+              className={cn("min-w-0 flex-1 text-center", month.isCurrent && "text-foreground font-medium")}
             >
               {formatChartMonth(month.month, "short", locale).replace(".", "")}
             </li>

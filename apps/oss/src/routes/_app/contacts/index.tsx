@@ -58,7 +58,7 @@ function ContactsListPage() {
     }
   }
 
-  if (list.error) return <div className="p-6"><QueryError error={list.error} retry={loadContacts} /></div>
+  if (list.error) return <QueryError error={list.error} retry={loadContacts} />
 
   if (loading) {
     return (
