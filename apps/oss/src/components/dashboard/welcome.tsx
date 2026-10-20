@@ -2,12 +2,11 @@ import { Link } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
 
 import { useI18n } from "../../lib/i18n/react"
-import { cn } from "../../lib/utils"
 import { Button } from "../ui/button"
-import { Panel } from "../kvit/panel"
 import { DocLink } from "./doc-link"
 import type { Summary } from "./summary-model"
 import { DoubleRule } from "./double-rule"
+import { DashboardSection } from "./section"
 
 /** The same two buttons on both start states, so the first action is never a hunt. */
 function NewInvoiceButton({ label }: { label: string }) {
@@ -18,51 +17,6 @@ function NewInvoiceButton({ label }: { label: string }) {
         {label}
       </Link>
     </Button>
-  )
-}
-
-/**
- * A ghost of the dashboard to come: a blue slab, a few bars, two rows. Pure decoration, with no
- * figures in it, so nothing on screen is a made-up number.
- */
-function GhostDashboard() {
-  return (
-    <div
-      aria-hidden="true"
-      className="mx-auto w-full max-w-sm space-y-2.5 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]"
-    >
-      <div className="bg-hero relative overflow-hidden rounded-xl p-4">
-        <span className="block h-2 w-16 rounded-full bg-white/35" />
-        <span className="mt-4 block h-7 w-40 rounded-md bg-white/85" />
-        <span className="mt-2 block h-1 w-40 rounded-full bg-white/50" />
-        <span className="mt-0.5 block h-1 w-40 rounded-full bg-white/25" />
-        <span className="mt-4 flex h-1.5 gap-0.5 rounded-full">
-          <span className="bg-settled w-1/3 rounded-full" />
-          <span className="w-1/2 rounded-full bg-white/40" />
-          <span className="w-1/6 rounded-full bg-tone-danger/30" />
-        </span>
-      </div>
-      <div className="border-hairline bg-panel flex h-16 items-end gap-1 rounded-xl border p-3">
-        {[30, 55, 40, 70, 45, 85].map((height, index) => (
-          <span
-            key={index}
-            className={cn("flex-1 rounded-sm", index === 5 ? "bg-settled" : "bg-brand/25")}
-            style={{ height: `${height}%` }}
-          />
-        ))}
-      </div>
-      {[0, 1].map((row) => (
-        <div
-          key={row}
-          className="border-hairline bg-panel flex items-center gap-3 rounded-lg border px-3 py-2.5"
-          style={{ opacity: 0.85 - row * 0.3 }}
-        >
-          <span className="bg-brand-soft size-5 shrink-0 rounded-sm" />
-          <span className="bg-foreground/10 h-2.5 w-24 rounded-full" />
-          <span className="bg-foreground/10 ml-auto h-2.5 w-14 rounded-full" />
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -82,31 +36,48 @@ export function FirstRun({ readyCompany }: { readyCompany?: string } = {}) {
   return (
     <section
       data-slot="dashboard-first-run"
-      className="border-hairline rounded-xl border border-dashed px-5 py-10 sm:px-8 sm:py-14"
+      className="grid items-start gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:gap-14"
     >
-      <div className="mx-auto grid max-w-4xl items-center gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:gap-14">
-        <div>
-          <h2 className="text-xl font-bold tracking-[-0.02em] sm:text-2xl">{readyCompany ? t("onboardingV2.ready.heading", { company: readyCompany }) : t("dashboard.welcome.title")}</h2>
-          <p className="text-muted-foreground mt-2 max-w-md text-sm sm:text-base">
-            {readyCompany ? t("onboardingV2.ready.sub") : t("dashboard.welcome.description")}
-          </p>
-          {readyCompany ? <div className="mt-5 space-y-2 text-sm"><span className="font-mono text-xs">{t("onboardingV2.ready.tag")}</span><h3 className="font-semibold">{t("onboardingV2.ready.first")}</h3><p>{t("onboardingV2.ready.firstBody")}</p></div> : <ul className="mt-5 space-y-2 text-sm">
-            {points.map((point) => (
-              <li key={point} className="flex items-center gap-3">
-                <DoubleRule className="text-foreground" />
-                {point}
-              </li>
-            ))}
-          </ul>}
-          <div className="mt-7 flex flex-wrap items-center gap-2">
-            <NewInvoiceButton label={readyCompany ? t("onboardingV2.ready.create") : t("dashboard.welcome.action.invoice")} />
-            <Button asChild variant="outline">
-              <Link to="/contacts/new">{t("dashboard.welcome.action.contact")}</Link>
-            </Button>
+      <div>
+        <h2 className="text-xl font-medium tracking-[-0.02em] text-balance">
+          {readyCompany ? t("onboardingV2.ready.heading", { company: readyCompany }) : t("dashboard.welcome.title")}
+        </h2>
+        <p className="text-muted-foreground mt-2 max-w-md text-sm">
+          {readyCompany ? t("onboardingV2.ready.sub") : t("dashboard.welcome.description")}
+        </p>
+        {readyCompany ? (
+          <div className="mt-5 space-y-1 text-sm">
+            <p className="text-muted-foreground text-xs">{t("onboardingV2.ready.tag")}</p>
+            <h3 className="font-medium">{t("onboardingV2.ready.first")}</h3>
+            <p className="text-muted-foreground">{t("onboardingV2.ready.firstBody")}</p>
           </div>
+        ) : null}
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          <NewInvoiceButton label={readyCompany ? t("onboardingV2.ready.create") : t("dashboard.welcome.action.invoice")} />
+          <Button asChild variant="outline">
+            <Link to="/contacts/new">{t("dashboard.welcome.action.contact")}</Link>
+          </Button>
         </div>
-        {readyCompany ? <div className="space-y-6 text-sm"><p><Link to="/contacts/new" className="underline underline-offset-4">{t("onboardingV2.ready.customers")}</Link></p><p><Link to="/settings" className="underline underline-offset-4">{t("onboardingV2.ready.settings")}</Link></p></div> : <GhostDashboard />}
       </div>
+      {readyCompany ? (
+        <ul className="text-sm">
+          <li className="border-hairline border-t py-3">
+            <Link to="/contacts/new" className="hover:text-foreground text-muted-foreground transition-colors">{t("onboardingV2.ready.customers")}</Link>
+          </li>
+          <li className="border-hairline border-t py-3">
+            <Link to="/settings" className="hover:text-foreground text-muted-foreground transition-colors">{t("onboardingV2.ready.settings")}</Link>
+          </li>
+        </ul>
+      ) : (
+        <ul className="text-sm">
+          {points.map((point) => (
+            <li key={point} className="border-hairline flex items-center gap-3 border-t py-3">
+              <DoubleRule className="text-muted-foreground" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
@@ -120,43 +91,41 @@ export function FirstRun({ readyCompany }: { readyCompany?: string } = {}) {
  *   a total and the newest kind, so the text claims the total and the link never claims a count
  *   (the drafts may be of both kinds);
  * - none: the invoices.
- * The top bar already has "Ny", so this card does not offer it again.
+ * It takes the place of Udestående, under its heading. The top bar already has "Ny", so this does
+ * not offer it again.
  */
 export function GettingStarted({ drafts, className }: { drafts: Summary["drafts"]; className?: string }) {
   const { t } = useI18n()
   const newest = drafts.count > 0 && drafts.newestId && drafts.newestKind ? { id: drafts.newestId, kind: drafts.newestKind } : null
   const listOfNewest = newest?.kind === "quote" ? "/quotes" : "/invoices"
   return (
-    <Panel data-slot="dashboard-getting-started" className={cn("flex flex-col justify-center p-5 sm:p-6", className)}>
-      <span className="bg-brand-soft text-brand-text mb-4 grid size-9 place-items-center rounded-full">
-        <DoubleRule />
-      </span>
-      <h2 className="text-lg font-bold tracking-[-0.02em] sm:text-xl">{t("dashboard.start.title")}</h2>
-      <p className="text-muted-foreground mt-1.5 max-w-md text-sm">
-        {drafts.count > 1
-          ? t("dashboard.start.descriptionDrafts", { count: drafts.count })
-          : t("dashboard.start.description")}
-      </p>
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        {newest ? (
-          <>
-            <Button asChild>
-              <DocLink kind={newest.kind} id={newest.id}>
-                {drafts.count > 1 ? t("dashboard.start.action.continueNewest") : t("dashboard.start.action.continue")}
-              </DocLink>
+    <DashboardSection title={t("dashboard.hero.label")} data-slot="dashboard-getting-started" className={className}>
+      <div className="border-hairline border-t pt-4">
+        <h3 className="text-base font-medium tracking-[-0.01em]">{t("dashboard.start.title")}</h3>
+        <p className="text-muted-foreground mt-1 max-w-md text-sm">
+          {drafts.count > 1 ? t("dashboard.start.descriptionDrafts", { count: drafts.count }) : t("dashboard.start.description")}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {newest ? (
+            <>
+              <Button asChild size="sm">
+                <DocLink kind={newest.kind} id={newest.id}>
+                  {drafts.count > 1 ? t("dashboard.start.action.continueNewest") : t("dashboard.start.action.continue")}
+                </DocLink>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to={listOfNewest}>
+                  {newest.kind === "quote" ? t("dashboard.start.action.quotes") : t("dashboard.start.action.invoices")}
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <Button asChild size="sm">
+              <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link to={listOfNewest}>
-                {newest.kind === "quote" ? t("dashboard.start.action.quotes") : t("dashboard.start.action.invoices")}
-              </Link>
-            </Button>
-          </>
-        ) : (
-          <Button asChild>
-            <Link to="/invoices">{t("dashboard.start.action.invoices")}</Link>
-          </Button>
-        )}
+          )}
+        </div>
       </div>
-    </Panel>
+    </DashboardSection>
   )
 }
