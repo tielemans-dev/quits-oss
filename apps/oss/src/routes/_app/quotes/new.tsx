@@ -12,7 +12,8 @@ import { trpc } from "../../../trpc/client"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
-import { useOrgCurrency } from "../../../hooks/use-org-currency"
+import { resolveOrgCurrency } from "../../../hooks/use-org-currency"
+import { useOrgSettings } from "../../../hooks/use-org-settings"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -51,7 +52,9 @@ type LineItem = {
 
 function NewQuotePage() {
   const { t, locale } = useI18n()
-  const currency = useOrgCurrency()
+  const orgSettings = useOrgSettings()
+  // Amounts wait for the organization's currency rather than show the fallback one.
+  const currency = orgSettings ? resolveOrgCurrency(orgSettings) : null
   const { pricesIncludeTax } = useOrgPricingSettings()
   const [vatEvidence, setVatEvidence] = useState<DraftVatEvidence>({})
   const navigate = useNavigate()
@@ -102,7 +105,8 @@ function NewQuotePage() {
     )
   }
 
-  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency })
+  const preview = previewDraft({ items, taxRate: taxRate || "0", pricesIncludeTax, currency: currency ?? resolveOrgCurrency(null) })
+  const amount = (value: number) => preview.result && currency ? formatCurrencyIntl(value, currency, locale) : "—"
   const subtotal = Number(preview.result?.net ?? "0")
   const taxAmount = Number(preview.result?.tax ?? "0")
   const total = Number(preview.result?.gross ?? "0")
@@ -282,7 +286,7 @@ function NewQuotePage() {
                     }
                   />
                   <span className="num text-sm text-right pr-2">
-                    {preview.result ? formatCurrencyIntl(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—"}
+                    {amount(Number(preview.result?.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"))}
                   </span>
                   <Button
                     type="button"
@@ -304,14 +308,14 @@ function NewQuotePage() {
             </Button>
           </div>
 
-          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
-          <VatGroupPreview {...preview} />
+          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} defaultCountry={orgSettings?.countryCode} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
+          {currency && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">
             <div className="w-64 grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("docForm.summary.subtotal")}</span>
-                <span className="num">{preview.result ? formatCurrencyIntl(subtotal, currency, locale) : "—"}</span>
+                <span className="num">{amount(subtotal)}</span>
               </div>
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground">{t("docForm.summary.tax")}</span>
@@ -327,12 +331,12 @@ function NewQuotePage() {
                     className="w-16 h-7 text-xs"
                   />
                   <span className="text-muted-foreground text-xs">%</span>
-                  <span className="ml-auto num">{preview.result ? formatCurrencyIntl(taxAmount, currency, locale) : "—"}</span>
+                  <span className="ml-auto num">{amount(taxAmount)}</span>
                 </div>
               </div>
               <div className="flex justify-between font-semibold border-t pt-2">
                 <span>{t("docForm.summary.total")}</span>
-                <span className="num">{preview.result ? formatCurrencyIntl(total, currency, locale) : "—"}</span>
+                <span className="num">{amount(total)}</span>
               </div>
             </div>
           </div>

@@ -616,7 +616,7 @@ function QuoteDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} defaultCountry={quote.countryCode} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
             <VatGroupPreview {...preview} />
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">

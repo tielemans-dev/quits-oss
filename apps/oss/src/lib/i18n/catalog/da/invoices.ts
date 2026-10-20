@@ -160,7 +160,7 @@ export const daInvoicesMessages = {
   "vat.line": "Linje {number}",
   "vat.treatment": "Momsbehandling",
   "vat.lineTreatment": "Momsbehandling for linje {number}",
-  "vat.fractionalRate": "Momssats (0.25 = 25%)",
+  "vat.percentRate": "Momssats (%)",
   "vat.lineRate": "Momssats for linje {number}",
   "vat.reason": "Årsagskode",
   "vat.lineReason": "Momsårsag for linje {number}",
