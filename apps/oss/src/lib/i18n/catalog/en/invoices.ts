@@ -21,7 +21,8 @@ export const enInvoicesMessages = {
   "invoices.summary.outstanding": "Outstanding",
   "invoices.summary.overdue": "Overdue",
   "invoices.summary.paidThisMonth": "Paid this month",
-  "invoices.summary.count": "{count} invoices",
+  "invoices.summary.count.one": "1 invoice",
+  "invoices.summary.count.other": "{count} invoices",
 
   "invoices.aconto.amount": "Aconto deduction incl. VAT",
   "invoices.aconto.help": "Leave empty to deduct the available amount from earlier aconto invoices. Enter 0 to remove draft deductions.",

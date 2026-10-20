@@ -21,7 +21,8 @@ export const daInvoicesMessages = {
   "invoices.summary.outstanding": "Udestående",
   "invoices.summary.overdue": "Forfaldent",
   "invoices.summary.paidThisMonth": "Betalt denne måned",
-  "invoices.summary.count": "{count} fakturaer",
+  "invoices.summary.count.one": "1 faktura",
+  "invoices.summary.count.other": "{count} fakturaer",
 
   "invoices.aconto.amount": "Acontofradrag inkl. moms",
   "invoices.aconto.help": "Lad feltet være tomt for at fratrække det tilgængelige beløb fra tidligere acontofakturaer. Skriv 0 for at fjerne fradrag fra kladden.",
