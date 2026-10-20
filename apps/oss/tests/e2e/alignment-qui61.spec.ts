@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises"
 import { resolve } from "node:path"
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 import { prisma } from "../../src/lib/db"
 import issuedFixture from "../../src/domain/events/__tests__/fixtures/invoice.issued.v1.json" with { type: "json" }
 import { adminCredentials, danishLocale, resetDatabase, seedPublicInvoice, usEnglishLocale, waitForClientReady } from "./support"
@@ -14,13 +14,18 @@ async function capture(page: Page, name: string) {
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: resolve(captureDir, `${name}-${variant}.png`), fullPage: true })
 }
+async function startsAtContent(page: Page, field: Locator) {
+  const box = await field.boundingBox()
+  const content = await page.locator("[data-slot=app-content]").evaluate(el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft))
+  expect(box).not.toBeNull()
+  expect(Math.abs(box!.x - content)).toBeLessThanOrEqual(1)
+}
 async function searchAligned(page: Page, screen: string) {
   // Overblik has no search in the top bar: its field is the palette itself.
-  const field = screen === "dashboard" ? page.locator("[data-live-sheet]") : page.getByRole("button", { name: /Open search|Åbn søgning/ })
-  const search = await field.boundingBox()
-  const content = await page.locator("[data-slot=app-content]").evaluate(el => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft))
-  expect(search).not.toBeNull()
-  expect(Math.abs(search!.x - content)).toBeLessThanOrEqual(1)
+  if (screen === "dashboard") await startsAtContent(page, page.locator("[data-live-sheet]"))
+  // On phones the menu button leads the top bar on every page (QUI-213), and search follows it.
+  if (page.viewportSize()!.width < 768) await startsAtContent(page, page.locator("header [data-slot=sidebar-trigger]"))
+  else if (screen !== "dashboard") await startsAtContent(page, page.getByRole("button", { name: /Open search|Åbn søgning/ }))
 }
 for (const locale of [danishLocale, usEnglishLocale]) {
   test(`QUI-61 alignment in ${locale.locale}`, async ({ browser }) => {
