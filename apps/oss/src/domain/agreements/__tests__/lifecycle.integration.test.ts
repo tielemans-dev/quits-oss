@@ -36,7 +36,9 @@ import {
   expireOrganizationAgreements,
   sweepPublicLinkAttempts,
 } from "../../features/agreement-expiry"
-import { settleAbandonedDeliveries } from "../../delivery/outbox"
+import { EMAIL_DELIVERY_JOB, POLICY_REFUSAL_LIMIT_MS, settleAbandonedDeliveries } from "../../delivery/outbox"
+import { runSchedulerTick } from "../../scheduler"
+import { setRuntimeServices } from "../../../lib/runtime/services"
 import { retryEmailDeliveries, findEmailDeliveryJobs } from "../../../test-utils/email-outbox"
 import {
   decidePublicAgreementByToken,
@@ -136,6 +138,7 @@ beforeEach(() => {
   vi.mocked(deliver).mockReset().mockResolvedValue({ id: "email" })
 })
 afterEach(async () => {
+  setRuntimeServices({ operationPolicy: undefined })
   while (cleanups.length) await cleanups.pop()?.()
   vi.unstubAllEnvs()
   vi.useRealTimers()
@@ -245,6 +248,18 @@ describe("agreement validity", () => {
     const current = identity(await ctx.get())
     await settleAbandonedDeliveries({ organizationIds: [ctx.org.organizationId] })
     expect(identity(await ctx.get())).toEqual(current)
+  })
+  it("gives up a send the operation policy keeps refusing instead of leaving it sending", async () => {
+    const ctx = await setup()
+    setRuntimeServices({ operationPolicy: { authorize: async operation => operation.name === EMAIL_DELIVERY_JOB
+      ? { allowed: false, message: "Synthetic restriction" } : { allowed: true } } })
+    completed(await ctx.run(sendAgreement, { id: ctx.agreement.id }))
+    expect(await ctx.get()).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "sending" })
+    const later = new Date(now.getTime() + POLICY_REFUSAL_LIMIT_MS + 60_000)
+    vi.setSystemTime(later)
+    await runSchedulerTick(later, { organizationIds: [ctx.org.organizationId] })
+    expect(deliver).not.toHaveBeenCalled()
+    expect(await ctx.get()).toMatchObject({ status: "draft", lastEmailAttemptOutcome: "failed", lastEmailAttemptCode: "send_failed" })
   })
   it("stores preview A through B back to A, while edited approval is refused", async () => {
     const ctx = await setup()

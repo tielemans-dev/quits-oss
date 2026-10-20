@@ -1,20 +1,26 @@
 import { useAppQuery } from "../../../hooks/use-query-refresh"
-import { QueryError, QuerySkeleton } from "../../../components/query-state"
+import { QueryError } from "../../../components/query-state"
 import { AgreementTemplateManager } from "../../../components/agreements/template-manager"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { trpc } from "../../../trpc/client"
 import { Button } from "../../../components/ui/button"
 import { StatusBadge } from "../../../components/status-badge"
+import { Amount } from "../../../components/kvit/amount"
+import { decimalFromNumber } from "../../../components/kvit/amount-format"
+import { CustomerMark } from "../../../components/kvit/customer-mark"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../components/ui/table"
+  ListBody,
+  ListCell,
+  ListHead,
+  ListHeadCell,
+  ListRow,
+  ListSkeleton,
+  ListTable,
+  listRowLinkClass,
+} from "../../../components/kvit/list"
+import { cn } from "../../../lib/utils"
 import { useI18n } from "../../../lib/i18n/react"
-import { formatCurrency, formatDate } from "../../../lib/i18n/format"
+import { formatShortDate } from "../../../lib/i18n/format"
 
 export const Route = createFileRoute("/_app/agreements/")({ component: AgreementsPage })
 function AgreementsPage() {
@@ -36,39 +42,73 @@ function AgreementsPage() {
       <AgreementTemplateManager />
       <p className="text-sm text-muted-foreground">{t("agreements.draftOnly")}</p>
       {list.loading ? (
-        <QuerySkeleton />
+        <ListSkeleton label={t("agreements.loading")} bleed />
       ) : agreements.length === 0 ? (
         <p>{t("agreements.empty")}</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("agreements.titleField")}</TableHead>
-              <TableHead>{t("agreements.customer")}</TableHead>
-              <TableHead>{t("agreements.validUntil")}</TableHead>
-              <TableHead>{t("agreements.total")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <ListTable
+          label={t("agreements.title")}
+          columns="minmax(0,2.2fr) 6rem 7rem minmax(8.5rem,1fr) 8rem"
+          compactColumns="minmax(0,2.2fr) 6rem minmax(8.5rem,1fr) 8rem"
+        >
+          <ListHead>
+            <ListHeadCell>{t("agreements.titleField")}</ListHeadCell>
+            <ListHeadCell>{t("agreements.number")}</ListHeadCell>
+            <ListHeadCell className="hidden @5xl:block">{t("agreements.validUntil")}</ListHeadCell>
+            <ListHeadCell align="end">{t("agreements.total")}</ListHeadCell>
+            <ListHeadCell>{t("agreements.status")}</ListHeadCell>
+          </ListHead>
+          <ListBody>
             {agreements.map((agreement) => (
-              <TableRow key={agreement.id}>
-                <TableCell>
-                  <Link
-                    className="font-medium underline"
-                    to="/agreements/$agreementId"
-                    params={{ agreementId: agreement.id }}
-                  >
-                    {agreement.title}
-                  </Link>{" "}
+              <ListRow key={agreement.id}>
+                <ListCell className="@max-4xl:col-start-1 @max-4xl:row-start-1">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <CustomerMark name={agreement.contact.name} />
+                    <div className="min-w-0">
+                      {/* The link covers the whole row, so a click anywhere on it opens the agreement. */}
+                      <Link
+                        to="/agreements/$agreementId"
+                        params={{ agreementId: agreement.id }}
+                        aria-label={
+                          agreement.number
+                            ? t("agreements.row.link", { number: agreement.number, title: agreement.title, customer: agreement.contact.name })
+                            : t("agreements.row.linkDraft", { title: agreement.title, customer: agreement.contact.name })
+                        }
+                        className={cn(listRowLinkClass, "block truncate font-semibold")}
+                      >
+                        {agreement.title}
+                      </Link>
+                      <span className="text-muted-foreground block truncate text-xs">{agreement.contact.name}</span>
+                    </div>
+                  </div>
+                </ListCell>
+                <ListCell className="font-mono text-xs tracking-[0.01em] @max-4xl:col-start-1 @max-4xl:row-start-2">
+                  {agreement.number ?? (
+                    <>
+                      <span aria-hidden="true" className="text-muted-foreground">
+                        —
+                      </span>
+                      <span className="sr-only">{t("agreements.number.draft")}</span>
+                    </>
+                  )}
+                </ListCell>
+                <ListCell className="text-muted-foreground hidden @5xl:block">
+                  {formatShortDate(agreement.validUntil, locale, "UTC")}
+                </ListCell>
+                <ListCell align="end" className="@max-4xl:col-start-2 @max-4xl:row-start-1">
+                  <Amount
+                    value={decimalFromNumber(agreement.total, agreement.currency)}
+                    currency={agreement.currency}
+                    locale={locale}
+                  />
+                </ListCell>
+                <ListCell className="@max-4xl:col-start-2 @max-4xl:row-start-2 @max-4xl:justify-self-end">
                   <StatusBadge domain="agreement" status={agreement.status} />
-                </TableCell>
-                <TableCell>{agreement.contact.name}</TableCell>
-                <TableCell>{formatDate(agreement.validUntil, locale, "UTC")}</TableCell>
-                <TableCell className="num">{formatCurrency(agreement.total, agreement.currency, locale)}</TableCell>
-              </TableRow>
+                </ListCell>
+              </ListRow>
             ))}
-          </TableBody>
-        </Table>
+          </ListBody>
+        </ListTable>
       )}
     </div>
   )

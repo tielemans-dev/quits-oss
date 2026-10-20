@@ -38,6 +38,7 @@ export const enContactsMessages = {
   "contacts.action.saving": "Saving…",
   "contacts.action.cancel": "Cancel",
   "contacts.action.delete": "Delete",
+  "contacts.action.edit": "Edit",
   "contacts.action.back": "Back to Customers",
   "contacts.empty.title": "No customers yet",
   "contacts.empty.description":
