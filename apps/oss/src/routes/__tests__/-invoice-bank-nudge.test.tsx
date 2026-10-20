@@ -23,7 +23,7 @@ const draft = {
   reviewedVersion: "11111111111111111111111111111111",
   id: "draft", number: null, status: "draft", paymentStatus: "unpaid", purpose: "sale", currency: "DKK", taxRegime: "eu_vat",
   dueDate: "2026-11-09", issueDate: "2026-10-13", supplyDate: "2026-10-13", items: [], total: 0, subtotal: 0, taxAmount: 0,
-  contact: { id: "buyer", name: "Synthetic buyer", email: "buyer@example.test" }, sellerSnapshot: { countryCode: "DK", momsRegistered: false },
+  countryCode: "DK", contact: { id: "buyer", name: "Synthetic buyer", email: "buyer@example.test" }, sellerSnapshot: { countryCode: "DK", momsRegistered: false },
 }
 beforeEach(() => {
   vi.resetAllMocks()
