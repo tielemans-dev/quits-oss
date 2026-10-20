@@ -13,7 +13,8 @@ export const daAgreementsMessages = {
   "agreements.summary": "Opgavens omfang",
   "agreements.template": "Skabelon",
   "agreements.custom": "Egne vilkår",
-  "agreements.terms": "Vilkår (Markdown)",
+  "agreements.terms": "Vilkår",
+  "agreements.termsFormatHint": "Du kan formatere teksten med Markdown, fx **fed** og # overskrifter.",
   "agreements.preview": "Forhåndsvisning af vilkår",
   "agreements.legalNotice":
     "Skabelonerne er eksempler, ikke juridisk rådgivning. Gennemgå vilkårene før brug.",
@@ -97,7 +98,7 @@ export const daAgreementsMessages = {
   "agreements.fulfillment.accepted": "Accepteret",
   "agreements.fulfillment.changes_requested": "Ændringer ønsket",
   "agreements.fulfillment.cancelled": "Annulleret",
-  "agreements.deposits": "Deposita",
+  "agreements.deposits": "Linjer med depositum",
   "agreements.start": "Start",
   "agreements.reopen": "Genåbn",
   "agreements.markDelivered": "Markér som leveret",
