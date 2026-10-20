@@ -120,7 +120,7 @@ function InvoicesListPage() {
     return (
       <div>
         <PageHeader title={t("invoices.title")} />
-        <ListSkeleton label={t("invoices.loading")} />
+        <ListSkeleton label={t("invoices.loading")} bleed />
       </div>
     )
   }
