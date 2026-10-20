@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { HeadContent, Scripts, createRootRoute, Link, redirect, useRouterState } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { ThemeProvider } from '../components/theme-provider'
 import { TooltipProvider } from '../components/ui/tooltip'
-import { Button } from '../components/ui/button'
-import { useI18n, I18nProvider } from '../lib/i18n/react'
+import { NotFoundPage } from '../components/not-found'
+import { I18nProvider } from '../lib/i18n/react'
 import { resolveLanguage } from '../lib/i18n/translate'
 import { getInstallationStatus, normalizeInstallationStatus } from '../lib/installation'
 import type { InstallationStatus } from '../lib/installation-state'
@@ -16,21 +16,6 @@ import { themeInitScript } from '../lib/theme'
 import appCss from '../styles.css?url'
 import geistFontUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
 import geistMonoFontUrl from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url'
-
-function NotFound() {
-  const { t } = useI18n()
-
-  return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <p className="text-muted-foreground font-mono text-xs">404</p>
-      <h1 className="mt-2 text-2xl font-medium tracking-[-0.01em]">{t('root.notFound.title')}</h1>
-      <p className="text-muted-foreground mt-2 text-sm">{t('root.notFound.body')}</p>
-      <Button asChild className="mt-6 self-start">
-        <Link to="/">{t('root.notFound.goHome')}</Link>
-      </Button>
-    </main>
-  )
-}
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -52,7 +37,7 @@ export const Route = createRootRoute({
     }
     return { installation }
   },
-  notFoundComponent: NotFound,
+  notFoundComponent: () => <NotFoundPage />,
   head: () => ({
     meta: [
       {
