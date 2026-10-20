@@ -26,7 +26,7 @@ describe("agreement line amounts", () => {
   it("states a line priced excluding VAT net, so the lines add up to the subtotal", () => {
     const snapshot = offer(false, "18000")
     expect(snapshot.deliverables[0]).toMatchObject({ unitPriceNet: "18000.00", lineNet: "18000.00", lineTax: "4500.00", lineGross: "22500.00" })
-    expect(snapshot.serviceTotal).toMatchObject({ net: "18000.00", tax: "4500.00", gross: "22500.00" })
+    expect(snapshot).toMatchObject({ serviceTotal: { net: "18000.00", tax: "4500.00", gross: "22500.00" } })
     expect(agreementLineAmounts(snapshot, snapshot.deliverables[0]!)).toEqual({ unitPrice: "18000.00", amount: "18000.00" })
     for (const output of [text(page(snapshot)), text(pdf(snapshot))]) {
       expect(output).toContain("1 × 18.000,00 kr. = 18.000,00 kr.")
