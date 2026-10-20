@@ -1079,7 +1079,7 @@ function InvoiceDetailPage() {
           : undefined,
       fixAction: (
         <Button asChild variant="outline">
-          <Link to="/contacts/$contactId" params={{ contactId: contact.id }}>
+          <Link to="/contacts/$contactId" params={{ contactId: contact.id }} search={{ edit: true }}>
             {t("invoices.detail.email.fallback.invalidRecipient.fix")}
           </Link>
         </Button>

@@ -73,7 +73,7 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
             <div className="mt-3 flex flex-wrap gap-2">
               {buyerMissing ? (
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/contacts/$contactId" params={{ contactId: invoice.contact.id }}>
+                  <Link to="/contacts/$contactId" params={{ contactId: invoice.contact.id }} search={{ edit: true }}>
                     {t("exports.einvoice.editContact")}
                   </Link>
                 </Button>

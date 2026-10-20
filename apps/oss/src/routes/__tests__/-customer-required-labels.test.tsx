@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ contactId: "synthetic-buyer" }) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ contactId: "synthetic-buyer" }), useSearch: () => ({ edit: true }) }),
+  Link: () => null,
   useNavigate: () => vi.fn(),
 }))
 const readiness = vi.hoisted(() => ({ businessBuyersOnly: false }))

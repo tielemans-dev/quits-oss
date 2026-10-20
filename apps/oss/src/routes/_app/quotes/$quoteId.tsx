@@ -741,7 +741,7 @@ function QuoteDetailPage() {
         : undefined,
       fixAction: (
         <Button asChild variant="outline">
-          <Link to="/contacts/$contactId" params={{ contactId: contact.id }}>
+          <Link to="/contacts/$contactId" params={{ contactId: contact.id }} search={{ edit: true }}>
             {t("quotes.detail.email.fallback.invalidRecipient.fix")}
           </Link>
         </Button>
