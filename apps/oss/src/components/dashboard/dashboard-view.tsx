@@ -1,13 +1,13 @@
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useRef, type ReactNode } from "react"
 
 import { useI18n } from "../../lib/i18n/react"
-import { PageHeader } from "../kvit/page-header"
 import { ActivityFeed } from "./activity-feed"
 import { AttentionList } from "./attention-list"
 import { formatLongDate, formatMonthName } from "./format-relative"
 import { firstName, greetingKey } from "./greeting"
 import { HeroCard } from "./hero-card"
 import { IncomingList } from "./incoming-list"
+import { MurmurationSky } from "./murmuration-sky"
 import { ReceivedChart } from "./received-chart"
 import {
   classifyDashboard,
@@ -33,11 +33,35 @@ export function dashboardSubtitle(
   return state === "active" || state === "kvit" ? formatLongDate(summary.asOf, locale, summary.timezone) : null
 }
 
-/** The title block, shared by the loaded page, the skeleton and the error. */
-export function DashboardHeader({ subtitle }: { subtitle?: string }) {
+/**
+ * The top of the Overblik: the greeting, the date and the command bar, centred under a sky with a
+ * murmuration of starlings in it (sort sol). It reaches to the edges of the page column, and the
+ * command bar unfolds over what follows, so nothing here clips it.
+ */
+export function DashboardHello({ title, subtitle, commandBar }: { title: ReactNode; subtitle?: string; commandBar?: ReactNode }) {
+  const words = useRef<HTMLDivElement>(null)
+  return (
+    <section
+      data-slot="dashboard-hello"
+      className="relative -mx-(--gutter) -mt-8 mb-4 grid min-h-72 place-items-center px-(--gutter) py-12 sm:min-h-84"
+    >
+      <MurmurationSky clearRef={words} />
+      <div ref={words} className="relative grid w-full max-w-160 justify-items-center">
+        <header data-slot="page-header" className="text-center">
+          <h1 className="text-2xl font-medium tracking-[-0.02em] text-balance sm:text-3xl">{title}</h1>
+          {/* A blank line keeps the height of the date, so the page does not shift when it arrives. */}
+          <p className="text-muted-foreground mt-1.5 text-sm">{subtitle ?? "\u00a0"}</p>
+        </header>
+        {commandBar ? <div className="mt-6 w-full">{commandBar}</div> : null}
+      </div>
+    </section>
+  )
+}
+
+/** The top while the summary loads or failed: the sky and the command bar, the greeting to come. */
+export function DashboardHeader({ commandBar }: { commandBar?: ReactNode }) {
   const { t } = useI18n()
-  // A blank line keeps the height of the subtitle, so the page does not shift when it arrives.
-  return <PageHeader title={t("nav.dashboard")} subtitle={subtitle ?? "\u00a0"} />
+  return <DashboardHello title={<><span className="sr-only">{t("nav.dashboard")}</span>{"\u00a0"}</>} commandBar={commandBar} />
 }
 
 /**
@@ -89,12 +113,11 @@ export function DashboardView({
 
   return (
     <>
-      <PageHeader
+      <DashboardHello
         title={greeting}
         subtitle={dashboardSubtitle(state, summary, locale) ?? t("dashboard.subtitle.start")}
-        className={commandBar ? "mb-4" : undefined}
+        commandBar={commandBar}
       />
-      {commandBar ? <div className="mb-6">{commandBar}</div> : null}
 
       {state === "first-run" ? (
         // A wrapper, because the page container strips the padding of its direct children.
