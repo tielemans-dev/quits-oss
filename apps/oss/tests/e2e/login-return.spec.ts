@@ -31,8 +31,9 @@ for (const lang of ['da', 'en']) {
     await page.getByLabel(lang === 'da' ? 'Adgangskode' : 'Password').fill(adminCredentials.password)
     await page.getByRole('button', { name: lang === 'da' ? 'Log ind' : 'Log in', exact: true }).click()
     await expect(page).toHaveURL(new URL(`/?lang=${lang}`, page.url()).href)
-    // The destination retains lang; the dashboard's copy follows the saved organization locale.
-    await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening)/ })).toBeVisible()
+    // The destination retains lang, which wins over the organization's English locale.
+    const greeting = lang === 'da' ? /^God (morgen|formiddag|eftermiddag|aften)/ : /^Good (morning|afternoon|evening)/
+    await expect(page.getByRole('heading', { name: greeting })).toBeVisible()
   })
 }
 

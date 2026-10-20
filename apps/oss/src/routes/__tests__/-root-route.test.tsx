@@ -66,7 +66,14 @@ describe("root route setup guard", () => {
         setupVersion: 1,
         billingEnabled: false,
       },
+      language: { chosen: undefined, browser: "en-US" },
     })
+  })
+
+  it("carries the language from ?lang to every page", async () => {
+    getInstallationStatus.mockResolvedValue({ isSetupComplete: true })
+    expect(await route.beforeLoad({ location: { pathname: "/login", search: { lang: "da" } } })).toHaveProperty("language.chosen", "da")
+    forgetInstallationStatus()
   })
 })
 

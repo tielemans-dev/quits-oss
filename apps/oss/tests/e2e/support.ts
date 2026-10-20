@@ -326,6 +326,21 @@ export async function loginAsAdmin(page: Page) {
   await waitForClientReady(page)
 }
 
+/**
+ * Makes this page's browser prefer `locale`, as a browser set to that language would: the server
+ * reads `Accept-Language` and the client reads `navigator.languages`, so both must say it.
+ */
+export async function emulateBrowserLanguage(page: Page, locale: string) {
+  // Chromium keeps the context's own Accept-Language over setExtraHTTPHeaders, so rewrite it.
+  await page.route("**/*", (route) =>
+    route.fallback({ headers: { ...route.request().headers(), "accept-language": locale } })
+  )
+  await page.addInitScript((language) => {
+    Object.defineProperty(navigator, "language", { get: () => language })
+    Object.defineProperty(navigator, "languages", { get: () => [language] })
+  }, locale)
+}
+
 export function uniqueEmail(prefix: string) {
   return `${prefix}-${randomUUID()}@example.com`
 }

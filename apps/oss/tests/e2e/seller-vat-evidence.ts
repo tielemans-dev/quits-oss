@@ -6,6 +6,19 @@ import { composeInvoiceEmail } from "../../src/domain/documents/invoice-email"
 import { translate } from "../../src/lib/i18n/translate"
 import { waitForClientReady } from "./support"
 
+// The baseline job runs this file against main's support.ts, so it keeps its own copy of the
+// support.ts helper: the server reads Accept-Language and the client reads navigator.languages.
+async function emulateBrowserLanguage(page: Page, locale: string) {
+  // Chromium keeps the context's own Accept-Language over setExtraHTTPHeaders, so rewrite it.
+  await page.route("**/*", (route) =>
+    route.fallback({ headers: { ...route.request().headers(), "accept-language": locale } })
+  )
+  await page.addInitScript((language) => {
+    Object.defineProperty(navigator, "language", { get: () => language })
+    Object.defineProperty(navigator, "languages", { get: () => [language] })
+  }, locale)
+}
+
 // MOCK: captures only synthetic fixtures in the disposable CI database enforced by the config.
 const revision = process.env.QUI62_EVIDENCE_REVISION === "baseline" ? "baseline" : "after"
 export async function captureDocument(page: Page, surface: string, locale: string, html: string) {
@@ -68,7 +81,8 @@ export async function captureOnboarding(page: Page, organizationId: string, loca
   expect(cleared.ok()).toBe(true)
   await prisma.member.deleteMany({ where: { organizationId } })
   await prisma.session.updateMany({ data: { activeOrganizationId: null } })
-  await page.addInitScript(language => Object.defineProperty(navigator, "language", { value: language }), locale)
+  // With no organization left, onboarding speaks the browser's language.
+  await emulateBrowserLanguage(page, locale)
   await page.goto("/onboarding")
   await waitForClientReady(page)
   // The label shows an aria-hidden required star; match the field by its accessible name.

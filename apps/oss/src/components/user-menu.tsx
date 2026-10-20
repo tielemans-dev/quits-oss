@@ -1,4 +1,4 @@
-import { Link, type LinkProps } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState, type LinkProps } from '@tanstack/react-router'
 import { CreditCard, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 
 import { authClient, useSession } from '../lib/auth-client'
@@ -18,6 +18,9 @@ import {
 } from './ui/dropdown-menu'
 import { useRuntimeDistribution } from '../lib/runtime-distribution'
 import { useI18n } from '../lib/i18n/react'
+import { resolveLanguage } from '../lib/i18n/translate'
+import { parseUiLanguage, saveUiLanguage, uiLanguageLocale } from '../lib/i18n/ui-language'
+import { loginReturnDestination } from '../lib/login-return'
 import type { TranslationKey } from '../lib/i18n/messages'
 
 const themeOptions: Array<{
@@ -30,6 +33,12 @@ const themeOptions: Array<{
   { value: 'dark', labelKey: 'user.theme.dark', icon: Moon },
 ]
 
+// Each language is named in itself, so it can be found from either.
+const languageOptions = [
+  { value: 'da', label: 'Dansk' },
+  { value: 'en', label: 'English' },
+] as const
+
 function getInitials(name: string): string {
   return name
     .split(' ')
@@ -39,9 +48,12 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-/** The avatar at the right end of the top bar: who is signed in, theme, billing and sign out. */
+/** The avatar at the right end of the top bar: who is signed in, language, theme, billing and sign out. */
 export function UserMenu() {
-  const { t } = useI18n()
+  const { t, locale, setLocale } = useI18n()
+  const navigate = useNavigate()
+  const href = useRouterState({ select: (state) => state.location.href })
+  const urlLanguage = useRouterState({ select: (state) => parseUiLanguage((state.location.search as { lang?: unknown }).lang) })
   const { billingEnabled } = useRuntimeDistribution()
   const { data: session } = useSession()
   const { preference: themePreference, setPreference: setThemePreference } = useTheme()
@@ -54,6 +66,16 @@ export function UserMenu() {
     invalidateAppLayoutSession()
     // A new page load, so nothing of this session's organization survives in this tab.
     loadPage('/login')
+  }
+
+  function chooseLanguage(value: string) {
+    const language = parseUiLanguage(value)
+    if (!language) return
+    saveUiLanguage(language)
+    // Keep the organization's regional locale when it already speaks the chosen language.
+    setLocale(resolveLanguage(locale) === language ? locale : uiLanguageLocale(language))
+    // A `?lang` in the address would otherwise hold this page in the language it names.
+    if (urlLanguage) void navigate({ href: loginReturnDestination(href, language), replace: true })
   }
 
   if (!user) return null
@@ -88,6 +110,17 @@ export function UserMenu() {
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
+              {t('user.language')}
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={resolveLanguage(locale)} onValueChange={chooseLanguage}>
+              {languageOptions.map(({ value, label }) => (
+                <DropdownMenuRadioItem key={value} value={value} lang={value}>
+                  {label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="px-2 py-1 text-xs text-muted-foreground">
               {t('user.theme')}

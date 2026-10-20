@@ -9,10 +9,15 @@ const state = vi.hoisted(() => ({
   setActive: vi.fn(),
   signOut: vi.fn(),
   loadPage: vi.fn(),
+  navigate: vi.fn(),
+  setLocale: vi.fn(),
+  locale: "da-DK",
+  location: { href: "/invoices", search: {} as Record<string, unknown> },
 }))
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => state.navigate,
+  useRouterState: ({ select }: { select: (routerState: { location: typeof state.location }) => unknown }) => select({ location: state.location }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }))
 vi.mock("../../lib/runtime-distribution", () => ({ useRuntimeDistribution: () => ({ billingEnabled: false }) }))
@@ -38,7 +43,7 @@ vi.mock("../../lib/auth-client", () => ({
   }),
 }))
 vi.mock("../../lib/page-navigation", () => ({ loadPage: state.loadPage, reloadPage: vi.fn() }))
-vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ t: (key: string) => key, locale: state.locale, setLocale: state.setLocale }) }))
 const RadioGroupContext = createContext<(value: string) => void>(() => undefined)
 
 vi.mock("../ui/dropdown-menu", () => ({
@@ -110,7 +115,14 @@ afterEach(() => {
   state.setActive.mockReset()
   state.signOut.mockReset()
   state.loadPage.mockReset()
+  state.navigate.mockReset()
+  state.setLocale.mockReset()
+  state.locale = "da-DK"
+  state.location = { href: "/invoices", search: {} }
+  document.cookie = "quits-lang=; path=/; max-age=0"
 })
+
+const themeGroup = () => screen.getAllByRole("radiogroup")[1]!
 
 describe("user menu", () => {
   it("signs out with a full page load", async () => {
@@ -131,10 +143,10 @@ describe("user menu", () => {
     initializeRequestOrganizationId("org_a")
     render(<UserMenu />)
 
-    const group = await screen.findByRole("radiogroup")
-    expect(group.dataset.value).toBe("system")
+    await screen.findAllByRole("radiogroup")
+    expect(themeGroup().dataset.value).toBe("system")
     expect(screen.getByText("user.theme")).toBeTruthy()
-    expect(screen.getAllByRole("radio").map((radio) => radio.dataset.value)).toEqual([
+    expect(Array.from(themeGroup().querySelectorAll("[role=radio]"), (radio) => (radio as HTMLElement).dataset.value)).toEqual([
       "system",
       "light",
       "dark",
@@ -146,7 +158,7 @@ describe("user menu", () => {
 
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark")
     expect(document.documentElement.classList.contains("dark")).toBe(true)
-    expect(screen.getByRole("radiogroup").dataset.value).toBe("dark")
+    expect(themeGroup().dataset.value).toBe("dark")
 
     await act(async () => {
       fireEvent.click(screen.getByText("user.theme.light"))
@@ -154,6 +166,34 @@ describe("user menu", () => {
 
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light")
     expect(document.documentElement.classList.contains("dark")).toBe(false)
+  })
+
+  it("switches the interface language and saves it for later pages", async () => {
+    initializeRequestOrganizationId("org_a")
+    render(<UserMenu />)
+
+    const group = (await screen.findAllByRole("radiogroup"))[0]!
+    expect(group.dataset.value).toBe("da")
+    expect(screen.getByText("user.language")).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByText("English"))
+    })
+
+    expect(document.cookie).toContain("quits-lang=en")
+    expect(state.setLocale).toHaveBeenCalledWith("en-US")
+    expect(state.navigate).not.toHaveBeenCalled()
+  })
+
+  it("replaces a ?lang in the address with the new choice", async () => {
+    initializeRequestOrganizationId("org_a")
+    state.location = { href: "/onboarding?next=%2Finvoices&lang=da", search: { next: "/invoices", lang: "da" } }
+    render(<UserMenu />)
+
+    await act(async () => {
+      fireEvent.click(await screen.findByText("English"))
+    })
+
+    expect(state.navigate).toHaveBeenCalledWith({ href: "/onboarding?next=%2Finvoices&lang=en", replace: true })
   })
 
   it("drops the layout's cached session when signing out, so no stale identity survives", async () => {
