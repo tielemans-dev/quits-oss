@@ -79,16 +79,18 @@ function StateNotice({
 function SourceField({
   label,
   tag,
+  required = false,
   children,
 }: {
   label: string
   tag: string
+  required?: boolean
   children: ReactNode
 }) {
   return (
     <div className="ob-field">
       <div className="ob-field-label">
-        {label}
+        <span>{label}{required ? <span aria-hidden="true"> *</span> : null}</span>
         <span className="ob-tag">{tag}</span>
       </div>
       {children}
@@ -232,9 +234,10 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       return
     }
     const controller = new AbortController()
+    let timeout: ReturnType<typeof setTimeout> | undefined
     const timer = setTimeout(() => {
       setSearching(true)
-      const timeout = setTimeout(() => {
+      timeout = setTimeout(() => {
         controller.abort()
         setScreen("timeout")
       }, 10_000)
@@ -255,6 +258,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     }, 250)
     return () => {
       clearTimeout(timer)
+      // An edited query must not time out on the abandoned request's behalf.
+      clearTimeout(timeout)
       controller.abort()
     }
   }, [query, screen, client])
@@ -512,7 +517,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   ) {
     const value = draft!.values[name]
     return (
-      <SourceField label={TT(suffix)} tag={tag}>
+      <SourceField label={TT(suffix)} tag={tag} required={options.required}>
         <Input
           aria-label={TT(suffix)}
           name={name}
@@ -737,7 +742,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               maxLength: 8,
               pattern: "[0-9]{8}",
             })}
-            <SourceField label={TT("field.address")} tag={factsTag}>
+            <SourceField label={TT("field.address")} tag={factsTag} required>
               <textarea
                 aria-label={TT("field.address")}
                 aria-invalid={validationErrors.includes("companyAddress") || undefined}

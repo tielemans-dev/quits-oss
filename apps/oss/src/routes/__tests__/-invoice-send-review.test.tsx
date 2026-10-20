@@ -48,7 +48,7 @@ const invoice = {
   id: "synthetic-invoice", number: "INV-0001", nextNumber: "INV-0001", status: "sent", paymentStatus: "unpaid", paidAt: null,
   issueDate: "2026-10-01", dueDate: "2099-01-01", supplyDate: "2026-10-01", subtotal: 100, taxAmount: 25, total: 125,
   amountPaid: 0, amountCredited: 0, balanceDue: 125, currency: "DKK", notes: null, publicPaymentUrl: null,
-  lastEmailAttemptAt: null, lastEmailAttemptOutcome: null, lastEmailAttemptCode: null, lastEmailAttemptMessage: null, contact, items: [],
+  lastEmailAttemptAt: null, lastEmailAttemptOutcome: null, lastEmailAttemptCode: null, lastEmailAttemptMessage: null, contact, items: [], countryCode: "DK",
 }
 import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 import { handledMutationError, notifyMutation } from "../../lib/query-refresh"
@@ -1004,5 +1004,14 @@ describe('converted quote supply date', () => {
     expect(await screen.findByText('Draft changed. Reload before saving.')).toBeTruthy()
     expect(screen.queryByRole('button', {name:'invoiceSend.confirm'})).toBeNull()
     expect(api.send).not.toHaveBeenCalled()
+  })
+})
+
+describe("invoice detail buyer", () => {
+  it("writes a Danish address in postal order, without the domestic country or a repeated company name", async () => {
+    api.get.mockResolvedValue({ ...invoice, contact: { ...contact, address: "Vestergade 5, 3. sal", city: "Aarhus C", zip: "8000", country: "DK" } })
+    render(<DetailPage />)
+    const billTo = (await screen.findByText("pdf.billTo")).parentElement!
+    expect([...billTo.querySelectorAll("p")].map(line => line.textContent)).toEqual(["Synthetic Buyer", "buyer@example.test", "Vestergade 5, 3. sal", "8000 Aarhus C"])
   })
 })

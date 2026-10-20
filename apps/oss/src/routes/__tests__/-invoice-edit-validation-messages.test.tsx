@@ -24,7 +24,7 @@ const draft = {
   id: "draft", number: null, status: "draft", paymentStatus: "unpaid", purpose: "sale", currency: "DKK", taxRegime: "eu_vat",
   dueDate: "2026-11-09", issueDate: "2026-10-13", supplyDate: "2026-10-13", total: 0, subtotal: 0, taxAmount: 0,
   items: [{ id: "i1", description: "Work", quantity: 1, unitPrice: 100, taxRate: 0 }, { id: "i2", description: "More", quantity: 1, unitPrice: 50, taxRate: 0 }],
-  contact: { id: "buyer", name: "Synthetic buyer", email: "buyer@example.test" }, sellerSnapshot: { countryCode: "DK", momsRegistered: false },
+  countryCode: "DK", contact: { id: "buyer", name: "Synthetic buyer", email: "buyer@example.test" }, sellerSnapshot: { countryCode: "DK", momsRegistered: false },
 }
 const rawJson = JSON.stringify([
   { origin: "string", code: "too_small", path: ["items", 0, "description"], message: "Too small: expected string to have >=1 characters" },

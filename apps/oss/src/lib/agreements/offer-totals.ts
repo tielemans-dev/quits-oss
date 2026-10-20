@@ -1,4 +1,5 @@
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
+import { lineAmounts, priceBasis } from "../documents/line-amounts"
 
 /**
  * The amounts of an offer as the customer is told them, on the page and in the email alike.
@@ -17,4 +18,16 @@ export function agreementOfferTotals(snapshot: AgreementOfferSnapshot) {
     /** Only a v2 offer has one, and only worth showing when it is not zero. */
     payableRounding: v2 && Number(v2.serviceTotal.payableRounding) !== 0 ? v2.serviceTotal.payableRounding : null,
   }
+}
+
+/**
+ * The unit price and amount one line states, on the basis the offer was priced on: net when its
+ * prices exclude VAT, so the lines add up to the subtotal, and gross when they include it. Quotes
+ * and invoices print their lines the same way.
+ */
+export function agreementLineAmounts<Amount>(
+  offer: { pricesIncludeTax: boolean },
+  line: { unitPriceNet: Amount; unitPriceGross: Amount; lineNet: Amount; lineGross: Amount },
+) {
+  return lineAmounts(priceBasis(offer.pricesIncludeTax), line)
 }

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { CompanySetup } from "../onboarding/company-setup"
 import { I18nProvider } from "../../lib/i18n/react"
+import { requiredLabel } from "../../test-utils/required-label"
 const api = vi.hoisted(() => ({ lookup: vi.fn(), prepare: vi.fn(async () => ({ token: "signed" })), confirm: vi.fn(async () => ({ status: "complete" })) }))
 vi.mock("../../trpc/client", () => ({ trpc: { runtime: { lookupOnboardingCompany: { mutate: api.lookup }, prepareSellerVatConfirmation: { mutate: api.prepare } }, onboarding: { confirmV2: { mutate: api.confirm } } } }))
 const facts = { cvr: "24256790", companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", statusText: "NORMAL", presetsAllowed: true }
@@ -17,12 +18,12 @@ describe("lookup to existing onboarding review", () => {
     const done = vi.fn()
     render(<I18nProvider locale="en-US"><CompanySetup nonVatEnabled onComplete={done} /></I18nProvider>)
     await search(); fireEvent.click(await screen.findByRole("button", { name: "Review company" }))
-    expect((screen.getByLabelText("CVR") as HTMLInputElement).value).toBe(facts.cvr)
+    expect((screen.getByLabelText(requiredLabel("CVR")) as HTMLInputElement).value).toBe(facts.cvr)
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios.every(radio => !radio.checked)).toBe(true)
     expect(radios).toHaveLength(2)
     fireEvent.click(screen.getByRole("radio", { name: "I'm VAT-registered" }))
-    fireEvent.change(screen.getByLabelText("Company Name"), { target: { value: "Edited Seller" } })
+    fireEvent.change(screen.getByLabelText(requiredLabel("Company Name")), { target: { value: "Edited Seller" } })
     expect(radios.every(radio => !radio.checked)).toBe(true)
     fireEvent.click(screen.getByRole("radio", { name: registered ? "I'm VAT-registered" : "I'm not VAT-registered" }))
     fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
@@ -54,7 +55,7 @@ describe("lookup to existing onboarding review", () => {
     await search(); await screen.findByText("ApS · UKENDT")
     expect(screen.queryByRole("button", { name: "Review company" })).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Enter company manually" }))
-    expect((screen.getByLabelText("CVR") as HTMLInputElement).value).toBe("")
+    expect((screen.getByLabelText(requiredLabel("CVR")) as HTMLInputElement).value).toBe("")
     expect(screen.getAllByRole("radio").every(radio => !(radio as HTMLInputElement).checked)).toBe(true)
   })
   it("ignores stale lookup results after editing the query and offers manual fallback on failure", async () => {
@@ -69,6 +70,6 @@ describe("lookup to existing onboarding review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Find company" }))
     await screen.findByRole("status")
     fireEvent.click(screen.getByRole("button", { name: "Enter company manually" }))
-    expect(screen.getByLabelText("CVR")).toBeTruthy()
+    expect(screen.getByLabelText(requiredLabel("CVR"))).toBeTruthy()
   })
 })

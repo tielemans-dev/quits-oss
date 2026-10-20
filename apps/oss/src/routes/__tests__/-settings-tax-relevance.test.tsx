@@ -13,6 +13,7 @@ const {
   settingsUpdate,
   getFullOrganization,
   organizationUpdate,
+  connectAction,
   runtimeState,
   displayLanguage,
 } = vi.hoisted(() => ({
@@ -25,6 +26,7 @@ const {
   settingsUpdate: vi.fn(),
   getFullOrganization: vi.fn(),
   organizationUpdate: vi.fn(),
+  connectAction: vi.fn(),
   runtimeState: { selfhost: true, nonVatEnabled: true },
 }))
 
@@ -142,6 +144,7 @@ vi.mock("../../trpc/client", () => ({
       update: {
         mutate: settingsUpdate,
       },
+      runStripeConnectAction: { mutate: connectAction },
       configureDocumentSendingDomain: {
         mutate: vi.fn(),
       },
@@ -254,6 +257,7 @@ afterEachTest(() => {
   getFullOrganization.mockReset()
   settingsUpdate.mockReset()
   organizationUpdate.mockReset()
+  connectAction.mockReset()
   runtimeState.selfhost = true
   runtimeState.nonVatEnabled = true
 })
@@ -286,7 +290,9 @@ describe("Settings tax relevance", () => {
       primaryTaxId: "24256790",
     }))
     const { rerender } = render(<RouteComponent />)
-    const input = await screen.findByLabelText(label) as HTMLInputElement
+    // Company details and invoicing both show the tax ID.
+    const [profileInput, input] = await screen.findAllByLabelText(label) as HTMLInputElement[]
+    expect(profileInput.value).toBe("24256790")
     expect(input.placeholder).toBe(label)
     expect(input.value).toBe("24256790")
     expect(screen.queryByLabelText(otherLabel)).toBeNull()
@@ -297,7 +303,7 @@ describe("Settings tax relevance", () => {
 
     displayLanguage.locale = savedLocale
     rerender(<RouteComponent />)
-    expect(screen.getByLabelText(otherLabel)).toBe(input)
+    expect(screen.getAllByLabelText(otherLabel)).toEqual([profileInput, input])
     expect(input.placeholder).toBe(otherLabel)
     expect(input.value).toBe("24256790")
     expect(settingsUpdate).not.toHaveBeenCalled()
@@ -329,7 +335,7 @@ describe("Settings tax relevance", () => {
     settingsGetQuery.mockResolvedValue(current)
     settingsUpdate.mockImplementation(async input => ({ ...current, ...input, momsRegistered: input.momsRegistered ?? stored }))
     const { container } = render(<RouteComponent />)
-    await screen.findByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "CVR-nr.")
+    await screen.findAllByLabelText(stored === false ? "settings.vatStatus.cvrLabel" : "CVR-nr.")
     const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
     fireEvent.change(email, { target: { value: "edited@example.test" } })
     fireEvent.submit(container.querySelector("form")!)
@@ -504,7 +510,7 @@ describe("Settings tax relevance", () => {
     render(<RouteComponent />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText("CVR-nr.")).toBeTruthy()
+      expect(screen.getAllByLabelText("CVR-nr.")).toHaveLength(2)
     })
     expect(screen.getByText("Påkrævet for danske registrerede virksomheder med moms.")).toBeTruthy()
     expect(screen.queryByText("Required for Danish registered businesses using EU VAT.")).toBeNull()
@@ -581,7 +587,7 @@ describe("Settings VAT status after upstream integration", () => {
     submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalled())
     expect(settingsUpdate.mock.calls[0][0]).toMatchObject({ momsRegistered: status, taxRate: status ? 25 : 0, pricesIncludeTax: false })
-    if (!status) expect(screen.getByLabelText("settings.vatStatus.cvrLabel")).toBeTruthy()
+    if (!status) expect(screen.getAllByLabelText("settings.vatStatus.cvrLabel")).toHaveLength(2)
     await waitFor(() => expect(screen.getByRole("status")).toBeTruthy())
     submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
@@ -714,6 +720,93 @@ describe("Settings hosted VAT persistence", () => {
     expectChoice(false)
     expect(settingsGetQuery).toHaveBeenCalledTimes(1)
     expect(settingsUpdate).not.toHaveBeenCalled()
+  })
+})
+
+describe("Settings company details and save results", () => {
+  afterEachTest(() => { vi.unstubAllGlobals() })
+
+  function row(control: HTMLElement) {
+    return control.closest<HTMLElement>('[data-slot="settings-row"]')!
+  }
+
+  it("shows the stored CVR in company details, saves an edit there and reports it under the row", async () => {
+    await renderDanishSettings(true)
+    const cvrRow = row(screen.getByRole("button", { name: "settings.row.edit CVR-nr." }))
+    expect(within(cvrRow).getByText("24256790")).toBeTruthy()
+    fireEvent.click(within(cvrRow).getByRole("button", { name: "settings.row.edit CVR-nr." }))
+    fireEvent.change(within(cvrRow).getByLabelText("CVR-nr."), { target: { value: "12345674" } })
+    fireEvent.click(within(cvrRow).getByRole("button", { name: "settings.row.save" }))
+    expect((await within(cvrRow).findByRole("status")).textContent).toBe("settings.success.saved")
+    expect(screen.getAllByRole("status")).toHaveLength(1)
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxId: "12345674" }))
+    expect(within(cvrRow).getByText("12345674")).toBeTruthy()
+  })
+
+  it("puts the stored CVR back on Cancel", async () => {
+    await renderDanishSettings(true)
+    const cvrRow = row(screen.getByRole("button", { name: "settings.row.edit CVR-nr." }))
+    fireEvent.click(within(cvrRow).getByRole("button", { name: "settings.row.edit CVR-nr." }))
+    fireEvent.change(within(cvrRow).getByLabelText("CVR-nr."), { target: { value: "12345674" } })
+    fireEvent.click(within(cvrRow).getByRole("button", { name: "settings.row.cancel" }))
+    expect(screen.getAllByLabelText<HTMLInputElement>("CVR-nr.").map(input => input.value)).toEqual(["24256790", "24256790"])
+  })
+
+  it.each([true, false, null])("points to the VAT question only while it is unanswered (stored %s)", async status => {
+    await renderDanishSettings(status)
+    const pointer = screen.queryByText("settings.vatStatus.unanswered")
+    expect(pointer === null).toBe(status !== null)
+    if (pointer) expect(screen.getByRole("radio", { name: "vatStatus.yes" }).getAttribute("aria-describedby")).toBe(pointer.id)
+    // Nothing is chosen for the seller.
+    expect((screen.getByRole("radio", { name: "vatStatus.yes" }) as HTMLInputElement).checked).toBe(status === true)
+  })
+
+  it.each([
+    ["saves", undefined, "status", "settings.success.saved"],
+    ["fails", new Error("Save failed"), "alert", "Save failed"],
+  ] as const)("reports under the VAT answer's Save when it %s", async (_outcome, failure, role, text) => {
+    await renderDanishSettings(null)
+    if (failure) settingsUpdate.mockRejectedValueOnce(failure)
+    const vatRow = row(screen.getByRole("radio", { name: "vatStatus.yes" }))
+    fireEvent.click(within(vatRow).getByRole("radio", { name: "vatStatus.yes" }))
+    fireEvent.click(within(vatRow).getByRole("button", { name: "settings.action.save" }))
+    expect((await within(vatRow).findByRole(role)).textContent).toBe(text)
+    expect(screen.getAllByRole(role)).toHaveLength(1)
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+  })
+
+  it("reports under the shared Save, also for Enter through a Save hidden on another page", async () => {
+    await renderDanishSettings(true)
+    const saves = screen.getAllByRole("button", { name: "settings.action.save" })
+    const shared = saves[saves.length - 1]
+    fireEvent.click(shared)
+    expect((await screen.findByRole("status")).parentElement).toBe(shared.parentElement)
+
+    // Enter submits through the form's first Save, a closed company row's here; the field in use decides.
+    const hidden = screen.getAllByRole("button", { name: "settings.row.save" })[0] as HTMLButtonElement
+    hidden.checkVisibility = () => false
+    const prefix = document.querySelector<HTMLInputElement>('input[name="invoicePrefix"]')!
+    prefix.focus()
+    prefix.form!.requestSubmit(hidden)
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
+    expect((await screen.findByRole("status")).parentElement).toBe(shared.parentElement)
+  })
+
+  it.each([
+    ["VAT period", {}, "settings.vatPeriod.option.quarterly", "status", "settings.vatPeriod.saved", "vat-period-card"],
+    ["AI drafts", { aiDrafts: { managed: true, available: true, enabled: false } }, "settings.ai.drafts.label", "status", "settings.ai.drafts.saved.on", "ai-drafts-card"],
+    ["Stripe Connect", { stripeAccount: { mode: "connect", status: "none", accountId: null, businessName: null }, stripeConnectActions: true },
+      "settings.payments.connect.action.connect", "alert", "Connect failed", "stripe-connect-card"],
+  ] as const)("reports a %s change next to it", async (_section, overrides, control, role, text, card) => {
+    // MOCK: jsdom has no ResizeObserver, which the switch measures with inside a form.
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
+    connectAction.mockRejectedValueOnce(new Error("Connect failed"))
+    await renderDanishSettings(true, overrides)
+    const target = screen.queryByLabelText(control) ?? screen.getByRole("button", { name: control })
+    fireEvent.click(target)
+    const result = await screen.findByRole(role)
+    expect(result.textContent).toBe(text)
+    expect(result.previousElementSibling?.contains(screen.getByTestId(card))).toBe(true)
   })
 })
 

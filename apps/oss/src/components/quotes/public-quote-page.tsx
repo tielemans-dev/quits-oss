@@ -3,7 +3,7 @@ import { formatTaxIds, distinctCompany } from "../../lib/documents/tax-ids"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../lib/documents/non-vat-presentation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Textarea } from "../ui/textarea"
 import { PublicSellerHeader } from "../documents/public-seller-header"
@@ -15,8 +15,9 @@ import { Amount } from "../kvit/amount"
 import { DocumentTotals } from "../documents/document-totals"
 import type { VatRow } from "../../lib/documents/line-amounts"
 
-import type { DocumentTaxId } from "@quits/contracts/documents"
-import { sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
+import type { BuyerSnapshot, DocumentTaxId } from "@quits/contracts/documents"
+import { pdfBuyerAddress, sellerAddressLines, sellerPresentationTaxIds } from "../../lib/documents/invoice-identity"
+import { PartyBlock } from "../documents/party-block"
 
 type Decimalish = number | { toNumber(): number }
 
@@ -63,13 +64,7 @@ type PublicQuote = {
     companyEmail?: string | null
     companyAddress?: string | null
   } | null
-  buyerSnapshot: {
-    taxIds?: DocumentTaxId[]
-    country?: string | null
-    name?: string | null
-    email?: string | null
-    company?: string | null
-  } | null
+  buyerSnapshot: BuyerSnapshot | null
   publicDecisionAt: Date | string | null
   publicRejectionReason: string | null
   contact: PublicQuoteContact
@@ -157,6 +152,7 @@ function PublicQuoteDocument({
   // Issued identity wins over the live contact, so the tax IDs below belong to the name above them.
   const buyerName = quote.buyerSnapshot ? quote.buyerSnapshot.name ?? quote.contact.name : quote.contact.name
   const buyerCompany = distinctCompany({ name: buyerName, company: quote.buyerSnapshot ? quote.buyerSnapshot.company : quote.contact.company })
+  const buyerEmail = quote.buyerSnapshot ? quote.buyerSnapshot.email : quote.contact.email
   const sellerTaxIds = formatTaxIds(sellerPresentationTaxIds(quote.sellerSnapshot?.taxIds, momsRegistered), locale, quote.buyerSnapshot?.country ?? "DK", momsRegistered)
   const format = useDocumentFormat(quote.timezone, true)
   const money = (amount: number) => format.money(amount, quote.currency)
@@ -167,7 +163,6 @@ function PublicQuoteDocument({
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-12">
       <PublicSellerHeader seller={seller} />
-      {(sellerTaxIds.length > 0 || quote.sellerSnapshot?.companyAddress) && <div className="text-sm text-muted-foreground"><h2 className="text-xs font-medium uppercase tracking-wide">{t("pdf.from")}</h2>{quote.sellerSnapshot?.companyAddress && <p className="whitespace-pre-line">{quote.sellerSnapshot.companyAddress}</p>}{sellerTaxIds.map(id => <p key={id}>{id}</p>)}</div>}
       <div className="grid w-full items-start gap-6 lg:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
@@ -189,6 +184,12 @@ function PublicQuoteDocument({
                 label={t("public.quote.validUntil")}
                 value={format.calendarDate(quote.expiryDate)}
               />
+            </div>
+
+            {/* The parties as the quote's PDF shows them. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <PartyBlock title={t("pdf.from")} lines={[quote.sellerSnapshot?.companyName ?? seller.name, ...sellerAddressLines(quote.sellerSnapshot?.companyAddress), ...sellerTaxIds]} />
+              <PartyBlock title={t("quotes.detail.quoteTo")} lines={[buyerName, buyerCompany, ...formatTaxIds(quote.buyerSnapshot?.taxIds, locale), buyerEmail, ...pdfBuyerAddress(quote.buyerSnapshot ?? {}, locale)]} />
             </div>
 
             <div className="grid gap-3">
@@ -255,9 +256,6 @@ function PublicQuoteDocument({
             ) : null}
 
             <div className="grid gap-4 rounded-lg border p-4">
-              <InfoBlock label={t("public.document.customer")} value={buyerName} />
-              {buyerCompany && <InfoBlock label={t("public.document.company")} value={buyerCompany} />}
-              {formatTaxIds(quote.buyerSnapshot?.taxIds, locale).map(id => <p key={id}>{id}</p>)}
               <div className="grid gap-2 text-sm" aria-label={t("public.document.total")}>
                 <DocumentTotals
                   priceBasis="gross"
@@ -312,10 +310,6 @@ function PublicQuoteDocument({
               </div>
             ) : null}
           </CardContent>
-          <CardFooter className="justify-between text-sm text-muted-foreground">
-            <span>{seller.name}</span>
-            <span className="text-right tabular-nums">{money(toNumber(quote.totalGross))}</span>
-          </CardFooter>
         </Card>
       </div>
     </div>

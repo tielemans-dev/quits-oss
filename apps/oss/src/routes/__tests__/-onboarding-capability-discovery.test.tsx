@@ -62,6 +62,7 @@ vi.mock("../../trpc/client", () => ({
 }))
 
 import { Route } from "../_app/onboarding"
+import { requiredLabel } from "../../test-utils/required-label"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -238,7 +239,7 @@ describe("onboarding capability discovery", () => {
     runtimeCapabilitiesQuery.mockRejectedValueOnce(new Error("network")).mockResolvedValue(legacyCapabilities)
     render(<RouteComponent />)
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }))
-    expect(((await screen.findByLabelText("Company name")) as HTMLInputElement).value).toBe("Saved company")
+    expect(((await screen.findByLabelText(requiredLabel("Company name"))) as HTMLInputElement).value).toBe("Saved company")
   })
 
   it("keeps the hosted manual form when CVR lookup is unavailable", async () => {
@@ -256,7 +257,7 @@ describe("onboarding capability discovery", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: null } } })
     listOrganizations.mockResolvedValue({ data: [] })
     render(<RouteComponent />)
-    expect(await screen.findByLabelText("Company name")).toBeTruthy()
+    expect(await screen.findByLabelText(requiredLabel("Company name"))).toBeTruthy()
     expect(availableQuery).not.toHaveBeenCalled()
     expect(setupAvailableQuery).not.toHaveBeenCalled()
     expect(runtimeCapabilitiesQuery).not.toHaveBeenCalled()

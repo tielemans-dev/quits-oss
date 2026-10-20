@@ -17,6 +17,14 @@ export function onboardingShellLanguage(pathname: string, search: unknown): 'da'
   return loginReturnSearchSchema.safeParse(search).data?.lang
 }
 
+const AUTH_PATHS = new Set(['/login', '/signup', '/forgot-password', '/reset-password'])
+
+/** The sign-in pages render in the `lang` they were opened with (see AuthPage). */
+export function authShellLanguage(pathname: string, search: unknown): 'da' | 'en' | undefined {
+  if (!AUTH_PATHS.has(pathname.replace(/\/$/, ''))) return undefined
+  return loginReturnSearchSchema.safeParse(search).data?.lang
+}
+
 /**
  * Returning to the login page after logging in would only loop. The router matches paths after
  * decoding them, ignoring case and a trailing slash, so the check does the same. It also strips

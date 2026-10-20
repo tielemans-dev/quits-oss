@@ -14,7 +14,8 @@ export function SettingsRows({ children }: { children: ReactNode }) {
  * One setting. It shows the saved value with "Edit ›"; editing reveals the controls in place.
  * The controls stay mounted while hidden, so a shared form still submits them. With `formId`,
  * the row's Save submits that form, and the row closes when `savedVersion` changes after a
- * successful save. Without it the controls bring their own actions.
+ * successful save. Without it the controls bring their own actions. `origin` marks the row as
+ * where a save came from (`data-save-origin`), and `result` reports that save under the row.
  */
 export function SettingsRow({
   label,
@@ -22,6 +23,9 @@ export function SettingsRow({
   value,
   formId,
   savedVersion,
+  origin,
+  result,
+  onCancel,
   children,
 }: {
   label: string
@@ -29,6 +33,10 @@ export function SettingsRow({
   value: ReactNode
   formId?: string
   savedVersion?: number
+  origin?: string
+  result?: ReactNode
+  /** Resets controlled fields, which Cancel cannot put back on its own. */
+  onCancel?: () => void
   children?: ReactNode
 }) {
   const { t } = useI18n()
@@ -44,11 +52,12 @@ export function SettingsRow({
     // Uncontrolled fields go back to what was saved.
     editor.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input:not([type=file]):not([type=radio]), textarea")
       .forEach((field) => { field.value = field.defaultValue })
+    onCancel?.()
     setEditing(false)
   }
 
   return (
-    <div data-slot="settings-row" className="grid gap-2 border-b border-hairline py-5 md:grid-cols-2 md:gap-8">
+    <div data-slot="settings-row" data-save-origin={origin} className="grid gap-2 border-b border-hairline py-5 md:grid-cols-2 md:gap-8">
       {/* Mounting filled plays the fill once, so a page fills in where its loading rows were. */}
       <FillSlot as="div" filled width="40%" className="self-start">
         <div className="min-w-0 flex-1">
@@ -82,6 +91,7 @@ export function SettingsRow({
             <Button type="button" size="sm" variant="ghost" className="justify-self-start" onClick={() => setEditing(false)}>{t("settings.row.done")}</Button>
           )}
         </div>
+        {result ? <div className="mt-2">{result}</div> : null}
       </div>
     </div>
   )

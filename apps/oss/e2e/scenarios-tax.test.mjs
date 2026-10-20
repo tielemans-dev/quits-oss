@@ -41,7 +41,7 @@ function invoiceFixture(options, expected) {
     async goto() {},
     reload: vi.fn(),
     url: () => 'https://example.invalid/invoices/draft',
-    waitForEvent: async () => ({ suggestedFilename: () => 'draft.pdf', path: async () => '/mock/draft.pdf' }),
+    waitForEvent: async () => ({ suggestedFilename: () => 'draft-invoice-invoice-customer-1.pdf', path: async () => '/mock/draft.pdf' }),
   }
   const assertions = target => {
     if (!target || typeof target !== 'object' || !('name' in target)) return expect(target)

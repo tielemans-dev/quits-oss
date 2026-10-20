@@ -112,7 +112,7 @@ describe("public agreement page in Danish", () => {
     expect(html).toContain("Gyldig til: 28. mar. 2027")
     expect(html).toContain("Aftalt dato: 1. mar. 2027")
     expect(html).toContain("Forventet dato: 15. apr. 2027")
-    expect(html).toContain("1,5\u00a0×\u00a0500,00 kr. = 750,00 kr.")
+    expect(html).toContain("1,5\u00a0×\u00a0400,00 kr. = 600,00 kr.")
     expect(html).toContain("1.250,00 kr.")
     expect(html).not.toContain("2027-03-28")
     expect(html).not.toContain("1.50\u00a0×\u00a0500.00")
@@ -122,6 +122,11 @@ describe("public agreement page in Danish", () => {
     expect(agreementPage("da-DK")).toContain("<p>Sendt</p>")
     expect(agreementPage("en-US")).toContain("<p>Sent</p>")
     expect(agreementPage("da-DK", { ...document, status: "completed" })).toContain("<p>Gennemført</p>")
+  })
+
+  it("shows each line of the seller's address on its own line, as /q does (QUI-215)", () => {
+    const html = agreementPage("da-DK", { ...document, snapshot: { ...snapshot, sellerSnapshot: { companyName: "Acme ApS", companyAddress: "Nordlysvej 1\n2100 København Ø" } } })
+    expect(html).toContain("<p>Acme ApS</p><p>Nordlysvej 1</p><p>2100 København Ø</p>")
   })
 
   it("shows the seller's logo and name above the agreement", () => {
@@ -142,7 +147,7 @@ describe("public agreement page in Danish", () => {
     })
 
     expect(html).toContain("Valid until: Mar 28, 2027")
-    expect(html).toContain("1.5\u00a0×\u00a0$500.00 = $750.00")
+    expect(html).toContain("1.5\u00a0×\u00a0$400.00 = $600.00")
   })
 })
 

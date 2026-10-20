@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ contactId: "synthetic-buyer" }) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ contactId: "synthetic-buyer" }), useSearch: () => ({ edit: true }) }),
+  Link: () => null,
   useNavigate: () => vi.fn(),
 }))
 const readiness = vi.hoisted(() => ({ businessBuyersOnly: false }))
@@ -13,6 +14,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   invoices: { sendReadiness: { query: async () => ({ businessBuyersOnly: readiness.businessBuyersOnly }) } },
   contacts: { get: { query: async () => ({ id: "synthetic-buyer", name: "Synthetic Buyer", country: "DK" }) } },
   settings: { get: { query: async () => ({ countryCode: "DK" }) } },
+  cvr: { customerAvailable: { query: async () => ({ enabled: false }) } },
 } }))
 import { Route as NewRoute } from "../_app/contacts/new"
 import { Route as EditRoute } from "../_app/contacts/$contactId"

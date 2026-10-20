@@ -2,8 +2,8 @@ import { useEffect, useState } from "react"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
-import { Input } from "../ui/input"
 import { Label } from "../ui/label"
+import { LocalizedDateField } from "../localized-date-field"
 import { Textarea } from "../ui/textarea"
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ export function DeliverableControls({
   onChanged: () => Promise<void>
   onError: (message: string) => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [date, setDate] = useState(line.expectedDate?.toISOString().slice(0, 10) ?? "")
   const [note, setNote] = useState("")
   const [signOffUrl, setSignOffUrl] = useState<string | null>(null)
@@ -175,11 +175,12 @@ export function DeliverableControls({
         >
           <div className="grid gap-1">
             <Label htmlFor={`expected-${line.id}`}>{t("agreements.expectedDate")}</Label>
-            <Input
+            <LocalizedDateField
               id={`expected-${line.id}`}
-              type="date"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={setDate}
+              locale={locale}
+              placeholder={t("docForm.selectDate")}
               disabled={disabled}
             />
           </div>

@@ -33,6 +33,8 @@ import {
   type EmailDeliveryRuntimeStatus,
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
+import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { distinctCompany } from "../../../lib/documents/tax-ids"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
 import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import { EmailSendFailureNotice } from "../../../components/invoices/email-send-failure-notice"
@@ -142,6 +144,8 @@ type Invoice = {
   recipientVersion?: string
   sellerSnapshot?: unknown
   issuanceSnapshot?: unknown
+  /** The seller's country, which decides the postal order and whether the buyer's country is shown. */
+  countryCode: string
   disputed?: boolean
   disputedRevision?: number
   purpose?: "sale" | "prepayment"
@@ -222,9 +226,9 @@ function toDateString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : value
 }
 
-async function downloadInvoicePdfFile(invoice: Invoice, _orgSettings: unknown) {
+async function downloadInvoicePdfFile(invoice: Invoice, locale: string) {
   const { downloadDocumentPdf } = await import("../../../lib/documents-download")
-  await downloadDocumentPdf("invoice", invoice.id, invoice.number)
+  await downloadDocumentPdf("invoice", invoice.id, invoice.number, { customer: invoice.contact.name, locale })
 }
 
 function InvoiceDetailPage() {
@@ -1093,7 +1097,7 @@ function InvoiceDetailPage() {
           : undefined,
       fixAction: (
         <Button asChild variant="outline">
-          <Link to="/contacts/$contactId" params={{ contactId: contact.id }}>
+          <Link to="/contacts/$contactId" params={{ contactId: contact.id }} search={{ edit: true }}>
             {t("invoices.detail.email.fallback.invalidRecipient.fix")}
           </Link>
         </Button>
@@ -1163,7 +1167,7 @@ function InvoiceDetailPage() {
               if (!invoice) return
               setDownloading(true)
               try {
-                await downloadInvoicePdfFile(invoice, orgSettings)
+                await downloadInvoicePdfFile(invoice, locale)
               } catch {
                 setError(t("invoices.detail.error.pdfFailed"))
               } finally {
@@ -1394,17 +1398,11 @@ function InvoiceDetailPage() {
                   {t("pdf.billTo")}
                 </h3>
                 <p className="font-semibold">{contact.name}</p>
-                {contact.company && <p className="text-sm">{contact.company}</p>}
+                {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
                 {contact.email && (
                   <p className="text-sm text-muted-foreground">{contact.email}</p>
                 )}
-                {contact.address && <p className="text-sm">{contact.address}</p>}
-                {(contact.city || contact.state || contact.zip) && (
-                  <p className="text-sm">
-                    {[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}
-                  </p>
-                )}
-                {contact.country && <p className="text-sm">{contact.country}</p>}
+                {detailBuyerAddress(contact, invoice.countryCode, locale).map((line, index) => <p key={index} className="text-sm">{line}</p>)}
               </div>
             </div>
 
