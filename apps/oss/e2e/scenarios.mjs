@@ -270,8 +270,8 @@ export function registerProductScenarios(test, expect, options = {}) {
     const download = page.waitForEvent('download')
     await page.getByRole('button', { name: 'PDF', exact: true }).click()
     const file = await download
-    // A draft has no number to name the file after.
-    expect(file.suggestedFilename()).toBe('draft.pdf')
+    // A draft has no number yet, so the file is named after its customer.
+    expect(file.suggestedFilename()).toMatch(/^draft-invoice-invoice-customer-\d+\.pdf$/)
     const bytes = await readFile(await file.path())
     expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-')
     expect(bytes.byteLength).toBeGreaterThan(1000)
