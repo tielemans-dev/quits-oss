@@ -19,11 +19,11 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
 
-type Values = Record<PaymentDetailsField, string>
+export type Values = Record<PaymentDetailsField, string>
 type FieldError = "invalid" | "required"
 type FieldErrors = Partial<Record<PaymentDetailsField, FieldError>>
 
-const EMPTY_VALUES: Values = {
+export const EMPTY_VALUES: Values = {
   accountHolder: "",
   bankName: "",
   regNumber: "",
@@ -33,7 +33,7 @@ const EMPTY_VALUES: Values = {
   note: "",
 }
 
-const ERROR_KEYS: Record<PaymentDetailsField, { invalid: TranslationKey; required?: TranslationKey }> = {
+export const ERROR_KEYS: Record<PaymentDetailsField, { invalid: TranslationKey; required?: TranslationKey }> = {
   accountHolder: { invalid: "settings.paymentDetails.error.accountHolder" },
   bankName: { invalid: "settings.paymentDetails.error.bankName" },
   regNumber: {
@@ -52,7 +52,7 @@ const ERROR_KEYS: Record<PaymentDetailsField, { invalid: TranslationKey; require
   note: { invalid: "settings.paymentDetails.error.note" },
 }
 
-function toValues(details: PaymentDetails): Values {
+export function toValues(details: PaymentDetails): Values {
   const account = details.bankAccount
   return {
     accountHolder: account?.accountHolder ?? "",
@@ -66,7 +66,7 @@ function toValues(details: PaymentDetails): Values {
 }
 
 /** The form as the input the server takes: the account fields grouped under `bankAccount`. */
-function toInput(values: Values): PaymentDetailsInput {
+export function toInput(values: Values): PaymentDetailsInput {
   return {
     bankAccount: {
       accountHolder: values.accountHolder,
@@ -84,7 +84,7 @@ const isField = (value: unknown): value is PaymentDetailsField =>
   typeof value === "string" && (PAYMENT_DETAILS_FIELDS as readonly string[]).includes(value)
 
 /** Checks the form with the same schema the server enforces. */
-function validate(values: Values): FieldErrors {
+export function validate(values: Values): FieldErrors {
   const result = paymentDetailsInputSchema.safeParse(toInput(values))
   if (result.success) return {}
   const errors: FieldErrors = {}

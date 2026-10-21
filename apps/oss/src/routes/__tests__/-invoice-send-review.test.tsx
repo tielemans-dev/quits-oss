@@ -169,7 +169,7 @@ describe("new invoice send review", () => {
     await act(async () => { persist(invoice) })
     expect(api.send).toHaveBeenCalledTimes(1)
   })
-  it("persists the complete draft before bank Settings navigation without sending", async () => {
+  it("persists the complete draft before the bank nudge without sending", async () => {
     let persist!: (value: { id: string }) => void
     api.create.mockReturnValue(new Promise(resolve => { persist = resolve }))
     api.bankReadiness.mockResolvedValue({ bankMissing: true })
@@ -184,18 +184,17 @@ describe("new invoice send review", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     expect(api.create).toHaveBeenCalledTimes(1)
     expect(api.bankReadiness).not.toHaveBeenCalled()
-    expect(screen.queryByText("onboardingV2.bankNudge.settings")).toBeNull()
+    expect(screen.queryByText("onboardingV2.bankNudge.title")).toBeNull()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.sending" })) })
     expect(api.create).toHaveBeenCalledTimes(1)
     await act(async () => { persist({ id: invoice.id }) })
-    const settings = await screen.findByText("onboardingV2.bankNudge.settings")
+    await screen.findByText("onboardingV2.bankNudge.title")
     expect(api.create).toHaveBeenCalledTimes(1)
     expect(api.create).toHaveBeenCalledWith({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2026-10-05", taxRate: "25", pricesIncludeTax: false, vatEvidence: {}, reviewedRecipient: RECIPIENT_VERSION, notes: "Keep these notes", items: [{ description: "Synthetic work", quantity: "2", unitPrice: "123.45", vat: undefined }] })
-    await act(async () => { fireEvent.click(settings) })
+    await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     expect(api.send).not.toHaveBeenCalled()
     expect(api.resend).not.toHaveBeenCalled()
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/settings/$section", params: { section: "payments" } }))
   })
   it("sends the saved draft once only after continuing the bank nudge", async () => {
     api.bankReadiness.mockResolvedValue({ bankMissing: true })
@@ -235,14 +234,14 @@ describe("new invoice send review", () => {
     expect(api.navigate).not.toHaveBeenCalled()
     expect(api.send).not.toHaveBeenCalled()
     expect(api.resend).not.toHaveBeenCalled()
-    expect(screen.queryByText("onboardingV2.bankNudge.settings")).toBeNull()
+    expect(screen.queryByText("onboardingV2.bankNudge.title")).toBeNull()
     expect((screen.getAllByRole("combobox")[0] as HTMLSelectElement).value).toBe(contact.id)
     expect((document.getElementById("dueDate") as HTMLInputElement).value).toBe("2099-01-01")
     const retry = screen.getByRole("button", { name: "docForm.action.saveSend" }) as HTMLButtonElement
     expect(retry.disabled).toBe(false)
     await act(async () => { fireEvent.click(retry) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    await screen.findByText("onboardingV2.bankNudge.settings")
+    await screen.findByText("onboardingV2.bankNudge.title")
     expect(api.create).toHaveBeenCalledTimes(2)
     expect(api.create.mock.calls[1]).toEqual(api.create.mock.calls[0])
     expect(api.send).not.toHaveBeenCalled()
@@ -258,7 +257,7 @@ describe("new invoice send review", () => {
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    await screen.findByText("onboardingV2.bankNudge.settings")
+    await screen.findByText("onboardingV2.bankNudge.title")
     await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/invoices/$invoiceId", params: { invoiceId: invoice.id } })))
     expect(api.create).toHaveBeenCalledTimes(1)
@@ -668,7 +667,7 @@ describe("invoice detail send review", () => {
 
 // MOCK: transport and route context only; both forms, issuance fields and bank gate are real.
 describe("new invoice valuation across the bank nudge", () => {
-  it.each(["cancel", "settings", "failed send"])("preserves the entered valuation after %s and sends the same draft on retry", async outcome => {
+  it.each(["cancel", "failed send"])("preserves the entered valuation after %s and sends the same draft on retry", async outcome => {
     api.currency = "EUR"
     api.readiness.mockResolvedValue({ issues: [], recipientVersion: RECIPIENT_VERSION, taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" })
     api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR" })
@@ -682,10 +681,7 @@ describe("new invoice valuation across the bank nudge", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     await screen.findByRole("dialog")
-    if (outcome === "settings") {
-      await act(async () => { fireEvent.click(screen.getByText("onboardingV2.bankNudge.settings")) })
-      expect(api.navigate).toHaveBeenLastCalledWith(expect.objectContaining({ to: "/settings/$section", params: { section: "payments" } }))
-    } else if (outcome === "cancel") {
+    if (outcome === "cancel") {
       await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     } else {
       api.send.mockRejectedValueOnce(new Error("Synthetic send failure"))
@@ -739,7 +735,7 @@ describe("readiness gaps on the new invoice form", () => {
 })
 
 describe("invoice detail valuation across the bank nudge", () => {
-  it.each(["cancel", "settings", "failed send"])("retains edited valuation after %s and returning to the draft", async outcome => {
+  it.each(["cancel", "failed send"])("retains edited valuation after %s and returning to the draft", async outcome => {
     api.get.mockResolvedValue({ ...invoice, status: "draft", currency: "EUR" })
     api.bankReadiness.mockResolvedValue({ bankMissing: true })
     api.send.mockResolvedValue({})
@@ -749,9 +745,7 @@ describe("invoice detail valuation across the bank nudge", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoices.detail.action.send" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
     await screen.findByRole("dialog")
-    if (outcome === "settings") {
-      await act(async () => { fireEvent.click(screen.getByText("onboardingV2.bankNudge.settings")) })
-    } else if (outcome === "cancel") {
+    if (outcome === "cancel") {
       await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     } else {
       api.send.mockRejectedValueOnce(new Error("Synthetic send failure"))

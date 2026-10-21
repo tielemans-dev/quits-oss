@@ -8,6 +8,7 @@ import { paymentDetailsFromColumns, paymentDetailsSelect } from "../../lib/payme
 import { authorizedProcedure, router } from "../init"
 import { unwrapOutcome } from "../outcome"
 import { previewNextDocumentNumber } from "../../domain/documents/number-preview"
+import { resolveInvoiceEmailContext } from "../../domain/documents/invoice-email"
 
 /**
  * The bank account and payment note printed on invoices. Reading needs the same right as reading
@@ -18,10 +19,12 @@ import { previewNextDocumentNumber } from "../../domain/documents/number-preview
 export const paymentDetailsRouter = router({
   firstSendReadiness: authorizedProcedure("invoice:send").query(async ({ ctx }) => {
     if (!isCloudDistribution) return { bankMissing: false }
-    const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { ...paymentDetailsSelect, onboardingVersion: true } })
+    const settings = await prisma.orgSettings.findUnique({ where: { organizationId: ctx.organizationId } })
     if (settings?.onboardingVersion !== 2 || paymentDetailsFromColumns(settings).bankAccount) return { bankMissing: false }
     const issued = await prisma.invoice.count({ where: { organizationId: ctx.organizationId, number: { not: null } } })
-    return { bankMissing: issued === 0 }
+    if (issued > 0) return { bankMissing: false }
+    // Card payments are another way to get paid, so sending without an account only warns when there are none.
+    return { bankMissing: true, onlinePayments: resolveInvoiceEmailContext(settings).stripeConfigured, canSave: actorCan(ctx.actor, "settings:update") }
   }),
   get: authorizedProcedure("settings:read").query(async ({ ctx }): Promise<PaymentDetailsState & { nextInvoiceNumber: string }> => {
     const settings = await prisma.orgSettings.findUnique({

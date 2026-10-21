@@ -620,6 +620,7 @@ function InvoiceDetailPage() {
       await reloadInvoiceAfterFailure()
     } finally {
       setActing(false)
+      bankNudge.settled()
     }
   }
 
