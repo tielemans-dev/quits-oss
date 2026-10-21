@@ -17,12 +17,22 @@ describe("invoice detail seller and payment blocks", () => {
       <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} />
       <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={250} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
-    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "CVR-nr. 12345678", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
+    for (const value of ["Synthetic Seller ApS", "Testvej 1", "1000 København", "0040", "0440 116 243", "Frozen note"]) expect(html).toContain(value)
+    expect(html).toContain(locale === "da-DK" ? "CVR-nr. 12345678" : "CVR no. 12345678")
     expect(html).toContain(locale === "da-DK" ? 'aria-label="Fra"' : 'aria-label="From"')
     expect(html).toContain(locale === "da-DK" ? "Skriv fakturanummeret i beskeden, så vi kan finde din betaling." : "Add the invoice number to the payment message so we can match your payment.")
     expect(html).toContain(locale === "da-DK" ? "Betalingsbesked" : "Payment message")
     expect(html).toContain(locale === "da-DK" ? "23. mar. 2026" : "23 Mar 2026")
     expect(html).not.toMatch(/Payment reference|Betalingsreference|\+71/)
+  })
+
+  it.each([
+    ["en-US", /DKK\s22,500\.00/, "9 Nov 2026"],
+    ["da-DK", /22\.500,00\skr\./, "9. nov. 2026"],
+  ])("writes a DKK amount and the due date in the interface's %s", (locale, amount, dueDate) => {
+    const html = renderToStaticMarkup(<I18nProvider locale={locale}><InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} number="INV-0042" balanceDue={22500} currency="DKK" dueDate="2026-11-09" /></I18nProvider>)
+    expect(html).toMatch(amount)
+    expect(html).toContain(dueDate)
   })
 
   it.each(["da-DK", "en-US"])("hides the creation-time seller while the invoice is a draft in %s", locale => {
@@ -147,7 +157,7 @@ describe("settled invoice detail payment instructions", () => {
       <InvoiceSellerDetails status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} />
       <InvoicePaymentInstructions status="sent" sellerSnapshot={sellerSnapshot} issuanceSnapshot={issuanceSnapshot} number="INV-0042" balanceDue={1750} currency="DKK" dueDate="2026-03-23" />
     </I18nProvider>)
-    for (const value of ["Frozen Seller", "Testvej 42", "9000 Aalborg", "CVR-nr. 87654321", "5678", "0123 456 789", "Issue-time note", "DKK\u00a01,750.00"]) {
+    for (const value of ["Frozen Seller", "Testvej 42", "9000 Aalborg", "CVR no. 87654321", "5678", "0123 456 789", "Issue-time note", "DKK\u00a01,750.00"]) {
       expect(html).toContain(value)
     }
     for (const stale of ["Synthetic Seller ApS", "12345678", "0040", "0440 116 243", "Frozen note"]) {

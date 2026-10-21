@@ -150,7 +150,7 @@ describe("InvoiceRemindersPanel history", () => {
     })
     render(<InvoiceRemindersPanel invoice={invoice} locale="en-US" onChanged={onChanged} />)
 
-    expect(await screen.findByText("Oct 2, 2026")).toBeTruthy()
+    expect(await screen.findByText("2 Oct 2026")).toBeTruthy()
   })
 
   it("keeps a scheduled reminder on its calendar day in any time zone", async () => {
@@ -174,6 +174,6 @@ describe("InvoiceRemindersPanel history", () => {
     })
     render(<InvoiceRemindersPanel invoice={invoice} locale="en-US" onChanged={onChanged} />)
 
-    expect(await screen.findByText("Oct 5, 2026")).toBeTruthy()
+    expect(await screen.findByText("5 Oct 2026")).toBeTruthy()
   })
 })

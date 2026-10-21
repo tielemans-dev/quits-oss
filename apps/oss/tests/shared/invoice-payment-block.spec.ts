@@ -74,7 +74,7 @@ for (const locale of ['da-DK', 'en-US']) {
         const seller = page.getByRole('region', { name: locale === 'da-DK' ? 'Fra' : 'From', exact: true })
         await expect(seller).toContainText('Issue-time Seller ApS')
         await expect(seller).toContainText('Issue-time address 42')
-        await expect(seller).toContainText('CVR-nr. 87654321')
+        await expect(seller).toContainText(locale === 'da-DK' ? 'CVR-nr. 87654321' : 'CVR no. 87654321')
         await expect(seller).not.toContainText('Changed current seller')
         await expect(seller).not.toContainText('Changed current address')
         await expect(seller).not.toContainText('11223344')

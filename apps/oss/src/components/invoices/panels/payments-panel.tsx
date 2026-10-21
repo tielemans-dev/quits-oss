@@ -214,7 +214,7 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                   const voided = Boolean(payment.voidedAt)
                   return (
                     <TableRow key={payment.id} className={voided ? "text-muted-foreground" : undefined}>
-                      <TableCell>{formatDate(payment.paidAt, locale, view.timeZone)}</TableCell>
+                      <TableCell>{formatDate(payment.paidAt, locale, view.timeZone, { month: "short", dayFirst: true })}</TableCell>
                       <TableCell>{t(methodLabelKey(payment.method))}</TableCell>
                       <TableCell className="max-w-[16rem] truncate" title={payment.note ?? undefined}>
                         {payment.reference ?? "—"}

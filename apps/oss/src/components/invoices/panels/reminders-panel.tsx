@@ -209,9 +209,9 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
                     <TableRow key={reminder.id ?? `upcoming-${reminder.offsetDays}`}>
                       <TableCell>
                         {reminder.sentAt
-                          ? formatDate(reminder.sentAt, locale, state.timeZone, { month: "short" })
+                          ? formatDate(reminder.sentAt, locale, state.timeZone, { month: "short", dayFirst: true })
                           : // A scheduled date is a calendar day, stored at midnight UTC.
-                            formatDate(reminder.scheduledFor, locale, "UTC", { month: "short" })}
+                            formatDate(reminder.scheduledFor, locale, "UTC", { month: "short", dayFirst: true })}
                       </TableCell>
                       <TableCell>
                         {reminder.manual

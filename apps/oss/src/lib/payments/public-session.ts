@@ -14,7 +14,7 @@ import {
 } from "@quits/contracts/payments"
 import { invalidLinkLocale } from "../documents/public-invalid-link"
 import { publicLogoPath } from "../documents/public-logo"
-import { resolvePublicPresentation } from "../documents/public-presentation"
+import { documentLocale, resolvePublicPresentation } from "../documents/public-presentation"
 import { isDocumentNotIssued, issuedNumber } from "../../domain/documents/numbering"
 
 type Decimalish = number | { toNumber(): number }
@@ -149,14 +149,15 @@ export function serializePublicInvoiceSession(session: {
 export const getPublicInvoiceSession = createServerFn({ method: "GET" })
   .inputValidator(publicInvoiceTokenInputSchema)
   .handler(async ({ data }) => {
-    const [{ loadPublicInvoiceByToken }, { getPublicInvoicePaymentSecret }] = await Promise.all([
+    const [{ loadInvalidPublicInvoiceLocale, loadPublicInvoiceByToken }, { getPublicInvoicePaymentSecret }] = await Promise.all([
       import("./public-access"),
       import("./public"),
     ])
-    const session = await loadPublicInvoiceByToken(data.token, getPublicInvoicePaymentSecret())
+    const secret = getPublicInvoicePaymentSecret()
+    const session = await loadPublicInvoiceByToken(data.token, secret)
     if (!session) {
-      // No document to take a language from: answer in the visitor's.
-      return { kind: "invalid", locale: invalidLinkLocale() } as const
+      // The invoice's language when the link was signed for one, else the visitor's.
+      return { kind: "invalid", locale: invalidLinkLocale(await loadInvalidPublicInvoiceLocale(data.token, secret)) } as const
     }
 
     try {
@@ -169,7 +170,7 @@ export const getPublicInvoiceSession = createServerFn({ method: "GET" })
       // A shared link whose invoice has no number is a broken invariant; show the link as invalid and say why in the log.
       const { appLogger } = await import("../observability")
       appLogger.child("payments").error("public_invoice.not_issued", { invoiceId: session.invoice.id })
-      return { kind: "invalid", locale: invalidLinkLocale() } as const
+      return { kind: "invalid", locale: invalidLinkLocale(documentLocale(session.invoice, session.invoice.organization?.settings)) } as const
     }
   })
 

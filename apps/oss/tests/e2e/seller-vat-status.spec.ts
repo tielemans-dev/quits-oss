@@ -119,7 +119,7 @@ for (const locale of ["da-DK", "en-US"]) {
     if (contradictory.status !== "completed") throw new Error(JSON.stringify(contradictory))
     await page.goto(`/invoices/${contradictory.result.id}`)
     await waitForClientReady(page)
-    await expect(page.getByText("25 % moms", { exact: true })).toBeVisible()
+    await expect(page.getByText(translate("invoiceVat.hosted", locale, { rate: 25 }), { exact: true })).toBeVisible()
     await expect(page.getByText(translate("line.noVat", locale), { exact: true })).toHaveCount(0)
     await capture(page, "invoice-existing-vat-draft", locale)
     const draft = await executeCommand(createInvoiceDraft, { contactId: contact.id, notes: translate("pdf.nonVatRegistered", locale), dueDate: "2026-11-09", supplyDate: "2026-10-11", taxRate: 0,
