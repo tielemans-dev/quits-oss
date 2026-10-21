@@ -25,16 +25,18 @@ export type ActivityEvent = Summary["activity"][number]
 /**
  * first-run: nothing has happened, so show no figures at all.
  * getting-started: drafts or events exist but no money has moved, so there is nothing to total yet.
- * active: money is owed. kvit: money has moved and none is owed, which is the good state.
+ * active: money is owed, by customers or back to them. kvit: money has moved and none is owed,
+ * which is the good state.
  */
 export type DashboardState = "first-run" | "getting-started" | "active" | "kvit"
 
 export function classifyDashboard(summary: Summary): DashboardState {
+  const owed = summary.outstanding.count > 0 || summary.owedToCustomers.count > 0
   const hasMoney =
-    summary.outstanding.count > 0 ||
+    owed ||
     summary.paidThisMonth.count > 0 ||
     summary.receivedByMonth.some((month) => month.count > 0)
-  if (hasMoney) return summary.outstanding.count > 0 ? "active" : "kvit"
+  if (hasMoney) return owed ? "active" : "kvit"
   const hasSomething =
     summary.drafts.count > 0 ||
     summary.attention.length > 0 ||
@@ -92,6 +94,9 @@ export type HeroModel = {
   noneOverdue: boolean
   /** Received this month, in `currency`. */
   paid: Bucket | null
+  /** Owed back to customers after credit notes, then refunded to them this month: each currency once, `currency` first. */
+  owedToCustomers: Bucket[]
+  refunded: Bucket[]
   /** Shares of paid, on its way and overdue, summing to 1; null when all three are zero. */
   segments: { paid: number; pending: number; overdue: number } | null
   /**
@@ -125,6 +130,11 @@ export function presentHero(summary: Summary): HeroModel {
     ...owed.filter((other) => other !== currency),
     ...unvaluedOnlyCurrencies(outstanding),
   ]
+  // Money that runs back to customers is never netted against what they owe, nor across currencies.
+  const perCurrency = (total: DashboardTotal) =>
+    [...total.buckets.map((bucket) => bucket.currency), ...unvaluedOnlyCurrencies(total)]
+      .sort((a, b) => Number(b === currency) - Number(a === currency))
+      .map((other) => secondaryBucket(total, other)!)
 
   return {
     currency,
@@ -135,6 +145,8 @@ export function presentHero(summary: Summary): HeroModel {
       : null,
     noneOverdue: overdue.count === 0,
     paid: paidBucket,
+    owedToCustomers: perCurrency(summary.owedToCustomers),
+    refunded: perCurrency(summary.refundedThisMonth),
     segments:
       total === 0n
         ? null

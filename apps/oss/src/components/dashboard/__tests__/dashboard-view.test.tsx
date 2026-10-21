@@ -132,6 +132,21 @@ describe("with money", () => {
     expect(screen.getAllByText("Alt er betalt. Du er kvit.").length).toBeGreaterThan(0)
   })
 
+  it("shows money owed back to customers and this month's refunds, each currency apart (QUI-228)", () => {
+    renderView(activeSummary({
+      outstanding: emptyTotal(),
+      overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
+      incoming: [],
+      attention: [],
+      owedToCustomers: total(bucket("EUR", "100.00"), bucket("DKK", "22500.00")),
+      refundedThisMonth: total(bucket("DKK", "1000.00")),
+    }))
+    expect(screen.queryByText("Alt er betalt. Du er kvit.")).toBeNull()
+    const hero = document.querySelector('[data-slot="dashboard-hero"]')!
+    expect(hero.querySelector('[data-flow="owedToCustomers"]')!.textContent).toMatch(/^Skyldig til kunder22\.500,00\skr\. · 100,00\s€$/)
+    expect(hero.querySelector('[data-flow="refunded"]')!.textContent).toMatch(/^Refunderet i \p{L}+1\.000,00\skr\.$/u)
+  })
+
   it("shows the streak from two, and hides it below", () => {
     renderView(activeSummary({ streak: 12 }))
     expect(screen.getByText("12 fakturaer betalt til tiden i træk")).toBeTruthy()
