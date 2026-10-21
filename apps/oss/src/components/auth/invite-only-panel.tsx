@@ -13,7 +13,6 @@ export function InviteOnlyPanel({ email, waitlist, onUseCode, onJoined, search }
   const body = t('auth.inviteOnly.body', { email: '\u0000' }).split('\u0000')
   return <Card className="w-full max-w-[440px]">
     <CardHeader>
-      <div className="mb-2 flex size-10 items-center justify-center rounded-lg border bg-muted" aria-hidden="true">▪</div>
       <CardTitle className="text-2xl">{t('auth.inviteOnly.title')}</CardTitle>
       <CardDescription>{body[0]}<span className="font-medium text-foreground">{email}</span>{body[1]}</CardDescription>
     </CardHeader>
