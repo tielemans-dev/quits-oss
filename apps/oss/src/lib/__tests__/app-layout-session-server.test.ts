@@ -86,6 +86,18 @@ describe("getAppLayoutSession", () => {
     expect(withoutSettings.locale).toBeUndefined()
   })
 
+  it("reads the locale and the onboarding state together on cloud", async () => {
+    state.getSession.mockResolvedValue(signedIn("org_a"))
+    let settle: (settings: { locale: string }) => void = () => {}
+    state.settings.mockReturnValue(new Promise(resolve => { settle = resolve }))
+    state.loadCloudOnboardingState.mockResolvedValue({ isComplete: true })
+
+    const result = load()
+    await vi.waitFor(() => expect(state.loadCloudOnboardingState).toHaveBeenCalledWith("org_a"))
+    settle({ locale: "da-DK" })
+    expect(await result).toMatchObject({ locale: "da-DK", cloudOnboardingComplete: true })
+  })
+
   it("reports incomplete onboarding", async () => {
     state.getSession.mockResolvedValue(signedIn("org_a"))
     state.loadCloudOnboardingState.mockResolvedValue({ isComplete: false })

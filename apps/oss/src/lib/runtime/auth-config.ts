@@ -216,7 +216,8 @@ export function buildQuitsAuthOptions(input: {
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Auth traffic drains expired records in bounded batches, outside row-locked transactions.
-        await cleanupExpiredVerifications(input.prisma)
+        // Session reads come with every app request and never touch verifications, so they skip it.
+        if (ctx.path !== "/get-session") await cleanupExpiredVerifications(input.prisma)
         if (ctx.path === "/sign-up/email" && admission.authorizeSignUp && typeof ctx.body?.email === "string") {
           const details = signupInput(ctx.body.email, ctx.body, ctx.request)
           if (admission.admitSignUpAttempt) assertSignupDecision(await admission.admitSignUpAttempt(details))

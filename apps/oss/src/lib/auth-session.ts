@@ -35,17 +35,17 @@ export const getAppLayoutSession = createServerFn({ method: "GET" }).handler(asy
       : null
 
   // Resolve saved settings before rendering; new organizations still need browser detection.
-  const locale = user && activeOrganizationId
-    ? (await (await import("./db")).prisma.orgSettings.findUnique({
-        where: { organizationId: activeOrganizationId },
-        select: { locale: true },
-      }))?.locale
-    : undefined
-
-  if (runtime.distribution !== "cloud" || !activeOrganizationId) {
-    return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: null }
-  }
-
-  const onboarding = await loadCloudOnboardingState(activeOrganizationId)
-  return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: onboarding.isComplete }
+  // Cloud onboarding needs only the organization too, so both reads run together.
+  const [locale, onboarding] = await Promise.all([
+    user && activeOrganizationId
+      ? import("./db").then(({ prisma }) => prisma.orgSettings.findUnique({
+          where: { organizationId: activeOrganizationId },
+          select: { locale: true },
+        })).then(settings => settings?.locale)
+      : undefined,
+    runtime.distribution === "cloud" && activeOrganizationId
+      ? loadCloudOnboardingState(activeOrganizationId)
+      : null,
+  ])
+  return { user, activeOrganizationId, runtime, locale, cloudOnboardingComplete: onboarding?.isComplete ?? null }
 })
