@@ -692,6 +692,19 @@ describe("Settings hosted VAT persistence", () => {
     expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: "signed" }), handledMutationError)
   })
 
+  it("refuses equal invoice and credit-note prefixes before saving", async () => {
+    await renderDanishSettings(null, { creditNotePrefix: "CN" })
+    const creditNotePrefix = document.querySelector<HTMLInputElement>('input[name="creditNotePrefix"]')!
+    const saves = () => screen.getAllByRole("button", { name: "settings.action.save" }) as HTMLButtonElement[]
+    fireEvent.change(creditNotePrefix, { target: { value: "inv" } })
+    expect(screen.getByRole("alert").textContent).toBe("settings.validation.prefixConflict")
+    expect(creditNotePrefix.getAttribute("aria-invalid")).toBe("true")
+    expect(saves().every(button => button.disabled)).toBe(true)
+    fireEvent.change(creditNotePrefix, { target: { value: "KN" } })
+    expect(screen.queryByRole("alert")).toBeNull()
+    expect(saves().every(button => !button.disabled)).toBe(true)
+  })
+
   it("renders prefix patterns that enforce HTML Unicode-set validation", async () => {
     await renderDanishSettings(null)
     for (const name of ["invoicePrefix", "quotePrefix", "creditNotePrefix"]) {

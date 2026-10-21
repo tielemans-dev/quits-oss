@@ -45,4 +45,19 @@ describeIfDatabase("settings document prefixes", () => {
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } }))
       .toMatchObject({ companyName: "Still Saves ApS", invoicePrefix: "DOC", creditNotePrefix: "CN" })
   })
+
+  it("refuses a credit-note prefix that earlier invoice numbers carry", async () => {
+    const { organizationId, caller } = await createOrganization({ invoicePrefix: "INV", creditNotePrefix: "CN" })
+    const contact = await prisma.contact.create({ data: { organizationId, name: "Prefix Buyer", email: "buyer@example.test" } })
+    const invoice = await caller.invoices.create({ contactId: contact.id, dueDate: "2099-01-01", taxRate: 0, items: [{ description: "Work", quantity: 1, unitPrice: 100 }] })
+    // Issued while invoices were still numbered FAK; the series has moved on to INV since.
+    await prisma.invoice.update({ where: { id: invoice.id }, data: { status: "sent", number: "FAK-0001" } })
+
+    const refusal = await caller.settings.update({ invoicePrefix: "INV", creditNotePrefix: "FAK" }).catch((error: unknown) => error)
+    expect((refusal as { cause?: { fieldIssues?: unknown } }).cause?.fieldIssues).toEqual([{ code: "prefix.conflict", field: "creditNotePrefix", params: {} }])
+    // Other settings still save while the prefixes stay as they are, and an unused prefix is accepted.
+    await caller.settings.update({ invoicePrefix: "INV", creditNotePrefix: "CN", companyName: "Prefix ApS" })
+    await caller.settings.update({ invoicePrefix: "INV", creditNotePrefix: "KN" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId } })).toMatchObject({ companyName: "Prefix ApS", creditNotePrefix: "KN" })
+  })
 })
