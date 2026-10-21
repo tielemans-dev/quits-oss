@@ -7,7 +7,7 @@ const fixture = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn() }))
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   // Keep real Link navigation available to the first-invoice bank nudge.
   ...await importOriginal<typeof import("@tanstack/react-router")>(),
-  createFileRoute: () => (options: unknown) => options,
+  createFileRoute: () => (options: object) => ({ ...options, useSearch: () => ({}) }),
   useNavigate: () => vi.fn(),
 }))
 vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => "synthetic-org" }))

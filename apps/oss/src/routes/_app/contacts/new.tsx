@@ -22,7 +22,13 @@ import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
 import { CvrLookup, type RegistryCustomer } from "./-cvr-lookup"
 
+/** The forms that send people here from their customer picker. */
+const returnPaths = ["/invoices/new"] as const
+
 export const Route = createFileRoute("/_app/contacts/new")({
+  validateSearch: (search: Record<string, unknown>): { returnTo?: (typeof returnPaths)[number] } => ({
+    returnTo: returnPaths.find(path => path === search.returnTo),
+  }),
   component: NewContactPage,
 })
 
@@ -32,6 +38,7 @@ const COUNTRY_LOOKUP_TIMEOUT_MS = 3000
 function NewContactPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { returnTo } = Route.useSearch()
   const [saving, setSaving] = useState(false)
   const businessOnly = useBusinessBuyersOnly()
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +79,7 @@ function NewContactPage() {
     }
 
     try {
-      await trpc.contacts.create.mutate({
+      const contact = await trpc.contacts.create.mutate({
         name: form.get("name") as string,
         email: (form.get("email") as string) || "",
         phone: (form.get("phone") as string) || undefined,
@@ -87,7 +94,7 @@ function NewContactPage() {
         peppolEndpointScheme: peppol.peppolEndpointScheme ?? undefined,
         notes: (form.get("notes") as string) || undefined,
       }, handledMutationError)
-      navigate({ to: "/contacts" })
+      navigate(returnTo ? { to: returnTo, search: { contactId: contact.id } } : { to: "/contacts" })
     } catch (err) {
       setError(contactSaveError(err, t, "contacts.new.error.createFailed"))
       setSaving(false)
@@ -243,7 +250,7 @@ function NewContactPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate({ to: "/contacts" })}
+              onClick={() => navigate({ to: returnTo ?? "/contacts" })}
             >
               {t("contacts.action.cancel")}
             </Button>

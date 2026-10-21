@@ -39,13 +39,7 @@ import { LocalizedDateField } from "../../../components/localized-date-field"
 import { Button } from "../../../components/ui/button"
 import { Label } from "../../../components/ui/label"
 import { Textarea } from "../../../components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select"
+import { CustomerPicker, pickedContactSearch } from "../../../components/customer-picker"
 import {
   Card,
   CardContent,
@@ -58,10 +52,11 @@ import { useI18n } from "../../../lib/i18n/react"
 import { aiDraftErrorMessageKey } from "../../../lib/ai-draft-error"
 
 export const Route = createFileRoute("/_app/invoices/new")({
-  component: NewInvoicePage,
+  validateSearch: pickedContactSearch,
+  component: () => <NewInvoicePage initialContactId={Route.useSearch().contactId} />,
 })
 
-type Contact = { id: string; name: string; email?: string | null }
+type Contact = { id: string; name: string; email?: string | null; taxId?: string | null }
 
 type LineItem = {
   description: string
@@ -71,7 +66,7 @@ type LineItem = {
   catalogItemId?: string
 }
 
-export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onCancel?: () => void; onComplete?: (target: CreatedDocumentTarget) => void; kind?: InvoiceFlowKind } = {}) {
+export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initialContactId }: { onCancel?: () => void; onComplete?: (target: CreatedDocumentTarget) => void; kind?: InvoiceFlowKind; initialContactId?: string } = {}) {
   const { t, locale } = useI18n()
   const bankNudge = useFirstInvoiceBankNudge()
   // Opened from the request card with its invoice; "Tilbage til forslaget" takes the edited invoice back.
@@ -100,7 +95,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
   const navigate = useNavigate()
   const contactQuery = useAppQuery(["contacts"], () => trpc.contacts.list.query())
   const contacts = (contactQuery.data ?? []) as Contact[]
-  const [contactId, setContactId] = useState(handed?.contactId ?? "")
+  const [contactId, setContactId] = useState(handed?.contactId ?? initialContactId ?? "")
   const [dueDate, setDueDate] = useInvoiceDueDate()
   const [notes, setNotes] = useState(handed?.notes ?? "")
   const [taxRate, setTaxRate] = useState(handed?.taxRate ?? "25")
@@ -194,6 +189,10 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
     return () => { cancelled = true }
   }, [contactId, currency, t])
 
+  function selectContact(id: string) {
+    setContactId(id)
+    setFieldIssues(issues => issues.filter(issue => issue.field !== "contactId" && !issue.field.startsWith("customer.")))
+  }
   const fieldError = (field: string) => {
     const issue = fieldIssues.find(issue => issue.field === field)
     return issue ? <p role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p> : null
@@ -464,25 +463,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice" }: { onC
             <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4">
               <div className="grid gap-2">
               <Label htmlFor="invoice-contact">{t("docForm.contact")} *</Label>
-              {contactQuery.error ? <QueryError error={contactQuery.error} retry={contactQuery.refresh} /> : loadingContacts ? (
-                <QuerySkeleton />
-              ) : contacts.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  {t("docForm.noContacts")}
-                </p>
-              ) : (
-                <Select value={contactId} onValueChange={value => { setContactId(value); setFieldIssues(issues => issues.filter(issue => issue.field !== "contactId" && !issue.field.startsWith("customer."))) }}>
-                  <SelectTrigger id="invoice-contact" aria-invalid={!!fieldIssues.find(issue => issue.field === "contactId")} className="w-full">
-                    <SelectValue placeholder={t("docForm.selectContact")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {contactQuery.error ? <QueryError error={contactQuery.error} retry={contactQuery.refresh} /> : loadingContacts ? <QuerySkeleton /> : (
+                <CustomerPicker id="invoice-contact" contacts={contacts} value={contactId} invalid={!!fieldIssues.find(issue => issue.field === "contactId")} onChange={selectContact} onCreated={id => { selectContact(id); void contactQuery.refresh() }} />
               )}
               {fieldError("contactId")}
               {fieldIssues.filter(issue => issue.field.startsWith("customer.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}

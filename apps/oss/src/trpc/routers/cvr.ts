@@ -34,6 +34,15 @@ export const cvrRouter = router({
       if (!lookup) throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "CVR lookup is unavailable" })
       return lookup.get(input.cvr, { userId: ctx.user.id, organizationId: ctx.organizationId, signal: lookupSignal(signal, ctx.request?.signal) })
     }),
+  // The customer picker's name search; `search` belongs to onboarding and needs settings access.
+  customerSearch: authorizedProcedure("contact:create")
+    .input(z.object({ q: z.string().trim().min(3).max(120) }))
+    .output(z.array(cvrCompanySchema).max(8))
+    .query(({ ctx, input, signal }) => {
+      const lookup = getCvrLookupProvider()
+      if (!lookup) throw new TRPCError({ code: "NOT_IMPLEMENTED", message: "CVR lookup is unavailable" })
+      return lookup.search(input.q, { userId: ctx.user.id, organizationId: ctx.organizationId, signal: lookupSignal(signal, ctx.request?.signal) })
+    }),
   // Whether the customer form can offer `customer`; self-hosted installs have no lookup provider.
   customerAvailable: authorizedProcedure("contact:create").query(() => ({ enabled: Boolean(getCvrLookupProvider()) })),
   available: authorizedProcedure("settings:read").query(() => ({

@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 const fixture = vi.hoisted(() => ({ navigate: vi.fn() }))
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...await importOriginal<typeof import("@tanstack/react-router")>(),
-  createFileRoute: () => (options: unknown) => options,
+  createFileRoute: () => (options: object) => ({ ...options, useSearch: () => ({}) }),
   useNavigate: () => fixture.navigate,
 }))
 vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => "synthetic-org" }))

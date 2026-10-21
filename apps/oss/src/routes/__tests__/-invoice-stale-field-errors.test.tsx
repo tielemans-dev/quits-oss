@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 const fixture = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn() }))
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...await importOriginal<typeof import("@tanstack/react-router")>(),
-  createFileRoute: () => (options: unknown) => options,
+  createFileRoute: () => (options: object) => ({ ...options, useSearch: () => ({}) }),
   useNavigate: () => vi.fn(),
 }))
 vi.mock("../../lib/active-organization", () => ({ getRequestOrganizationId: () => "synthetic-org", useRequestOrganizationId: () => "synthetic-org" }))
@@ -25,9 +25,10 @@ import { Route } from "../_app/invoices/new"
 const Component = (Route as unknown as { component: () => React.ReactNode }).component
 
 beforeAll(() => {
-  // Radix Select needs these in jsdom.
+  // Radix Select and the customer picker's popover need these in jsdom.
   Element.prototype.hasPointerCapture = () => false
   Element.prototype.scrollIntoView = () => {}
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
 })
 
 async function submit() {
@@ -35,7 +36,7 @@ async function submit() {
 }
 
 async function pickCustomer() {
-  fireEvent.keyDown((await screen.findAllByRole("combobox"))[0], { key: "Enter" })
+  fireEvent.click((await screen.findAllByRole("combobox"))[0])
   fireEvent.click(await screen.findByRole("option", { name: "Acme ApS" }))
 }
 

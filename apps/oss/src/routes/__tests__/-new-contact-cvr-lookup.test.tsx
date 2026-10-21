@@ -8,21 +8,23 @@ import { I18nProvider } from "../../lib/i18n/react"
 const api = vi.hoisted(() => ({
   available: vi.fn(async () => ({ enabled: true })),
   customer: vi.fn(),
+  create: vi.fn(), navigate: vi.fn(), search: {} as Record<string, string>,
   businessOnly: false,
 }))
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => options,
-  useNavigate: () => vi.fn(),
+  createFileRoute: () => (options: object) => ({ ...options, useSearch: () => api.search }),
+  useNavigate: () => api.navigate,
 }))
 vi.mock("../../trpc/client", () => ({ trpc: {
   invoices: { sendReadiness: { query: async () => ({ businessBuyersOnly: api.businessOnly }) } },
   settings: { get: { query: async () => ({ countryCode: "DK" }) } },
   cvr: { customerAvailable: { query: api.available }, customer: { query: api.customer } },
-  contacts: { create: { mutate: vi.fn() } },
+  contacts: { create: { mutate: api.create } },
 } }))
 import { Route } from "../_app/contacts/new"
 
 const Page = (Route as unknown as { component: ComponentType }).component
+const validateSearch = (Route as unknown as { validateSearch: (search: Record<string, unknown>) => unknown }).validateSearch
 const value = (label: RegExp | string) => (screen.getByLabelText(label) as HTMLInputElement).value
 // MOCK: a synthetic company in the register's shape; 24256790 passes the CVR check digit.
 const company = {
@@ -30,9 +32,20 @@ const company = {
   status: "active", statusClass: "active", momsRegistered: true,
 }
 
-beforeEach(() => { vi.clearAllMocks(); api.businessOnly = false; api.available.mockResolvedValue({ enabled: true }) })
+beforeEach(() => { vi.clearAllMocks(); api.search = {}; api.businessOnly = false; api.available.mockResolvedValue({ enabled: true }) })
 afterEach(cleanup)
 describe("new customer CVR lookup", () => {
+  it("returns to the document form with the new customer selected, and only to a document form", async () => {
+    expect(validateSearch({ returnTo: "https://example.test" })).toEqual({ returnTo: undefined })
+    api.search = { returnTo: "/invoices/new" }
+    api.create.mockResolvedValue({ id: "new" })
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    fireEvent.change(screen.getByLabelText(/^Navn/), { target: { value: "Anna Jensen" } })
+    await waitFor(() => expect((screen.getByRole("button", { name: "Opret kunde" }) as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/invoices/new", search: { contactId: "new" } }))
+  })
+
   it("fills the customer from the register and keeps a name already typed", async () => {
     api.customer.mockResolvedValue(company)
     render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)

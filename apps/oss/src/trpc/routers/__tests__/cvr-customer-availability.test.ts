@@ -20,3 +20,12 @@ it("offers the customer CVR lookup only where the runtime supplies a provider", 
   services.provider = { search: vi.fn(), get: vi.fn() }
   expect(await caller.customerAvailable()).toEqual({ enabled: true })
 })
+
+it("searches customers by name through the lookup provider, without onboarding", async () => {
+  const search = vi.fn(async () => [])
+  services.provider = { search, get: vi.fn() }
+  await cvrRouter.createCaller({ session: null }).customerSearch({ q: "Nordlys" })
+  expect(search).toHaveBeenCalledWith("Nordlys", expect.objectContaining({ userId: "user", organizationId: "org" }))
+  services.provider = undefined
+  await expect(cvrRouter.createCaller({ session: null }).customerSearch({ q: "Nordlys" })).rejects.toMatchObject({ code: "NOT_IMPLEMENTED" })
+})
