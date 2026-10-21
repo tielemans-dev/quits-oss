@@ -2,6 +2,7 @@ import { useQueryRefresh } from "../../hooks/use-query-refresh"
 import { QueryError, QuerySkeleton } from "../../components/query-state"
 import { invoiceFieldIssues, invoiceIssueKey } from "../../lib/invoice-field-issues"
 import type { FieldIssue } from "@quits/contracts/agent"
+import { displayPhone } from "@quits/contracts/contacts"
 import { normalizeCountryCode } from "../../lib/compliance/registry"
 import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
@@ -711,7 +712,8 @@ function SettingsPage() {
         companyName: companyNameInput || undefined,
         companyAddress: companyAddressInput || undefined,
         companyEmail: companyEmailInput || undefined,
-        companyPhone: companyPhoneInput || undefined,
+        // Sent whenever the field is on the page, so an emptied phone is cleared.
+        companyPhone: form.has("companyPhone") ? companyPhoneInput : undefined,
         companyLogo: normalizedCompanyLogo || null,
         invoicePrefix: invoicePrefixInput || undefined,
         quotePrefix: quotePrefixInput || undefined,
@@ -1077,7 +1079,7 @@ function SettingsPage() {
                 defaultValue={settings.companyEmail ?? ""}
               />
           </SettingsRow>
-          <SettingsRow label={t("settings.companyPhone.label")} value={settings.companyPhone || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyPhone" result={saveResult("companyPhone")}>
+          <SettingsRow label={t("settings.companyPhone.label")} value={displayPhone(settings.companyPhone, countryCode) || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion} origin="companyPhone" result={saveResult("companyPhone")}>
             <Label htmlFor="companyPhone" className="sr-only">{t("settings.companyPhone.label")}</Label>
               <Input
                 id="companyPhone"
@@ -1085,7 +1087,7 @@ function SettingsPage() {
                 form={settingsFormId}
                 maxLength={40}
                 placeholder={t("settings.companyPhone.placeholder")}
-                defaultValue={settings.companyPhone ?? ""}
+                defaultValue={displayPhone(settings.companyPhone, countryCode)}
               />
           </SettingsRow>
           {(isSelfHost || sellerVatConfirmationEnabled) && normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat" ? (

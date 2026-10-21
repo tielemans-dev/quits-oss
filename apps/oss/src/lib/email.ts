@@ -290,6 +290,18 @@ export function actionBlock(input: {
     </div>`
 }
 
+/** The seller block of document emails: name, postal address, CVR or VAT number and email. */
+function sellerBlock(name: string, org: { companyEmail?: string | null; companyAddress?: string | null; taxIds?: DocumentTaxId[] },
+  locale: string | null | undefined, buyerCountry: string | null | undefined, momsRegistered: boolean | null | undefined) {
+  return `<div>
+        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
+        <div style="font-weight:500;">${escapeHtml(name)}</div>
+        ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
+        ${formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, buyerCountry ?? "DK", momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
+        ${org.companyEmail ? `<div style="color:${C.muted};font-size:14px;">${escapeHtml(org.companyEmail)}</div>` : ""}
+      </div>`
+}
+
 // ── Invoice email ──────────────────────────────────────────────────
 
 export type SendInvoiceEmailParams = {
@@ -350,7 +362,6 @@ export function buildInvoiceEmailContent({
   const notes = withoutNonVatStatement(invoice.notes, momsRegistered, invoice.taxRegime)
   const safeInvoiceNumber = escapeHtml(invoice.number)
   const safeContactName = escapeHtml(contactName)
-  const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
   const referenceHint = invoicePaymentReferenceHint(invoice, locale)
   const balanceDue = invoice.balanceDue ?? invoice.total
@@ -361,13 +372,7 @@ export function buildInvoiceEmailContent({
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
 
     <div class="invoice-parties" style="display:flex;gap:24px;justify-content:space-between;margin-bottom:8px;">
-      <div>
-        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(org.companyName ?? "")}</div>
-        ${org.companyAddress ? `<div>${formatMultilineHtml(org.companyAddress)}</div>` : ""}
-        ${formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, invoice.buyer?.country ?? "DK", momsRegistered).map(id => `<div>${escapeHtml(id)}</div>`).join("")}
-        ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
-      </div>
+      ${sellerBlock(org.companyName ?? "", org, locale, invoice.buyer?.country, momsRegistered)}
       <div class="invoice-dates" style="text-align:right;flex-shrink:0;">
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.issueDate", locale)}</div>
         <div style="font-weight:500;margin-bottom:12px;">${formatDate(invoice.issueDate, locale, org.timezone, { month: "short", dayFirst: true })}</div>
@@ -445,11 +450,15 @@ export type SendQuoteEmailParams = {
     rounding?: string
     taxRegime?: string
     momsRegistered?: boolean | null
+    /** Decides whether the seller's CVR or VAT number is printed, as on the invoice email. */
+    buyerCountry?: string | null
     items: { description: string; quantity: number; unitPrice: number; total: number; taxRate?: number }[]
   }
   org: {
     companyName?: string | null
     companyEmail?: string | null
+    companyAddress?: string | null
+    taxIds?: DocumentTaxId[]
     locale?: string | null
     timezone?: string | null
   }
@@ -472,18 +481,13 @@ export function buildQuoteEmailContent({
   const momsRegistered = sellerVatPresentationStatus(quote.momsRegistered, quote.taxRegime)
   const notes = withoutNonVatStatement(quote.notes, momsRegistered, quote.taxRegime)
   const safeContactName = escapeHtml(contactName)
-  const safeCompanyEmail = org.companyEmail ? escapeHtml(org.companyEmail) : null
   const locale = org.locale
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:24px;">${t("email.quote.title", locale)} ${safeQuoteNumber}</h2>
     <p style="margin:0 0 24px;color:${C.muted};">${t("email.quote.greeting", locale, { name: safeContactName })}</p>
 
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-      <div>
-        <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("pdf.from", locale)}</div>
-        <div style="font-weight:500;">${escapeHtml(org.companyName === undefined ? safeFromName : org.companyName ?? "")}</div>
-        ${safeCompanyEmail ? `<div style="color:${C.muted};font-size:14px;">${safeCompanyEmail}</div>` : ""}
-      </div>
+      ${sellerBlock(org.companyName === undefined ? safeFromName : org.companyName ?? "", org, locale, quote.buyerCountry, momsRegistered)}
       <div style="text-align:right;">
         <div style="font-size:12px;color:${C.muted};text-transform:uppercase;margin-bottom:2px;">${t("email.quote.validUntil", locale)}</div>
         <div style="font-weight:500;">${formatDate(quote.expiryDate, locale, "UTC", { month: "long" })}</div>

@@ -20,6 +20,7 @@ import {
 import { PageHeader } from "../../../components/kvit/page-header"
 import { Pencil } from "lucide-react"
 import { countryName } from "../../../lib/country-names"
+import { displayPhone } from "@quits/contracts/contacts"
 import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
@@ -189,7 +190,7 @@ function ContactPage() {
       <dl className="border-hairline grid border-t sm:grid-cols-[12rem_minmax(0,1fr)]">
         <Fact label={t("contacts.field.company")}>{contact.company}</Fact>
         <Fact label={t("contacts.field.email")}>{contact.email}</Fact>
-        <Fact label={t("contacts.field.phone")}>{contact.phone}</Fact>
+        <Fact label={t("contacts.field.phone")}>{displayPhone(contact.phone, contact.country)}</Fact>
         <Fact label={t("contacts.field.address")}>{address.length ? address.map((line) => <span key={line} className="block">{line}</span>) : null}</Fact>
         <Fact label={t("contacts.field.taxId")}>{contact.taxId}</Fact>
         <Fact label={t("exports.contact.peppolEndpointId")}>{peppol}</Fact>

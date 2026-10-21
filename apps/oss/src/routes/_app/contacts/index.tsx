@@ -25,6 +25,7 @@ import {
 } from "../../../components/ui/alert-dialog"
 import { Plus, Trash2, Users } from "lucide-react"
 import { useI18n } from "../../../lib/i18n/react"
+import { displayPhone } from "@quits/contracts/contacts"
 
 export const Route = createFileRoute("/_app/contacts/")({
   component: ContactsListPage,
@@ -36,6 +37,7 @@ type Contact = {
   email: string | null
   phone: string | null
   company: string | null
+  country: string | null
 }
 
 function ContactsListPage() {
@@ -123,7 +125,7 @@ function ContactsListPage() {
                   <TableCell className="font-medium">{contact.name}</TableCell>
                   <TableCell>{contact.email ?? "\u2014"}</TableCell>
                   <TableCell>{contact.company ?? "\u2014"}</TableCell>
-                  <TableCell>{contact.phone ?? "\u2014"}</TableCell>
+                  <TableCell>{displayPhone(contact.phone, contact.country) || "\u2014"}</TableCell>
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

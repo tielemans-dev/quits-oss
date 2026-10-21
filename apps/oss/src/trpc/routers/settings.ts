@@ -53,9 +53,9 @@ import { onboardingInvoicingIdentitySchema } from "@quits/contracts/onboarding"
 import { orgStripeAccountSchema, type OrgStripeAccount } from "@quits/contracts/payments"
 import {
   normalizeCountryCode,
-  normalizePhone,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
+import { storedPhone } from "@quits/contracts/contacts"
 
 const taxRegimeSchema = z.enum(["us_sales_tax", "eu_vat", "custom"])
 const httpUrlRegex = /^https?:\/\/.+/i
@@ -514,7 +514,6 @@ export const settingsRouter = router({
             message: Object.values(localizedIssues).filter(Boolean).join(" "),
           })
         }
-        if (settingsInput.companyPhone !== undefined) settingsInput.companyPhone = normalizePhone(settingsInput.companyPhone)
 
         // A saved key belongs to the provider and endpoint it was entered for. Never send it to a
         // different one: changing either without entering a new key clears the old key.
@@ -556,6 +555,8 @@ export const settingsRouter = router({
 
         const settingsUpdateData = {
           ...settingsInput,
+          // A Danish number is stored as E.164. An empty phone clears the stored one.
+          ...(settingsInput.companyPhone !== undefined ? { companyPhone: storedPhone(settingsInput.companyPhone, resolvedCountry) || null } : {}),
           ...(clearsRegistration && current?.momsRegistered != null ? { paymentNote: localizedNonVatPaymentNote(current?.paymentNote, true) ?? null } : {}),
           baseCurrency,
           ...(aiBaseUrl !== undefined ? { aiBaseUrl: aiBaseUrl || null } : {}),

@@ -70,6 +70,13 @@ describe("document emails", () => {
     expect(html).not.toContain("10.000,00 kr.")
   })
 
+  it("show the quote's seller address and CVR like the invoice email", () => {
+    const sellerSnapshot = { companyName: "Nordic Design ApS", companyEmail: "finance@nordic.test", companyAddress: "Vestergade 12\n8000 Aarhus C", taxIds: [{ scheme: "DK_CVR", countryCode: "DK", value: "12345674" }], momsRegistered: true }
+    const quote = text(composeQuoteEmail({ quote: { ...document, pricesIncludeTax: false, sellerSnapshot }, settings, to: "kunde@example.test", publicQuoteUrl: null }).message.html ?? "")
+    const invoice = text(composeInvoiceEmail({ invoice: { ...document, pricesIncludeTax: false, sellerSnapshot }, settings, to: "kunde@example.test", publicPaymentUrl: null }).message.html ?? "")
+    for (const html of [quote, invoice]) expect(html).toContain("Fra Nordic Design ApS Vestergade 12 8000 Aarhus C CVR-nr. 12345674 finance@nordic.test")
+  })
+
   it("keep the plain headers for a credit note that names no basis", () => {
     const content = buildCreditNoteEmailContent({
       creditNote: { number: "K-1", issueDate: "2026-10-06", reason: "x", subtotal: 1, taxAmount: 0, total: 1, currency: "DKK", items: [] },

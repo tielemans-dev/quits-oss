@@ -13,6 +13,10 @@ describe("detail buyer address", () => {
     expect(detailBuyerAddress(buyer, "US", "en-US")).toEqual(["Testvej 2", "9000 Aalborg", "Denmark"])
     expect(detailBuyerAddress({ ...buyer, city: "Boston", state: "MA", zip: "02108", country: "US" }, "DK", "da-DK")).toEqual(["Testvej 2", "Boston, MA, 02108", "USA"])
   })
+  it("shows the country when buyer and seller share a country other than Denmark", () => {
+    expect(detailBuyerAddress({ ...buyer, city: "Boston", state: "MA", zip: "02108", country: "US" }, "US", "en-US")).toEqual(["Testvej 2", "Boston, MA, 02108", "United States"])
+    expect(detailBuyerAddress({ ...buyer, city: "Stockholm", zip: "111 51", country: "SE" }, "SE", "da-DK")).toEqual(["Testvej 2", "Stockholm, 111 51", "Sverige"])
+  })
   it("handles missing address fields", () => {
     expect(detailBuyerAddress({ name: "Test", country: null }, "DK", "da-DK")).toEqual([])
   })

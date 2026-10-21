@@ -31,7 +31,7 @@ function harness(kind: "quote" | "agreement", taxRegime: "custom" | "us_sales_ta
   const update = vi.fn(async ({ data }: { data: object }) => ({ ...invoice, ...data }))
   const db = { $queryRaw: async () => [], invoice: { findFirst: async () => invoice, update },
     invoiceItem: { count: async () => 0 },
-    orgSettings: { upsert: async () => ({ companyName: "Current seller", companyAddress: "New address", countryCode, momsRegistered: currentCvr ? false : true, baseCurrency: "DKK" }) },
+    orgSettings: { upsert: async () => ({ companyName: "Current seller", companyAddress: "New address", companyPhone: "12345678", countryCode, momsRegistered: currentCvr ? false : true, baseCurrency: "DKK" }) },
     organizationTaxId: { findMany: async () => currentCvr ? [{ scheme: "cvr", value: currentCvr, countryCode: "DK" }] : [] },
   }
   const command = { organizationId: "org", commandId: "command", now: new Date("2026-10-13"), actor: { kind: "user", roles: ["admin"] },
@@ -115,6 +115,11 @@ describe("stored line rates at the render-input boundary", () => {
   })
 })
 describe("linked invoice VAT identity scope at production boundaries", () => {
+  it("freezes the seller phone as printed, so inputs frozen earlier keep their stored form", async () => {
+    const h = harness("quote", "eu_vat", "Old address", "DK_CVR", "24256790")
+    expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "invoice", number: "", issuedAt: new Date("2026-10-13"), commandInput: {}, preview: true })))
+      .toMatchObject({ _tag: "Right", right: { pdf: { org: { companyPhone: "+45 12 34 56 78" } } } })
+  })
   it.each(["quote", "agreement"] as const)("accepts the supported frozen DK_CVR alias for %s preview and send identity checks after postal edits", async kind => {
     const h = harness(kind, "eu_vat", "Old address", "DK_CVR", "24256790")
     expect(await h.run(prospectiveRenderInput({ kind: "invoice", documentId: "invoice", number: "", issuedAt: new Date("2026-10-13"), commandInput: {}, preview: true }))).toMatchObject({ _tag: "Right", right: { snapshot: { seller: h.seller } } })

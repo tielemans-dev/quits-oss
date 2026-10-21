@@ -2,7 +2,10 @@ import type { BuyerSnapshot } from "@quits/contracts/documents"
 import { toCountryCode } from "../exports/parties"
 import { normalizeLocale } from "../i18n/locale"
 
-/** Postal order shared with QUI-61's PDF fix; domestic country is redundant on detail pages. */
+/**
+ * Postal order shared with QUI-61's PDF fix. "Danmark" is left out only when a Danish seller bills a
+ * Danish buyer, as Danish invoices do; every other buyer's country is shown, in the page's language.
+ */
 export function detailBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, sellerCountry: string, locale: string): string[] {
   const countryCode = toCountryCode(buyer.country)
   const country = countryCode && /^[A-Z]{2}$/.test(countryCode)
@@ -11,5 +14,5 @@ export function detailBuyerAddress(buyer: Omit<BuyerSnapshot, "email">, sellerCo
   const locality = countryCode === "DK" || (!buyer.country?.trim() && sellerCountry === "DK")
     ? [buyer.zip, buyer.city].filter(Boolean).join(" ")
     : [buyer.city, buyer.state, buyer.zip].filter(Boolean).join(", ")
-  return [buyer.address, locality, countryCode === sellerCountry.trim().toUpperCase() ? null : country].filter((line): line is string => Boolean(line))
+  return [buyer.address, locality, countryCode === "DK" && sellerCountry.trim().toUpperCase() === "DK" ? null : country].filter((line): line is string => Boolean(line))
 }

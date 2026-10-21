@@ -1,3 +1,4 @@
+import { displayPhone } from "@quits/contracts/contacts"
 import { invoiceAllowsPayment } from "../../lib/payments/invoice-methods"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { resolveInvoiceEmailContext } from "./invoice-email"
@@ -78,7 +79,8 @@ export const prospectiveRenderInput = (input: {
   const { settings, sellerTaxIds } = yield* loadDocumentContext
   const org: OrgSettingsForPdf = {
     companyName: settings.companyName, companyEmail: settings.companyEmail,
-    companyPhone: settings.companyPhone, companyAddress: settings.companyAddress,
+    // Frozen as printed, so an input frozen before phones were spaced keeps rendering as it did.
+    companyPhone: settings.companyPhone && displayPhone(settings.companyPhone, settings.countryCode), companyAddress: settings.companyAddress,
     companyLogo: settings.companyLogo, locale: settings.locale, timezone: settings.timezone,
   }
   const base = { kind: input.kind, organizationId, documentId: input.documentId,
