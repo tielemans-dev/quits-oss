@@ -149,7 +149,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   const blocker = readiness?.issues[0]
   const blockedBy = missing ? t("shell.request.invoice.gap", { field: missing })
     : foreign ? t("shell.request.invoice.foreignCurrency")
-    : blocker ? t(invoiceIssueKey(blocker.code), blocker.params) : null
+    : blocker ? t(invoiceIssueKey(blocker.code, blocker.field), blocker.params) : null
   const note = error ?? (repeat && last === null && !back ? t("shell.request.repeat.none") : askedInPlace ? null : blockedBy)
   const fill = (index: number, field: "description" | "unitPrice", value: string) =>
     setFilled(current => ({ ...current, [index]: { ...current[index], [field]: value } }))
@@ -169,7 +169,7 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
       // The recipient version is read again at the click, as the form does, so the server can refuse a changed contact.
       const state = await trpc.invoices.sendReadiness.query({ contactId, currency })
       if (state.policyUnavailable || state.issues.length || !state.recipientVersion) {
-        setError(state.policyUnavailable ? t("invoiceValidation.policyUnavailable") : state.issues[0] ? t(invoiceIssueKey(state.issues[0].code), state.issues[0].params) : t("invoiceValidation.unknown"))
+        setError(state.policyUnavailable ? t("invoiceValidation.policyUnavailable") : state.issues[0] ? t(invoiceIssueKey(state.issues[0].code, state.issues[0].field), state.issues[0].params) : t("invoiceValidation.unknown"))
         return
       }
       const reviewedRecipient = state.recipientVersion

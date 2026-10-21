@@ -469,7 +469,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
                 <CustomerPicker id="invoice-contact" contacts={contacts} value={contactId} invalid={!!fieldIssues.find(issue => issue.field === "contactId")} onChange={selectContact} onCreated={id => { selectContact(id); void contactQuery.refresh() }} />
               )}
               {fieldError("contactId")}
-              {fieldIssues.filter(issue => issue.field.startsWith("customer.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+              {fieldIssues.filter(issue => issue.field.startsWith("customer.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code, issue.field), issue.params)}</p>)}
             </div>
             <IssuanceFields value={issuance} onChange={value => { setIssuance(value); setFieldIssues(issues => issues.filter(issue => !["supplyDate", "exchangeRate", "rateDate"].includes(issue.field))) }} currency={currency} baseCurrency={baseCurrency} showHint={false} errors={fieldIssues} />
             <div className="grid gap-2">

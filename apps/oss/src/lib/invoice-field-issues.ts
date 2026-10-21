@@ -20,7 +20,17 @@ const issueKeys: Record<string, TranslationKey> = {
   "currency.unsupported": "invoiceValidation.currency.unsupported",
   "vat.unsupported": "invoiceValidation.vat.unsupported",
 }
-export function invoiceIssueKey(code: string): TranslationKey { return issueKeys[code] ?? "invoiceValidation.unknown" }
+// A customer's missing detail isn't on the invoice form, so its message names the field.
+const requiredFieldKeys: Record<string, TranslationKey> = {
+  "customer.name": "invoiceValidation.customer.name.required",
+  "customer.address": "invoiceValidation.customer.address.required",
+  "customer.zip": "invoiceValidation.customer.zip.required",
+  "customer.city": "invoiceValidation.customer.city.required",
+  "customer.country": "invoiceValidation.customer.country.required",
+}
+export function invoiceIssueKey(code: string, field?: string): TranslationKey {
+  return (code === "required" && field ? requiredFieldKeys[field] : undefined) ?? issueKeys[code] ?? "invoiceValidation.unknown"
+}
 export function invoiceFieldIssues(error: unknown): FieldIssue[] {
   const data = (error as { data?: { fieldIssues?: unknown } } | null)?.data?.fieldIssues
   if (!Array.isArray(data)) return []

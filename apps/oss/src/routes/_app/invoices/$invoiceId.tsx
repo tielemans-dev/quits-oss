@@ -1266,7 +1266,8 @@ function InvoiceDetailPage() {
       <div className="print-area grid gap-6">
         <div ref={sendIssues} tabIndex={-1} className="grid gap-2 empty:hidden focus:outline-none no-print">
             {(invoice.status === "draft" || fieldIssues.some(issue => issue.field.startsWith("seller."))) && <OrganizationGaps issues={[...(invoice.status === "draft" ? readiness?.issues ?? [] : []), ...fieldIssues]} />}
-            {fieldIssues.filter(issue => !issue.field.startsWith("seller.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+            {fieldIssues.filter(issue => !issue.field.startsWith("seller.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code, issue.field), issue.params)}</p>)}
+            {fieldIssues.some(issue => issue.field.startsWith("customer.")) && <Link to="/contacts/$contactId" params={{ contactId: contact.id }} search={{ edit: true }} className="w-fit text-sm underline underline-offset-4">{t("invoices.detail.email.fallback.invalidRecipient.fix")}</Link>}
         </div>
 
         {invoice.disputed && invoice.status === "draft" && <section className="grid gap-2 no-print">

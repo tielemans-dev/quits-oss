@@ -79,7 +79,7 @@ export function submitInvoice(
       // The invoice page words this itself; neither the provider's text nor ours goes into the URL.
       if (isEmailSendFailure(error)) return EMAIL_SEND_FAILED_PARAM
       const issues = invoiceFieldIssues(error)
-      if (issues.length) return issues.map((issue) => t(invoiceIssueKey(issue.code), issue.params)).join(" · ")
+      if (issues.length) return issues.map((issue) => t(invoiceIssueKey(issue.code, issue.field), issue.params)).join(" · ")
       // The refusal's own message (missing exemption statement, provider failure, ...) beats a generic one.
       return error instanceof Error && error.message && !isUnexpectedFailure(error) ? error.message : t("invoiceValidation.unknown")
     },

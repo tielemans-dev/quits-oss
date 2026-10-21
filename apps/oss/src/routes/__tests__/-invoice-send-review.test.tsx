@@ -304,6 +304,22 @@ describe("new invoice send review", () => {
     expect(mutation).toHaveBeenCalledTimes(2)
     expect(screen.queryByTestId("organization-gaps")).toBeNull()
   })
+  it("names each missing customer detail when sending a draft and links to the customer", async () => {
+    api.get.mockResolvedValue({ ...invoice, status: "draft" })
+    const missing = ["address", "zip", "city"].map(field => ({ code: "required", field: `customer.${field}`, params: {} }))
+    api.send.mockRejectedValueOnce(Object.assign(new Error("Synthetic validation failure"), { data: { fieldIssues: [...missing, { code: "customer.cvr.required", field: "customer.taxId", params: {} }] } }))
+    render(<DetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "invoices.detail.action.send" }))
+    const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
+    await act(async () => { fireEvent.click(confirm) })
+    expect(screen.getAllByRole("alert").map(alert => alert.textContent)).toEqual(expect.arrayContaining([
+      "invoiceValidation.customer.address.required", "invoiceValidation.customer.zip.required",
+      "invoiceValidation.customer.city.required", "invoiceValidation.customer.cvr.required",
+    ]))
+    expect(screen.queryByText("invoiceValidation.required")).toBeNull()
+    fireEvent.click(screen.getByText("invoices.detail.email.fallback.invalidRecipient.fix"))
+    expect(api.navigate).toHaveBeenCalledWith({ to: "/contacts/$contactId", params: { contactId: contact.id } })
+  })
   it("binds draft creation to the recipient version shown in the confirmation, not to drafts", async () => {
     render(<NewPage />)
     await screen.findByRole("option", { name: contact.name })
