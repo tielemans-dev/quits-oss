@@ -1,5 +1,6 @@
 import { z } from "zod"
-import { DANISH_ONBOARDING_V2_DEFAULTS } from "@quits/contracts/onboarding"
+import { DANISH_ONBOARDING_V2_DEFAULTS, isDanishPhone } from "@quits/contracts/onboarding"
+import { normalizePhone } from "@quits/contracts/contacts"
 import { companyStarters } from "../../lib/onboarding/company-starters"
 import {
   cvrCompanySchema,
@@ -43,6 +44,27 @@ export const draftSchema = z.object({
 })
 export type OnboardingDraft = z.infer<typeof draftSchema>
 
+const RESERVED_EMAIL_TLDS = new Set(["example", "invalid", "localhost", "test"])
+
+/**
+ * A register email we may prefill: valid, and not on a reserved domain (RFC 2606/6761) such
+ * as example.com or *.invalid. Registers hold placeholders, and they must not reach invoices.
+ */
+export function registryEmail(value: string | null | undefined) {
+  const email = value?.trim()
+  if (!email || !z.string().email().safeParse(email).success) return null
+  const labels = email.slice(email.lastIndexOf("@") + 1).toLowerCase().split(".")
+  const reserved = labels[0] === "example" || labels.at(-2) === "example" || RESERVED_EMAIL_TLDS.has(labels.at(-1)!)
+  return reserved ? null : email
+}
+
+/** A register phone we may prefill: one confirmation accepts, and not a run of one digit such as 00000000. */
+export function registryPhone(value: string | null | undefined) {
+  const phone = value?.trim()
+  if (!phone || !isDanishPhone(phone)) return null
+  return /^(\d)\1{7}$/.test(normalizePhone(phone).replace(/^\+45/, "")) ? null : phone
+}
+
 export function newDraft(
   company: CvrCompany | null,
   email: string,
@@ -62,8 +84,9 @@ export function newDraft(
       companyAddress: company?.address ?? "",
       cvr: company?.cvr ?? "",
       companyForm: company?.companyForm ?? "ApS",
-      companyEmail: company?.advertisingProtected ? email : (company?.email ?? email),
-      companyPhone: company?.advertisingProtected ? "" : (company?.phone ?? ""),
+      // Optional register contacts are dropped rather than prefilled when unusable, so they never block confirmation.
+      companyEmail: company?.advertisingProtected ? email : (registryEmail(company?.email) ?? email),
+      companyPhone: company?.advertisingProtected ? "" : (registryPhone(company?.phone) ?? ""),
       momsRegistered: company ? company.momsRegistered : true,
       countryCode: "DK",
       defaultCurrency: "DKK",

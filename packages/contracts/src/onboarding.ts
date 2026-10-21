@@ -114,6 +114,7 @@ export {
   confirmOnboardingV2Schema,
   confirmOnboardingV2WithVatConfirmationSchema,
   onboardingV2ConfirmationResultSchema,
+  isDanishPhone,
   isValidDanishCvr,
 } from "./onboarding-v2"
 export type { ConfirmOnboardingV2Input, ConfirmOnboardingV2 } from "./onboarding-v2"
