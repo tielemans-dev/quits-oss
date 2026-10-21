@@ -7,6 +7,7 @@ import { z } from "zod"
 import { registryCustomer } from "../routes/_app/contacts/-cvr-lookup"
 import type { TranslationKey } from "../lib/i18n/messages"
 import { useI18n } from "../lib/i18n/react"
+import { handledMutationError } from "../lib/query-refresh"
 import { cn } from "../lib/utils"
 import { trpc } from "../trpc/client"
 import { Button } from "./ui/button"
@@ -93,7 +94,7 @@ export function CustomerPicker({ id, contacts, value, invalid, onChange, onCreat
     if (!emailSchema.safeParse(email).success) { setError("docForm.customer.emailInvalid"); return }
     setPending(true); setError(null)
     try {
-      const contact = await trpc.contacts.create.mutate({ ...registryCustomer(chosen), email: email.trim(), reuseCvr: true })
+      const contact = await trpc.contacts.create.mutate({ ...registryCustomer(chosen), email: email.trim(), reuseCvr: true }, handledMutationError)
       setCreated({ id: contact.id, name: contact.name })
       onCreated(contact.id)
       close()
