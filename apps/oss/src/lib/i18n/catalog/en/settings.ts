@@ -38,6 +38,7 @@ export const enSettingsMessages = {
     "Please enter a valid company phone number.",
   "settings.validation.invalidInvoicePrefix":
     "Invoice prefix must be 1-10 uppercase letters, numbers, or hyphens.",
+  "settings.validation.prefixConflict": "Invoices and credit notes need different prefixes, so their numbers can never be the same.",
   "settings.validation.invalidCreditNotePrefix": "Credit note prefix must be 1-10 uppercase letters, numbers, or hyphens.",
   "settings.validation.invalidQuotePrefix":
     "Quote prefix must be 1-10 uppercase letters, numbers, or hyphens.",

@@ -9,7 +9,7 @@ import { isNonVatRegistrationAllowed } from "../runtime/extensions"
 import { prisma } from "../db"
 import { getCvrLookupProvider } from "../runtime/services"
 import { buildDkPresets } from "./dk-presets"
-import { hasIssuedDocuments } from "../../domain/documents/base-currency"
+import { hasNumberedDocuments } from "../../domain/documents/base-currency"
 import { organizationSlugCandidate } from "../organization-slug"
 
 /**
@@ -97,10 +97,7 @@ export async function confirmOnboardingV2(organizationId: string, input: Confirm
     if (!input.momsRegistered && !isNonVatRegistrationAllowed()) {
       throw new TRPCError({ code: "FORBIDDEN", message: "save.failed" })
     }
-    // Pre-issuance-numbering migrations deliberately retain numbered drafts.
-    const numberedDrafts = await tx.invoice.count({ where: { organizationId, status: "draft", number: { not: null } } }) +
-      await tx.quote.count({ where: { organizationId, status: "draft", number: { not: null } } })
-    if (numberedDrafts > 0 || await hasIssuedDocuments(tx, organizationId)) {
+    if (await hasNumberedDocuments(tx, organizationId)) {
       throw new TRPCError({ code: "CONFLICT", message: "save.failed" })
     }
     const completedAt = new Date()

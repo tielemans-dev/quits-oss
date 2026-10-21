@@ -38,6 +38,7 @@ export const daSettingsMessages = {
     "Angiv et gyldigt virksomhedsnummer.",
   "settings.validation.invalidInvoicePrefix":
     "Fakturapræfikset skal være 1-10 store bogstaver, tal eller bindestreger.",
+  "settings.validation.prefixConflict": "Fakturaer og kreditnotaer skal have forskellige præfikser, så deres numre aldrig kan være ens.",
   "settings.validation.invalidCreditNotePrefix": "Præfiks for kreditnotaer skal være 1-10 store bogstaver, tal eller bindestreger.",
   "settings.validation.invalidQuotePrefix":
     "Tilbudspræfikset skal være 1-10 store bogstaver, tal eller bindestreger.",

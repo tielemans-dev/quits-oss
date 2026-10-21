@@ -3,6 +3,7 @@ import { buildDkSettingsDefaults } from "../../lib/onboarding/dk-presets"
 import { initializeDkSettings } from "../../lib/onboarding/initialize-settings"
 import { resolveBaseCurrency } from "../../domain/documents/base-currency"
 import { assertSettingsCurrency } from "../currency"
+import { assertDistinctDocumentPrefixes } from "../document-prefixes"
 import { TRPCError } from "@trpc/server"
 import {
   countryCodeSchema,
@@ -332,6 +333,7 @@ async function applyPatchToOrgSettings(
     if (settings?.onboardingVersion === 2 && (settings.onboardingCompletedAt || ["complete", "completed"].includes(settings.onboardingStatus))) {
       throw new TRPCError({ code: "CONFLICT", message: "Onboarding v2 is already complete" })
     }
+    assertDistinctDocumentPrefixes(settings ?? { creditNotePrefix: "CN" }, { invoicePrefix: patch.invoicePrefix }, patch.locale ?? settings?.locale)
     if (!settings) {
       // Currency resolution reads the saved book, so initialize it before a sparse first patch.
       await initializeDkSettings(organizationId, tx)

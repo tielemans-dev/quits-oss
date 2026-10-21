@@ -214,6 +214,48 @@ describeIfDatabase("onboarding router integration", () => {
     }
   })
 
+  it("refuses an invoice prefix equal to the credit-note prefix", async () => {
+    const { orgId, caller } = await createCloudCaller()
+    try {
+      await caller.onboarding.getStatus()
+      await expect(caller.onboarding.saveDraft({ invoicePrefix: "CN", locale: "en-US" })).rejects.toThrow("Invoices and credit notes need different prefixes")
+      expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } })).invoicePrefix).not.toBe("CN")
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("keeps the counters once an invoice is issued and saves the rest of the draft", async () => {
+    const { orgId, caller } = await createCloudCaller()
+    try {
+      await caller.onboarding.saveDraft({ invoiceNextNum: 7, quoteNextNum: 3 })
+      const contact = await prisma.contact.create({ data: { organizationId: orgId, name: "Buyer", email: "buyer@example.com", country: "DK" } })
+      await prisma.invoice.create({ data: { organizationId: orgId, contactId: contact.id, number: "INV-0007", status: "sent",
+        dueDate: new Date("2026-11-01T00:00:00.000Z"), subtotalNet: 100, totalGross: 125 } })
+      await caller.onboarding.saveDraft({ invoiceNextNum: 1, quoteNextNum: 1, companyName: "Renamed ApS" })
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } }))
+        .toMatchObject({ invoiceNextNum: 7, quoteNextNum: 3, companyName: "Renamed ApS" })
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
+  it("treats a legacy completion as final", async () => {
+    const { orgId, caller } = await createCloudCaller()
+    try {
+      await caller.onboarding.saveDraft({ companyName: "Final ApS", companyAddress: "Testvej 1", companyEmail: "billing@example.test",
+        countryCode: "DK", invoicingIdentity: "registered_business", locale: "da-DK", timezone: "Europe/Copenhagen",
+        defaultCurrency: "DKK", taxRegime: "eu_vat", pricesIncludeTax: false, invoicePrefix: "INV", invoiceNextNum: 5, quotePrefix: "QTE",
+        primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" })
+      expect(await caller.onboarding.completeManual({ method: "manual" })).toMatchObject({ isComplete: true })
+      await caller.onboarding.saveDraft({ invoiceNextNum: 1, companyName: "Changed" })
+      expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: orgId } }))
+        .toMatchObject({ invoiceNextNum: 5, companyName: "Final ApS", onboardingStatus: "complete" })
+    } finally {
+      await cleanupTestOrganizations({ where: { id: orgId } })
+    }
+  })
+
   it("provisions the legacy manual trial during an outage", async () => {
     const { orgId, caller } = await createCloudCaller()
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
