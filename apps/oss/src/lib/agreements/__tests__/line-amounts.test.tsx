@@ -6,7 +6,7 @@ import { I18nProvider } from "../../i18n/react"
 import { PublicAgreementPage } from "../../../components/agreements/public-agreement-page"
 import { buildOfferSnapshot } from "../../../domain/agreements/snapshot"
 import { v2Fixture } from "../../../domain/agreements/__tests__/v2-fixture"
-import { agreementLineAmounts } from "../offer-totals"
+import { agreementLineAmounts, agreementVatBasisLabels } from "../offer-totals"
 import type { PublicAgreementDto } from "../public"
 
 const offer = (pricesIncludeTax: boolean, unitPrice: string) => buildOfferSnapshot(v2Fixture({
@@ -40,5 +40,21 @@ describe("agreement line amounts", () => {
     expect(snapshot.deliverables[0]).toMatchObject({ lineNet: "18000.00", lineGross: "22500.00" })
     expect(agreementLineAmounts(snapshot, snapshot.deliverables[0]!)).toEqual({ unitPrice: "22500.00", amount: "22500.00" })
     for (const output of [text(page(snapshot)), text(pdf(snapshot))]) expect(output).toContain("1 × 22.500,00 kr. = 22.500,00 kr.")
+  })
+  it("states the VAT side of every amount, as the subtotal and total do", () => {
+    for (const output of [text(page(offer(false, "18000"))), text(pdf(offer(false, "18000")))]) {
+      expect(output).toContain("= 18.000,00 kr. ekskl. moms")
+      expect(output).toContain("Subtotal ekskl. moms: 18.000,00 kr.")
+      expect(output).toContain("Moms 25 %: 4.500,00 kr.")
+      expect(output).toContain("Ydelser i alt inkl. moms: 22.500,00 kr.")
+    }
+    for (const output of [text(page(offer(true, "22500"))), text(pdf(offer(true, "22500")))]) {
+      expect(output).toContain("= 22.500,00 kr. inkl. moms")
+      expect(output).toContain("Ydelser i alt inkl. moms: 22.500,00 kr.")
+    }
+  })
+  it("names no VAT side for an offer without VAT", () => {
+    expect(agreementVatBasisLabels({ pricesIncludeTax: false, isV2: true, tax: "0.00" }, "da-DK")).toEqual({ line: null, total: "Ydelser i alt" })
+    expect(agreementVatBasisLabels({ pricesIncludeTax: true, isV2: false, tax: 250 }, "da-DK")).toEqual({ line: "inkl. moms", total: "I alt inkl. moms" })
   })
 })

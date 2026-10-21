@@ -152,6 +152,8 @@ export const daAgreementsMessages = {
   "agreements.completeConfirm": "Afslut aftalen? Alle leverancer skal være afsluttet både leveringsmæssigt og faktureringsmæssigt.",
   "agreements.payableRounding": "Afrunding af total",
   "agreements.serviceTotal": "Ydelser i alt",
+  "agreements.serviceTotalInclVat": "Ydelser i alt inkl. moms",
+  "agreements.totalInclVat": "I alt inkl. moms",
   "agreements.paymentSchedule": "Betalingsplan",
   "agreements.vatBasis.net": "ekskl. moms",
   "agreements.vatBasis.gross": "inkl. moms",

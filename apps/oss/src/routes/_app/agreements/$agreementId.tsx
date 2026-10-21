@@ -30,7 +30,8 @@ import {
 import { useI18n } from "../../../lib/i18n/react"
 import { formatCurrency, formatDate } from "../../../lib/i18n/format"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
-import { agreementLineAmounts } from "../../../lib/agreements/offer-totals"
+import { agreementLineAmounts, agreementVatBasisLabels } from "../../../lib/agreements/offer-totals"
+import { DocumentTotals } from "../../../components/documents/document-totals"
 
 export const Route = createFileRoute("/_app/agreements/$agreementId")({
   component: AgreementDetail,
@@ -139,6 +140,7 @@ function AgreementDetail() {
     return (
       <div><QuerySkeleton /></div>
     )
+  const basis = agreementVatBasisLabels({ pricesIncludeTax: agreement.pricesIncludeTax, isV2: agreement.offerFormatVersion === 2, tax: agreement.taxAmount }, locale)
   return (
     <div className="grid gap-6">
       <Link to="/agreements" className="text-sm underline">
@@ -239,7 +241,7 @@ function AgreementDetail() {
           </p>
           <p className="whitespace-pre-wrap">{agreement.summary}</p>
           <p>
-            {t(agreement.offerFormatVersion === 2 ? "agreements.serviceTotal" : "agreements.total")}: {formatCurrency(agreement.total, agreement.currency, locale)}
+            {basis.total}: {formatCurrency(agreement.total, agreement.currency, locale)}
           </p>
           <p>
             {t("agreements.dueInDays")}: {agreement.dueInDays}
@@ -290,7 +292,10 @@ function AgreementDetail() {
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {line.description}
               </p>
-              <p className="num">{formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)}</p>
+              <p>
+                <span className="num">{formatCurrency(agreementLineAmounts(agreement, line).amount, agreement.currency, locale)}</span>
+                {basis.line && <span className="text-sm text-muted-foreground"> {basis.line}</span>}
+              </p>
               {capabilities && <DeliverableAllocation agreement={agreement} line={line} capabilities={capabilities} onChanged={refresh} onError={setError} />}
               {line.agreedDate && (
                 <p className="text-sm">
@@ -344,6 +349,11 @@ function AgreementDetail() {
               )}
             </div>
           ))}
+          {agreement.deliverables.length > 0 && (
+            <div className="grid gap-2 text-sm sm:ml-auto sm:w-80">
+              <DocumentTotals priceBasis={agreement.priceBasis} subtotal={agreement.subtotal} taxAmount={agreement.taxAmount} total={agreement.total} vatRows={agreement.vatRows} rounding={agreement.rounding} currency={agreement.currency} taxRegime={agreement.taxRegime} totalLabel={basis.total} />
+            </div>
+          )}
         </CardContent>
       </Card>
       <Card>

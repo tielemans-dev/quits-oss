@@ -6,6 +6,7 @@ import { vatRowsByRate } from "../../domain/documents/frozen-vat-groups"
 import { deviationVatLabel } from "../documents/line-amounts"
 import { formatNumber } from "../i18n/format"
 import { translate } from "../i18n/translate"
+import { agreementOfferTotals, agreementVatBasisLabels } from "./offer-totals"
 
 /** All offer channels read the frozen registration, regime and line rates. */
 export function agreementVatPresentation(snapshot: AgreementOfferSnapshot, locale = snapshot.locale) {
@@ -13,7 +14,9 @@ export function agreementVatPresentation(snapshot: AgreementOfferSnapshot, local
   const statement = status === false ? nonVatStatement(locale) : null
   const v2 = "offerFormatVersion" in snapshot ? snapshot : null
   const rows = v2 ? vatRowsByRate(v2.vatGroups, snapshot.currency) : undefined
+  const offerTotals = agreementOfferTotals(snapshot)
   return {
+    basis: agreementVatBasisLabels({ pricesIncludeTax: snapshot.pricesIncludeTax, isV2: offerTotals.isV2, tax: offerTotals.tax }, locale),
     totals: v2 ? buildTotals({ basis: "net", subtotal: v2.serviceTotal.net, taxAmount: v2.serviceTotal.tax, total: v2.serviceTotal.gross, rounding: v2.serviceTotal.payableRounding, vatRows: rows, currency: snapshot.currency, locale, taxRegime: snapshot.taxRegime }) : null,
     status,
     taxLabel: translate(status === false ? "line.noVat" : "agreements.tax", locale),

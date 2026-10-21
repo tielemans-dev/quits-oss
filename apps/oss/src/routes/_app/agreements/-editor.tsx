@@ -21,7 +21,10 @@ import { useI18n } from "../../../lib/i18n/react"
 import { renderAgreementMarkdown } from "../../../lib/agreements/markdown"
 import { calculateLegacyDocument, previewDraft, percentageToFraction } from "@quits/shared/pricing"
 import { currencyFractionDigits } from "../../../lib/payments/stripe-amounts"
-import { formatCurrency } from "../../../lib/i18n/format"
+import { DocumentTotals } from "../../../components/documents/document-totals"
+import { lineColumnKeys, priceBasis } from "../../../lib/documents/line-amounts"
+import { agreementVatBasisLabels } from "../../../lib/agreements/offer-totals"
+import { defaultSettingsTaxRate } from "../../../hooks/use-document-tax-rate"
 import { Plus, Trash2 } from "lucide-react"
 
 type Form = {
@@ -73,6 +76,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
   const [sellerName, setSellerName] = useState("")
   const [offerFormatVersion, setOfferFormatVersion] = useState<number | null>(2)
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
+  const [taxRegime, setTaxRegime] = useState<string | null>(null)
   const [depositsEnabled, setDepositsEnabled] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [loadError, setLoadError] = useState<unknown>(null)
@@ -98,6 +102,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
         const seller = agreement?.sellerSnapshot as { companyName?: string | null } | null
         setSellerName(agreement ? seller?.companyName ?? "" : settings.companyName ?? "")
         setPricesIncludeTax(agreement?.pricesIncludeTax ?? settings.pricesIncludeTax)
+        setTaxRegime(agreement?.taxRegime ?? settings.taxRegime ?? null)
         if (agreement) {
           if (agreement.status !== "draft") throw new Error(t("agreements.draftOnly"))
           setOfferFormatVersion(agreement.offerFormatVersion)
@@ -129,6 +134,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
           setForm({
             ...initial,
             currency: settings.defaultCurrency,
+            taxRate: String(defaultSettingsTaxRate(settings)),
             templateId: template?.id ?? null,
             termsMarkdown: template?.termsMarkdown ?? "",
           })
@@ -163,6 +169,10 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
       ),
     }))
   }
+  // The same amounts the draft is saved with: a v2 service total leaves the payment schedule out.
+  const totals = offerFormatVersion === 2
+    ? previewDraft({ items: form.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: form.taxRate, currency: form.currency, pricesIncludeTax }).result ?? { net: "0", tax: "0", gross: "0" }
+    : (({ subtotalNet, totalTax, totalGross }) => ({ net: String(subtotalNet), tax: String(totalTax), gross: String(totalGross) }))(calculateLegacyDocument({ items: form.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(form.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(form.currency), 2) }))
   const deferred = useDeferredValue(form)
   const preview = useMemo(() => {
     try {
@@ -319,7 +329,7 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor={`price-${index}`}>{t("agreements.unitPrice")}</Label>
+                    <Label htmlFor={`price-${index}`}>{Number(form.taxRate) !== 0 || Number(totals.tax) !== 0 ? t(lineColumnKeys(priceBasis(pricesIncludeTax)).unitPrice) : t("agreements.unitPrice")}</Label>
                     <Input
                       id={`price-${index}`}
                       type="number"
@@ -409,14 +419,10 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
               </Select>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {offerFormatVersion === 2 ? t("agreements.serviceTotal") : pricesIncludeTax ? t("docForm.summary.total") : t("docForm.summary.subtotal")}:{" "}
-            {formatCurrency(
-              offerFormatVersion === 2 ? Number(previewDraft({ items: form.deliverables.filter(line => !line.isDeposit).map(line => ({ description: line.description || line.title || " ", quantity: line.quantity, unitPrice: line.unitPrice, vat: line.vat })), taxRate: form.taxRate, currency: form.currency, pricesIncludeTax }).result?.[pricesIncludeTax ? "gross" : "net"] ?? "0") : calculateLegacyDocument({ items: form.deliverables.map((line) => ({ description: line.description ?? "", quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })), taxRate: Number(form.taxRate), pricesIncludeTax, fractionDigits: Math.min(currencyFractionDigits(form.currency), 2) })[pricesIncludeTax ? "totalGross" : "subtotalNet"],
-              form.currency.match(/^[A-Z]{3}$/) ? form.currency : "USD",
-              locale,
-            )}
-          </p>
+          <div className="grid gap-2 text-sm sm:ml-auto sm:w-80">
+            <DocumentTotals priceBasis={priceBasis(pricesIncludeTax)} subtotal={Number(totals.net)} taxAmount={Number(totals.tax)} total={Number(totals.gross)} currency={form.currency.match(/^[A-Z]{3}$/) ? form.currency : "USD"} taxRegime={taxRegime}
+              totalLabel={agreementVatBasisLabels({ pricesIncludeTax, isV2: offerFormatVersion === 2, tax: totals.tax }, locale).total} />
+          </div>
           <div className="grid gap-2">
             <Label>{t("agreements.template")}</Label>
             <Select

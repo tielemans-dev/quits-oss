@@ -56,6 +56,7 @@ import { releaseDeliverableReservation, authorizeDeliverableRebill } from "../..
 import { deliverableReleaseReservationInputSchema, deliverableAuthorizeRebillInputSchema } from "@quits/contracts/billing"
 import { router, authorizedProcedure } from "../init"
 import { unwrapOutcome } from "../outcome"
+import { documentDisplayForUi } from "./document-display"
 
 export const agreementsRouter = router({
   createTemplate: authorizedProcedure("agreement:manageTemplates").input(agreementTemplateCreateInputSchema)
@@ -171,7 +172,13 @@ export const agreementsRouter = router({
       const agreement = await getAgreementWithAllocations(ctx.organizationId, input.id, {
         invoices: actorCan(ctx.actor, "invoice:read"), creditNotes: actorCan(ctx.actor, "creditNote:read"),
       })
-      return { ...serializeAgreementDetail(agreement), deliverables: agreement.deliverables.map(serializeDeliverable) }
+      // The totals cover the services; a v2 payment schedule is part of them, not added to them.
+      const services = agreement.deliverables.filter(line => agreement.offerFormatVersion !== 2 || !line.isDeposit)
+      return {
+        ...serializeAgreementDetail(agreement),
+        ...documentDisplayForUi({ ...agreement, items: services }),
+        deliverables: agreement.deliverables.map(serializeDeliverable),
+      }
     }),
   releaseReservation: authorizedProcedure("invoice:update")
     .input(deliverableReleaseReservationInputSchema)

@@ -19,6 +19,7 @@ export function DocumentTotals({
   rounding,
   currency,
   taxRegime,
+  totalLabel,
   renderAmount,
 }: {
   priceBasis?: PriceBasis
@@ -29,6 +30,8 @@ export function DocumentTotals({
   rounding?: string | null
   currency: string
   taxRegime?: string | null
+  /** A document that names its total otherwise, as an agreement's service total. */
+  totalLabel?: string
   /** Optional presentation for callers that need separator-aware tabular digits. */
   renderAmount?: (amount: string) => ReactNode
 }) {
@@ -45,7 +48,7 @@ export function DocumentTotals({
         </div>
       ))}
       <div className="flex justify-between font-semibold text-base border-t pt-2">
-        <span>{totals.total.label}</span>
+        <span>{totalLabel ?? totals.total.label}</span>
         {amount(totals.total.amount)}
       </div>
       {totals.note && <p className="rounded-md border p-3 text-xs text-muted-foreground">{totals.note}</p>}

@@ -95,6 +95,7 @@ export function PublicAgreementPage({
                 price: money(agreementLineAmounts(snapshot, line).unitPrice),
               })}{" "}
               = {money(agreementLineAmounts(snapshot, line).amount)}
+              {vat.basis.line && ` ${vat.basis.line}`}
             </p>
             {vat.lineLabel(line.taxRate) && <p className="text-sm text-muted-foreground">{vat.lineLabel(line.taxRate)}</p>}
             {line.agreedDate && (
@@ -112,7 +113,7 @@ export function PublicAgreementPage({
         ))}
         {vat.totals && vat.status !== false ? <>
             {vat.totals.lines.map((row, i) => <p key={i}>{row.label}: {money(row.amount)}{row.reason ? ` · ${row.reason}` : ""}</p>)}
-            <p>{t("agreements.serviceTotal")}: {money(vat.totals.total.amount)}</p>
+            <p>{vat.basis.total}: {money(vat.totals.total.amount)}</p>
             {vat.totals.note && <p>{vat.totals.note}</p>}
           </> : <>
         <p>
@@ -125,7 +126,7 @@ export function PublicAgreementPage({
         </p>
         {totals.payableRounding && <p>{t("agreements.payableRounding")}: {money(totals.payableRounding)}</p>}
         <p>
-          {t(totals.isV2 ? "agreements.serviceTotal" : "agreements.total")}:{" "}
+          {vat.basis.total}:{" "}
           {money(totals.gross)}
         </p>
           </>}
