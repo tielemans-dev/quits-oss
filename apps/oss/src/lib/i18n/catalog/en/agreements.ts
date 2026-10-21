@@ -125,6 +125,7 @@ export const enAgreementsMessages = {
   "agreements.prepaymentNotice": "Prepayment drafts cannot be issued yet. You can explicitly invoice a schedule line as a sale instead.",
   "agreements.scheduleAsSaleChoice": "Invoice these schedule lines as sales. Record this choice on the draft.",
   "agreements.createInvoices": "Create draft invoices",
+  "agreements.creatingInvoices": "Creating draft invoices…",
   "agreements.openSaleInvoice": "Open sale invoice",
   "agreements.openPrepaymentInvoice": "Open prepayment draft",
   "agreements.billing.unbilled": "Unbilled",

@@ -123,6 +123,7 @@ export const daAgreementsMessages = {
   "agreements.prepaymentNotice": "Forudbetalingskladder kan endnu ikke udstedes. Du kan udtrykkeligt vælge at fakturere en betalingslinje som salg.",
   "agreements.scheduleAsSaleChoice": "Fakturer disse betalingslinjer som salg. Gem valget på kladden.",
   "agreements.createInvoices": "Opret fakturakladder",
+  "agreements.creatingInvoices": "Opretter fakturakladder…",
   "agreements.openSaleInvoice": "Åbn salgsfaktura",
   "agreements.openPrepaymentInvoice": "Åbn forudbetalingskladde",
   "agreements.billing.unbilled": "Ikke faktureret",

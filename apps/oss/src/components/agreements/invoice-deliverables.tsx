@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency } from "../../lib/i18n/format"
@@ -11,6 +11,7 @@ import { Label } from "../ui/label"
 type Agreement = Awaited<ReturnType<typeof trpc.agreements.get.query>>
 export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: { agreement: Agreement; depositsEnabled: boolean; onChanged: () => Promise<void> }) {
   const { t, locale } = useI18n()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [scheduleAsSale, setScheduleAsSale] = useState(false)
@@ -28,6 +29,9 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
     setBusy(true); setError(null)
     try {
       const result = await trpc.invoices.createFromDeliverables.mutate({ agreementId: agreement.id, deliverableIds: selected, scheduleAsSale })
+      // A single draft opens at once. A sale and a prepayment draft together stay here, with a link to each.
+      const only = result.saleInvoiceId && result.prepaymentInvoiceId ? undefined : result.saleInvoiceId ?? result.prepaymentInvoiceId
+      if (only) return await navigate({ to: "/invoices/$invoiceId", params: { invoiceId: only } })
       setDrafts(result); setOpen(false)
       await onChanged()
     } catch (failure) { setError(failure instanceof Error ? failure.message : t("agreements.error")) }
@@ -54,7 +58,7 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
         </p>)}
       </div>}
       <p className="text-xs text-muted-foreground">{t("agreements.allocation.supportedSources")}</p>
-      <div className="flex gap-2"><Button disabled={busy || !selected.length} onClick={() => void create()}>{t("agreements.createInvoices")}</Button><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>{t("agreements.cancel")}</Button></div>
+      <div className="flex gap-2"><Button disabled={busy || !selected.length} onClick={() => void create()}>{t(busy ? "agreements.creatingInvoices" : "agreements.createInvoices")}</Button><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>{t("agreements.cancel")}</Button></div>
     </div>}
     {drafts?.saleInvoiceId && <Link className="underline" to="/invoices/$invoiceId" params={{ invoiceId: drafts.saleInvoiceId }}>{t("agreements.openSaleInvoice")}</Link>}
     {drafts?.prepaymentInvoiceId && <><p>{t("agreements.prepaymentNotice")}</p><Link className="underline" to="/invoices/$invoiceId" params={{ invoiceId: drafts.prepaymentInvoiceId }}>{t("agreements.openPrepaymentInvoice")}</Link></>}
