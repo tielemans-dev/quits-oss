@@ -28,7 +28,11 @@ import {
 import type { CreditNoteDetail } from "../../../components/credit-notes/types"
 import { StatusBadge } from "../../../components/status-badge"
 import { DocumentTotals } from "../../../components/documents/document-totals"
+import { InvoiceSellerDetails } from "../../../components/invoices/invoice-payment-instructions"
+import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
+import { distinctCompany } from "../../../lib/documents/tax-ids"
 import { lineColumnKeys } from "../../../lib/documents/line-amounts"
+import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 
 /** Owned by the credit notes feature. */
 export const Route = createFileRoute("/_app/credit-notes/$creditNoteId")({
@@ -57,6 +61,7 @@ function CreditNoteDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ kind: "info" | "warning"; text: string } | null>(null)
   const [sending, setSending] = useState(false)
+  const [issuing, setIssuing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [canCreate, setCanCreate] = useState(false)
   const [canSend, setCanSend] = useState(false)
@@ -138,7 +143,7 @@ function CreditNoteDetailPage() {
       })
   }, [beginRequest, creditNoteId, load, t, organizationId, query.revision])
 
-  useEffect(() => { setNotice(null); setSending(false) }, [creditNoteId, organizationId])
+  useEffect(() => { setNotice(null); setSending(false); setIssuing(false) }, [creditNoteId, organizationId])
 
   async function handleSend() {
     if (!creditNote) return
@@ -176,12 +181,17 @@ function CreditNoteDetailPage() {
   async function handleDraft(action: "issueDraft" | "discardDraft") {
     if (!creditNote || sending) return
     const isCurrent = beginRequest(creditNote.id)
-    setSending(true); setError(null)
+    setSending(true); setIssuing(action === "issueDraft"); setError(null)
     try {
       await trpc.creditNotes[action].mutate({ id: creditNote.id })
-      if (isCurrent()) await load()
     } catch (err) { if (isCurrent()) setError(err instanceof Error ? err.message : t("creditNotes.error.generic")) }
-    finally { if (isCurrent()) setSending(false) }
+    finally {
+      // Issuance can commit before the answer is lost, so show what was stored either way.
+      if (isCurrent()) {
+        await load().catch(() => undefined)
+        setSending(false); setIssuing(false)
+      }
+    }
   }
 
   async function handleDownload() {
@@ -274,7 +284,7 @@ function CreditNoteDetailPage() {
       {creditNote.status === "draft" && <div className="grid gap-3">
         <p>{t("creditNotes.request.draftHint")}</p>
         {canCreate && <div className="flex gap-2">
-          <Button disabled={sending} onClick={() => void handleDraft("issueDraft")}>{t("creditNotes.action.issue")}</Button>
+          <Button disabled={sending} onClick={() => void handleDraft("issueDraft")}>{issuing ? t("creditNotes.action.issuing") : t("creditNotes.action.issue")}</Button>
           <Button variant="outline" disabled={sending} onClick={() => void handleDraft("discardDraft")}>{t("creditNotes.action.cancel")}</Button>
         </div>}
       </div>}
@@ -307,16 +317,15 @@ function CreditNoteDetailPage() {
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.billTo")}</h3>
-            <p className="font-semibold">{contact.name}</p>
-            {contact.company && <p className="text-sm">{contact.company}</p>}
-            {contact.email && <p className="text-sm text-muted-foreground">{contact.email}</p>}
-            {contact.address && <p className="text-sm">{contact.address}</p>}
-            {(contact.city || contact.state || contact.zip) && (
-              <p className="text-sm">{[contact.city, contact.state, contact.zip].filter(Boolean).join(", ")}</p>
-            )}
-            {contact.country && <p className="text-sm">{contact.country}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <InvoiceSellerDetails status={creditNote.status} sellerSnapshot={creditNote.sellerSnapshot} />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.billTo")}</h3>
+              <p className="font-semibold">{contact.name}</p>
+              {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
+              {contact.email && <p className="text-sm text-muted-foreground">{contact.email}</p>}
+              {detailBuyerAddress(contact, creditNote.countryCode, locale).map((line, index) => <p key={index} className="text-sm">{line}</p>)}
+            </div>
           </div>
 
           <div className="rounded-md border">
@@ -324,17 +333,23 @@ function CreditNoteDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("pdf.description")}</TableHead>
-                  <TableHead className="text-right w-[80px]">{t("pdf.qty")}</TableHead>
-                  <TableHead className="text-right w-[140px]">{t(lineColumnKeys(creditNote.priceBasis).unitPrice)}</TableHead>
+                  <TableHead className="hidden w-[80px] text-right sm:table-cell">{t("pdf.qty")}</TableHead>
+                  <TableHead className="hidden w-[140px] text-right sm:table-cell">{t(lineColumnKeys(creditNote.priceBasis).unitPrice)}</TableHead>
                   <TableHead className="text-right w-[140px]">{t(lineColumnKeys(creditNote.priceBasis).amount)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {creditNote.items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.description}{sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}</TableCell>
-                    <TableCell className="text-right num">{item.quantity}</TableCell>
-                    <TableCell className="text-right num">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>
+                    <TableCell className="whitespace-normal">
+                      {item.description}
+                      <p className="num mt-1 text-xs text-muted-foreground sm:hidden">
+                        {t("public.document.lineQuantity", { quantity: localizeInvoiceQuantity(String(item.quantity), locale), price: money(item.displayUnitPrice ?? item.unitPrice) })}
+                      </p>
+                      {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
+                    </TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
+                    <TableCell className="hidden text-right num sm:table-cell">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>
                     <TableCell className="text-right num">{money(item.displayAmount ?? item.total)}</TableCell>
                   </TableRow>
                 ))}
