@@ -29,6 +29,7 @@ import { DocumentVatFields, VatGroupPreview } from "../../../components/document
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import type { RuntimeCapabilities } from "@quits/contracts/runtime"
 import { useState, useEffect, useRef } from "react"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { clearHandoff, handOff, readHandoff } from "../../../lib/request-handoff"
 import { submitInvoice } from "../../../lib/submit-invoice"
@@ -282,7 +283,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
         // Use the organisation's own provider when the distribution allows one; otherwise the
         // distribution's managed provider.
         mode: aiInvoiceDraft?.byok || aiInvoiceDraft?.localAgent ? "byok" : "managed",
-      })
+      }, handledMutationError)
       const draft = result.draft
       // The prompt described nothing that was sold; the model says why, in the user's language.
       if (draft.items.length === 0) {
@@ -356,7 +357,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
     setSaving(true)
     try {
       if (kind === "recurring") {
-        const schedule = await trpc.recurring.createV2.mutate({ name: contacts.find(contact => contact.id === contactId)?.name ?? "", contactId, items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate, vatEvidence, notes, startDate: issuance.supplyDate, intervalCount: 1, intervalUnit: "month", dueInDays: Math.max(0, Math.min(120, Math.round((Date.parse(dueDate) - Date.parse(issuance.supplyDate)) / 86400000))), autoSend: false, end: { type: "none" } })
+        const schedule = await trpc.recurring.createV2.mutate({ name: contacts.find(contact => contact.id === contactId)?.name ?? "", contactId, items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate, vatEvidence, notes, startDate: issuance.supplyDate, intervalCount: 1, intervalUnit: "month", dueInDays: Math.max(0, Math.min(120, Math.round((Date.parse(dueDate) - Date.parse(issuance.supplyDate)) / 86400000))), autoSend: false, end: { type: "none" } }, handledMutationError)
         if (onComplete) onComplete({ id: schedule.id, kind: "recurring" }); else void navigate({ to: "/recurring" })
         return
       }
@@ -378,7 +379,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
       )
 
       if (nudgeDeclined) { if (onComplete) onComplete({ ...target, kind: "draft" }); return }
-      if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
+      if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id }, handledMutationError)).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
       navigate({
         to: "/invoices/$invoiceId",
         params: { invoiceId: target.id },

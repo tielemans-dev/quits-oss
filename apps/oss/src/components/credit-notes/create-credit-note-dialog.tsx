@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { CreditNoteIssueInput } from "@quits/contracts/credit-notes"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { buildCreditLines, type CreditBuildErrorCode } from "../../lib/credit-notes/calculation"
 import { formatCurrency } from "../../lib/i18n/format"
@@ -115,7 +116,7 @@ export function CreateCreditNoteDialog({
     setSubmitting(true)
     setError(null)
     try {
-      const created = await trpc.creditNotes.issue.mutate(selection)
+      const created = await trpc.creditNotes.issue.mutate(selection, handledMutationError)
       onOpenChange(false)
       await onIssued(created)
     } catch (err) {

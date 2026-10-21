@@ -26,6 +26,7 @@ import { clearHandoff, handOff, readHandoff, type InvoiceHandoff } from "../../.
 import { InvoiceRequestCard } from "../invoice-request-card"
 import { onRequestDone } from "../request-events"
 import { resetRequestDataForTesting } from "../request-data"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 // Cards share their reads for a few seconds; every test starts without them.
 beforeEach(() => resetRequestDataForTesting())
@@ -121,10 +122,10 @@ describe("invoice request card", () => {
         dueDate: "2026-11-14",
         reviewedRecipient: "v1",
         items: [{ description: "konsulent", quantity: "10", unitPrice: "850", vat: undefined }],
-      })
+      }), handledMutationError
     )
     // Nothing leaves now: the send is queued to run when the window closes, and Fortryd can still cancel it.
-    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-1", reviewedVersion: "r1" }))
+    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-1", reviewedVersion: "r1" }), handledMutationError)
     expect(api.send).not.toHaveBeenCalled()
     expect(text()).toContain("10.625,00 kr. · Havbrise Logistik A/S")
     expect(onDismiss).not.toHaveBeenCalled()
@@ -165,7 +166,7 @@ describe("invoice request card", () => {
     await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
       notes: "Tak",
       items: [expect.objectContaining({ description: "konsulent", quantity: "2.5" }), expect.objectContaining({ description: "rejse" })],
-    })))
+    }), handledMutationError))
     expect(readHandoff("card")).toBeNull()
   })
 
@@ -202,7 +203,7 @@ describe("invoice request card", () => {
       await screen.findByText("som sidst · 8 dage")
       expect(api.learned).toHaveBeenCalledWith({ contactId: "buyer" })
       await send()
-      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: inDays(8) })))
+      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: inDays(8) }), handledMutationError))
     })
 
     it("shows no hint and keeps the organization's date without a learned default", async () => {
@@ -211,7 +212,7 @@ describe("invoice request card", () => {
       await waitFor(() => expect(api.learned).toHaveBeenCalled())
       expect(text()).not.toContain("som sidst")
       await send()
-      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: "2026-11-14" })))
+      await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ dueDate: "2026-11-14" }), handledMutationError))
     })
 
     it("drops the hint when the date is changed on the card", async () => {

@@ -7,6 +7,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft, Download, Mail } from "lucide-react"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { usePollWhile } from "../../../hooks/use-poll-while"
 import { useDocumentResponseGuard } from "../../../hooks/use-document-response-guard"
@@ -153,7 +154,7 @@ function CreditNoteDetailPage() {
     setError(null)
     setNotice(null)
     try {
-      const result = await trpc.creditNotes.send.mutate({ id: creditNote.id })
+      const result = await trpc.creditNotes.send.mutate({ id: creditNote.id }, handledMutationError)
       if (!isCurrent()) return
       if (result.delivery === "pending") {
         setNotice({ kind: "info", text: t("creditNotes.detail.email.pending", { email: result.recipient }) })
@@ -183,7 +184,7 @@ function CreditNoteDetailPage() {
     const isCurrent = beginRequest(creditNote.id)
     setSending(true); setIssuing(action === "issueDraft"); setError(null)
     try {
-      await trpc.creditNotes[action].mutate({ id: creditNote.id })
+      await trpc.creditNotes[action].mutate({ id: creditNote.id }, handledMutationError)
     } catch (err) { if (isCurrent()) setError(err instanceof Error ? err.message : t("creditNotes.error.generic")) }
     finally {
       // Issuance can commit before the answer is lost, so show what was stored either way.

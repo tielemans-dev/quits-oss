@@ -6,6 +6,7 @@ import {
   type StripeConnectSettingsAction,
 } from "../../lib/runtime/stripe-connect-settings"
 import { useI18n } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { StripeConnectCard } from "./stripe-connect-card"
 import { Button } from "../ui/button"
@@ -85,7 +86,7 @@ export function StripePaymentsSection({
   async function runConnectAction(action: StripeConnectSettingsAction) {
     onConnectError?.(null)
     try {
-      const result = await trpc.settings.runStripeConnectAction.mutate({ action })
+      const result = await trpc.settings.runStripeConnectAction.mutate({ action }, handledMutationError)
       const url = stripeConnectRedirectUrl(result.url)
       if (url) {
         followStripeConnectUrl(url)

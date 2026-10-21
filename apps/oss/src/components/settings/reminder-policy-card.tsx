@@ -7,6 +7,7 @@ import {
 } from "@quits/contracts/reminders"
 import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
@@ -112,7 +113,7 @@ export function ReminderPolicyCard() {
     setSaving(true)
     setMessage(null)
     try {
-      const policy = await trpc.reminders.updatePolicy.mutate({ enabled, offsetsDays: parsed.offsets })
+      const policy = await trpc.reminders.updatePolicy.mutate({ enabled, offsetsDays: parsed.offsets }, handledMutationError)
       if (!stillCurrent()) return
       setEnabled(policy.enabled)
       setOffsets(policy.offsetsDays.map(String))

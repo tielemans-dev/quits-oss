@@ -41,6 +41,7 @@ vi.mock("../../lib/i18n/react", () => ({
 }))
 
 import { Route } from "../_app/credit-notes/$creditNoteId"
+import { handledMutationError } from "../../lib/query-refresh"
 
 function translate(key: string) {
   return key
@@ -98,7 +99,7 @@ describe("issuing a credit note draft", () => {
 
     await vi.waitFor(() => expect(downloadButton().disabled).toBe(false))
     expect(screen.queryByRole("button", { name: /creditNotes.action.issu/ })).toBeNull()
-    expect(api.issueDraft).toHaveBeenCalledWith({ id: "cn_1" })
+    expect(api.issueDraft).toHaveBeenCalledWith({ id: "cn_1" }, handledMutationError)
   })
 
   it("shows what was stored when the answer is lost after issuing", async () => {

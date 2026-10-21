@@ -7,6 +7,7 @@ import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
 import { readSelectedCompany, stageSelectedCompany } from "../../lib/onboarding/selected-company"
 import { createOnboardingV2Client } from "../onboarding-v2/client"
 import { confirmationPayload, draftKey, newDraft, storeDraft } from "../onboarding-v2/draft"
+import { handledMutationError } from "../../lib/query-refresh"
 
 const api = vi.hoisted(() => ({ prepare: vi.fn(async () => ({ token: "signed-final-identity" })), confirm: vi.fn(async (_input: unknown) => ({ status: "complete" as const })) }))
 vi.mock("../../trpc/client", () => ({ trpc: {
@@ -76,7 +77,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create company" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
     expect(api.prepare).toHaveBeenCalledOnce()
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }), handledMutationError)
   })
   it.each([true, false])("shows a CVR validation error for hosted manual registration %s before preparation", async registered => {
     const done = vi.fn()
@@ -132,8 +133,8 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.click(save)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith({ companyName: "Edited Seller", companyAddress: "Testvej 1", cvr: "24256790", vatId: registered ? "DK24256790" : undefined, countryCode: "DK" })
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Edited Seller", momsRegistered: registered, sellerVatConfirmationToken: "signed-final-identity", settings: expect.objectContaining({ taxRate: registered ? 25 : 0 }) }))
+    expect(api.prepare).toHaveBeenCalledWith({ companyName: "Edited Seller", companyAddress: "Testvej 1", cvr: "24256790", vatId: registered ? "DK24256790" : undefined, countryCode: "DK" }, handledMutationError)
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Edited Seller", momsRegistered: registered, sellerVatConfirmationToken: "signed-final-identity", settings: expect.objectContaining({ taxRate: registered ? 25 : 0 }) }), handledMutationError)
   })
   it.each([true, false])("keeps the moms choice %s across edits and a reload (QUI-56)", async registered => {
     const props = { userId: "synthetic-user", organizationId: "synthetic-org", signupEmail: "signup@example.test", confirmationEnabled: true, nonVatEnabled: true, client: createOnboardingV2Client(false, true), onComplete: vi.fn() }
@@ -155,7 +156,7 @@ describe("production v2 seller confirmation", () => {
     expect(checked()).toEqual(registered ? [true, false] : [false, true])
     fireEvent.click(screen.getByRole("button", { name: "Create company" }))
     await waitFor(() => expect(props.onComplete).toHaveBeenCalledOnce())
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, companyPhone: "40486480", settings: expect.objectContaining({ defaultCurrency: "EUR", locale: "en-GB" }) }))
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, companyPhone: "40486480", settings: expect.objectContaining({ defaultCurrency: "EUR", locale: "en-GB" }) }), handledMutationError)
   })
   it("names languages and currencies instead of showing codes, own currency first (QUI-56, QUI-213)", () => {
     render(<I18nProvider locale="da-DK"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={createOnboardingV2Client(false)} onComplete={() => {}} /></I18nProvider>)
@@ -169,7 +170,7 @@ describe("production v2 seller confirmation", () => {
     Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", momsRegistered: false })
     await createOnboardingV2Client(false).confirm(confirmationPayload(draft))
     expect(api.prepare).not.toHaveBeenCalled()
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false }))
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false }), handledMutationError)
     expect(api.confirm.mock.calls[0]?.[0]).not.toHaveProperty("sellerVatConfirmationToken")
   })
 })
@@ -242,7 +243,7 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
       // Self-hosted setup can use a known registry value without hosted confirmation.
       await waitFor(() => expect(done).toHaveBeenCalledOnce())
       expect(api.prepare).not.toHaveBeenCalled()
-      expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered }))
+      expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered }), handledMutationError)
       return
     }
 
@@ -253,7 +254,7 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
     fireEvent.click(save)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
     expect(api.prepare).toHaveBeenCalledTimes(confirmationEnabled ? 1 : 0)
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }), handledMutationError)
   })
 
   it.each([true, false])("shows all review errors together with an unanswered VAT choice, confirmation=%s", async confirmationEnabled => {

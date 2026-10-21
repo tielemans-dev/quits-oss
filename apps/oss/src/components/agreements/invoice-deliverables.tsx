@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency } from "../../lib/i18n/format"
@@ -28,7 +29,7 @@ export function InvoiceDeliverables({ agreement, depositsEnabled, onChanged }: {
   async function create() {
     setBusy(true); setError(null)
     try {
-      const result = await trpc.invoices.createFromDeliverables.mutate({ agreementId: agreement.id, deliverableIds: selected, scheduleAsSale })
+      const result = await trpc.invoices.createFromDeliverables.mutate({ agreementId: agreement.id, deliverableIds: selected, scheduleAsSale }, handledMutationError)
       // A single draft opens at once. A sale and a prepayment draft together stay here, with a link to each.
       const only = result.saleInvoiceId && result.prepaymentInvoiceId ? undefined : result.saleInvoiceId ?? result.prepaymentInvoiceId
       if (only) return await navigate({ to: "/invoices/$invoiceId", params: { invoiceId: only } })

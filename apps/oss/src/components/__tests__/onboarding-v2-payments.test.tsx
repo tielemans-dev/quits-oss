@@ -5,6 +5,7 @@ import { I18nProvider } from "../../lib/i18n/react"
 import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
 import { createOnboardingV2Client, type OnboardingV2Client } from "../onboarding-v2/client"
 import * as connectSettings from "../../lib/runtime/stripe-connect-settings"
+import { handledMutationError } from "../../lib/query-refresh"
 
 const api = vi.hoisted(() => ({
   confirm: vi.fn(async (_input: unknown) => ({ status: "complete" as const })),
@@ -41,7 +42,7 @@ describe("hosted payments step", () => {
     expect(steps("Step 3/3")).toEqual(["Company", "Review", "Payments"])
     fireEvent.click(screen.getByRole("button", { name: "Connect Stripe" }))
     await waitFor(() => expect(follow).toHaveBeenCalledWith("https://connect.stripe.test/setup"))
-    expect(api.run).toHaveBeenCalledWith({ action: "connect" })
+    expect(api.run).toHaveBeenCalledWith({ action: "connect" }, handledMutationError)
   })
 
   it("skips straight into the app without calling Stripe", async () => {

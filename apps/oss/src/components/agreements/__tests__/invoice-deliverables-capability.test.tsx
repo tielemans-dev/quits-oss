@@ -8,6 +8,7 @@ vi.mock("../../../trpc/client", () => ({ trpc: { invoices: { createFromDeliverab
 vi.mock("../../../lib/i18n/react", () => ({ useI18n: () => ({ locale: "en-US", t: (key: string) => key }) }))
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>, useNavigate: () => navigate }))
 import { InvoiceDeliverables } from "../invoice-deliverables"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 const agreement = {
   id: "agreement", status: "accepted", billingTrigger: "on_acceptance", currency: "USD",
@@ -26,7 +27,7 @@ describe("invoice selection with deposits disabled", () => {
     expect(screen.queryByText(/Advance payment/)).toBeNull()
     expect(screen.queryByText("agreements.scheduleAsSaleChoice")).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "agreements.createInvoices" }))
-    await waitFor(() => expect(create).toHaveBeenCalledWith({ agreementId: "agreement", deliverableIds: ["service"], scheduleAsSale: false }))
+    await waitFor(() => expect(create).toHaveBeenCalledWith({ agreementId: "agreement", deliverableIds: ["service"], scheduleAsSale: false }, handledMutationError))
   })
   it("preserves self-host deposit selection and the explicit sale choice", () => {
     render(<InvoiceDeliverables agreement={agreement} depositsEnabled={true} onChanged={async () => {}} />)

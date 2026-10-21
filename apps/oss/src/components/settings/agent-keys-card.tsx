@@ -3,6 +3,7 @@ import { useQueryRefresh } from "../../hooks/use-query-refresh"
 import { Bot, Plus } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useI18n } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { AgentModeBadge } from "../agents/agent-mode-badge"
 import { CreateAgentKeyDialog } from "../agents/create-agent-key-dialog"
@@ -71,7 +72,7 @@ export function AgentKeysCard() {
   async function revoke(id: string) {
     setRevoking(id)
     try {
-      await trpc.agents.revokeKey.mutate({ id })
+      await trpc.agents.revokeKey.mutate({ id }, handledMutationError)
       await loadKeys()
     } catch {
       setError(t("agents.keys.revoke.error"))

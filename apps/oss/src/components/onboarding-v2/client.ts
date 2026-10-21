@@ -1,5 +1,6 @@
 import { confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
 import type { CvrCompany, OnboardingSuggestions } from "@quits/contracts/cvr"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { followStripeConnectUrl, stripeConnectRedirectUrl } from "../../lib/runtime/stripe-connect-settings"
 import type { confirmationPayload } from "./draft"
@@ -39,7 +40,7 @@ export function createOnboardingV2Client(suggestions: boolean, confirmationEnabl
               return settings.stripeAccount.mode === "connect" && settings.stripeConnectActions === true && settings.stripeAccount.status === "none"
             },
             async connect() {
-              const result = await trpc.settings.runStripeConnectAction.mutate({ action: "connect" })
+              const result = await trpc.settings.runStripeConnectAction.mutate({ action: "connect" }, handledMutationError)
               const url = stripeConnectRedirectUrl(result.url)
               if (!url) return false
               followStripeConnectUrl(url)
@@ -53,8 +54,8 @@ export function createOnboardingV2Client(suggestions: boolean, confirmationEnabl
       const token = confirmationEnabled ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({
         companyName: summary.companyName, companyAddress: summary.companyAddress,
         countryCode: "DK", cvr: summary.cvr, vatId: summary.vatId,
-      })).token : undefined
-      return trpc.onboarding.confirmV2.mutate({ ...summary, ...(token ? { sellerVatConfirmationToken: token } : {}) })
+      }, handledMutationError)).token : undefined
+      return trpc.onboarding.confirmV2.mutate({ ...summary, ...(token ? { sellerVatConfirmationToken: token } : {}) }, handledMutationError)
     },
   }
 }

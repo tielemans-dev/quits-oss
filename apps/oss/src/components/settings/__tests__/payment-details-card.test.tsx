@@ -28,6 +28,7 @@ vi.mock("../../../lib/i18n/react", () => ({
 }))
 
 import { PaymentDetailsCard } from "../payment-details-card"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 function translate(key: string) {
   return key
@@ -140,7 +141,7 @@ describe("PaymentDetailsCard", () => {
     expect(api.update).toHaveBeenCalledWith({
       bankAccount: { ...noAccountFields, iban: "DK5000400440116243", bic: "DABADKKK" },
       note: null,
-    })
+    }, handledMutationError)
     expect(field("settings.paymentDetails.iban.label").value).toBe("DK50 0040 0440 1162 43")
     expect(saveButton().disabled).toBe(true)
   })

@@ -34,6 +34,7 @@ import { Route as LoginRoute } from '../login'
 import { Route as OnboardingRoute } from '../_app/onboarding'
 import { asMockedRoute } from '../../test-utils/mocked-route'
 import { requiredLabel } from "../../test-utils/required-label"
+import { handledMutationError } from '../../lib/query-refresh'
 const Login = asMockedRoute(LoginRoute).component
 const Onboarding = asMockedRoute(OnboardingRoute).component
 const orgs = [{ id: 'org_1', name: 'First org' }, { id: 'org_2', name: 'Second org' }]
@@ -291,6 +292,6 @@ describe('return after required organization flow', () => {
     fireEvent.change(screen.getByLabelText(requiredLabel("E-mail")), { target: { value: 'billing@example.test' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Afslut opsætning' }).closest('form')!)
     await waitFor(() => expect(state.load).toHaveBeenCalledWith('/hosted/account?tab=vat&lang=da'))
-    expect(state.complete).toHaveBeenCalledWith({ method: 'manual' })
+    expect(state.complete).toHaveBeenCalledWith({ method: 'manual' }, handledMutationError)
   })
 })

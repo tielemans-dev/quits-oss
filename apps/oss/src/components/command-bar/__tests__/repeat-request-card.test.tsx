@@ -27,6 +27,7 @@ import { UndoToaster } from "../../undo/undo-toaster"
 import { InvoiceRequestCard } from "../invoice-request-card"
 import { onRequestDone } from "../request-events"
 import { resetRequestDataForTesting } from "../request-data"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 // Cards share their reads for a few seconds; every test starts without them.
 beforeEach(() => resetRequestDataForTesting())
@@ -112,11 +113,11 @@ describe("repeat last invoice card", () => {
     fireEvent.change(await hours(), { target: { value: "10" } })
     await clickSend()
     await screen.findByRole("button", { name: "Fortryd" })
-    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-153", reviewedVersion: "r1" }))
+    expect(api.later).toHaveBeenCalledWith(expect.objectContaining({ id: "inv-153", reviewedVersion: "r1" }), handledMutationError)
     expect(api.create).toHaveBeenCalledWith(expect.objectContaining({
       contactId: "lindholm", reviewedRecipient: "v1",
       items: [{ description: "Designsparring, september", quantity: "10", unitPrice: "900", vat: undefined }],
-    }))
+    }), handledMutationError)
     expect(screen.getAllByRole("button", { name: "Fortryd" })).toHaveLength(1)
     expect(document.querySelector("[data-slot=held-send-toast]")).toBeNull()
 

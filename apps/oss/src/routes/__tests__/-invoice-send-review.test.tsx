@@ -90,7 +90,7 @@ describe("new invoice send review", () => {
     fireEvent.click(await screen.findByRole("switch", { name: "invoices.flow.reminders" }))
     fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" }))
     await waitFor(() => expect(completed).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, kind: "invoice" })))
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethods: connected ? ["bank_transfer", "card"] : ["bank_transfer"], remindersPaused: true, items: [expect.objectContaining({ quantity: "2", unitPrice: "100" })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ paymentMethods: connected ? ["bank_transfer", "card"] : ["bank_transfer"], remindersPaused: true, items: [expect.objectContaining({ quantity: "2", unitPrice: "100" })] }), handledMutationError)
     expect(api.navigate).not.toHaveBeenCalled(); expect(api.generate).not.toHaveBeenCalled()
   })
   it("opens a draft without a delivery date with an empty field", async () => {
@@ -111,7 +111,7 @@ describe("new invoice send review", () => {
     expect((field as HTMLInputElement).value).toBe("2026-10-05")
     fireEvent.change(field, { target: { value: supplyDate ?? "" } })
     fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
-    await waitFor(() => expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate })))
+    await waitFor(() => expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ id: invoice.id, supplyDate }), handledMutationError))
     await screen.findByRole("button", { name: "invoices.detail.action.edit" })
     const sendSupplyDate = supplyDate ?? new Date().toISOString().slice(0, 10)
     expect((screen.getByLabelText("invoices.issuance.supplyDate") as HTMLInputElement).value).toBe(sendSupplyDate)
@@ -140,11 +140,11 @@ describe("new invoice send review", () => {
     await act(async () => { finish({ ...stored, supplyDate: "2026-10-07" }) })
     expect(screen.getByLabelText("invoices.issuance.supplyDate")).toBe(field)
     expect(field.value).toBe(supplyDate ?? "")
-    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ supplyDate: "2026-10-07" }))
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ supplyDate: "2026-10-07" }), handledMutationError)
     api.update.mockResolvedValue({ ...stored, supplyDate })
     fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" }))
     await screen.findByRole("button", { name: "invoices.detail.action.edit" })
-    expect(api.update).toHaveBeenLastCalledWith(expect.objectContaining({ supplyDate }))
+    expect(api.update).toHaveBeenLastCalledWith(expect.objectContaining({ supplyDate }), handledMutationError)
   })
   it("rejects exponent quantities before saving and permits one comma-normalized retry", async () => {
     render(<NewPage />)
@@ -165,7 +165,7 @@ describe("new invoice send review", () => {
     const confirm = await screen.findByRole("button", { name: "invoiceSend.confirm" })
     await act(async () => { fireEvent.click(confirm); fireEvent.click(confirm) })
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ quantity: "1.5" })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ quantity: "1.5" })] }), handledMutationError)
     await act(async () => { persist(invoice) })
     expect(api.send).toHaveBeenCalledTimes(1)
   })
@@ -190,7 +190,7 @@ describe("new invoice send review", () => {
     await act(async () => { persist({ id: invoice.id }) })
     await screen.findByText("onboardingV2.bankNudge.title")
     expect(api.create).toHaveBeenCalledTimes(1)
-    expect(api.create).toHaveBeenCalledWith({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2026-10-05", taxRate: "25", pricesIncludeTax: false, vatEvidence: {}, reviewedRecipient: RECIPIENT_VERSION, notes: "Keep these notes", items: [{ description: "Synthetic work", quantity: "2", unitPrice: "123.45", vat: undefined }] })
+    expect(api.create).toHaveBeenCalledWith({ contactId: contact.id, dueDate: "2099-01-01", supplyDate: "2026-10-05", taxRate: "25", pricesIncludeTax: false, vatEvidence: {}, reviewedRecipient: RECIPIENT_VERSION, notes: "Keep these notes", items: [{ description: "Synthetic work", quantity: "2", unitPrice: "123.45", vat: undefined }] }, handledMutationError)
     await act(async () => { fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" }) })
     expect(api.send).not.toHaveBeenCalled()
     expect(api.resend).not.toHaveBeenCalled()
@@ -309,11 +309,11 @@ describe("new invoice send review", () => {
     await screen.findByRole("option", { name: contact.name })
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenLastCalledWith(expect.objectContaining({ reviewedRecipient: undefined }))
+    expect(api.create).toHaveBeenLastCalledWith(expect.objectContaining({ reviewedRecipient: undefined }), handledMutationError)
     api.create.mockClear()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveSend" })) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ reviewedRecipient: RECIPIENT_VERSION }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ reviewedRecipient: RECIPIENT_VERSION }), handledMutationError)
   })
   it("confirms the fresh readiness recipient and version despite stale contacts", async () => {
     render(<NewPage />)
@@ -326,7 +326,7 @@ describe("new invoice send review", () => {
     expect(screen.queryByText(`Send to ${contact.email}`)).toBeNull()
     expect(api.contacts).toHaveBeenCalledTimes(1)
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "invoiceSend.confirm" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ reviewedRecipient: freshVersion }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ reviewedRecipient: freshVersion }), handledMutationError)
   })
   it("refuses to send when the recipient changed while the confirmation was open", async () => {
     api.create.mockRejectedValue(Object.assign(new Error("changed"), { data: { fieldIssues: [{ code: "changed_since_review", field: "invoice", params: {} }] } }))
@@ -424,7 +424,7 @@ describe("new invoice send review", () => {
     expect(screen.getByText("invoiceVat.hosted")).toBeTruthy()
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: "25" }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: "25" }), handledMutationError)
   })
   it.each([true, false])("combines restrictive defaults with explicit registration %s", async momsRegistered => {
     api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered, pricesIncludeTax: true, countryCode: "DK", baseCurrency: "DKK" })
@@ -435,7 +435,7 @@ describe("new invoice send review", () => {
     fireEvent.change(screen.getByLabelText("docForm.column.unitPrice"), { target: { value: "100" } })
     expect(screen.getByText("docForm.summary.total").parentElement?.textContent).toMatch(new RegExp(`DKK\\s*${momsRegistered ? 125 : 100}[.,]00`))
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: momsRegistered ? "25" : "0", items: [expect.objectContaining({ vat: undefined })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: false, taxRate: momsRegistered ? "25" : "0", items: [expect.objectContaining({ vat: undefined })] }), handledMutationError)
   })
   it("applies the mandatory policy VAT rate over an AI rate accepted before readiness arrived", async () => {
     aiFixture.enabled = true
@@ -451,7 +451,7 @@ describe("new invoice send review", () => {
     await act(async () => { resolve({ issues: [], taxRate: "25", standardVatRate: "25", momsRegistered: true, pricesIncludeTax: true, countryCode: "DK", baseCurrency: "DKK" }) })
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", pricesIncludeTax: false }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", pricesIncludeTax: false }), handledMutationError)
   })
   it("preserves a self-hosted inclusive default and its configured VAT rate", async () => {
     api.readiness.mockResolvedValue({ issues: [], taxRate: "20", pricesIncludeTax: true, countryCode: "SE", baseCurrency: "DKK" })
@@ -459,7 +459,7 @@ describe("new invoice send review", () => {
     await waitFor(() => expect(screen.getByRole("radio", { name: "invoiceVat.pricesInclude" }).getAttribute("aria-checked")).toBe("true"))
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: true, taxRate: "20" }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax: true, taxRate: "20" }), handledMutationError)
   })
   it("defaults Danish invoices to standard VAT and restores 25 percent after outside VAT", async () => {
     api.readiness.mockResolvedValue({ issues: [], taxRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
@@ -472,7 +472,7 @@ describe("new invoice send review", () => {
     fireEvent.change(vat, { target: { value: "standard" } })
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: "0.25" }) })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: "0.25" }) })] }), handledMutationError)
   })
   it("shows a policy-fixed rate as plain text on each line instead of a choice", async () => {
     api.readiness.mockResolvedValue({ issues: [], taxRate: "25", standardVatRate: "25", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
@@ -492,7 +492,7 @@ describe("new invoice send review", () => {
     await screen.findByText("invoiceVat.hosted")
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
     expect(api.readiness).toHaveBeenLastCalledWith({ contactId: contact.id, currency: "DKK" })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", items: [expect.objectContaining({ vat: undefined })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25", items: [expect.objectContaining({ vat: undefined })] }), handledMutationError)
   })
   it.each([true, false])("preserves explicit pricesIncludeTax=%s while loading configured tax", async pricesIncludeTax => {
     let resolve!: (value: unknown) => void
@@ -505,7 +505,7 @@ describe("new invoice send review", () => {
     expect(screen.getByRole("radio", { name: choice }).getAttribute("aria-checked")).toBe("true")
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, taxRate: "20" }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, taxRate: "20" }), handledMutationError)
   })
 })
 
@@ -630,7 +630,7 @@ describe("invoice detail send review", () => {
     expect(screen.getByRole("radio", { name: pricesIncludeTax ? "invoiceVat.pricesInclude" : "invoiceVat.pricesExclude" }).getAttribute("aria-checked")).toBe("true")
     expect((screen.getByLabelText("vat.lineRate") as HTMLSelectElement).value).toBe("out_of_scope")
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
-    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "out_of_scope", rate: "0", country: null }) })] }))
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ pricesIncludeTax, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "out_of_scope", rate: "0", country: null }) })] }), handledMutationError)
   })
   it.each(["20", "25"])("restores configured %s percent VAT for an all-zero draft and saves correct totals", async taxRate => {
     api.readiness.mockResolvedValue({ issues: [], taxRate, baseCurrency: "DKK" })
@@ -645,7 +645,7 @@ describe("invoice detail send review", () => {
     fireEvent.change(screen.getByLabelText("vat.lineTreatment"), { target: { value: "standard" } })
     expect(screen.getByText(new RegExp(`DKK\\s*${100 + Number(taxRate)}[.,]00`))).toBeTruthy()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
-    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: String(Number(taxRate) / 100) }) })] }))
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate, items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "standard", rate: String(Number(taxRate) / 100) }) })] }), handledMutationError)
   })
   it.each(["draft", "sent"])("uses only an issued number in %s detail confirmation", async status => {
     api.get.mockResolvedValue({ ...invoice, status, number: status === "sent" ? "INV-0099" : null, nextNumber: "INV-0001" })
@@ -784,7 +784,7 @@ describe("VAT treatment choices on the draft editor", () => {
     fillDraft()
     fireEvent.change(await screen.findByLabelText("vat.lineTreatment"), { target: { value: "intra_community" } })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "intra_community", rate: "0" }) })] }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ items: [expect.objectContaining({ vat: expect.objectContaining({ treatment: "intra_community", rate: "0" }) })] }), handledMutationError)
   })
   it("offers the compact VAT choice only where a policy fixes the rate, and never a 0 % standard option", async () => {
     api.readiness.mockResolvedValue({ issues: [], taxRate: "0", standardVatRate: "0", pricesIncludeTax: false, countryCode: "DK", baseCurrency: "DKK" })
@@ -804,7 +804,7 @@ describe("VAT treatment choices on the draft editor", () => {
     await waitFor(() => expect(api.readiness).toHaveBeenCalled())
     await act(async () => { fireEvent.click(edit) })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveChanges" })) })
-    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "0" }))
+    expect(api.update).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "0" }), handledMutationError)
   })
   it("ignores an AI-supplied VAT rate under a policy-fixed rate and applies it, correctably, otherwise", async () => {
     aiFixture.enabled = true
@@ -816,7 +816,7 @@ describe("VAT treatment choices on the draft editor", () => {
     await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /invoices.new.ai.action.generate/ })) })
     fillDraft()
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "docForm.action.saveDraft" })) })
-    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25" }))
+    expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ taxRate: "25" }), handledMutationError)
   })
 })
 describe("send errors and line validation on the new invoice form", () => {
@@ -989,7 +989,7 @@ describe('converted quote supply date', () => {
     fireEvent.change(document.getElementById('supplyDate')!, {target:{value:'2026-10-16'}})
     fireEvent.click(send)
     await screen.findByRole('button', {name:'invoiceSend.confirm'})
-    expect(api.update).toHaveBeenCalledWith({id:invoice.id, expectedRevision:1, supplyDate:'2026-10-16'})
+    expect(api.update).toHaveBeenCalledWith({id:invoice.id, expectedRevision:1, supplyDate:'2026-10-16'}, handledMutationError)
     expect(api.send).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', {name:'invoiceSend.confirm'}))
     await waitFor(() => expect(api.send).toHaveBeenCalledWith(expect.objectContaining({reviewedVersion:'saved-version', supplyDate:'2026-10-16'}), handledMutationError))

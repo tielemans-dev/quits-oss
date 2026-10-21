@@ -4,6 +4,7 @@ import { ReceiptsPanel } from "./receipts-panel"
 import { useCallback, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import type { PaymentMethod } from "@quits/contracts/payments"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { useI18n } from "../../../lib/i18n/react"
 import type { TranslationKey } from "../../../lib/i18n/messages"
@@ -364,8 +365,8 @@ export function RecordPaymentDialog({
     try {
       const details = { invoiceId, amount: value, note: note.trim() || undefined }
       await (refund
-        ? trpc.payments.refund.mutate({ ...details, requestId, refundedAt: paidAt })
-        : trpc.payments.record.mutate({ ...details, paidAt, method, reference: reference.trim() || undefined }))
+        ? trpc.payments.refund.mutate({ ...details, requestId, refundedAt: paidAt }, handledMutationError)
+        : trpc.payments.record.mutate({ ...details, paidAt, method, reference: reference.trim() || undefined }, handledMutationError))
       await onRecorded()
       onClose()
     } catch (err) {
@@ -505,8 +506,8 @@ export function VoidPaymentDialog({
     setSubmitting(true)
     try {
       await (refund
-        ? trpc.payments.voidRefund.mutate({ refundId: payment.id, reason: reason.trim() })
-        : trpc.payments.void.mutate({ paymentId: payment.id, reason: reason.trim() }))
+        ? trpc.payments.voidRefund.mutate({ refundId: payment.id, reason: reason.trim() }, handledMutationError)
+        : trpc.payments.void.mutate({ paymentId: payment.id, reason: reason.trim() }, handledMutationError))
       await onVoided()
       onClose()
     } catch (err) {

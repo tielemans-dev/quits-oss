@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import type { CompanyLookupResult } from "../../lib/runtime/company-lookup"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
 import { Button } from "../ui/button"
@@ -20,7 +21,7 @@ export function CompanySetup({ onComplete, nonVatEnabled = false }: { onComplete
     const current = ++generation.current
     setBusy(true); setResult(null)
     try {
-      const facts = await trpc.runtime.lookupOnboardingCompany.mutate({ query })
+      const facts = await trpc.runtime.lookupOnboardingCompany.mutate({ query }, handledMutationError)
       if (current === generation.current) setResult(facts)
     } catch {
       if (current === generation.current) setResult({ companies: [], unavailable: true })

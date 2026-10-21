@@ -61,7 +61,7 @@ export function submitInvoice(
           unitPrice: String(item.unitPrice),
           vat: item.vat,
         })),
-      })
+      }, handledMutationError)
       retainDraftValuation(draft.id, currency, baseCurrency, issuance)
       reviewedVersion = draft.reviewedVersion
       return draft
@@ -69,7 +69,7 @@ export function submitInvoice(
     beforeSend: options.beforeSend,
     send: async (id) => {
       const input = { id, reviewedVersion, ...issuanceInput(issuance, currency, baseCurrency) }
-      const result = options.holdSend ? await trpc.jobs.sendInvoiceLater.mutate(input).then(() => ({})) : await trpc.invoices.send.mutate(input, handledMutationError)
+      const result = options.holdSend ? await trpc.jobs.sendInvoiceLater.mutate(input, handledMutationError).then(() => ({})) : await trpc.invoices.send.mutate(input, handledMutationError)
       clearDraftValuation(id, currency, baseCurrency)
       return result
     },

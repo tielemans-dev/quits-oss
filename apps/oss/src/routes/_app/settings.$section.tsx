@@ -7,6 +7,7 @@ import { useRuntimeDistribution } from "../../lib/runtime-distribution"
 import { SellerVatStatus } from "../../components/seller-vat-status"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { authClient, useSession } from "../../lib/auth-client"
 import { isOrganizationSlug } from "../../lib/organization-slug"
@@ -581,7 +582,7 @@ function SettingsPage() {
     startSave("aiDrafts")
     setSavingAiDrafts(true)
     try {
-      await trpc.settings.update.mutate({ aiDraftsEnabled: enabled })
+      await trpc.settings.update.mutate({ aiDraftsEnabled: enabled }, handledMutationError)
       setSettings((current) => current?.aiDrafts ? { ...current, aiDrafts: { ...current.aiDrafts, enabled } } : current)
       setNotice(t(enabled ? "settings.ai.drafts.saved.on" : "settings.ai.drafts.saved.off"))
     } catch (err) {
@@ -595,7 +596,7 @@ function SettingsPage() {
     startSave("vatPeriod")
     setSavingVatPeriod(true)
     try {
-      await trpc.settings.update.mutate({ vatPeriod })
+      await trpc.settings.update.mutate({ vatPeriod }, handledMutationError)
       setSettings((current) => current ? { ...current, vatPeriod } : current)
       setNotice(t("settings.vatPeriod.saved"))
     } catch (err) {
@@ -690,7 +691,7 @@ function SettingsPage() {
       : sellerVatChoiceReviewed ? sellerVatChoice : sellerIdentityComplete ? displayedSellerVatChoice : null
     try {
       const sellerVatConfirmationToken = sellerVatConfirmationEnabled && (confirmedSellerVatChoice !== null || withdrawSellerVatEvidence)
-        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : confirmedSellerVatChoice })).token
+        ? (await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: companyNameInput, companyAddress: companyAddressInput, countryCode: "DK", cvr: primaryTaxId.trim(), primaryTaxIdScheme, registered: withdrawSellerVatEvidence ? null : confirmedSellerVatChoice }, handledMutationError)).token
         : undefined
       const savedSettings = await trpc.settings.update.mutate({
         countryCode,
@@ -734,7 +735,7 @@ function SettingsPage() {
           clearStripeSecretKey,
           clearStripeWebhookSecret,
         }),
-      })
+      }, handledMutationError)
       setTaxRateInput(savedSettings.taxRate == null ? "" : String(savedSettings.taxRate))
       setMomsRegistered(savedSettings.momsRegistered)
       setSellerVatChoice(savedSettings.momsRegistered ?? null)
@@ -883,7 +884,7 @@ function SettingsPage() {
     try {
       const documentSending = await trpc.settings.configureDocumentSendingDomain.mutate({
         domain: documentSendingDomainInput.trim(),
-      })
+      }, handledMutationError)
       setSettings((current) =>
         current
           ? {
@@ -911,7 +912,7 @@ function SettingsPage() {
     setDocumentSendingBusy(true)
 
     try {
-      const documentSending = await trpc.settings.refreshDocumentSendingDomain.mutate()
+      const documentSending = await trpc.settings.refreshDocumentSendingDomain.mutate(undefined, handledMutationError)
       setSettings((current) =>
         current
           ? {
@@ -938,7 +939,7 @@ function SettingsPage() {
     setDocumentSendingBusy(true)
 
     try {
-      const documentSending = await trpc.settings.disableDocumentSendingDomain.mutate()
+      const documentSending = await trpc.settings.disableDocumentSendingDomain.mutate(undefined, handledMutationError)
       setSettings((current) =>
         current
           ? {
