@@ -1,4 +1,6 @@
-import type { ReactNode } from "react"
+import { Check } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import { useI18n } from "../../lib/i18n/react"
 import { getStatusTone } from "../../lib/status-tones"
 import { ToneBadge } from "../status-badge"
 import { Button } from "../ui/button"
@@ -21,6 +23,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
+
+/** Says "Kopieret" for a moment once the link is on the clipboard. */
+function CopyLinkButton({ label, onCopy }: { label: string; onCopy: () => Promise<void> }) {
+  const { t } = useI18n()
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await onCopy()
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be denied; the link stays selectable.
+    }
+  }
+  return (
+    <Button type="button" variant="outline" onClick={copy}>
+      {copied ? <Check /> : null}
+      <span aria-live="polite">{copied ? t("ui.copied") : label}</span>
+    </Button>
+  )
+}
 
 export type EmailDeliveryPanelStatus = {
   /** The outcome of the last attempt; its tone comes from `statusTones.emailDelivery`. */
@@ -57,7 +80,8 @@ export type EmailDeliveryPanelPublicLink = {
   description: string
   url: string
   copyLabel: string
-  onCopy?: () => void
+  /** Resolves once the link is on the clipboard. */
+  onCopy?: () => Promise<void>
   footer?: ReactNode
 }
 
@@ -65,7 +89,8 @@ export type EmailDeliveryPanelFallback = {
   title: string
   description: string
   copyLabel?: string
-  onCopy?: () => void
+  /** Resolves once the link is on the clipboard. */
+  onCopy?: () => Promise<void>
   fixAction?: ReactNode
 }
 
@@ -159,9 +184,7 @@ export function EmailDeliveryPanel({
             <div className="flex flex-wrap gap-2 pb-4 last:pb-0">
               {fallback.fixAction}
               {fallback.copyLabel && fallback.onCopy ? (
-                <Button type="button" variant="outline" onClick={fallback.onCopy}>
-                  {fallback.copyLabel}
-                </Button>
+                <CopyLinkButton label={fallback.copyLabel} onCopy={fallback.onCopy} />
               ) : null}
             </div>
           </div>
@@ -176,9 +199,7 @@ export function EmailDeliveryPanel({
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input readOnly aria-label={publicLink.title} value={publicLink.url} />
               {publicLink.onCopy ? (
-                <Button type="button" variant="outline" onClick={publicLink.onCopy}>
-                  {publicLink.copyLabel}
-                </Button>
+                <CopyLinkButton label={publicLink.copyLabel} onCopy={publicLink.onCopy} />
               ) : null}
             </div>
             {publicLink.footer ? (

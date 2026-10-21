@@ -23,12 +23,14 @@ function VatPercentInput({ value, onChange, ...props }: { value: string; onChang
   }} />
 }
 
-export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, defaultCountry, evidence, onEvidenceChange, classificationReadOnly = false, hideClassification = false, lineErrorId, evidenceErrorId }: {
+export function DocumentVatFields<Line extends DocumentLineInput>({ items, onItemsChange, taxRate, defaultCountry, buyerCountry, evidence, onEvidenceChange, classificationReadOnly = false, hideClassification = false, lineErrorId, evidenceErrorId }: {
   items: Line[]
   onItemsChange: (items: Line[]) => void
   taxRate: string
   /** The organization's country: shown for a line without a VAT country, and set when a domestic treatment is chosen, as invoice lines do. */
   defaultCountry?: string | null
+  /** The customer's country. A Danish seller billing a Danish customer has no other VAT country to choose, so the field is left out. */
+  buyerCountry?: string | null
   evidence: DraftVatEvidence
   onEvidenceChange: (evidence: DraftVatEvidence) => void
   classificationReadOnly?: boolean
@@ -38,6 +40,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
   /** Id of the message describing an error on one evidence entry, when there is one. */
   evidenceErrorId?: (entry: keyof DraftVatEvidence) => string | undefined
 }) {
+  const domestic = defaultCountry?.trim().toUpperCase() === "DK" && buyerCountry?.trim().toUpperCase() === "DK"
   const { t } = useI18n()
   const treatments = items.map((item) => documentVat(item, taxRate || "0").treatment)
   // Each control is flagged only for the evidence entry it edits.
@@ -76,7 +79,7 @@ export function DocumentVatFields<Line extends DocumentLineInput>({ items, onIte
             {reasons.map((reason) => <option key={reason} value={reason}>{t(`vat.reason.${reason}`)}</option>)}
           </select>
         </label>}
-        {vat.treatment !== "out_of_scope" && <label className="grid min-w-0 gap-1 text-sm">{t("vat.country")}
+        {vat.treatment !== "out_of_scope" && !(domestic && (vat.country ?? "DK") === "DK") && <label className="grid min-w-0 gap-1 text-sm">{t("vat.country")}
           <Input maxLength={2} {...a11y} placeholder={defaultCountry ?? undefined} value={vat.country ?? ""} onChange={(event) => patch({ country: event.target.value.toUpperCase() || null })} />
         </label>}
       </div>

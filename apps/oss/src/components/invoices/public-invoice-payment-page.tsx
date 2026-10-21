@@ -5,6 +5,7 @@ import { nonVatStatement } from "../../lib/documents/non-vat-note"
 import { sellerVatLineText, sellerVatPresentationStatus } from "../../lib/documents/seller-vat"
 import { hasInvoiceBankTransfer } from "../../lib/payments/bank-transfer"
 import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
+import { groupAccountNumber } from "../../lib/documents/invoice-payment-rows"
 import type { SellerSnapshot, BuyerSnapshot } from "@quits/contracts/documents"
 import type { VatRow } from "../../lib/documents/line-amounts"
 import { buildTotals } from "../../lib/documents/totals"
@@ -263,7 +264,7 @@ function PublicInvoiceDocument({
               <section className="grid min-w-0 gap-4 rounded-lg border p-4" aria-label={paymentDetails.title}>
                 <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paymentDetails.title}</h2>
                 {paymentDetails.rows.map((row) => (
-                  <InfoBlock key={row.label} label={row.label} value={row.value} />
+                  <InfoBlock key={row.label} label={row.label} value={row.key === "pdf.accountNumber" ? groupAccountNumber(row.value) : row.value} />
                 ))}
                 {paymentDetails.reference ? (
                   <InfoBlock label={paymentDetails.reference.label} value={paymentDetails.reference.value} />

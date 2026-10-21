@@ -321,7 +321,7 @@ function CreditNoteDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <InvoiceSellerDetails status={creditNote.status} sellerSnapshot={creditNote.sellerSnapshot} />
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.billTo")}</h3>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("creditNotes.detail.customer")}</h3>
               <p className="font-semibold">{contact.name}</p>
               {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
               {contact.email && <p className="text-sm text-muted-foreground">{contact.email}</p>}

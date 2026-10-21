@@ -124,5 +124,8 @@ describe("credit note parties", () => {
     expect(screen.getByText("8000 Aarhus C")).toBeTruthy()
     // A Danish customer of a Danish seller needs no country line, as on the invoice page.
     expect(screen.queryByText("DK")).toBeNull()
+    // A credit note is not a bill, so the block is not headed "Fakturer til".
+    expect(screen.getByRole("heading", { name: translate("creditNotes.detail.customer") })).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: translate("pdf.billTo") })).toBeNull()
   })
 })

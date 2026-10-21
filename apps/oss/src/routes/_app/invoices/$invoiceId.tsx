@@ -304,7 +304,7 @@ function InvoiceDetailPage() {
   }, [invoice?.purpose])
 
   // Edit state
-  const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
+  const [contacts, setContacts] = useState<{ id: string; name: string; country?: string | null }[]>([])
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
   const [editIssues, setEditIssues] = useState<ReadableIssue[]>([])
@@ -411,7 +411,7 @@ function InvoiceDetailPage() {
     )
     Promise.all([trpc.contacts.list.query(), trpc.catalog.list.query()]).then(
       ([contactsData, catalogData]) => {
-        setContacts(contactsData as { id: string; name: string }[])
+        setContacts(contactsData as { id: string; name: string; country?: string | null }[])
         setCatalogItems(catalogData as CatalogItemOption[])
       }
     )
@@ -965,7 +965,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} defaultCountry={readiness?.countryCode} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
+            <DocumentVatFields items={editItems} onItemsChange={changeEditVat} lineErrorId={(index) => lineDescribedBy(index, "vat")} taxRate={editTaxRate} defaultCountry={readiness?.countryCode} buyerCountry={contacts.find(contact => contact.id === editContactId)?.country} evidence={editVatEvidence} evidenceErrorId={evidenceIssueId} onEvidenceChange={(evidence) => { clearIssues((issue) => issue.field === "vatEvidence" && (!issue.evidence || evidence[issue.evidence as keyof DraftVatEvidence] !== editVatEvidence[issue.evidence as keyof DraftVatEvidence])); setEditVatEvidence(evidence) }} classificationReadOnly={!!invoice.agreementId} hideClassification={!!readiness?.standardVatRate} />
             {fieldMessage("edit-vatEvidence-error", (issue) => issue.field === "vatEvidence" && !issue.evidence)}
             {evidenceEntries.map((entry) => <div key={entry}>{fieldMessage(`edit-vatEvidence-${entry}-error`, (issue) => issue.field === "vatEvidence" && issue.evidence === entry)}</div>)}
             {!invoice.agreementId && !readiness?.standardVatRate && <VatGroupPreview {...preview} />}
@@ -1092,9 +1092,7 @@ function InvoiceDetailPage() {
           : undefined,
       onCopy:
         paymentLinkUrl && invoice.paymentStatus !== "paid"
-          ? () => {
-              navigator.clipboard.writeText(paymentLinkUrl)
-            }
+          ? () => navigator.clipboard.writeText(paymentLinkUrl)
           : undefined,
       fixAction: (
         <Button asChild variant="outline">
@@ -1107,9 +1105,7 @@ function InvoiceDetailPage() {
       title: t("invoices.detail.email.fallback.providerMissing.title"),
       description: t("invoices.detail.email.fallback.providerMissing.description"),
       copyLabel: t("invoices.detail.paymentLink.copy"),
-      onCopy: () => {
-        navigator.clipboard.writeText(paymentLinkUrl)
-      },
+      onCopy: () => navigator.clipboard.writeText(paymentLinkUrl),
     } : null
 
   return (
@@ -1332,9 +1328,7 @@ function InvoiceDetailPage() {
                   description: t(paymentLinkDescriptionKey),
                   url: paymentLinkUrl,
                   copyLabel: t("invoices.detail.paymentLink.copy"),
-                  onCopy: () => {
-                    navigator.clipboard.writeText(paymentLinkUrl)
-                  },
+                  onCopy: () => navigator.clipboard.writeText(paymentLinkUrl),
                 }
               : null
           }

@@ -53,12 +53,12 @@ describe("payment details block", () => {
     expect(buildPaymentDetailsBlock(details, "INV-0042", "en-US")).toEqual({
       title: "Payment details",
       rows: [
-        { label: "Reg. no.", value: "0040" },
-        { label: "Account no.", value: "0440116243" },
-        { label: "IBAN", value: "DK50 0040 0440 1162 43" },
-        { label: "BIC", value: "DABADKKK" },
-        { label: "Account holder", value: "Nordic Design ApS" },
-        { label: "Bank", value: "Danske Bank" },
+        { key: "pdf.regNumber", label: "Reg. no.", value: "0040" },
+        { key: "pdf.accountNumber", label: "Account no.", value: "0440116243" },
+        { key: "pdf.iban", label: "IBAN", value: "DK50 0040 0440 1162 43" },
+        { key: "pdf.bic", label: "BIC", value: "DABADKKK" },
+        { key: "pdf.accountHolder", label: "Account holder", value: "Nordic Design ApS" },
+        { key: "pdf.bankName", label: "Bank", value: "Danske Bank" },
       ],
       note: "MobilePay Box 12345",
       reference: { label: "Payment message", value: "INV-0042" },
@@ -82,7 +82,7 @@ describe("payment details block", () => {
 
   it("only lists what is present", () => {
     const block = buildPaymentDetailsBlock({ bankAccount: { iban: "DK5000400440116243", regNumber: null }, note: "  " }, "INV-1", "en")
-    expect(block?.rows).toEqual([{ label: "IBAN", value: "DK50 0040 0440 1162 43" }])
+    expect(block?.rows).toEqual([{ key: "pdf.iban", label: "IBAN", value: "DK50 0040 0440 1162 43" }])
     expect(block?.note).toBeNull()
 
     const noteOnly = buildPaymentDetailsBlock({ note: "MobilePay Box 12345" }, "INV-1", "en")

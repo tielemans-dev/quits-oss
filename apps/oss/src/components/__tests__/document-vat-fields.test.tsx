@@ -8,14 +8,14 @@ import { DocumentVatFields } from "../document-vat-fields"
 
 afterEach(cleanup)
 
-function Fields({ initial, onLines }: { initial: DocumentLineInput[]; onLines: (lines: DocumentLineInput[]) => void }) {
+function Fields({ initial, onLines, buyerCountry }: { initial: DocumentLineInput[]; onLines: (lines: DocumentLineInput[]) => void; buyerCountry?: string }) {
   const [items, setItems] = useState(initial)
-  return <DocumentVatFields items={items} onItemsChange={lines => { setItems(lines); onLines(lines) }} taxRate="25" defaultCountry="DK" evidence={{}} onEvidenceChange={() => {}} />
+  return <DocumentVatFields items={items} onItemsChange={lines => { setItems(lines); onLines(lines) }} taxRate="25" defaultCountry="DK" buyerCountry={buyerCountry} evidence={{}} onEvidenceChange={() => {}} />
 }
 
-function renderFields(initial: DocumentLineInput[]) {
+function renderFields(initial: DocumentLineInput[], buyerCountry?: string) {
   const seen: DocumentLineInput[][] = []
-  render(<I18nProvider initialLocale="da-DK"><Fields initial={initial} onLines={lines => seen.push(lines)} /></I18nProvider>)
+  render(<I18nProvider initialLocale="da-DK"><Fields initial={initial} buyerCountry={buyerCountry} onLines={lines => seen.push(lines)} /></I18nProvider>)
   return { last: () => seen.at(-1) ?? [] }
 }
 
@@ -45,4 +45,14 @@ it("shows the organization's country for a line without one and sets it for a do
 it("shows the organization's country as the default of an empty VAT country", () => {
   renderFields([line])
   expect(screen.getByPlaceholderText("DK")).toBeTruthy()
+})
+
+it.each([
+  ["a Danish customer", "DK", "DK", false],
+  ["a Danish customer, line set to another country", "DK", "SE", true],
+  ["a Swedish customer", "SE", "DK", true],
+  ["an unknown customer", undefined, "DK", true],
+])("shows the VAT country to a Danish seller for %s: %s", (_name, buyerCountry, country, shown) => {
+  renderFields([{ ...line, vat: { treatment: "standard", rate: "0.25", country, reasonCode: null } }], buyerCountry)
+  expect(Boolean(screen.queryByText("Momsland (ISO-kode)"))).toBe(shown)
 })

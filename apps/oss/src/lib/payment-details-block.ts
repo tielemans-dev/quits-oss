@@ -4,7 +4,7 @@ import { translate } from "./i18n/translate"
 
 export type PaymentDetailsBlock = {
   title: string
-  rows: Array<{ label: string; value: string }>
+  rows: Array<{ key: TranslationKey; label: string; value: string }>
   note: string | null
   /** Null while the reference is not known yet: a draft has no invoice number. */
   reference: { label: string; value: string } | null
@@ -24,7 +24,7 @@ export function buildPaymentDetailsBlock(
   if (!details || !hasPaymentDetails(details)) return null
   return {
     title: translate("pdf.paymentDetails", locale),
-    rows: bankAccountRows(details.bankAccount, locale).map(({ label, value }) => ({ label, value })),
+    rows: bankAccountRows(details.bankAccount, locale).map(({ key, label, value }) => ({ key, label, value })),
     note: details.note?.trim() || null,
     reference: paymentReference?.trim()
       ? { label: translate("pdf.paymentReference", locale), value: paymentReference.trim() }

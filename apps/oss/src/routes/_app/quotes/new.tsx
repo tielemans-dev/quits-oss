@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_app/quotes/new")({
   component: NewQuotePage,
 })
 
-type Contact = { id: string; name: string }
+type Contact = { id: string; name: string; country?: string | null }
 
 type LineItem = {
   description: string
@@ -309,7 +309,7 @@ function NewQuotePage() {
             </Button>
           </div>
 
-          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} defaultCountry={orgSettings?.countryCode} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
+          <DocumentVatFields items={items} onItemsChange={setItems} taxRate={taxRate} defaultCountry={orgSettings?.countryCode} buyerCountry={contacts.find(contact => contact.id === contactId)?.country} evidence={vatEvidence} onEvidenceChange={setVatEvidence} />
           {currency && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">

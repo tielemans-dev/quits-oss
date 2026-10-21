@@ -172,3 +172,16 @@ describe("trial form gate", () => {
     expect(screen.queryByText("Finish setting up")).toBeNull()
   })
 })
+
+describe("trial banner countdown", () => {
+  it.each([
+    ["da-DK", 13, "13 dage tilbage af din prøveperiode"], ["da-DK", 2, "Din prøveperiode slutter om 2 dage"],
+    ["da-DK", 1, "Din prøveperiode slutter i morgen"], ["da-DK", 0, "Din prøveperiode slutter i dag"],
+    ["en-US", 0, "Your trial ends today"],
+  ])("in %s with %i calendar days left says %s", async (locale, daysLeft, title) => {
+    state.subscription = { status: "trialing", priceId: null, organizationAccess: { state: "trial", daysLeft, trialStart: 1, trialEnd: Date.UTC(2026, 10, 3, 14) / 1000, progress: 50 },
+      access: { paidOnly: true, hasSubscription: true, checkoutAvailable: true, portalAvailable: false } }
+    render(<I18nProvider locale={locale}><TrialAccessProvider><TrialBanner /></TrialAccessProvider></I18nProvider>)
+    expect(await screen.findByText(title)).toBeTruthy()
+  })
+})

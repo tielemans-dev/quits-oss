@@ -4,6 +4,7 @@ export const enUiMessages = {
   "ui.retry": "Try again",
   "ui.loading": "Loading…",
   "ui.mutationError": "Couldn't save your changes. Try again.",
+  "ui.copied": "Copied",
   "ui.close": "Close",
   "ui.sidebar.title": "Sidebar",
   "ui.sidebar.mobileDescription": "Displays the mobile sidebar.",
