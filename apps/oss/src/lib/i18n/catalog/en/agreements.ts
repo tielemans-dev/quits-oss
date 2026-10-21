@@ -154,6 +154,8 @@ export const enAgreementsMessages = {
   "agreements.completeConfirm": "Complete this agreement? Every deliverable must have terminal fulfillment and billing.",
   "agreements.payableRounding": "Payable rounding",
   "agreements.serviceTotal": "Service total",
+  "agreements.serviceTotalInclVat": "Service total including VAT",
+  "agreements.totalInclVat": "Total including VAT",
   "agreements.paymentSchedule": "Payment schedule",
   "agreements.vatBasis.net": "excluding VAT",
   "agreements.vatBasis.gross": "including VAT",

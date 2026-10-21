@@ -5,7 +5,7 @@ import { loadOrganizationSettings } from "../lib/organization-settings-query"
 import { normalizeCountryCode } from "../lib/validation/localization"
 
 /** Registration only describes the Danish EU VAT setup (as `settings.update` enforces); elsewhere the saved rate stands. */
-function defaultRate(settings: { taxRate?: number | null; momsRegistered?: boolean | null; countryCode?: string | null; taxRegime?: string | null }) {
+export function defaultSettingsTaxRate(settings: { taxRate?: number | null; momsRegistered?: boolean | null; countryCode?: string | null; taxRegime?: string | null }) {
   const notVatRegistered = settings.momsRegistered === false && normalizeCountryCode(settings.countryCode) === "DK" && settings.taxRegime === "eu_vat"
   return notVatRegistered ? 0 : settings.taxRate ?? 0
 }
@@ -22,7 +22,7 @@ export function useDocumentTaxRate(): [string, (value: string) => void] {
       if (cancelled) return
       setState(current => current.organizationId === organizationId && current.edited
         ? current
-        : { organizationId, value: String(defaultRate(settings)), edited: false })
+        : { organizationId, value: String(defaultSettingsTaxRate(settings)), edited: false })
     }).catch(() => {})
     return () => { cancelled = true }
   }, [organizationId, query.revision])

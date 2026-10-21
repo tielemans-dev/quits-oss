@@ -1,5 +1,6 @@
 import type { AgreementOfferSnapshot } from "@quits/contracts/agreements"
 import { lineAmounts, priceBasis } from "../documents/line-amounts"
+import { translate } from "../i18n/translate"
 
 /**
  * The amounts of an offer as the customer is told them, on the page and in the email alike.
@@ -30,4 +31,22 @@ export function agreementLineAmounts<Amount>(
   line: { unitPriceNet: Amount; unitPriceGross: Amount; lineNet: Amount; lineGross: Amount },
 ) {
   return lineAmounts(priceBasis(offer.pricesIncludeTax), line)
+}
+
+/**
+ * Which side of VAT an offer's amounts are on, in words, so no amount is left for the reader to
+ * guess. Lines follow the offer's price basis; the total always includes the VAT. An offer that
+ * carries no VAT states neither, as its subtotal and total do not either.
+ */
+export function agreementVatBasisLabels(
+  offer: { pricesIncludeTax: boolean; isV2: boolean; tax: number | string },
+  locale?: string | null,
+) {
+  const vat = Number(offer.tax) !== 0
+  return {
+    line: vat ? translate(offer.pricesIncludeTax ? "agreements.vatBasis.gross" : "agreements.vatBasis.net", locale) : null,
+    total: translate(offer.isV2
+      ? vat ? "agreements.serviceTotalInclVat" : "agreements.serviceTotal"
+      : vat ? "agreements.totalInclVat" : "agreements.total", locale),
+  }
 }

@@ -77,6 +77,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
                 price: formatCurrency(Number(agreementLineAmounts(snapshot, line).unitPrice), snapshot.currency, snapshot.locale),
               })}{" "}
               = {formatCurrency(Number(agreementLineAmounts(snapshot, line).amount), snapshot.currency, snapshot.locale)}
+              {vat.basis.line && ` ${vat.basis.line}`}
             </Text>
             {vat.lineLabel(line.taxRate) && <Text>{vat.lineLabel(line.taxRate)}</Text>}
             {line.agreedDate && <Text>Agreed date: {line.agreedDate.slice(0, 10)}</Text>}
@@ -85,7 +86,7 @@ export function AgreementPdf({ snapshot, number, issueDate, acceptance }: Agreem
         <View style={styles.section}>
           {vat.totals && vat.status !== false ? <>
             {vat.totals.lines.map((row, i) => <Text key={i}>{row.label}: {formatCurrency(Number(row.amount), snapshot.currency, snapshot.locale)}{row.reason ? ` · ${row.reason}` : ""}</Text>)}
-            <Text>Service total: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
+            <Text>{vat.basis.total}: {formatCurrency(Number(vat.totals.total.amount), snapshot.currency, snapshot.locale)}</Text>
             {vat.totals.note && <Text>{vat.totals.note}</Text>}
           </> : <>
           <Text>
