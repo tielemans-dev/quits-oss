@@ -83,6 +83,8 @@ export const daActivityMessages = {
   "activity.event.invoice.marked_paid": "Faktura markeret som betalt",
   "activity.event.payment.voided": "Betaling annulleret",
   "activity.event.payment.recorded": "Betaling registreret",
+  "activity.event.payment.refunded": "Refunderet {amount} {currency} til kunden",
+  "activity.event.payment.refund_voided": "Refusion annulleret",
   "activity.event.invoice.paid": "Faktura betalt",
   "activity.event.document.artifact_stored": "Dokumentfil gemt",
   "activity.event.document.artifact_missing": "Dokumentfil mangler",

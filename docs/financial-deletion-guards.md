@@ -9,8 +9,8 @@ The database rejects deletion of parents with the following retained children:
 
 | Parent | Child foreign keys using `Restrict` |
 | --- | --- |
-| Organization | OrgSettings, Contact, OrganizationTaxId, Invoice, Quote, CreditNote, Payment, RecurringInvoice, DomainEvent, Agreement, AgreementTemplate, AgentKey, ApprovalRequest, ArtifactStaging, IssuanceCandidate |
-| Invoice | InvoiceItem, InvoiceReminder |
+| Organization | OrgSettings, Contact, OrganizationTaxId, Invoice, Quote, CreditNote, Payment, PaymentRefund, RecurringInvoice, DomainEvent, Agreement, AgreementTemplate, AgentKey, ApprovalRequest, ArtifactStaging, IssuanceCandidate |
+| Invoice | InvoiceItem, InvoiceReminder, PaymentRefund |
 | Quote | QuoteItem |
 | CreditNote | CreditNoteItem |
 | Agreement | Deliverable |

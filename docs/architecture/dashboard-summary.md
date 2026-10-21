@@ -34,6 +34,8 @@ type Summary = {
   outstanding: Total
   overdue: Total & { oldestDaysOverdue: number }
   paidThisMonth: Total // received cash, net of fees; legacy field name
+  owedToCustomers: Total // paid beyond what credited invoices charge, less refunds; one per invoice
+  refundedThisMonth: Total // legacy payment refunds dated this month
   receivedByMonth: Array<Total & { month: string }> // YYYY-MM, exactly 12
   streak: number
   attention: Array<Document & {
@@ -143,6 +145,10 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   of what was known at a past `asOf`. Refunds are separate outflows and do not reduce this received
   money metric; reversing a refund likewise adds no receipt. Customer-credit classification,
   allocation reversals and credit notes do not create or remove cash receipts.
+- `owedToCustomers` is, per invoice, active payments less active refunds less what the invoice still
+  charges after credit notes, when positive. `refundedThisMonth` sums active legacy payment refunds by
+  `refundedAt` from the start of the local month through `asOf`. A refund never changes received
+  money, so a past month still matches the bank statement. Both stay unvalued, like received cash.
 - The streak walks currently payment-settled, positive-value issued invoices, descending by their
   latest active payment's `paidAt`, then descending id. Payment includes receipt allocations in
   the invoice currency; their `paidAt` comes from the receipt, not the allocation date. Evidenced
@@ -162,7 +168,7 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
 - `canRemind` checks send permission, open settlement, a valid recipient, provider availability and
   the manual reminder's current offset slot. Pausing automatic reminders does not disable manual
   reminders. The command checks again under lock before sending. Nothing in this query sends email.
-- `hasOtherCurrencies` is true if any bucket in outstanding, overdue, received this month or any of the
+- `hasOtherCurrencies` is true if any bucket in outstanding, overdue, owed, refunded, received this month or any of the
   twelve monthly totals differs from `baseCurrency`. Unvalued subsets are checked too. Draft-only
   foreign currencies and receipts outside the window do not set the flag.
 - Incoming contains the earliest due outstanding invoices, with the balance still owed in `amount`
@@ -240,7 +246,7 @@ calendar `daysOverdue` and need review in the later end-of-due-day policy change
 
 The helper executes at most six SELECTs in a repeatable-read transaction with an explicit 30-second
 timeout: settings, narrow invoice rows
-with contacts and the current reminder slot, SQL legacy-payment/receipt sums grouped by currency and local month,
+with contacts, the current reminder slot and grouped active refunds, SQL legacy-payment/receipt sums grouped by currency and local month,
 old draft/expiring quotes, one complete draft count/newest aggregate, and eight allowed events joined
 to scoped document/contact display fields. Without quote read permission the attention quote query
 is skipped. tRPC membership resolution adds its existing query.
@@ -254,6 +260,7 @@ The existing indexes were checked against PostgreSQL on port 55473:
 - `contact` primary key serves the contact joins; the organization id is checked on both sides.
 - `invoice_reminder(invoiceId, offsetDays)` is unique and serves the current reminder slot join.
 - `payment(organizationId, paidAt)` bounds the twelve-month legacy payment aggregation.
+- `payment_refund(organizationId, refundedAt)` bounds the refund grouping joined to invoice rows.
 - `settlement_receipt(organizationId, paidAt)` is added by `20261014040000_dashboard_receipt_months`
   to bound the receipt side of that same SQL aggregate. Both branches filter dates before summing.
 - `quote(organizationId, status)` bounds eligible quotes; expiry sorting is local to that result.

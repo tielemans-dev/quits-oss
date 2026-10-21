@@ -93,6 +93,10 @@ export const dashboardSummarySchema = z.strictObject({
   /** Uses the existing dueDate < asOf predicate; same-day arrears have 0 calendar days overdue. */
   overdue: z.strictObject({ ...dashboardTotalSchema.shape, oldestDaysOverdue: z.number().int().nonnegative() }),
   paidThisMonth: dashboardTotalSchema,
+  /** Payments beyond what credited invoices still charge, less refunds; one count per invoice. */
+  owedToCustomers: dashboardTotalSchema,
+  /** Refunds dated this month. They never reduce money received in any month. */
+  refundedThisMonth: dashboardTotalSchema,
   receivedByMonth: z.array(z.strictObject({
     month: z.string().regex(/^\d{4}-\d{2}$/),
     ...dashboardTotalSchema.shape,

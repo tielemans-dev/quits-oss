@@ -40,6 +40,26 @@ export function computeSettlement(input: {
   return { totalGross, amountPaid, amountCredited, balanceDue, paymentStatus, fullyCredited }
 }
 
+/**
+ * Payments above what the invoice charges after credit notes, less refunds. Balance due can ignore
+ * refunds: none exceeds this amount and no payment is voided while one stands.
+ */
+export function amountOwedToCustomer(input: Parameters<typeof computeSettlement>[0] & { amountRefunded: Amount }) {
+  const { totalGross, amountPaid, amountCredited } = computeSettlement(input)
+  const payable = Prisma.Decimal.max(totalGross.minus(amountCredited), 0)
+  return Prisma.Decimal.max(amountPaid.minus(input.amountRefunded).minus(payable), 0)
+}
+
+/** Reads the invoice's active refunds. Lock the invoice first when the result guards a change. */
+export const owedToCustomer = (invoice: { id: string; totalGross: Amount; amountPaid: Amount; amountCredited: Amount }) =>
+  Effect.gen(function* () {
+    const db = yield* Db
+    const refunds = yield* Effect.promise(() =>
+      db.paymentRefund.aggregate({ where: { invoiceId: invoice.id, voidedAt: null }, _sum: { amount: true } })
+    )
+    return amountOwedToCustomer({ ...invoice, amountRefunded: refunds._sum.amount ?? 0 })
+  })
+
 /** The lifecycle status an issued invoice should have given its settlement. */
 export function settledInvoiceStatus(input: {
   currentStatus: string

@@ -1,0 +1,22 @@
+{
+  "type": "payment.refund_voided",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "source": "commands/payments.ts",
+      "typeExpression": "\"payment.refund_voided\"",
+      "payloadExpression": "{\n          refundId: refund.id, number: invoice.number, contactId: invoice.contactId,\n          amount: refund.amount.toFixed(2), currency: refund.currency, refundedAt: refund.refundedAt.toISOString(),\n          reason: input.reason, owedToCustomer: owed.toFixed(2),\n        }",
+      "variant": "default",
+      "payload": {
+        "refundId": "refund-1",
+        "number": "DOC-0001",
+        "contactId": "contact-1",
+        "amount": "100.00",
+        "currency": "USD",
+        "refundedAt": "2026-01-15T12:00:00.000Z",
+        "reason": "Correction",
+        "owedToCustomer": "100.00"
+      }
+    }
+  ]
+}

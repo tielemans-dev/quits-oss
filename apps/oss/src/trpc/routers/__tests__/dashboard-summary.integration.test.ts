@@ -111,6 +111,55 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(amount((await org.summary()).outstanding)).toBe("0.00")
   })
 
+  async function paidInvoice(org: Awaited<ReturnType<typeof setup>>, total: number, paidAt: string) {
+    const invoice = await org.admin.invoices.create({ contactId: org.contact.id, currency: "DKK", dueDate: "2026-10-15", items: [{ description: "Work", quantity: 1, unitPrice: total }] })
+    await org.admin.invoices.send({ id: invoice.id, allowSendWithoutEmail: true })
+    const { payment } = await org.admin.payments.record({ invoiceId: invoice.id, amount: total, paidAt, method: "bank_transfer" })
+    const refund = (value: number, refundedAt: string) => org.admin.payments.refund({ requestId: randomUUID(), invoiceId: invoice.id, amount: value, refundedAt })
+    return { invoice, payment, refund, list: () => org.admin.payments.list({ invoiceId: invoice.id }) }
+  }
+
+  it("owes a fully credited payment back and keeps its receipt month when the refund follows next month", async () => {
+    const org = await setup()
+    const paid = await paidInvoice(org, 22500, "2026-09-15")
+    await org.admin.creditNotes.issue({ invoiceId: paid.invoice.id, mode: "full", reason: "Order cancelled" })
+    const before = await org.summary()
+    const september = [{ currency: "DKK", exponent: 2, amount: "22500.00", count: 1 }]
+    expect(before.receivedByMonth.at(-2)?.buckets).toEqual(september)
+    expect(before.owedToCustomers).toEqual({ count: 1, buckets: september, unvalued: september })
+    expect(await paid.list()).toMatchObject({ total: 22500, balanceDue: 0, owedToCustomer: 22500, canRefund: true })
+
+    await expect(paid.refund(22500.01, "2026-10-02")).rejects.toMatchObject({ cause: { code: "refund_exceeds_owed" } })
+    const { refund } = await paid.refund(22500, "2026-10-02")
+    const after = await org.summary()
+    expect(dashboardSummarySchema.safeParse(after).success).toBe(true)
+    expect(after.receivedByMonth).toEqual(before.receivedByMonth)
+    expect(after).toMatchObject({ paidThisMonth: zero, owedToCustomers: zero, refundedThisMonth: { buckets: september } })
+    expect(await paid.list()).toMatchObject({ owedToCustomer: 0, canRefund: false, refunds: [{ id: refund.id, amount: 22500, voidedAt: null }] })
+    const event = await prisma.domainEvent.findFirstOrThrow({ where: { organizationId: org.organizationId, type: "payment.refunded" } })
+    expect(event.payload).toMatchObject({ refundId: refund.id, contactId: org.contact.id, amount: "22500.00", currency: "DKK", refundedAt: "2026-10-01T22:00:00.000Z", owedToCustomer: "0.00" })
+
+    await expect(org.admin.payments.void({ paymentId: paid.payment.id, reason: "Wrong invoice" })).rejects.toMatchObject({ cause: { code: "refund_recorded" } })
+    expect(await org.admin.payments.voidRefund({ refundId: refund.id, reason: "Bank returned the transfer" })).toMatchObject({ owedToCustomer: 22500 })
+    await expect(org.admin.payments.voidRefund({ refundId: refund.id, reason: "Again" })).rejects.toMatchObject({ cause: { code: "refund_already_voided" } })
+    expect(await org.summary()).toMatchObject({ refundedThisMonth: zero, owedToCustomers: { count: 1 } })
+  })
+
+  it("owes back only the credited part of a payment and dates each refund in its own month", async () => {
+    const org = await setup()
+    const paid = await paidInvoice(org, 1000, "2026-09-20")
+    await org.admin.creditNotes.issue({ invoiceId: paid.invoice.id, mode: "amount", amount: 400, reason: "Partial return" })
+    expect(await paid.list()).toMatchObject({ total: 1000, balanceDue: 0, owedToCustomer: 400, paymentStatus: "paid" })
+    await paid.refund(150, "2026-09-30")
+    await paid.refund(100, "2026-10-03")
+    const summary = await org.summary()
+    expect(summary.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "1000.00", count: 1 }])
+    expect(summary.refundedThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "100.00", count: 1 }])
+    expect(amount(summary.owedToCustomers)).toBe("150.00")
+    await expect(paid.refund(150.01, "2026-10-03")).rejects.toMatchObject({ cause: { code: "refund_exceeds_owed" } })
+    await expect(org.admin.payments.record({ invoiceId: paid.invoice.id, amount: 1, paidAt: "2026-10-03", method: "cash" })).rejects.toMatchObject({ cause: { code: "invoice_already_paid" } })
+  })
+
   it("counts a split receipt once at net, including its unallocated cash", async () => {
     const org = await setup()
     const first = await org.seed(), second = await org.seed()

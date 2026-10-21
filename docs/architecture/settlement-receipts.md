@@ -77,6 +77,17 @@ choose evidence they intend to share with readers of those records.
 Domain-event envelopes record actor kind, actor
 ID, command ID, occurrence time, sequence and schema version.
 
+## Refunds of legacy payments
+
+Legacy payments have no receipt to refund from. A credit note on a paid invoice leaves its payments
+above what it still charges; that excess, less active refunds, is owed to the customer. A
+`PaymentRefund` on the invoice records money paid back outside Quits: the exact amount, the local
+calendar date it left the account, an optional note, actor and command. It cannot exceed the amount
+owed and is voided, never deleted. A legacy payment cannot be voided while its invoice has an active
+refund. Both commands need a person. `payment.refunded` and `payment.refund_voided` keep the frozen
+date and exact amount for a later posting policy (customer credit to bank); `postingsFor` refuses
+them until a bookkeeper approves one.
+
 ## Accounting export contract
 
 The `settlements` CSV exports immutable events in organization sequence order, selected by event
