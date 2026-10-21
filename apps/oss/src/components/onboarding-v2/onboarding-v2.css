@@ -56,9 +56,6 @@
   background: var(--primary);
   border-color: var(--primary);
 }
-.ob-mobile-step {
-  display: none;
-}
 .ob-shell h1 {
   font-size: clamp(28px, 4vw, 36px);
   line-height: 1.18;
@@ -432,14 +429,6 @@
   .ob-steps {
     margin-bottom: 32px;
     padding-bottom: 20px;
-  }
-  .ob-mobile-step {
-    display: block;
-    font:
-      11px "Geist Mono Variable",
-      monospace;
-    color: var(--muted-foreground);
-    margin-bottom: 16px;
   }
   .ob-steps ol {
     gap: 18px;

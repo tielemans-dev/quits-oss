@@ -25,6 +25,10 @@ describe("Danish onboarding copy", () => {
     expect(enMessages["auth.onboarding.cvrFree"]).toMatch(/sole proprietorship.*free/)
     expect(enMessages["auth.onboarding.cvrLabel"]).toBe("CVR number")
   })
+  it("calls the seller a virksomhed, never an organisation (QUI-241)", () => {
+    for (const [key, value] of entries) expect(String(value).toLowerCase(), key).not.toContain("organisation")
+    expect(daMessages["auth.onboarding.submit"]).toBe("Opret virksomhed")
+  })
   it("translates every onboarding string and uses moms and CVR-nr.", () => {
     expect(entries.length).toBeGreaterThan(40)
     for (const [key, value] of entries) {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
 import { OnboardingV2 } from "../onboarding-v2/onboarding-v2"
@@ -17,6 +17,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
 } }))
 afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks() })
 
+const steps = (name: string) => within(screen.getByRole("navigation", { name })).getAllByRole("listitem").map(item => item.textContent?.replace(/^\d/, ""))
 const account = (status: string) => ({ stripeAccount: { mode: "connect", status }, stripeConnectActions: true })
 
 async function createCompany(client: OnboardingV2Client, onComplete: () => void, locale: "en-US" | "da-DK" = "en-US") {
@@ -37,7 +38,7 @@ describe("hosted payments step", () => {
     await createCompany(createOnboardingV2Client(false, false, true), done)
     await screen.findByRole("heading", { name: "Get paid by card and MobilePay" })
     expect(done).not.toHaveBeenCalled()
-    expect(screen.getByText("Step 4/4", { selector: ".ob-mobile-step" })).toBeTruthy()
+    expect(steps("Step 3/3")).toEqual(["Company", "Review", "Payments"])
     fireEvent.click(screen.getByRole("button", { name: "Connect Stripe" }))
     await waitFor(() => expect(follow).toHaveBeenCalledWith("https://connect.stripe.test/setup"))
     expect(api.run).toHaveBeenCalledWith({ action: "connect" })
@@ -81,6 +82,26 @@ describe("hosted payments step", () => {
     const done = vi.fn()
     await createCompany(createOnboardingV2Client(false, false, true), done)
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
+  })
+
+  it("shows only user steps and adds Payments only after the check says yes (QUI-241)", async () => {
+    api.get.mockResolvedValue(account("active"))
+    const done = vi.fn()
+    render(<I18nProvider locale="en-US"><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" client={createOnboardingV2Client(false, false, true)} onComplete={done} /></I18nProvider>)
+    expect(steps("Step 1/2")).toEqual(["Company", "Review"])
+    fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
+    expect(steps("Step 2/2")).toEqual(["Company", "Review"])
+    // The step count is only the navigation's name; the named steps are what users see.
+    expect(screen.queryByText(/^Step \d/)).toBeNull()
+    // Asking before the save would create settings for an organization that isn't set up yet.
+    expect(api.get).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
+    fireEvent.click(screen.getByRole("button", { name: "Create company" }))
+    await waitFor(() => expect(done).toHaveBeenCalledOnce())
+    expect(screen.queryByRole("listitem", { name: "Payments" })).toBeNull()
+    expect(screen.queryByText("Payments")).toBeNull()
   })
 
   it("never asks self-hosted onboarding about Stripe", async () => {

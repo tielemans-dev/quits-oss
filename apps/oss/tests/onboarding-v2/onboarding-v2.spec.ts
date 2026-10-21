@@ -191,13 +191,15 @@ test("non-VAT businesses see no VAT rate and liquidation is refused", async ({ p
 test("390px mobile and English copy", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await review(page)
-  await expect(page.getByText("Trin 3/3", { exact: true })).toBeVisible()
+  // Named user steps only, with no count beside them and no lookup step.
+  await expect(page.getByRole("navigation", { name: "Trin 2/2" }).getByRole("listitem")).toHaveText(["Virksomhed", "2Gennemse"])
+  await expect(page.getByText(/^Trin \d/)).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await page.screenshot({ path: "test-results/onboarding-v2-mobile.png", fullPage: true })
   await page.getByRole("button", { name: "Annuller", exact: true }).click()
   await page.goto("/?locale=en-GB")
   await expect(page.getByRole("heading", { name: "What's your company called?" })).toBeVisible()
-  await expect(page.getByText("Step 1/3", { exact: true })).toBeVisible()
+  await expect(page.getByRole("navigation", { name: "Step 1/2" })).toBeVisible()
 })
 
 for (const profile of ["selfhost", "hosted-non-vat"]) {
@@ -375,7 +377,7 @@ test.describe("hosted card payments step", () => {
   test("390px mobile screenshot", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await toPaymentsStep(page)
-    await expect(page.getByText("Trin 4/4", { exact: true })).toBeVisible()
+    await expect(page.getByRole("navigation", { name: "Trin 3/3" }).getByRole("listitem")).toHaveText(["Virksomhed", "Gennemse", "3Betaling"])
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
     await page.screenshot({ path: "test-results/onboarding-payments-390.png", fullPage: true })
   })

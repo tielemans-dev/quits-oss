@@ -15,7 +15,6 @@ export const daOnboardingV2Messages = {
   "onboardingV2.validation": "Tjek de markerede felter, før du opretter din virksomhed.",
   "onboardingV2.step": "Trin {x}/{n}",
   "onboardingV2.company": "Virksomhed",
-  "onboardingV2.lookup": "Opslag",
   "onboardingV2.review": "Gennemse",
   "onboardingV2.payments": "Betaling",
   "onboardingV2.payments.heading": "Få betalt med kort og MobilePay",

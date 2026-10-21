@@ -228,12 +228,12 @@ describe('return after required organization flow', () => {
       const creationTitle = cloud
         ? (lang === 'da' ? 'Slå dit eget CVR op' : 'Look up your own CVR')
         : (lang === 'da' ? 'Indtast virksomhedsnavnet' : 'Enter your company name')
-      expect(await screen.findByText(create ? creationTitle : (lang === 'da' ? 'Vælg din organisation' : 'Choose your organization'))).toBeTruthy()
+      expect(await screen.findByText(create ? creationTitle : (lang === 'da' ? 'Vælg din virksomhed' : 'Choose your organization'))).toBeTruthy()
       if (create) {
         if (cloud) fireEvent.click(screen.getByRole('button', { name: lang === 'da' ? 'Indtast manuelt' : 'Enter manually' }))
         fireEvent.change(await screen.findByLabelText(requiredLabel(lang === 'da' ? 'Virksomhedsnavn' : 'Company name')), { target: { value: 'New org' } })
         fireEvent.change(screen.getByRole('textbox', { name: lang === 'da' ? 'CVR-nr.' : 'CVR number' }), { target: { value: '24256790' } })
-        fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret organisation' : 'Create organization' }).closest('form')!)
+        fireEvent.submit(screen.getByRole('button', { name: lang === 'da' ? 'Opret virksomhed' : 'Create organization' }).closest('form')!)
       } else fireEvent.click(await screen.findByText('Second org'))
       await waitFor(() => expect(state.load).toHaveBeenCalledWith(cloud ? loginReturnOnboarding(state.search) : `/hosted/account?tab=vat&lang=${lang}`))
     })
