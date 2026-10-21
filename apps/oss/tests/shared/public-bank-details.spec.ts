@@ -56,7 +56,7 @@ for (const locale of ['da-DK', 'en-US']) {
       await page.goto(url)
       const details = page.getByRole('region', { name: locale === 'da-DK' ? 'Betalingsoplysninger' : 'Payment details' })
       await expect(details).toBeVisible()
-      for (const value of [holder, bankName, note, reference, '0040', '0440116243', 'DK50 0040 0440 1162 43', 'DABADKKK']) {
+      for (const value of [holder, bankName, note, reference, '0040', '0440 116 243', 'DK50 0040 0440 1162 43', 'DABADKKK']) {
         const text = details.getByText(value, { exact: true })
         await expect(text).toBeVisible()
         // Selection preserves the complete value even when its visual lines wrap.
