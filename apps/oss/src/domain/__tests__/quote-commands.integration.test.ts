@@ -128,6 +128,34 @@ describeIfDatabase("quote commands", () => {
     expect((await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: org.organizationId } })).quoteNextNum).toBe(1)
   })
 
+  it("dates a converted invoice by payment terms, the customer's before the organization's", async () => {
+    const { org, contactId } = await setupWithContact()
+    await prisma.orgSettings.update({ where: { organizationId: org.organizationId }, data: { paymentTermsDays: 14, timezone: "Europe/Copenhagen" } })
+    // 23:30 UTC is already the next day in Copenhagen.
+    const now = new Date("2026-10-20T23:30:00Z")
+    const convert = async () => {
+      const created = await executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })
+      if (created.status !== "completed") throw new Error("create failed")
+      await executeCommand(sendQuote, { id: created.result.id, allowSendWithoutEmail: true }, { actor: org.actors.admin })
+      await decidePublicQuoteByToken(signQuotePublicToken({ quoteId: created.result.id, keyVersion: 1, scope: "quote_public" }, secret), secret, { decision: "accepted" })
+      const converted = await executeCommand(convertQuoteToInvoice, { id: created.result.id }, { actor: org.actors.admin, now })
+      if (converted.status !== "completed") throw new Error(JSON.stringify(converted))
+      return converted.result.dueDate.toISOString().slice(0, 10)
+    }
+
+    // The quote's expiry, 2026-12-01, is not a due date.
+    expect(await convert()).toBe("2026-11-04")
+
+    for (const issueDate of ["2026-09-01", "2026-09-15"]) {
+      await prisma.invoice.create({ data: {
+        organizationId: org.organizationId, contactId, number: `INV-${randomUUID()}`, status: "sent", currency: "USD",
+        timezone: "UTC", issueDate: new Date(issueDate), dueDate: new Date(Date.parse(issueDate) + 30 * 86_400_000),
+        totalGross: "100.00", subtotalNet: "100.00",
+      } })
+    }
+    expect(await convert()).toBe("2026-11-20")
+  })
+
   it("records the full lifecycle and converts into an identical invoice", async () => {
     const { org, contactId } = await setupWithContact()
     const created = await executeCommand(createQuoteDraft, draft(contactId), { actor: org.actors.admin })

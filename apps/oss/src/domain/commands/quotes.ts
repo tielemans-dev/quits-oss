@@ -19,6 +19,7 @@ import { defineCommand } from "../command"
 import { assessCompliance, loadDocumentContext } from "../documents/context"
 import { queueDocumentEmail, refuseWhileSending } from "../documents/document-delivery"
 import { lockDocument } from "../documents/locks"
+import { paymentTermsDueDate } from "../documents/learned-defaults-store"
 import { documentFingerprint, lockedContact } from "../approval-contexts"
 import { asIssued, documentRef, numberForIssuance, numberVoidedByDraftDeletion } from "../documents/numbering"
 import { impliedTaxRate, priceCurrentDraft, storedDraftItems } from "../documents/pricing"
@@ -552,6 +553,10 @@ export const convertQuoteToInvoice = defineCommand({
       // Conversion creates an invoice, so it is subject to the same billing limits.
       yield* precondition(() => billingProvider.assertInvoiceCreationAllowed(organizationId))
 
+      // A quote's expiry is how long the offer stands, not when the invoice is due. Without any
+      // payment terms there is nothing better than the date the customer accepted against.
+      const dueDate = yield* Effect.promise(() => paymentTermsDueDate(organizationId, quote.contactId, quote.timezone, command.now, db))
+
       const invoice = yield* Effect.promise(() =>
         db.invoice.create({
           data: {
@@ -559,7 +564,7 @@ export const convertQuoteToInvoice = defineCommand({
             contactId: quote.contactId,
             // The invoice is numbered when it is issued, like any other draft.
             status: "draft",
-            dueDate: quote.expiryDate,
+            dueDate: dueDate ?? quote.expiryDate,
             supplyDate: quote.supplyDate,
             subtotalNet: quote.subtotalNet,
             totalTax: quote.totalTax,
