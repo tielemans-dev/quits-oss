@@ -83,7 +83,7 @@ export function TrialBanner() {
   const date = access.trialEnd ? formatTrialDate(access.trialEnd, locale) : ""
   const progress = access.state === "trial" ? access.progress : 0
   const title = ended ? t(trialEnded ? "trial.banner.ended" : "billing.readOnly.title") : warning
-    ? days === 1 ? t("trial.banner.tomorrow") : t("trial.banner.warning", { days })
+    ? days === 0 ? t("trial.banner.today") : days === 1 ? t("trial.banner.tomorrow") : t("trial.banner.warning", { days })
     : t("trial.banner.active", { days })
   const meta = ended ? t(trialEnded ? "trial.banner.endedMeta" : "billing.readOnly.body") : warning
     ? t("trial.banner.warningMeta") : t("trial.banner.activeMeta", { date })

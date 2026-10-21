@@ -56,7 +56,7 @@ export const Route = createFileRoute("/_app/invoices/new")({
   component: () => <NewInvoicePage initialContactId={Route.useSearch().contactId} />,
 })
 
-type Contact = { id: string; name: string; email?: string | null; taxId?: string | null }
+type Contact = { id: string; name: string; email?: string | null; taxId?: string | null; country?: string | null }
 
 type LineItem = {
   description: string
@@ -495,7 +495,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
             taxRate={taxRate} standardVatRate={readiness?.standardVatRate} defaultCountry={readiness?.countryCode} momsRegistered={readiness?.momsRegistered} showVat={restrictedVat} issues={fieldIssues}
             amounts={items.map((_, index) => preview.result ? formatCurrencyIntl(Number(preview.result.lines[index]?.[pricesIncludeTax ? "gross" : "net"] ?? "0"), currency, locale) : "—")} />
 
-          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} defaultCountry={readiness?.countryCode} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
+          <DocumentVatFields items={items} onItemsChange={changeItems} taxRate={taxRate} defaultCountry={readiness?.countryCode} buyerCountry={contacts.find(contact => contact.id === contactId)?.country} evidence={vatEvidence} onEvidenceChange={setVatEvidence} hideClassification={restrictedVat} />
           {!restrictedVat && <VatGroupPreview {...preview} />}
           {/* Summary */}
           <div className="flex justify-end">

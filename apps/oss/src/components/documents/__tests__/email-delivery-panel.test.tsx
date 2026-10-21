@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from "vitest"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react"
+import { I18nProvider } from "../../../lib/i18n/react"
 import { EmailDeliveryPanel } from "../email-delivery-panel"
 
 afterEach(() => {
@@ -101,14 +102,14 @@ describe("EmailDeliveryPanel", () => {
 
   it("renders invalid-recipient manual-share fallback", () => {
     render(
-      <EmailDeliveryPanel
+      <I18nProvider locale="en-US"><EmailDeliveryPanel
         title="Email delivery"
         description="Send or resend the customer email for this document."
         fallback={{
           title: "Customer email is missing",
           description: "Add a valid email address or share the public link manually.",
           copyLabel: "Copy link",
-          onCopy: () => undefined,
+          onCopy: async () => undefined,
           fixAction: <a href="/contacts/contact-1">Fix contact</a>,
         }}
         publicLink={{
@@ -117,7 +118,7 @@ describe("EmailDeliveryPanel", () => {
           url: "https://example.test/q/token",
           copyLabel: "Copy link",
         }}
-      />
+      /></I18nProvider>
     )
 
     expect(screen.getByText("Customer email is missing")).toBeTruthy()
@@ -126,5 +127,27 @@ describe("EmailDeliveryPanel", () => {
     expect(screen.getByRole("textbox", { name: "Public document link" })).toBe(
       screen.getByDisplayValue("https://example.test/q/token")
     )
+  })
+
+  it.each([["da-DK", "Kopiér link", "Kopieret"], ["en-US", "Copy link", "Copied"]])("confirms in %s once the link is copied", async (locale, label, copied) => {
+    let copy: (() => void) | undefined
+    render(<I18nProvider locale={locale}><EmailDeliveryPanel title="Email" description="" publicLink={{
+      title: "Link", description: "", url: "https://example.test/q/token", copyLabel: label,
+      onCopy: () => new Promise<void>(resolve => { copy = resolve }),
+    }} /></I18nProvider>)
+    fireEvent.click(screen.getByRole("button", { name: label }))
+    // Not before the clipboard has the link.
+    expect(screen.queryByRole("button", { name: copied })).toBeNull()
+    await act(async () => copy!())
+    expect(screen.getByRole("button", { name: copied })).toBeTruthy()
+  })
+
+  it("keeps the label when the clipboard refuses the link", async () => {
+    render(<I18nProvider locale="da-DK"><EmailDeliveryPanel title="Email" description="" publicLink={{
+      title: "Link", description: "", url: "https://example.test/q/token", copyLabel: "Kopiér link",
+      onCopy: () => Promise.reject(new Error("denied")),
+    }} /></I18nProvider>)
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Kopiér link" })))
+    expect(screen.getByRole("button", { name: "Kopiér link" })).toBeTruthy()
   })
 })

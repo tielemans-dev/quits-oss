@@ -20,6 +20,6 @@ test("shows email delivery and document sending settings for an authenticated ad
   await waitForClientReady(page)
 
   await expect(page.getByRole("heading", { name: "Email", exact: true })).toBeVisible()
-  await expect(page.getByText("Email Delivery")).toBeVisible()
+  await expect(page.getByText("Email delivery")).toBeVisible()
   await expect(page.getByText("Missing env vars")).toBeVisible()
 })

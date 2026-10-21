@@ -47,6 +47,7 @@ export const daCreditNotesMessages = {
   "creditNotes.detail.title": "Kreditnota {number}",
   "creditNotes.detail.reference": "Krediterer faktura {number}",
   "creditNotes.detail.reason": "Årsag",
+  "creditNotes.detail.customer": "Kunde",
   "creditNotes.detail.notFound": "Kreditnotaen blev ikke fundet.",
   "creditNotes.detail.email.title": "E-mail",
   "creditNotes.detail.email.never": "Kreditnotaen er ikke sendt på e-mail endnu.",

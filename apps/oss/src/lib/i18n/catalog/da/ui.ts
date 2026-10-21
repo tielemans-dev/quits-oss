@@ -4,6 +4,7 @@ export const daUiMessages = {
   "ui.retry": "Prøv igen",
   "ui.loading": "Indlæser…",
   "ui.mutationError": "Dine ændringer kunne ikke gemmes. Prøv igen.",
+  "ui.copied": "Kopieret",
   "ui.close": "Luk",
   "ui.sidebar.title": "Sidepanel",
   "ui.sidebar.mobileDescription": "Viser sidepanelet på mobil.",

@@ -37,6 +37,7 @@ export const daBillingMessages = {
   "trial.banner.activeMeta": "Intet kort nødvendigt · slutter {date}",
   "trial.banner.warning": "Din prøveperiode slutter om {days} dage",
   "trial.banner.tomorrow": "Din prøveperiode slutter i morgen",
+  "trial.banner.today": "Din prøveperiode slutter i dag",
   "trial.banner.warningMeta": "Opgrader for at blive ved med at fakturere. Dine data er gemt.",
   "trial.banner.ended": "Din prøveperiode er slut",
   "trial.banner.endedMeta": "Dine data er gemt, og du kan stadig se og downloade alt. Opgrader for at oprette og sende igen.",

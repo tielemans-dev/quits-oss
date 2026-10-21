@@ -46,6 +46,7 @@ export const enCreditNotesMessages = {
   "creditNotes.dialog.preview": "Credit note total",
   "creditNotes.detail.title": "Credit note {number}",
   "creditNotes.detail.reference": "Credits invoice {number}",
+  "creditNotes.detail.customer": "Customer",
   "creditNotes.detail.reason": "Reason",
   "creditNotes.detail.notFound": "Credit note not found.",
   "creditNotes.detail.email.title": "Email",

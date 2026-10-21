@@ -20,10 +20,10 @@ describe("onboarding company review after lookup", () => {
 
   it("marks every field required and keeps the registry address on two lines", () => {
     render(<I18nProvider locale="en-US"><CompanyReview company={{ ...company, companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg" }} confirmationEnabled onComplete={() => {}} /></I18nProvider>)
-    expect((screen.getByLabelText(requiredLabel("Company Address")) as HTMLTextAreaElement).value).toBe("Testvej 12A, 1. tv.\n9000 Aalborg")
-    for (const name of ["Company Name", "CVR", "Company form"]) expect(screen.getByLabelText(requiredLabel(name))).toBeTruthy()
+    expect((screen.getByLabelText(requiredLabel("Company address")) as HTMLTextAreaElement).value).toBe("Testvej 12A, 1. tv.\n9000 Aalborg")
+    for (const name of ["Company name", "CVR", "Company form"]) expect(screen.getByLabelText(requiredLabel(name))).toBeTruthy()
     // The marker is visual only: the accessible name stays the plain label.
-    expect(screen.getByRole("textbox", { name: "Company Address" })).toBeTruthy()
+    expect(screen.getByRole("textbox", { name: "Company address" })).toBeTruthy()
   })
 
   it("has no hosted confirmation flow with the flag off", () => {
@@ -55,7 +55,7 @@ describe("onboarding company review after lookup", () => {
     render(<I18nProvider locale="en-US"><CompanyReview company={company} confirmationEnabled nonVatEnabled onComplete={() => {}} /></I18nProvider>)
     fireEvent.click(screen.getAllByRole("radio")[0]!)
     fireEvent.change(screen.getByLabelText(requiredLabel("CVR")), { target: { value: "" } })
-    expect((screen.getByRole("button", { name: "Save Settings" }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: "Save settings" }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getAllByRole("radio").every(radio => !(radio as HTMLInputElement).checked)).toBe(true)
   })
   it.each([true, false])("requires an explicit choice %s after CVR and saves it through the extension", async registered => {
@@ -65,7 +65,7 @@ describe("onboarding company review after lookup", () => {
     expect(radios.every(radio => !radio.checked && radio.required)).toBe(true)
     expect(screen.getByLabelText(requiredLabel("CVR"))).toBeTruthy()
     fireEvent.click(radios[registered ? 0 : 1]!)
-    fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save settings" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
     expect(api.prepare).toHaveBeenCalledWith({ companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, vatId: registered ? "DK24256790" : undefined, countryCode: "DK" })
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: "signed", source: "cvr", ...(registered ? { vatId: "DK24256790" } : {}) }))

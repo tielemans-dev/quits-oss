@@ -196,7 +196,7 @@ function QuoteDetailPage() {
   const [sendWithoutEmailOpen, setSendWithoutEmailOpen] = useState(false)
 
   // Edit state
-  const [contacts, setContacts] = useState<{ id: string; name: string }[]>([])
+  const [contacts, setContacts] = useState<{ id: string; name: string; country?: string | null }[]>([])
   const [catalogItems, setCatalogItems] = useState<CatalogItemOption[]>([])
   const [editContactId, setEditContactId] = useState("")
   const [editExpiryDate, setEditExpiryDate] = useState("")
@@ -269,7 +269,7 @@ function QuoteDetailPage() {
     )
     Promise.all([trpc.contacts.list.query(), trpc.catalog.list.query()]).then(
       ([contactsData, catalogData]) => {
-        setContacts(contactsData as { id: string; name: string }[])
+        setContacts(contactsData as { id: string; name: string; country?: string | null }[])
         setCatalogItems(catalogData as CatalogItemOption[])
       }
     )
@@ -617,7 +617,7 @@ function QuoteDetailPage() {
             </div>
 
             {/* Summary */}
-            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} defaultCountry={quote.countryCode} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
+            <DocumentVatFields items={editItems} onItemsChange={setEditItems} taxRate={editTaxRate} defaultCountry={quote.countryCode} buyerCountry={contacts.find(contact => contact.id === editContactId)?.country} evidence={editVatEvidence} onEvidenceChange={setEditVatEvidence} />
             <VatGroupPreview {...preview} />
             <div className="flex justify-end">
               <div className="w-64 grid gap-2 text-sm">
@@ -736,9 +736,7 @@ function QuoteDetailPage() {
         : t("quotes.detail.email.fallback.invalidRecipient.descriptionNoLink"),
       copyLabel: quote.publicViewUrl ? t("quotes.detail.publicLink.copy") : undefined,
       onCopy: quote.publicViewUrl
-        ? () => {
-            navigator.clipboard.writeText(quote.publicViewUrl ?? "")
-          }
+        ? () => navigator.clipboard.writeText(quote.publicViewUrl ?? "")
         : undefined,
       fixAction: (
         <Button asChild variant="outline">
@@ -751,9 +749,7 @@ function QuoteDetailPage() {
       title: t("quotes.detail.email.fallback.providerMissing.title"),
       description: t("quotes.detail.email.fallback.providerMissing.description"),
       copyLabel: t("quotes.detail.publicLink.copy"),
-      onCopy: () => {
-        navigator.clipboard.writeText(quote.publicViewUrl ?? "")
-      },
+      onCopy: () => navigator.clipboard.writeText(quote.publicViewUrl ?? ""),
     } : null
 
   return (
@@ -964,9 +960,7 @@ function QuoteDetailPage() {
                     description: t("quotes.detail.publicLink.description"),
                     url: quote.publicViewUrl,
                     copyLabel: t("quotes.detail.publicLink.copy"),
-                    onCopy: () => {
-                      navigator.clipboard.writeText(quote.publicViewUrl ?? "")
-                    },
+                    onCopy: () => navigator.clipboard.writeText(quote.publicViewUrl ?? ""),
                     footer: publicLinkFooter,
                   }
                 : null

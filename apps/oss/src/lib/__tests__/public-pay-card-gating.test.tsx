@@ -133,7 +133,7 @@ describe("public pay card gating", () => {
 
   async function expectUnavailable() {
     const html = await publicPayPage()
-    expect(html).toContain("0440116243")
+    expect(html).toContain("0440 116 243")
     expect(html).not.toContain("Pay now")
     expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "unavailable", url: null })
     expect(state.createCheckout).not.toHaveBeenCalled()
@@ -167,7 +167,7 @@ describe("public pay card gating", () => {
   it("shows card and transfer details and opens checkout for active Connect", async () => {
     state.settings.stripeAccountStatus = "active"
     const html = await publicPayPage()
-    for (const value of ["Pay now", "Payment details", "0440116243", "REF-42"]) expect(html).toContain(value)
+    for (const value of ["Pay now", "Payment details", "0440 116 243", "REF-42"]) expect(html).toContain(value)
     state.resolveTarget.mockClear()
     expect(await resolvePublicInvoiceCheckout(token)).toEqual({ status: "redirect", url: "https://checkout.example/cs_test" })
     expect(state.resolveTarget).toHaveBeenCalledTimes(1)
@@ -269,7 +269,7 @@ describe("public pay card gating", () => {
     const html = await publicPayPage()
     expect(html).toContain('lang="da-DK"')
     expect(html).toContain("Betalingsbesked")
-    expect(html).toContain("0440116243")
+    expect(html).toContain("0440 116 243")
     expect(html.includes("Betal nu")).toBe(status === "active")
     expect(html).not.toContain("Pay now")
   })

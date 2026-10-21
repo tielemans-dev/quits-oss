@@ -37,6 +37,7 @@ export const enBillingMessages = {
   "trial.banner.activeMeta": "No card needed · ends {date}",
   "trial.banner.warning": "Your trial ends in {days} days",
   "trial.banner.tomorrow": "Your trial ends tomorrow",
+  "trial.banner.today": "Your trial ends today",
   "trial.banner.warningMeta": "Upgrade to keep invoicing. Your data is safe.",
   "trial.banner.ended": "Your trial has ended",
   "trial.banner.endedMeta": "Your data is safe, and you can still view and download everything. Upgrade to create and send again.",
