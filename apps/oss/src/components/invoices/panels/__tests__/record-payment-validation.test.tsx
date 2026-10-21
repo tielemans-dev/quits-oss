@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { formatCurrency } from "../../../../lib/i18n/format"
 import { I18nProvider } from "../../../../lib/i18n/react"
 import { translate } from "../../../../lib/i18n/translate"
+import { handledMutationError } from "../../../../lib/query-refresh"
 // MOCK: transport only; the dialog and its validation are real.
 const { record, refund, voidRefund } = vi.hoisted(() => ({ record: vi.fn(), refund: vi.fn(), voidRefund: vi.fn() }))
 vi.mock("../../../../trpc/client", () => ({
@@ -81,7 +82,7 @@ describe.each(["da-DK", "en-GB"])("refund to the customer in %s (QUI-228)", (loc
     expect(screen.getByText(translate("payments.refund.void.title", locale))).toBeTruthy()
     fireEvent.change(screen.getByLabelText(translate("payments.void.reason", locale)), { target: { value: "Bounced" } })
     fireEvent.submit(screen.getByLabelText(translate("payments.void.reason", locale)).closest("form")!)
-    await waitFor(() => expect(voidRefund).toHaveBeenCalledWith({ refundId: "r1", reason: "Bounced" }))
+    await waitFor(() => expect(voidRefund).toHaveBeenCalledWith({ refundId: "r1", reason: "Bounced" }, handledMutationError))
     expect(record).not.toHaveBeenCalled()
   })
 })
