@@ -21,7 +21,6 @@ test("happy path, bank, editable facts/defaults and removable suggestions", asyn
   await page.getByRole("textbox", { name: "Reg.nr.", exact: true }).fill("1234")
   await page.getByRole("textbox", { name: "Kontonr.", exact: true }).fill("12345678")
   await page.getByRole("checkbox", { name: /Designarbejde/ }).check()
-  await page.getByRole("button", { name: "Fjern Små og mellemstore virksomheder" }).click()
   await confirm(page).click()
   await expect(page.getByRole("status")).toHaveText("KLAR")
   expect(payload).toMatchObject({
@@ -175,9 +174,12 @@ test("lookup failure, retry and 10 second timeout", async ({ page }) => {
   })
   await expect(page.getByRole("textbox", { name: "Navn", exact: true })).toHaveCount(0)
 })
-test("non-VAT businesses keep 0% and liquidation is refused", async ({ page }) => {
+test("non-VAT businesses see no VAT rate and liquidation is refused", async ({ page }) => {
   await review(page, "no-vat")
-  await expect(page.getByRole("spinbutton", { name: "Moms %", exact: true })).toHaveValue("0")
+  await expect(page.getByRole("spinbutton", { name: "Moms %", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("combobox", { name: "Priser inkl. moms", exact: true })).toHaveCount(0)
+  await expect(page.getByText(/Du fakturerer uden moms/)).toBeVisible()
+  await expect(page.getByText("Små og mellemstore virksomheder")).toHaveCount(0)
   await expect(page.getByText(/Ifølge CVR er virksomheden ikke momsregistreret/)).toBeVisible()
   await page.getByRole("button", { name: "Annuller", exact: true }).click()
   await page.goto("/?scenario=warning")
@@ -284,6 +286,7 @@ test("manual review requires a CVR and keeps the VAT choice", async ({ page }) =
   await expect(create).toBeEnabled()
   await page.getByRole("textbox", { name: "Navn", exact: true }).fill("Nordlys Test ApS")
   await page.getByRole("textbox", { name: "Adresse", exact: true }).fill("Testvej 1\n1000 København K")
+  await page.getByRole("combobox", { name: "Selskabsform", exact: true }).selectOption("Enkeltmandsvirksomhed")
   const cvr = page.getByRole("textbox", { name: "CVR-nummer", exact: true })
   await create.click()
   await expect(cvr).toHaveAttribute("aria-invalid", "true")

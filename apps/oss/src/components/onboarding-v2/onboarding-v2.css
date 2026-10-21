@@ -268,15 +268,15 @@
   padding: 12px 0;
   border-top: 1px solid var(--border);
 }
+.ob-field-note {
+  grid-column: 1 / -1;
+}
 .ob-field-label {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
   align-items: center;
   font-size: 14px;
-}
-.ob-field .ob-tag {
-  font-size: 11px;
 }
 .ob-shell select,
 .ob-shell textarea {
@@ -318,7 +318,7 @@
   margin: 8px 0 16px;
 }
 .ob-suggestion-slot {
-  height: 408px;
+  height: 344px;
   margin: 24px 0;
 }
 .ob-suggestion-slot > .ob-card {
@@ -336,7 +336,7 @@
 }
 .ob-suggestion-content {
   overflow-y: auto;
-  height: 232px;
+  height: 168px;
   scrollbar-color: var(--muted-foreground) transparent;
 }
 .ob-suggestion-row {
@@ -385,12 +385,6 @@
 .ob-bank-fields input {
   font-family: "Geist Mono Variable", monospace;
 }
-.ob-unsaved {
-  padding: 24px 0;
-}
-.ob-unsaved h2 {
-  font-size: 14px;
-}
 .ob-confirm {
   position: sticky;
   bottom: 16px;
@@ -407,9 +401,6 @@
 .ob-confirm > span {
   font-size: 12px;
   color: var(--muted-foreground);
-}
-.ob-edit {
-  display: none;
 }
 .ob-spin {
   animation: ob-spin var(--duration-spin) var(--ease-linear) infinite;
@@ -490,9 +481,6 @@
   }
   .ob-confirm button {
     min-height: 44px;
-  }
-  .ob-edit {
-    display: block;
   }
   .ob-match {
     padding: 16px;
