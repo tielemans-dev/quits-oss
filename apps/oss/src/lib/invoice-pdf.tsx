@@ -21,6 +21,7 @@ import { buildPaymentDetailsBlock } from "./payment-details-block"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
 import { documentColors as C } from "./brand/document-colors"
+import { DraftWatermark } from "./documents/draft-watermark"
 
 const styles = StyleSheet.create({
   page: {
@@ -201,22 +202,6 @@ const styles = StyleSheet.create({
   },
   paymentReferenceValue: {
     fontFamily: "Helvetica-Bold",
-  },
-  draftWatermark: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  draftWatermarkText: {
-    fontSize: 120,
-    fontFamily: "Helvetica-Bold",
-    color: C.tones.danger.text,
-    opacity: 0.12,
-    transform: "rotate(-40deg)",
   },
   draftBanner: {
     position: "absolute",
@@ -479,11 +464,7 @@ export function InvoicePdfDocument({
           </View>
         )}
         {/* Drawn after the content and translucent, so no box on the page can hide it. */}
-        {draft && (
-          <View style={styles.draftWatermark} fixed>
-            <Text style={styles.draftWatermarkText}>{translate("pdf.draft.watermark", locale)}</Text>
-          </View>
-        )}
+        {draft && <DraftWatermark word={translate("pdf.draft.watermark", locale)} />}
         <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
           <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel), org.companyEmail].filter(Boolean).join(" · ")}</Text>
           <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
