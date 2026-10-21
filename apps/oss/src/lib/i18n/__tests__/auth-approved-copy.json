@@ -39,7 +39,7 @@
   ["auth.resetPassword.successCta", "Gå til log ind", "Go to log in"],
   ["auth.resetPassword.error", "Vi kunne ikke gemme din adgangskode lige nu. Prøv igen om et øjeblik.", "We couldn't save your password right now. Try again in a moment."],
   ["auth.signup.title", "Opret konto", "Create account"],
-  ["auth.signup.inviteOnly.description", "Du skal have en invitation for at oprette en konto. Har du fået en, kan du oprette din konto her.", "You need an invitation to create an account. Got one? Create your account here."],
+  ["auth.signup.inviteOnly.description", "Du skal have en invitation for at oprette en konto. Er din e-mail inviteret, kan du lade koden stå tom.", "You need an invitation to create an account. If your email was invited, you can leave the code empty."],
   ["auth.signup.name", "Navn", "Name"],
   ["auth.signup.placeholder.name", "Mette Hansen", "Jane Doe"],
   ["auth.signup.error.nameRequired", "Indtast dit navn", "Enter your name"],
@@ -48,16 +48,17 @@
   ["auth.signup.inviteCode.fromLink", "Udfyldt fra dit invitationslink.", "Filled in from your invitation link."],
   ["auth.signup.submit", "Opret konto", "Create account"],
   ["auth.signup.submitting", "Opretter konto…", "Creating account…"],
+  ["auth.signup.checkingInvite", "Vi tjekker din invitation. Det kan tage et par sekunder.", "Checking your invitation. This can take a few seconds."],
   ["auth.signup.error.inviteRequired", "Du skal have en invitation for at oprette en konto. Indtast din invitationskode, eller brug den e-mail, du blev inviteret med.", "You need an invitation to create an account. Enter your invite code or use the email you were invited with."],
   ["auth.signup.error.inviteInvalid", "Koden virker ikke med denne e-mail. Den kan være udløbet eller sendt til en anden adresse.", "This code doesn't work with this email. It may have expired or been sent to a different address."],
   ["auth.signup.error", "Vi kunne ikke oprette din konto lige nu. Prøv igen om et øjeblik.", "We couldn't create your account right now. Try again in a moment."],
   ["auth.signup.hasAccount", "Har du allerede en konto?", "Already have an account?"],
   ["auth.signup.toLogin", "Log ind", "Log in"],
   ["auth.inviteOnly.title", "Du skal have en invitation", "You need an invitation"],
-  ["auth.inviteOnly.body", "Uden en invitation kan vi ikke oprette en konto til {email}. Skriv dig op til ventelisten, så skriver vi til dig, når det er din tur.", "We can't create an account for {email} without an invitation. Join the waitlist and we'll email you when it's your turn."],
+  ["auth.inviteOnly.body", "Vi har ingen invitation til {email}. Skriv dig op til ventelisten, så skriver vi til dig, når det er din tur.", "We have no invitation for {email}. Join the waitlist and we'll email you when it's your turn."],
   ["auth.inviteOnly.haveCode", "Har du en invitationskode?", "Have an invite code?"],
   ["auth.inviteOnly.useCode", "Brug den", "Use it"],
   ["auth.inviteOnly.backToLogin", "Tilbage til log ind", "Back to log in"],
   ["auth.signup.inviteCodeLabel", "Invitationskode", "Invite code"],
-  ["auth.signup.inviteCodeHelp", "Er din e-mail allerede inviteret, kan du lade feltet stå tomt.", "If your email was invited, you can leave this blank."]
+  ["auth.signup.inviteCodeHelp", "Du finder koden i din invitation.", "You'll find the code in your invitation."]
 ]

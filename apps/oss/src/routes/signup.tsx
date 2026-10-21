@@ -170,6 +170,8 @@ function SignupFormContent({ configuration: { signupMode, waitlist }, invite, se
             <Button type="submit" className={inviteOnly ? "w-full bg-foreground text-background hover:bg-foreground/90" : "w-full"} disabled={loading}>
               {loading ? t('auth.signup.submitting') : t('auth.signup.submit')}
             </Button>
+            {/* Hosted admission can take seconds on a cold start; say why the button waits. */}
+            {inviteOnly && loading && <p role="status" className="w-full text-center text-sm text-muted-foreground">{t('auth.signup.checkingInvite')}</p>}
             <p className="text-sm text-muted-foreground">
               {t('auth.signup.hasAccount')}{' '}
               <Link to="/login" search={search} className="text-brand-text underline">

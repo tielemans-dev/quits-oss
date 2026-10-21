@@ -222,7 +222,17 @@ describe('signup admission UI', () => {
     } finally { vi.useRealTimers() }
   })
   it('renders final Danish invitation copy', () => {
-    show('da'); expect(screen.getByText('Du skal have en invitation for at oprette en konto. Har du fået en, kan du oprette din konto her.')).toBeTruthy()
+    show('da'); expect(screen.getByText('Du skal have en invitation for at oprette en konto. Er din e-mail inviteret, kan du lade koden stå tom.')).toBeTruthy()
     expect(screen.getByLabelText(/Invitationskode/)).toBeTruthy()
+  })
+  it('says why the button waits while admission is pending', async () => {
+    let finish!: (value: unknown) => void
+    signUp.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    show(); submitSignup()
+    expect((await screen.findByRole('status')).textContent).toBe('Checking your invitation. This can take a few seconds.')
+    await act(async () => { finish({ error: { code: 'not_invited' } }) })
+    expect(screen.queryByText('Checking your invitation. This can take a few seconds.')).toBeNull()
+    expect(screen.getByText('You need an invitation')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('▪')
   })
 })

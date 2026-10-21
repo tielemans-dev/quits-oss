@@ -78,7 +78,7 @@ describe('auth locale rendering and admission', () => {
     render(<I18nProvider locale="en"><SignupPage /></I18nProvider>)
     expect(screen.getByLabelText('Invite code').hasAttribute('required')).toBe(false)
     expect(screen.queryByText('(optional)')).toBeNull()
-    expect(screen.getByText('If your email was invited, you can leave this blank.')).toBeTruthy()
+    expect(screen.getByText("You'll find the code in your invitation.")).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Synthetic Person' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'allowed@example.test' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: '12345678' } })
