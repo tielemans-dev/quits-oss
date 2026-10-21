@@ -117,7 +117,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       draft.source = source
       Object.assign(draft.values, {
         companyName: "Edited review", companyAddress: "Testvej 1, København",
-        cvr: "24256790", momsRegistered,
+        cvr: "24256790", companyForm: "ApS", momsRegistered,
         invoicePrefix: "REVIEW", defaultCurrency: "EUR", paymentTermsDays: 30,
       })
       await api.onboarding.confirmV2(confirmOnboardingV2Schema.parse(confirmationPayload(draft)))
@@ -621,7 +621,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const id = await organization()
     await prisma.orgSettings.create({ data: { organizationId: id, invoicePrefix: "CUSTOM", invoiceNextNum: 57, quotePrefix: "OFFER", quoteNextNum: 19 } })
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Edited review", companyAddress: "Testvej 1", cvr: "24256790", invoicePrefix: "RESET", invoiceNextNum: 1 })
+    Object.assign(draft.values, { companyName: "Edited review", companyAddress: "Testvej 1", cvr: "24256790", companyForm: "ApS", invoicePrefix: "RESET", invoiceNextNum: 1 })
     await confirmOnboardingV2(id, confirmOnboardingV2Schema.parse(confirmationPayload(draft)), "signup@example.test")
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ invoicePrefix: "CUSTOM", invoiceNextNum: 57, quotePrefix: "OFFER", quoteNextNum: 19 })
   })
