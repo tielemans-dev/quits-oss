@@ -83,7 +83,7 @@ export const enSettingsMessages = {
   "settings.pricesIncludeTax": "Prices include tax by default",
   "settings.primaryTaxId.label": "Primary Seller Tax ID",
   "settings.seNumber.label": "SE no.",
-  "settings.seNumber.help": "Optional. Eight digits. Shown on invoices and credit notes.",
+  "settings.seNumber.help": "Only if your SE number differs from your CVR number. Otherwise leave it empty.",
   "settings.primaryTaxId.placeholder": "e.g. DK12345678 / US EIN",
   "settings.primaryTaxIdScheme.label": "Tax ID Scheme",
   "settings.primaryTaxIdScheme.other": "Other",
