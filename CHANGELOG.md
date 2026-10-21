@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [0.16.3](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.3)
+
+Changes since the published v0.16.2 tag, covering 4 merged PRs.
+
+- Say "No VAT" and "25 % VAT" on English invoices and credit notes, instead of "moms".
+- Explain a missing e-invoice on an issued invoice as soon as the panel opens.
+- Show the buyer's tax numbers, such as the CVR number, on the invoice and credit note pages.
+- Stop the customer picker's CVR search from hanging, and show no amounts until the organization's currency loads.
+- Refuse an invoice or credit-note prefix that would make the two numbering series collide.
+
+See the [release notes](docs/releases/v0.16.3.md) for upgrade notes.
+
+[Compare with v0.16.2](https://github.com/tielemans-dev/quits-oss/compare/v0.16.2...v0.16.3).
+
 ## [0.16.2](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.2)
 
 Changes since the published v0.16.1 tag, covering 2 merged PRs.
