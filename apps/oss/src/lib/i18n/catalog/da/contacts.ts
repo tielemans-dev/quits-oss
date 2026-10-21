@@ -18,6 +18,8 @@ export const daContactsMessages = {
   "contacts.cvr.looking": "Slår op…",
   "contacts.cvr.hint": "Skriv et CVR-nummer for at hente navn, adresse og CVR fra registret. Du kan også udfylde felterne selv.",
   "contacts.cvr.filled": "Udfyldt fra CVR-registret. Tjek felterne, før du opretter kunden.",
+  "contacts.cvr.inactive": "CVR-status: {status} pr. {date}. Tjek, at det er den rigtige kunde.",
+  "contacts.cvr.inactiveUndated": "CVR-status: {status}. Tjek, at det er den rigtige kunde.",
   "contacts.placeholder.name": "John Doe",
   "contacts.placeholder.email": "john@eksempel.dk",
   "contacts.placeholder.phone": "+45 12 34 56 78",

@@ -5,6 +5,7 @@ import { addressLines } from "../../../components/onboarding-v2/lookup-preview"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
+import { formatDate } from "../../../lib/i18n/format"
 import type { TranslationKey } from "../../../lib/i18n/messages"
 import { useI18n } from "../../../lib/i18n/react"
 import { cn } from "../../../lib/utils"
@@ -28,11 +29,11 @@ export function registryCustomer(company: CvrCompany): RegistryCustomer {
  * Renders nothing unless the runtime supplies a lookup (hosted); the fields stay editable either way.
  */
 export function CvrLookup({ onFound }: { onFound: (customer: RegistryCustomer) => void }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [available, setAvailable] = useState(false)
   const [cvr, setCvr] = useState("")
   const [pending, setPending] = useState(false)
-  const [message, setMessage] = useState<{ key: TranslationKey; error: boolean } | null>(null)
+  const [message, setMessage] = useState<{ key: TranslationKey; error: boolean; vars?: Record<string, string> } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -50,7 +51,19 @@ export function CvrLookup({ onFound }: { onFound: (customer: RegistryCustomer) =
     try {
       const company = await trpc.cvr.customer.query({ cvr: value })
       if (!company) setMessage({ key: "shell.request.customer.notFound", error: true })
-      else { onFound(registryCustomer(company)); setMessage({ key: "contacts.cvr.filled", error: false }) }
+      else {
+        onFound(registryCustomer(company))
+        // A ceased or bankrupt company still fills the form, but the hint says so instead of confirming.
+        if (company.status === "active") setMessage({ key: "contacts.cvr.filled", error: false })
+        else setMessage({
+          key: company.statusDate ? "contacts.cvr.inactive" : "contacts.cvr.inactiveUndated",
+          error: true,
+          vars: {
+            status: t(`onboardingV2.status.${company.status}`),
+            date: company.statusDate ? formatDate(company.statusDate, locale, "UTC", { month: "short", dayFirst: true }) : "",
+          },
+        })
+      }
     } catch (err) {
       const unavailable = (err as { data?: { code?: string } }).data?.code === "NOT_IMPLEMENTED"
       setMessage({ key: unavailable ? "shell.request.customer.unavailable" : "shell.request.customer.lookupError", error: true })
@@ -80,7 +93,7 @@ export function CvrLookup({ onFound }: { onFound: (customer: RegistryCustomer) =
         </Button>
       </div>
       <p id="cvrLookup-status" role="status" className={cn("text-sm", message?.error ? "text-destructive" : "text-muted-foreground")}>
-        {t(message?.key ?? "contacts.cvr.hint")}
+        {t(message?.key ?? "contacts.cvr.hint", message?.vars)}
       </p>
     </div>
   )

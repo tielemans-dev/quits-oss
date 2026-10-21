@@ -85,6 +85,27 @@ describe("new customer CVR lookup", () => {
     expect(value(/^Navn/)).toBe("Fjord, att. Anna")
   })
 
+  it("fills a company that is no longer active but warns with its register status and date", async () => {
+    // MOCK: a synthetic bankrupt company; 21659509 passes the CVR check digit.
+    api.customer.mockResolvedValue({ ...company, cvr: "21659509", name: "MOCK Gul ApS", status: "bankrupt", statusClass: "blocked", statusDate: "2001-05-14" })
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: "21659509" } })
+    fireEvent.click(screen.getByRole("button", { name: "Slå op" }))
+    expect(await screen.findByText("CVR-status: Konkurs pr. 14. maj 2001. Tjek, at det er den rigtige kunde.")).toBeTruthy()
+    expect(screen.queryByText(/Udfyldt fra CVR-registret/)).toBeNull()
+    expect(value("Virksomhed")).toBe("MOCK Gul ApS")
+    expect(value("CVR/momsnummer")).toBe("21659509")
+  })
+
+  it("names the status without a date when the register gives none", async () => {
+    api.customer.mockResolvedValue({ ...company, status: "liquidation", statusClass: "warn" })
+    render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
+    fireEvent.change(await screen.findByLabelText("CVR lookup"), { target: { value: "24256790" } })
+    fireEvent.click(screen.getByRole("button", { name: "Look up" }))
+    expect(await screen.findByText("CVR status: In liquidation. Check that this is the right customer.")).toBeTruthy()
+    expect(value("Company")).toBe("MOCK Nordlys ApS")
+  })
+
   it("explains an invalid or unknown CVR number without touching the form", async () => {
     api.customer.mockResolvedValue(null)
     render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
