@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { paymentDetailsInputSchema } from "@quits/contracts/payment-details"
 import { trpc } from "../../trpc/client"
 import { useI18n } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { ERROR_KEYS, EMPTY_VALUES, toInput, toValues, validate } from "../settings/payment-details-card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
@@ -74,7 +75,7 @@ export function useFirstInvoiceBankNudge() {
     try {
       // Saving replaces all payment details, so keep the ones already there (such as the note).
       const current = await trpc.paymentDetails.get.query()
-      await trpc.paymentDetails.update.mutate(paymentDetailsInputSchema.parse(toInput({ ...toValues(current), ...bank })))
+      await trpc.paymentDetails.update.mutate(paymentDetailsInputSchema.parse(toInput({ ...toValues(current), ...bank })), handledMutationError)
     } catch (error) {
       setPhase("idle")
       setSaveError(error instanceof Error && error.message ? error.message : t("settings.paymentDetails.error.save"))
