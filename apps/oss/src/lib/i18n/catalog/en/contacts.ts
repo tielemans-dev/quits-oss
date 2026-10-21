@@ -18,6 +18,8 @@ export const enContactsMessages = {
   "contacts.cvr.looking": "Looking up…",
   "contacts.cvr.hint": "Enter a CVR number to fill in the name, address and CVR from the register. You can also fill in the fields yourself.",
   "contacts.cvr.filled": "Filled in from the CVR register. Check the fields before you create the customer.",
+  "contacts.cvr.inactive": "CVR status: {status} since {date}. Check that this is the right customer.",
+  "contacts.cvr.inactiveUndated": "CVR status: {status}. Check that this is the right customer.",
   "contacts.placeholder.name": "John Doe",
   "contacts.placeholder.email": "john@example.com",
   "contacts.placeholder.phone": "+1 555 123 4567",
