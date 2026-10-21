@@ -14,6 +14,7 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
   const [missing, setMissing] = useState<EinvoiceMissingField[]>([])
+  const [issued, setIssued] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (invoice.status === "draft") {
@@ -30,9 +31,11 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
         downloadTextFile(result.filename, result.xml, "application/xml")
       } else {
         setMissing(result.missing)
+        setIssued(result.issued === true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("exports.einvoice.error"))
+      const unavailable = (err as { data?: { code?: string } } | null)?.data?.code === "PRECONDITION_FAILED"
+      setError(t(unavailable ? "exports.einvoice.unavailable" : "exports.einvoice.error"))
     } finally {
       setBusy(false)
     }
@@ -63,7 +66,7 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
           <div className="rounded-md border border-tone-warning/30 bg-tone-warning/14 p-3 text-sm text-foreground" role="alert">
             <p className="flex items-start gap-2 font-medium">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-tone-warning" aria-hidden="true" />
-              {t("exports.einvoice.missing.title")}
+              {t(issued ? "exports.einvoice.missing.issuedTitle" : "exports.einvoice.missing.title")}
             </p>
             <ul className="mt-2 list-disc pl-5 grid gap-1">
               {missing.map((field) => (

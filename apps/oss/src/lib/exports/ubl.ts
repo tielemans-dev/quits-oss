@@ -15,6 +15,7 @@ import {
   type PostalAddress,
 } from "./parties"
 import { element, serializeXmlDocument, textElement, type XmlElement } from "./xml"
+import { translate } from "../i18n/translate"
 
 /** Everything a Peppol BIS Billing 3.0 party needs, already normalized. */
 export type EinvoiceParty = PostalAddress & {
@@ -94,6 +95,8 @@ export type EinvoiceDocument = {
   /** Gross total stored on the document; differences to the line-derived total become rounding. */
   storedGross: DecimalLike
   amountPaid: DecimalLike
+  /** Document language of the small-business exemption reason. Set only for sellers not VAT-registered, so other inputs hash as before. */
+  locale?: string | null
 }
 
 const NAMESPACES = {
@@ -121,11 +124,8 @@ export function validateEinvoice(document: EinvoiceDocument): EinvoiceMissingFie
   if (!seller.name?.trim()) missing.push("seller.name")
   if (!seller.countryCode) missing.push("seller.country")
   if (!seller.street && !seller.city) missing.push("seller.address")
-  // BR-Z-02/BR-E-02 still require a tax identifier for zero-rated/exempt sales.
-  // Only frozen category O sales permit omission, never infer it from a zero rate.
-  const nonVatSeller = seller.momsRegistered === false && document.calculationVersion === "v2" &&
-    (document.frozenGroups?.length ?? 0) > 0 && document.frozenGroups?.every(group => group.treatment === "out_of_scope")
-  if (!seller.vatId && !nonVatSeller) missing.push("seller.taxId")
+  // BR-Z-02/BR-E-02 still require a tax identifier for zero-rated/exempt sales, never inferred from a zero rate.
+  if (!sellerTaxIdentified(document)) missing.push("seller.taxId")
   // National rules such as DK-R-002 and DK-R-014 require the national registration number.
   const registration = findCountryModule(seller.countryCode)?.nationalRegistration
   if (registration?.requiredForSeller && seller.legalId?.scheme !== registration.icd) {
@@ -246,7 +246,19 @@ function vatScheme() {
   return cac("TaxScheme", cbc("ID", "VAT"))
 }
 
-function partyElement(party: EinvoiceParty): XmlElement {
+/**
+ * A party's VAT identifier (BT-31/BT-48), or none outside the scope of VAT (BR-O-02). A seller who
+ * is not VAT-registered has no VAT identifier and gives its registration number as the seller tax
+ * registration identifier (BT-32), whose TaxScheme ID is anything but "VAT" (Peppol BIS 3.0 uses "TAX").
+ */
+function partyTaxScheme(party: EinvoiceParty, document: EinvoiceDocument, role: "seller" | "buyer") {
+  if (outsideVat(document)) return null
+  if (role === "seller" && smallBusinessExempt(document) && sellerTaxIdentified(document))
+    return party.legalId ? cac("PartyTaxScheme", cbc("CompanyID", party.legalId.id), cac("TaxScheme", cbc("ID", "TAX"))) : null
+  return party.vatId ? cac("PartyTaxScheme", cbc("CompanyID", party.vatId), vatScheme()) : null
+}
+
+function partyElement(party: EinvoiceParty, taxScheme: XmlElement | null): XmlElement {
   return cac(
     "Party",
     party.electronicAddress
@@ -262,7 +274,7 @@ function partyElement(party: EinvoiceParty): XmlElement {
       cbc("CountrySubentity", party.region),
       cac("Country", cbc("IdentificationCode", party.countryCode))
     ),
-    party.vatId ? cac("PartyTaxScheme", cbc("CompanyID", party.vatId), vatScheme()) : null,
+    taxScheme,
     cac(
       "PartyLegalEntity",
       cbc("RegistrationName", party.name),
@@ -290,8 +302,9 @@ function classifiedTaxCategory(line: EinvoiceLine, document: EinvoiceDocument) {
   if (document.calculationVersion === "v2") {
     const group = document.frozenGroups?.find((group) => group.key === line.groupKey)
     if (!group) throw new EinvoiceVatError("frozen_groups_missing", "The document lacks frozen VAT groups")
-    return cac("ClassifiedTaxCategory", cbc("ID", frozenCategory(group)),
-      group.treatment === "out_of_scope" ? null : cbc("Percent", formatPlainNumber(toDecimal(group.rate).times(100))), vatScheme())
+    const category = frozenCategory(group, document)
+    return cac("ClassifiedTaxCategory", cbc("ID", category),
+      category === "O" ? null : cbc("Percent", formatPlainNumber(toDecimal(group.rate).times(100))), vatScheme())
   }
   const category = taxCategoryCode(line)
   return cac(
@@ -363,8 +376,8 @@ export function buildUblDocument(document: EinvoiceDocument): string {
           )
         )
       : null,
-    cac("AccountingSupplierParty", partyElement(document.seller)),
-    cac("AccountingCustomerParty", partyElement(document.buyer)),
+    cac("AccountingSupplierParty", partyElement(document.seller, partyTaxScheme(document.seller, document, "seller"))),
+    cac("AccountingCustomerParty", partyElement(document.buyer, partyTaxScheme(document.buyer, document, "buyer"))),
     isInvoice && document.deliveryDate
       ? cac("Delivery", cbc("ActualDeliveryDate", document.deliveryDate))
       : null,
@@ -411,13 +424,42 @@ export class EinvoiceVatError extends Error {
   }
 }
 
+/**
+ * A seller who is explicitly not VAT-registered makes taxable supplies exempt under the small-business
+ * scheme (momsloven § 71 e, Directive art. 284), so its zero lines are category E, not O, which is for
+ * supplies outside the scope of the Directive. Unclassified zero from any other seller stays unexportable.
+ */
+const smallBusinessExempt = (document: EinvoiceDocument) => document.calculationVersion === "v2" && document.seller.momsRegistered === false
+
+/** Whether a v2 document is wholly category O, which omits both parties' VAT identifiers (BR-O-02). */
+function outsideVat(document: EinvoiceDocument) {
+  const groups = document.frozenGroups ?? []
+  return document.calculationVersion === "v2" && groups.length > 0 && groups.every(group => frozenCategory(group, document) === "O")
+}
+
+/**
+ * Frozen category O needs no seller tax identifier. On wholly exempt sales by a seller who is not
+ * VAT-registered, its registration number as BT-32 satisfies BR-E-02. Anything else needs a VAT ID.
+ */
+function sellerTaxIdentified(document: EinvoiceDocument) {
+  if (!smallBusinessExempt(document)) return Boolean(document.seller.vatId)
+  if (outsideVat(document)) return true
+  const categories = (document.frozenGroups ?? []).map(group => frozenCategory(group, document))
+  return categories.length > 0 && categories.every(category => category === "E") ? Boolean(document.seller.legalId) : Boolean(document.seller.vatId)
+}
+
 function requireClassifiedVat(document: EinvoiceDocument) {
-  if (document.lines.some((line) => line.vatTreatment === "unclassified_zero" || line.taxCategory === "unclassified_zero") ||
-      document.frozenGroups?.some((group) => group.treatment === "unclassified_zero"))
+  if (!isEinvoiceVatClassified(document))
     throw new EinvoiceVatError("unclassified_zero", "This document contains unclassified zero VAT and cannot be exported as UBL.")
 }
 
-function frozenCategory(group: FrozenVatGroup): UblTaxCategory {
+/** False when the document has unclassified zero VAT that no UBL category can carry. */
+export function isEinvoiceVatClassified(document: EinvoiceDocument) {
+  return smallBusinessExempt(document) || !(document.lines.some((line) => line.vatTreatment === "unclassified_zero" || line.taxCategory === "unclassified_zero") ||
+    document.frozenGroups?.some((group) => group.treatment === "unclassified_zero"))
+}
+
+function frozenCategory(group: FrozenVatGroup, document: EinvoiceDocument): UblTaxCategory {
   switch (group.treatment) {
     case "standard": return "S"
     case "intra_community": return group.reasonCode === "goods" ? "K" : "AE"
@@ -426,7 +468,9 @@ function frozenCategory(group: FrozenVatGroup): UblTaxCategory {
     case "reverse_charge_domestic": return "AE"
     case "out_of_scope": return "O"
     case "zero_rated": return "Z"
-    case "unclassified_zero": throw new EinvoiceVatError("unclassified_zero", "Unclassified zero VAT cannot be exported")
+    case "unclassified_zero":
+      if (smallBusinessExempt(document)) return "E"
+      throw new EinvoiceVatError("unclassified_zero", "Unclassified zero VAT cannot be exported")
   }
 }
 
@@ -436,10 +480,12 @@ const reasonText: Record<string, string> = {
   health: "Exempt health services", education: "Exempt education", other: "VAT exemption",
   construction: "Reverse charge for construction services",
 }
-function exemptionReason(group: FrozenVatGroup) {
-  const category = frozenCategory(group)
+function exemptionReason(group: FrozenVatGroup, document: EinvoiceDocument) {
+  const category = frozenCategory(group, document)
   if (["S", "Z"].includes(category)) return undefined
-  const reason = group.reasonCode ? reasonText[group.reasonCode] : "Outside the scope of VAT"
+  const reason = group.reasonCode ? reasonText[group.reasonCode]
+    // BT-120 only: VATEX has no small-business code, and VATEX-EU-O belongs to category O.
+    : group.treatment === "unclassified_zero" ? translate("exports.einvoice.vatExemption.smallBusiness", document.locale) : "Outside the scope of VAT"
   const statement = group.evidence?.statementText
   return [reason, category === "AE" ? "Reverse charge" : null, statement].filter(Boolean).join(". ")
 }
@@ -448,7 +494,8 @@ function exemptionReason(group: FrozenVatGroup) {
 function frozenEinvoiceTotals(document: EinvoiceDocument): EinvoiceTotals {
   const groups = document.frozenGroups
   if (!groups?.length) throw new EinvoiceVatError("frozen_groups_missing", "The document lacks frozen VAT groups")
-  if (groups.some((group) => group.treatment === "out_of_scope") && groups.some((group) => group.treatment !== "out_of_scope"))
+  const categories = groups.map((group) => frozenCategory(group, document))
+  if (categories.includes("O") && categories.some((category) => category !== "O"))
     throw new EinvoiceVatError("out_of_scope_mixed", "Outside-scope VAT cannot mix with other VAT treatments (BR-O-11)")
   const sum = (pick: (group: FrozenVatGroup) => string) => groups.reduce((sum, group) => sum.plus(pick(group)), toDecimal(0))
   const net = sum((g) => g.net), tax = sum((g) => g.tax), rounding = sum((g) => g.payableRounding)
@@ -457,9 +504,22 @@ function frozenEinvoiceTotals(document: EinvoiceDocument): EinvoiceTotals {
     lineExtension: formatAmount(net), taxExclusive: formatAmount(net), tax: formatAmount(tax),
     taxInclusive: formatAmount(net.plus(tax)), prepaid: formatAmount(prepaid), rounding: formatAmount(rounding),
     payable: formatAmount(net.plus(tax).plus(rounding).minus(prepaid)),
-    groups: groups.map((group) => ({ category: frozenCategory(group),
-      rate: group.treatment === "out_of_scope" ? null : formatPlainNumber(toDecimal(group.rate).times(100)),
-      taxable: formatAmount(group.net), tax: formatAmount(group.tax), reason: exemptionReason(group),
-    })),
+    groups: breakdowns(groups.map((group, index) => ({ category: categories[index]!,
+      rate: categories[index] === "O" ? null : formatPlainNumber(toDecimal(group.rate).times(100)),
+      taxable: formatAmount(group.net), tax: formatAmount(group.tax), reason: exemptionReason(group, document),
+    }))),
   }
+}
+
+/** One VAT breakdown per category and rate (BR-E-01 and its siblings), e.g. an exempt group beside a small-business one. */
+function breakdowns(groups: EinvoiceTotals["groups"]): EinvoiceTotals["groups"] {
+  const merged = new Map<string, EinvoiceTotals["groups"][number]>()
+  for (const group of groups) {
+    const key = `${group.category}:${group.rate}`, existing = merged.get(key)
+    if (!existing) { merged.set(key, group); continue }
+    const reasons = [...new Set([existing.reason, group.reason].filter(Boolean))]
+    merged.set(key, { ...existing, taxable: formatAmount(toDecimal(existing.taxable).plus(group.taxable)),
+      tax: formatAmount(toDecimal(existing.tax).plus(group.tax)), ...(reasons.length ? { reason: reasons.join("; ") } : {}) })
+  }
+  return [...merged.values()]
 }

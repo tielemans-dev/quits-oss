@@ -12,7 +12,7 @@ import {
   type BuyerSnapshot,
   type SellerSnapshot,
 } from "@quits/contracts/documents"
-import type { EinvoiceDocumentKind, EinvoiceExportResult } from "@quits/contracts/exports"
+import type { EinvoiceDocumentKind, EinvoiceExportResult, EinvoiceMissingField } from "@quits/contracts/exports"
 import { normalizeBic, normalizeIban, type BankAccountSnapshot } from "@quits/contracts/payment-details"
 import { prisma } from "../db"
 import { formatIsoDate, safeFileName } from "./format"
@@ -30,6 +30,7 @@ import {
   PAYMENT_MEANS_CREDIT_TRANSFER,
   PAYMENT_MEANS_SEPA_CREDIT_TRANSFER,
   buildUblDocument,
+  EinvoiceVatError,
   validateEinvoice,
   type EinvoiceDocument,
   type EinvoiceParty,
@@ -262,6 +263,7 @@ export async function loadEinvoiceDocument(
       calculationVersion: invoice.calculationVersion,
       frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
       lines: invoice.items.map(exportLine),
+      ...(sellerParty.momsRegistered === false ? { locale: invoice.locale } : {}),
       storedGross: invoice.totalGross,
       amountPaid: invoice.amountPaid,
     }
@@ -280,6 +282,13 @@ export async function loadEinvoiceDocument(
   if (!creditNote) throw new EinvoiceSourceNotFound(kind, id)
   const buyer = buildBuyerParty(parseBuyerSnapshot(creditNote.buyerSnapshot), creditNote.contact)
   const invoice = creditNote.invoice
+  const sellerParty = buildSellerParty({
+    snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
+    settings: seller.settings,
+    taxIds: seller.taxIds,
+    documentCountryCode: creditNote.countryCode,
+    taxRegime: creditNote.taxRegime,
+  })
 
   return {
     kind,
@@ -296,13 +305,7 @@ export async function loadEinvoiceDocument(
         ? null
         : { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
     note: withNonVatStatement(withoutNonVatStatement(creditNote.reason, parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime) ?? null, sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime), creditNote.locale),
-    seller: buildSellerParty({
-      snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
-      settings: seller.settings,
-      taxIds: seller.taxIds,
-      documentCountryCode: creditNote.countryCode,
-      taxRegime: creditNote.taxRegime,
-    }),
+    seller: sellerParty,
     buyer,
     calculationVersion: creditNote.calculationVersion,
     frozenGroups: creditNote.calculationVersion === "v2" ? creditedGroupsSchema.parse(creditNote.creditedGroups).map((group) => ({
@@ -310,6 +313,7 @@ export async function loadEinvoiceDocument(
       netBase: group.netBase, taxBase: group.taxBase, grossBase: group.grossBase, payableRoundingBase: group.payableRoundingBase,
     })) : undefined,
     lines: creditNote.items.map(exportLine),
+    ...(sellerParty.momsRegistered === false ? { locale: creditNote.locale } : {}),
     storedGross: creditNote.totalGross,
     amountPaid: 0,
   }
@@ -324,7 +328,12 @@ export async function exportEinvoice(
   const row = kind === "invoice" ? await prisma.invoice.findFirst({ where: { id, organizationId }, select: { status: true, number: true, artifactUblRef: true, artifactUblHash: true } }) : await prisma.creditNote.findFirst({ where: { id, organizationId }, select: { status: true, number: true, artifactUblRef: true, artifactUblHash: true } })
   if (!row) throw new EinvoiceSourceNotFound(kind, id)
   if (row.status !== "draft") {
-    if (!row.artifactUblRef) throw new EinvoiceArtifactUnavailable()
+    if (!row.artifactUblRef) {
+      // Issued documents are never rendered again. Name what kept this one from carrying an e-invoice.
+      const missing = await issuedEinvoiceGaps(organizationId, kind, id)
+      if (missing.length > 0) return { ok: false, missing, issued: true }
+      throw new EinvoiceArtifactUnavailable()
+    }
     const bytes = await getDocumentArtifactStore()?.get(row.artifactUblRef)
     if (!bytes || hashBytes(bytes) !== row.artifactUblHash) throw new EinvoiceArtifactUnavailable()
     return { ok: true, filename: `${safeFileName(issuedNumber(row), kind)}.xml`, xml: new TextDecoder().decode(bytes) }
@@ -339,6 +348,12 @@ export async function exportEinvoice(
     filename: `${safeFileName(document.number, kind)}.xml`,
     xml: buildUblDocument(document),
   }
+}
+
+async function issuedEinvoiceGaps(organizationId: string, kind: EinvoiceDocumentKind, id: string): Promise<EinvoiceMissingField[]> {
+  const document = await loadEinvoiceDocument(organizationId, kind, id)
+  try { return validateEinvoice(document) }
+  catch (error) { if (error instanceof EinvoiceVatError) return ["document.vatUnclassified"]; throw error }
 }
 
 function exportLine<T extends { vatTreatment: string; vatReasonCode: string | null; vatCountry: string | null; vatRateInput?: string | null; taxRate: { toString(): string } }>(line: T) {

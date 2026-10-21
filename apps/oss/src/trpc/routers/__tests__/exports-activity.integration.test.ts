@@ -1,5 +1,5 @@
 import { issueCreditNote } from "../../../domain/commands/credit-notes"
-import { setRuntimeServices } from "../../../lib/runtime/services"
+import { getDocumentArtifactStore, setRuntimeServices } from "../../../lib/runtime/services"
 import { selfhostDocumentRenderer } from "../../../selfhost/runtime"
 import { executeIssuanceCommand } from "../../../application/issuance"
 import { ACCOUNTING_EXPORT_COLUMNS } from "@quits/contracts/exports"
@@ -124,11 +124,32 @@ describeIfDatabase("exports and activity routers", () => {
   })
 
   it("refuses a missing stored UBL instead of rendering issued rows", async () => {
-    const { org, invoiceId } = await setup({ peppol: false })
+    const { org, invoiceId } = await setup()
+    setRuntimeServices({ documentRenderer: selfhostDocumentRenderer })
     await send(org, invoiceId)
+    const { artifactUblRef } = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { artifactUblRef: true } })
+    if (!artifactUblRef) throw new Error("Expected issuance to store a UBL")
+    await getDocumentArtifactStore()!.delete(artifactUblRef)
+    // Current data now lacks the buyer endpoint too. The lost object must still not be explained away.
+    await prisma.contact.updateMany({ where: { organizationId: org.organizationId }, data: { peppolEndpointId: null, peppolEndpointScheme: null } })
     const admin = callerFor(org.organizationId, org.actors.admin.userId)
 
     await expect(admin.exports.einvoice({ kind: "invoice", id: invoiceId })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+  })
+
+  it("explains why an issued invoice carries no UBL", async () => {
+    const { org, invoiceId } = await setup({ peppol: false })
+    setRuntimeServices({ documentRenderer: selfhostDocumentRenderer })
+    await send(org, invoiceId)
+    const { artifactUblRef } = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { artifactUblRef: true } })
+    expect(artifactUblRef).toBeNull()
+    const admin = callerFor(org.organizationId, org.actors.admin.userId)
+
+    await expect(admin.exports.einvoice({ kind: "invoice", id: invoiceId })).resolves.toEqual({
+      ok: false,
+      missing: ["buyer.electronicAddress"],
+      issued: true,
+    })
   })
 
   it("exports accounting CSVs for a date range", async () => {

@@ -381,7 +381,8 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(parseSellerSnapshot(before.sellerSnapshot)?.momsRegistered).toBe(registered)
     expect(issuedInvoiceSnapshot(before.issuanceSnapshot)?.seller.momsRegistered).toBe(registered)
     expect(render.pdf.invoice.momsRegistered).toBe(registered)
-    if (!registered) expect(render.ubl).toBeUndefined()
+    // QUI-267: a non-registered seller still gets an e-invoice, without a VAT number (category E).
+    if (!registered) expect(render.ubl?.seller).toMatchObject({ momsRegistered: false, vatId: null })
     await ctx.caller.settings.update({ momsRegistered: !registered })
     const after = await prisma.invoice.findUniqueOrThrow({ where: { id: ctx.invoice.id }, include: { items: true, contact: true } })
     expect(after.sellerSnapshot).toEqual(before.sellerSnapshot)

@@ -5,6 +5,7 @@ import { resolveInvoiceEmailContext } from "./invoice-email"
 import { requireDepositsEnabled, requireDepositInvoiceEnabled } from "../agreements/deposit-capability"
 import { requireInvoiceIssuancePolicy } from "./issuance-policy"
 import { frozenEinvoiceInput } from "./einvoice-input"
+import { isEinvoiceVatClassified, type EinvoiceDocument } from "../../lib/exports/ubl"
 import { requireUnallocatedAconto } from "../agreements/aconto-allocation"
 import { vatRowsByRate } from "./frozen-vat-groups"
 import { documentVatSummary } from "./vat-summary"
@@ -62,6 +63,8 @@ export function hashRenderInput(input: RenderInput) {
   return createHash("sha256").update(canonicalizeOffer(JSON.parse(JSON.stringify(input)))).digest("hex")
 }
 export { hashBytes } from "./hash"
+/** The issued e-invoice, unless its VAT has no UBL category: unclassified zero from a seller not known to be non-registered. */
+const einvoiceable = (ubl: EinvoiceDocument | undefined) => ubl && isEinvoiceVatClassified(ubl) ? { ubl } : {}
 const num = (value: { toNumber(): number }) => value.toNumber()
 
 /** The same prospective input is read at reservation and again under the commit locks. */
@@ -142,7 +145,7 @@ export const prospectiveRenderInput = (input: {
         return { description: line.description, quantity: num(line.quantity), unitPrice: num(shown.unitPrice), total: num(shown.amount), taxRate: num(line.taxRate) } }),
     }
     return { ...base, kind: "invoice" as const, recipient: invoice.contact.email?.trim() || null,
-      ...(money && !money.vatGroups.some(group => group.treatment === "unclassified_zero") ? { ubl: frozenEinvoiceInput({ kind: "invoice", taxRegime: invoice.taxRegime, money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) }) } : {}),
+      ...einvoiceable(money && frozenEinvoiceInput({ kind: "invoice", taxRegime: invoice.taxRegime, money, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: money.dueDate, orderReference: invoice.purchaseOrderRef, paymentReference, billingReference: null, note: invoice.notes, lines: invoice.items.map(line => ({ description: line.description, quantity: line.quantity.toString(), unitPriceNet: line.unitPriceNet.toString(), lineNet: line.lineNet.toString(), taxRate: line.taxRate.toString(), taxCategory: line.taxCategory, vatTreatment: line.vatTreatment, vatCountry: line.vatCountry, vatReasonCode: line.vatReasonCode, vatRateInput: line.vatRateInput })) })),
       snapshot: { ...(money ? { money } : {}), purpose: invoice.purpose, agreementId: invoice.agreementId, seller, buyer: pdfInvoice.contact,
         invoice: pdfInvoice, items: invoice.items, supplyDate: invoice.supplyDate,
         pricesIncludeTax: invoice.pricesIncludeTax, countryCode: invoice.countryCode,
@@ -185,7 +188,7 @@ export const prospectiveRenderInput = (input: {
     }
     return { ...base, kind: "creditNote" as const, recipient: null,
       selectionFingerprint: createHash("sha256").update(canonicalizeOffer(selection)).digest("hex"),
-      ...(money.vatGroups.some(group => group.treatment === "unclassified_zero") ? {} : { ubl: frozenEinvoiceInput({ kind: "creditNote", taxRegime: invoice.taxRegime, money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) }) }),
+      ...einvoiceable(frozenEinvoiceInput({ kind: "creditNote", taxRegime: invoice.taxRegime, money: money as unknown as InvoiceMoneySnapshot, contact: invoice.contact, countryCode: invoice.countryCode, locale: invoice.locale, dueDate: null, orderReference: invoice.purchaseOrderRef, billingReference: { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) }, note: selection.reason, lines: built.lines.map(line => ({ ...line, quantity: String(line.quantity), unitPriceNet: String(line.unitPriceNet), lineNet: String(line.lineNet), taxRate: String(line.taxRate) })) })),
       snapshot: { money, sellerSnapshot, buyerSnapshot, built, invoiceId: invoice.id,
         currency: invoice.currency, countryCode: invoice.countryCode, locale: invoice.locale,
         timezone: invoice.timezone, taxRegime: invoice.taxRegime, pricesIncludeTax: invoice.pricesIncludeTax },

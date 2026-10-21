@@ -35,6 +35,7 @@ export function frozenEinvoiceInput(input: {
     // The key is absent (never null) without payment means, as in `loadEinvoiceDocument`, so
     // documents of organizations without payment details hash as before.
     ...(payment ? { payment } : {}),
+    ...(seller.momsRegistered === false ? { locale: input.locale ?? null } : {}),
     lines: input.lines.map(line => ({ ...line, groupKey: vatGroupKey({ treatment: line.vatTreatment ?? line.taxCategory, country: line.vatCountry ?? null, reasonCode: line.vatReasonCode ?? null, rate: line.vatRateInput ?? percentageToFraction(line.taxRate) }) })), storedGross: input.money.totals.gross, amountPaid: "0",
   }
 }

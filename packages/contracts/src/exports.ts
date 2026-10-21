@@ -209,11 +209,13 @@ export const einvoiceMissingFieldSchema = z.enum([
   "buyer.electronicAddress",
   "buyer.electronicAddressInvalid",
   "creditNote.invoiceReference",
+  "document.vatUnclassified",
 ])
 
 export const einvoiceExportResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), filename: z.string(), xml: z.string() }),
-  z.object({ ok: z.literal(false), missing: z.array(einvoiceMissingFieldSchema).min(1) }),
+  /** `issued`: the document was issued without an e-invoice, which can never be created for it afterwards. */
+  z.object({ ok: z.literal(false), missing: z.array(einvoiceMissingFieldSchema).min(1), issued: z.boolean().optional() }),
 ])
 
 export const accountingDatasetSchema = z.enum(["invoices", "creditNotes", "payments", "settlements"])
