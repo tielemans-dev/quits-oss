@@ -263,6 +263,7 @@ export const paymentsRouter = router({
         amountPaid: settlement.amountPaid.toNumber(),
         amountCredited: settlement.amountCredited.toNumber(),
         balanceDue: settlement.balanceDue.toNumber(),
+        amountRefunded: amountRefunded.toNumber(),
         /** Paid beyond what the invoice charges after credit notes, less recorded refunds. */
         owedToCustomer: owedToCustomer.toNumber(),
         refunds: invoice.refunds.map(serializeRefund),

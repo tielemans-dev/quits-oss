@@ -36,6 +36,11 @@ describe("classifyDashboard", () => {
     expect(classifyDashboard(settled)).toBe("kvit")
   })
 
+  it("is not kvit while a credited payment is owed back to the customer", () => {
+    const settled = activeSummary({ outstanding: emptyTotal(), overdue: { ...emptyTotal(), oldestDaysOverdue: 0 }, incoming: [] })
+    expect(classifyDashboard({ ...settled, owedToCustomers: total(bucket("DKK", "22500.00")) })).toBe("active")
+  })
+
   it("counts money received any month of the year as having moved", () => {
     const history = emptySummary({
       receivedByMonth: MONTHS.map((month, index) => ({ month, ...(index === 2 ? total(bucket("DKK", "100.00")) : emptyTotal()) })),

@@ -62,6 +62,12 @@ export function HeroCard({
     // `text` closes over locale and currency, both covered below.
   }, [hero, owedMinor, exponent, locale, monthName, t])
 
+  // Money running back to customers, beside the split rather than in it: it is neither owed nor received.
+  const flows = [
+    { key: "owedToCustomers", label: t("dashboard.hero.owedToCustomers"), buckets: hero.owedToCustomers },
+    { key: "refunded", label: t("dashboard.hero.refunded", { month: monthName }), buckets: hero.refunded },
+  ].filter((flow) => flow.buckets.length > 0)
+
   return (
     <DashboardSection title={t("dashboard.hero.label")} data-slot="dashboard-hero" className={className}>
       <Amount
@@ -110,6 +116,20 @@ export function HeroCard({
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {flows.length > 0 ? (
+        <ul className="border-hairline mt-2 border-t text-sm">
+          {flows.map((flow) => (
+            <li key={flow.key} data-flow={flow.key} className="border-hairline flex items-center gap-2.5 border-t py-2 first:border-t-0">
+              <span aria-hidden="true" className="size-2 shrink-0" />
+              <span className="text-muted-foreground min-w-0 flex-1 truncate">{flow.label}</span>
+              <span className="font-medium tabular-nums">
+                {flow.buckets.map((bucket) => formatAmountText(bucket.amount, bucket.currency, locale, precisionOf(bucket))).join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {hero.others.length > 0 ? (

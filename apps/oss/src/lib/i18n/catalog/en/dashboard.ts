@@ -41,6 +41,8 @@ export const enDashboardMessages = {
   "dashboard.hero.legendPaid": "Received in {month}",
   "dashboard.hero.legendPending": "On its way",
   "dashboard.hero.legendOverdue": "Overdue",
+  "dashboard.hero.owedToCustomers": "Owed to customers",
+  "dashboard.hero.refunded": "Refunded in {month}",
 
   "dashboard.chart.title": "Received",
   "dashboard.chart.period": "Last 12 months",

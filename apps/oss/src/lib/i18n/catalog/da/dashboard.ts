@@ -41,6 +41,8 @@ export const daDashboardMessages = {
   "dashboard.hero.legendPaid": "Modtaget i {month}",
   "dashboard.hero.legendPending": "På vej",
   "dashboard.hero.legendOverdue": "Forfaldent",
+  "dashboard.hero.owedToCustomers": "Skyldig til kunder",
+  "dashboard.hero.refunded": "Refunderet i {month}",
 
   "dashboard.chart.title": "Modtaget",
   "dashboard.chart.period": "Seneste 12 måneder",

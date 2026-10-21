@@ -42,6 +42,7 @@ import type { InvoicePanelProps } from "./types"
 
 type PaymentsView = Awaited<ReturnType<typeof trpc.payments.list.query>>
 type PaymentRow = PaymentsView["payments"][number]
+type RefundRow = PaymentsView["refunds"][number]
 
 /** Methods a person can record by hand. Stripe payments arrive through the webhook. */
 const MANUAL_METHODS: PaymentMethod[] = ["bank_transfer", "card", "cash", "other"]
@@ -84,8 +85,8 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
   const { t } = useI18n()
   const [view, setView] = useState<PaymentsView | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [recordOpen, setRecordOpen] = useState(false)
-  const [voiding, setVoiding] = useState<PaymentRow | null>(null)
+  const [recordOpen, setRecordOpen] = useState<"payment" | "refund" | null>(null)
+  const [voiding, setVoiding] = useState<PaymentRow | RefundRow | null>(null)
   const isDraft = invoice.status === "draft"
 
   const load = useCallback(async () => {
@@ -117,6 +118,8 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
   const balanceDue = view?.balanceDue ?? invoice.balanceDue
   const amountPaid = view?.amountPaid ?? invoice.amountPaid
   const amountCredited = view?.amountCredited ?? invoice.amountCredited
+  const amountRefunded = view?.amountRefunded ?? 0
+  const owedToCustomer = view?.owedToCustomer ?? 0
 
   return (
     <Card>
@@ -125,26 +128,35 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
           <CardTitle>{t("payments.title")}</CardTitle>
           <CardDescription>{t("payments.description")}</CardDescription>
         </div>
-        {view?.canRecord ? (
-          <Button size="sm" onClick={() => setRecordOpen(true)}>
+        {view?.canRecord || view?.canRefund ? (
+          <Button size="sm" onClick={() => setRecordOpen(view.canRecord ? "payment" : "refund")}>
             <Plus className="size-4" />
-            {t("payments.action.record")}
+            {t(view.canRecord ? "payments.action.record" : "payments.action.refund")}
           </Button>
         ) : null}
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <dl className="grid gap-4 rounded-lg border p-4 sm:grid-cols-4">
+      <CardContent className="grid grid-cols-1 gap-4">
+        <dl className="grid gap-4 rounded-lg border p-4 sm:auto-cols-fr sm:grid-flow-col">
           <SummaryItem label={t("payments.summary.total")} value={money(invoice.total)} />
           <SummaryItem label={t("payments.summary.paid")} value={money(amountPaid)} />
           {amountCredited > 0 ? (
             <SummaryItem label={t("payments.summary.credited")} value={money(amountCredited)} />
           ) : null}
-          <SummaryItem
-            label={t("payments.summary.balanceDue")}
-            value={money(balanceDue)}
-            emphasis={balanceDue > 0}
-          />
+          {amountRefunded > 0 ? (
+            <SummaryItem label={t("payments.summary.refunded")} value={money(amountRefunded)} />
+          ) : null}
+          {/* Credit notes can leave more paid than the invoice charges: then the customer is owed money. */}
+          {owedToCustomer > 0 ? (
+            <SummaryItem label={t("payments.summary.owedToCustomer")} value={money(owedToCustomer)} emphasis />
+          ) : (
+            <SummaryItem
+              label={t("payments.summary.balanceDue")}
+              value={money(balanceDue)}
+              emphasis={balanceDue > 0}
+            />
+          )}
         </dl>
+        {owedToCustomer > 0 ? <p className="text-sm text-muted-foreground">{t("payments.refund.hint")}</p> : null}
 
         {loadError ? (
           <QueryError error={new Error(loadError)} retry={load} />
@@ -170,6 +182,34 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Refunds first: each pays back money already received, so they are the latest movements. */}
+                {view.refunds.map((refund) => {
+                  const voided = Boolean(refund.voidedAt)
+                  return (
+                    <TableRow key={refund.id} className={voided ? "text-muted-foreground" : undefined}>
+                      <TableCell>{formatDate(refund.refundedAt, locale, view.timeZone)}</TableCell>
+                      <TableCell>{t("payments.method.refund")}</TableCell>
+                      <TableCell className="max-w-[16rem] truncate" title={refund.note ?? undefined}>
+                        {refund.note ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <PaymentState voidedAt={refund.voidedAt} voidReason={refund.voidReason} />
+                      </TableCell>
+                      <TableCell className={`num text-right ${voided ? "line-through" : ""}`}>
+                        {formatCurrency(-refund.amount, refund.currency, locale)}
+                      </TableCell>
+                      {view.canVoid ? (
+                        <TableCell className="text-right">
+                          {voided ? null : (
+                            <Button variant="ghost" size="sm" onClick={() => setVoiding(refund)}>
+                              {t("payments.action.void")}
+                            </Button>
+                          )}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  )
+                })}
                 {view.payments.map((payment) => {
                   const voided = Boolean(payment.voidedAt)
                   return (
@@ -180,25 +220,15 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
                         {payment.reference ?? "—"}
                       </TableCell>
                       <TableCell>
-                        {voided ? (
-                          <Badge variant="outline" title={payment.voidReason ?? undefined}>
-                            {t("payments.state.voided")}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">{t("payments.state.recorded")}</Badge>
-                        )}
-                        {voided && payment.voidReason ? (
-                          <p className="mt-1 text-xs">
-                            {t("payments.state.voidedReason", { reason: payment.voidReason })}
-                          </p>
-                        ) : null}
+                        <PaymentState voidedAt={payment.voidedAt} voidReason={payment.voidReason} />
                       </TableCell>
                       <TableCell className={`num text-right ${voided ? "line-through" : ""}`}>
                         {formatCurrency(payment.amount, payment.currency, locale)}
                       </TableCell>
                       {view.canVoid ? (
                         <TableCell className="text-right">
-                          {voided || payment.receiptId ? null : (
+                          {/* The refunds on a payment are voided before the payment itself. */}
+                          {voided || payment.receiptId || amountRefunded > 0 ? null : (
                             <Button variant="ghost" size="sm" onClick={() => setVoiding(payment)}>
                               {t("payments.action.void")}
                             </Button>
@@ -220,10 +250,11 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
           invoiceId={invoice.id}
           invoiceNumber={invoice.number ?? ""}
           currency={invoice.currency}
-          balanceDue={balanceDue}
+          balanceDue={recordOpen === "refund" ? owedToCustomer : balanceDue}
           timeZone={view?.timeZone ?? "UTC"}
           locale={locale}
-          onClose={() => setRecordOpen(false)}
+          refund={recordOpen === "refund"}
+          onClose={() => setRecordOpen(null)}
           onRecorded={handleChanged}
         />
       ) : null}
@@ -231,12 +262,26 @@ export function InvoicePaymentsPanel({ invoice, locale, onChanged }: InvoicePane
       {voiding ? (
         <VoidPaymentDialog
           payment={voiding}
+          refund={"refundedAt" in voiding}
           locale={locale}
           onClose={() => setVoiding(null)}
           onVoided={handleChanged}
         />
       ) : null}
     </Card>
+  )
+}
+
+function PaymentState({ voidedAt, voidReason }: { voidedAt: Date | string | null; voidReason: string | null }) {
+  const { t } = useI18n()
+  if (!voidedAt) return <Badge variant="secondary">{t("payments.state.recorded")}</Badge>
+  return (
+    <>
+      <Badge variant="outline" title={voidReason ?? undefined}>
+        {t("payments.state.voided")}
+      </Badge>
+      {voidReason ? <p className="mt-1 text-xs">{t("payments.state.voidedReason", { reason: voidReason })}</p> : null}
+    </>
   )
 }
 
@@ -266,15 +311,19 @@ export function RecordPaymentDialog({
   balanceDue,
   timeZone,
   locale,
+  refund = false,
   onClose,
   onRecorded,
 }: {
   invoiceId: string
   invoiceNumber: string
   currency: string
+  /** The most the dialog accepts: the balance due, or for a refund what is owed to the customer. */
   balanceDue: number
   timeZone: string
   locale?: string | null
+  /** Records money paid back to the customer outside Quits instead. Quits sends no money. */
+  refund?: boolean
   onClose: () => void
   onRecorded: () => Promise<void>
 }) {
@@ -284,9 +333,12 @@ export function RecordPaymentDialog({
   const [method, setMethod] = useState<PaymentMethod>("bank_transfer")
   const [reference, setReference] = useState("")
   const [note, setNote] = useState("")
+  // A refund retried unchanged keeps its request ID, so an uncertain response is not recorded twice.
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID())
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const balanceLabel = formatCurrency(balanceDue, currency, locale)
+  const changed = () => { setError(null); setRequestId(crypto.randomUUID()) }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -297,29 +349,27 @@ export function RecordPaymentDialog({
       return
     }
     if (value > balanceDue + 1e-9) {
-      setError(t("payments.record.error.overpayment", { balance: balanceLabel }))
+      setError(refund
+        ? t("payments.refund.error.exceedsOwed", { owed: balanceLabel })
+        : t("payments.record.error.overpayment", { balance: balanceLabel }))
       return
     }
     if (!paidAt || paidAt > todayIsoDate(timeZone)) {
-      setError(t("payments.record.error.date"))
+      setError(t(refund ? "payments.refund.error.date" : "payments.record.error.date"))
       return
     }
 
     setError(null)
     setSubmitting(true)
     try {
-      await trpc.payments.record.mutate({
-        invoiceId,
-        amount: value,
-        paidAt,
-        method,
-        reference: reference.trim() || undefined,
-        note: note.trim() || undefined,
-      })
+      const details = { invoiceId, amount: value, note: note.trim() || undefined }
+      await (refund
+        ? trpc.payments.refund.mutate({ ...details, requestId, refundedAt: paidAt })
+        : trpc.payments.record.mutate({ ...details, paidAt, method, reference: reference.trim() || undefined }))
       await onRecorded()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("payments.record.error.failed"))
+      setError(err instanceof Error ? err.message : t(refund ? "payments.refund.error.failed" : "payments.record.error.failed"))
     } finally {
       setSubmitting(false)
     }
@@ -330,9 +380,11 @@ export function RecordPaymentDialog({
       <DialogContent>
         <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>{t("payments.record.title")}</DialogTitle>
+            <DialogTitle>{t(refund ? "payments.refund.title" : "payments.record.title")}</DialogTitle>
             <DialogDescription>
-              {t("payments.record.description", { number: invoiceNumber, balance: balanceLabel })}
+              {refund
+                ? t("payments.refund.description", { owed: balanceLabel })
+                : t("payments.record.description", { number: invoiceNumber, balance: balanceLabel })}
             </DialogDescription>
           </DialogHeader>
 
@@ -348,15 +400,15 @@ export function RecordPaymentDialog({
                 max={balanceDue}
                 required
                 value={amount}
-                onChange={(event) => { setAmount(event.target.value); setError(null) }}
+                onChange={(event) => { setAmount(event.target.value); changed() }}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="payment-date">{t("payments.record.date")}</Label>
+              <Label htmlFor="payment-date">{t(refund ? "payments.refund.date" : "payments.record.date")}</Label>
               <LocalizedDateField
                 id="payment-date"
                 value={paidAt}
-                onChange={(value) => { setPaidAt(value); setError(null) }}
+                onChange={(value) => { setPaidAt(value); changed() }}
                 locale={locale}
                 placeholder={t("payments.record.datePlaceholder")}
                 required
@@ -364,7 +416,7 @@ export function RecordPaymentDialog({
             </div>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2" hidden={refund}>
             <Label htmlFor="payment-method">{t("payments.record.method")}</Label>
             <Select value={method} onValueChange={(value) => setMethod(value as PaymentMethod)}>
               <SelectTrigger id="payment-method" className="w-full">
@@ -380,7 +432,7 @@ export function RecordPaymentDialog({
             </Select>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2" hidden={refund}>
             <Label htmlFor="payment-reference">{t("payments.record.reference")}</Label>
             <Input
               id="payment-reference"
@@ -399,7 +451,7 @@ export function RecordPaymentDialog({
               rows={2}
               placeholder={t("payments.record.notePlaceholder")}
               value={note}
-              onChange={(event) => setNote(event.target.value)}
+              onChange={(event) => { setNote(event.target.value); changed() }}
             />
           </div>
 
@@ -414,7 +466,7 @@ export function RecordPaymentDialog({
               {t("payments.action.cancel")}
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? t("payments.action.recording") : t("payments.action.record")}
+              {submitting ? t("payments.action.recording") : t(refund ? "payments.action.refund" : "payments.action.record")}
             </Button>
           </DialogFooter>
         </form>
@@ -425,11 +477,14 @@ export function RecordPaymentDialog({
 
 export function VoidPaymentDialog({
   payment,
+  refund = false,
   locale,
   onClose,
   onVoided,
 }: {
-  payment: PaymentRow
+  payment: Pick<PaymentRow, "id" | "amount" | "currency">
+  /** The row is a refund: voiding it puts the amount back on what the customer is owed. */
+  refund?: boolean
   locale?: string | null
   onClose: () => void
   onVoided: () => Promise<void>
@@ -449,11 +504,13 @@ export function VoidPaymentDialog({
     setError(null)
     setSubmitting(true)
     try {
-      await trpc.payments.void.mutate({ paymentId: payment.id, reason: reason.trim() })
+      await (refund
+        ? trpc.payments.voidRefund.mutate({ refundId: payment.id, reason: reason.trim() })
+        : trpc.payments.void.mutate({ paymentId: payment.id, reason: reason.trim() }))
       await onVoided()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("payments.void.error.failed"))
+      setError(err instanceof Error ? err.message : t(refund ? "payments.refund.void.error.failed" : "payments.void.error.failed"))
     } finally {
       setSubmitting(false)
     }
@@ -464,9 +521,9 @@ export function VoidPaymentDialog({
       <DialogContent>
         <form noValidate onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>{t("payments.void.title")}</DialogTitle>
+            <DialogTitle>{t(refund ? "payments.refund.void.title" : "payments.void.title")}</DialogTitle>
             <DialogDescription>
-              {t("payments.void.description", {
+              {t(refund ? "payments.refund.void.description" : "payments.void.description", {
                 amount: formatCurrency(payment.amount, payment.currency, locale),
               })}
             </DialogDescription>

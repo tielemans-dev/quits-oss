@@ -95,7 +95,7 @@ export function InvoiceCreditNotesPanel({ invoice, locale, onChanged }: InvoiceP
           </Button>
         )}
       </CardHeader>
-      <CardContent className="grid gap-3">
+      <CardContent className="grid grid-cols-1 gap-3">
         {loadError ? <QueryError error={loadError} retry={load} /> : null}
         {creditNotes.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("creditNotes.panel.empty")}</p>
