@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const create = vi.hoisted(() => vi.fn())
+const navigate = vi.hoisted(() => vi.fn())
 vi.mock("../../../trpc/client", () => ({ trpc: { invoices: { createFromDeliverables: { mutate: create } } } }))
 vi.mock("../../../lib/i18n/react", () => ({ useI18n: () => ({ locale: "en-US", t: (key: string) => key }) }))
-vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a> }))
+vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>, useNavigate: () => navigate }))
 import { InvoiceDeliverables } from "../invoice-deliverables"
 
 const agreement = {
@@ -51,5 +52,34 @@ describe("an Invoice button with nothing billable", () => {
   it("gives no reason while something can be billed", () => {
     render(<InvoiceDeliverables agreement={agreement} depositsEnabled={false} onChanged={async () => {}} />)
     expect(screen.getByRole("button", { name: "agreements.invoice" }).getAttribute("aria-describedby")).toBeNull()
+  })
+})
+
+describe("creating draft invoices", () => {
+  it.each([
+    ["sale", { saleInvoiceId: "sale" }],
+    ["prepayment", { prepaymentInvoiceId: "prepayment" }],
+  ])("shows progress, then opens the %s draft it created", async (invoiceId, result) => {
+    let finish: (value: object) => void = () => {}
+    create.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const onChanged = vi.fn(async () => {})
+    render(<InvoiceDeliverables agreement={agreement} depositsEnabled={true} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole("button", { name: "agreements.invoice" }))
+    fireEvent.click(screen.getByRole("button", { name: "agreements.createInvoices" }))
+    expect((screen.getByRole("button", { name: "agreements.creatingInvoices" }) as HTMLButtonElement).disabled).toBe(true)
+    finish(result)
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/invoices/$invoiceId", params: { invoiceId } }))
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+  it("stays on the agreement with a link to each draft when it creates a sale and a prepayment draft", async () => {
+    create.mockResolvedValue({ saleInvoiceId: "sale", prepaymentInvoiceId: "prepayment" })
+    const onChanged = vi.fn(async () => {})
+    render(<InvoiceDeliverables agreement={agreement} depositsEnabled={true} onChanged={onChanged} />)
+    fireEvent.click(screen.getByRole("button", { name: "agreements.invoice" }))
+    fireEvent.click(screen.getByRole("button", { name: "agreements.createInvoices" }))
+    expect(await screen.findByText("agreements.openSaleInvoice")).toBeTruthy()
+    expect(screen.getByText("agreements.openPrepaymentInvoice")).toBeTruthy()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(onChanged).toHaveBeenCalledOnce()
   })
 })
