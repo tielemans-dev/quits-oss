@@ -1028,4 +1028,10 @@ describe("invoice detail buyer", () => {
     const billTo = (await screen.findByText("pdf.billTo")).parentElement!
     expect([...billTo.querySelectorAll("p")].map(line => line.textContent)).toEqual(["Synthetic Buyer", "buyer@example.test", "Vestergade 5, 3. sal", "8000 Aarhus C"])
   })
+  it("prints the buyer's CVR number, as the PDF does", async () => {
+    api.get.mockResolvedValue({ ...invoice, buyerTaxIds: [{ scheme: "cvr", value: "24256790", countryCode: "DK" }] })
+    render(<DetailPage />)
+    const billTo = (await screen.findByText("pdf.billTo")).parentElement!
+    expect([...billTo.querySelectorAll("p")].map(line => line.textContent)).toEqual(["Synthetic Buyer", "CVR no. 24256790", "buyer@example.test"])
+  })
 })

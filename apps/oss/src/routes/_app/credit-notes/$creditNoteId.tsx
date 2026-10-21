@@ -31,7 +31,7 @@ import { StatusBadge } from "../../../components/status-badge"
 import { DocumentTotals } from "../../../components/documents/document-totals"
 import { InvoiceSellerDetails } from "../../../components/invoices/invoice-payment-instructions"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
-import { distinctCompany } from "../../../lib/documents/tax-ids"
+import { distinctCompany, formatTaxIds } from "../../../lib/documents/tax-ids"
 import { lineColumnKeys } from "../../../lib/documents/line-amounts"
 import { localizeInvoiceQuantity } from "../../../lib/invoice-quantity"
 
@@ -324,6 +324,7 @@ function CreditNoteDetailPage() {
               <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("creditNotes.detail.customer")}</h3>
               <p className="font-semibold">{contact.name}</p>
               {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
+              {formatTaxIds(buyer?.taxIds, locale).map(id => <p key={id} className="text-sm">{id}</p>)}
               {contact.email && <p className="text-sm text-muted-foreground">{contact.email}</p>}
               {detailBuyerAddress(contact, creditNote.countryCode, locale).map((line, index) => <p key={index} className="text-sm">{line}</p>)}
             </div>
