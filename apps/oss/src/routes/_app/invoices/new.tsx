@@ -249,7 +249,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
 
   // An adopter policy fixes the rate and treatment; without one the full classification editor applies.
   const restrictedVat = !!readiness?.standardVatRate
-  const preview = previewDraft({ items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate: taxRate || "0", pricesIncludeTax, currency })
+  // Until settings load, `currency` is only the fallback, so amounts wait instead of flashing in it.
+  const preview = currencyLoaded ? previewDraft({ items: items.map(item => normalizeInvoiceQuantity(item, locale)), taxRate: taxRate || "0", pricesIncludeTax, currency }) : { result: null, error: null }
   const subtotal = Number(preview.result?.net ?? "0")
   const taxAmount = Number(preview.result?.tax ?? "0")
   const total = Number(preview.result?.gross ?? "0")
@@ -471,7 +472,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
               {fieldError("contactId")}
               {fieldIssues.filter(issue => issue.field.startsWith("customer.")).map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code, issue.field), issue.params)}</p>)}
             </div>
-            <IssuanceFields value={issuance} onChange={value => { setIssuance(value); setFieldIssues(issues => issues.filter(issue => !["supplyDate", "exchangeRate", "rateDate"].includes(issue.field))) }} currency={currency} baseCurrency={baseCurrency} showHint={false} errors={fieldIssues} />
+            <IssuanceFields value={issuance} onChange={value => { setIssuance(value); setFieldIssues(issues => issues.filter(issue => !["supplyDate", "exchangeRate", "rateDate"].includes(issue.field))) }} currency={currency} baseCurrency={currencyLoaded ? baseCurrency : undefined} showHint={false} errors={fieldIssues} />
             <div className="grid gap-2">
               <Label htmlFor="dueDate">{t("invoices.new.field.dueDate")} *</Label>
               <LocalizedDateField
