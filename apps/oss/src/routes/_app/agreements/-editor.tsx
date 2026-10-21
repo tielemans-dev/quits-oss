@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useDeferredValue } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { agreementCreateDraftDecimalInputSchema, type DeliverableInput } from "@quits/contracts/agreements"
 import { trpc } from "../../../trpc/client"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { Button } from "../../../components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Input } from "../../../components/ui/input"
@@ -196,8 +197,8 @@ export function AgreementEditor({ agreementId }: { agreementId?: string }) {
     setSaving(true)
     try {
       const result = agreementId
-        ? await trpc.agreements.updateDraftDecimal.mutate({ ...parsed.data, id: agreementId })
-        : await trpc.agreements.createDraftDecimal.mutate(parsed.data)
+        ? await trpc.agreements.updateDraftDecimal.mutate({ ...parsed.data, id: agreementId }, handledMutationError)
+        : await trpc.agreements.createDraftDecimal.mutate(parsed.data, handledMutationError)
       await navigate({ to: "/agreements/$agreementId", params: { agreementId: result.id } })
     } catch (err) {
       setError(err instanceof Error ? err.message : t("agreements.error"))
