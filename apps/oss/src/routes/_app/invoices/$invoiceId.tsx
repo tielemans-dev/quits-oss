@@ -33,8 +33,9 @@ import {
   type EmailDeliveryRuntimeStatus,
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
+import type { DocumentTaxId } from "@quits/contracts/documents"
 import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
-import { distinctCompany } from "../../../lib/documents/tax-ids"
+import { distinctCompany, formatTaxIds } from "../../../lib/documents/tax-ids"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
 import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import { EmailSendFailureNotice } from "../../../components/invoices/email-send-failure-notice"
@@ -144,6 +145,7 @@ type Invoice = {
   recipientVersion?: string
   sellerSnapshot?: unknown
   issuanceSnapshot?: unknown
+  buyerTaxIds?: DocumentTaxId[]
   /** The seller's country, which decides the postal order and whether the buyer's country is shown. */
   countryCode: string
   disputed?: boolean
@@ -1395,6 +1397,7 @@ function InvoiceDetailPage() {
                 </h3>
                 <p className="font-semibold">{contact.name}</p>
                 {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
+                {formatTaxIds(invoice.buyerTaxIds, locale).map(id => <p key={id} className="text-sm">{id}</p>)}
                 {contact.email && (
                   <p className="text-sm text-muted-foreground">{contact.email}</p>
                 )}

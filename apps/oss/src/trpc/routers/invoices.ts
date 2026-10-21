@@ -1,5 +1,5 @@
 import type { FieldIssue } from "@quits/contracts/agent"
-import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { invoiceSendReviewVersion, recipientReviewVersion } from "../../domain/approval-contexts"
 import { loadSellerTaxIds } from "../../domain/documents/context"
 import { issuedInvoiceSnapshot } from "../../domain/documents/issued-invoice"
@@ -233,6 +233,8 @@ export const invoicesRouter = router({
           sellerTaxIds: await loadSellerTaxIds(prisma, ctx.organizationId),
         }),
         recipientVersion: recipientReviewVersion(invoice.contact),
+        // The buyer numbers the PDF prints: the frozen ones once issued, the contact's while a draft.
+        buyerTaxIds: (invoice.status === "draft" ? null : parseBuyerSnapshot(invoice.buyerSnapshot))?.taxIds ?? buildBuyerSnapshot(invoice.contact).taxIds,
         momsRegistered,
         ...sanitizeDocumentEmailAttempt(invoice),
         // A draft has no number yet. This is the number it would take if sent now; it is not reserved.

@@ -128,4 +128,10 @@ describe("credit note parties", () => {
     expect(screen.getByRole("heading", { name: translate("creditNotes.detail.customer") })).toBeTruthy()
     expect(screen.queryByRole("heading", { name: translate("pdf.billTo") })).toBeNull()
   })
+
+  it("prints the buyer's CVR number from the issued snapshot", async () => {
+    api.get.mockResolvedValue({ ...issued, buyerSnapshot: { name: "Kunde ApS", taxIds: [{ scheme: "cvr", value: "24256790", countryCode: "DK" }] } })
+    render(<RouteComponent />)
+    expect(await screen.findByText(/CVR.* 24256790$/)).toBeTruthy()
+  })
 })
