@@ -111,6 +111,38 @@ describe.skipIf(!hasTestDatabase)("dashboard.summary", () => {
     expect(amount((await org.summary()).outstanding)).toBe("0.00")
   })
 
+  it("removes money credited back on paid invoices from received, latest payments first", async () => {
+    const org = await setup()
+    const issue = async (unitPrice: number) => {
+      const invoice = await org.admin.invoices.create({ contactId: org.contact.id, currency: "DKK", dueDate: "2026-10-15", items: [{ description: "Work", quantity: 1, unitPrice }] })
+      await org.admin.invoices.send({ id: invoice.id, allowSendWithoutEmail: true })
+      return invoice
+    }
+    const pay = (invoiceId: string, amount: number, paidAt: string) => org.admin.payments.record({ invoiceId, amount, paidAt, method: "bank_transfer" })
+    const full = await issue(22500)
+    await pay(full.id, 22500, "2026-10-02")
+    await org.admin.creditNotes.issue({ invoiceId: full.id, mode: "full", reason: "Cancelled order" })
+    const unpaid = await issue(1000)
+
+    const fullyCredited = await org.summary()
+    expect((await org.admin.invoices.get({ id: full.id })).status).toBe("credited")
+    expect(fullyCredited.paidThisMonth).toEqual(zero)
+    expect(fullyCredited.outstanding.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "1000.00", count: 1 }])
+    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(0)
+
+    const partly = await issue(100)
+    await pay(partly.id, 30, "2026-09-20")
+    await pay(partly.id, 50, "2026-10-03")
+    await pay(unpaid.id, 200, "2026-10-04")
+    // 80 paid and 40 credited on a 100 invoice: 20 goes back to the customer, from October's 50.
+    await org.admin.creditNotes.issue({ invoiceId: partly.id, mode: "amount", amount: 40, reason: "Partial return" })
+    const result = await org.summary()
+    expect(result.paidThisMonth.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "230.00", count: 2 }])
+    expect(result.receivedByMonth.at(-2)?.buckets).toEqual([{ currency: "DKK", exponent: 2, amount: "30.00", count: 1 }])
+    expect(amount(result.outstanding)).toBe("800.00")
+    expect((await org.admin.dashboard.stats()).totalRevenue).toBe(260)
+  })
+
   it("counts a split receipt once at net, including its unallocated cash", async () => {
     const org = await setup()
     const first = await org.seed(), second = await org.seed()

@@ -142,7 +142,11 @@ arrays, and `drafts: { count: 0, newestId: null, newestKind: null }`. The UI can
   replacement's payment date. This is a current-state projection, not historical reconstruction
   of what was known at a past `asOf`. Refunds are separate outflows and do not reduce this received
   money metric; reversing a refund likewise adds no receipt. Customer-credit classification,
-  allocation reversals and credit notes do not create or remove cash receipts.
+  allocation reversals and credit notes do not create or remove cash receipts. One exception: a
+  credit note on a paid invoice leaves its legacy payments active with no refund record, so the
+  credited-back part, `min(paid, gross) + min(credited, gross) - gross`, is taken off that invoice's
+  legacy payments, latest `paidAt` first. A fully credited, fully paid invoice adds nothing, and a
+  payment trimmed to zero is not counted. Receipt allocations cannot be credited until reversed.
 - The streak walks currently payment-settled, positive-value issued invoices, descending by their
   latest active payment's `paidAt`, then descending id. Payment includes receipt allocations in
   the invoice currency; their `paidAt` comes from the receipt, not the allocation date. Evidenced

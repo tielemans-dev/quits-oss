@@ -124,6 +124,12 @@ async function openDrafts(db: Db, actor: Actor): Promise<DashboardSummary["draft
  * replacement. Refunds are separate outflows, not negative receipts. No receipt has a frozen base
  * valuation, so callers retain native currencies and include all cash in the unvalued subset.
  * A null start includes all history for the compatibility stats endpoint, using the same sources.
+ *
+ * A credit note on a paid invoice leaves its legacy payments active, and nothing else records the
+ * money owed back. That credited-back part (paid within the gross plus credited, beyond the gross)
+ * is taken off the invoice's legacy payments, latest paidAt first; a payment trimmed to zero no
+ * longer counts. Receipt cash is unaffected: crediting paid receipt allocations is refused until
+ * they are reversed, and the released funds leave through refunds.
  */
 export async function moneyReceived(db: Db, organizationId: string, timezone: string, start: Date | null, now: Date) {
   const since = start === null ? Prisma.empty : Prisma.sql`AND "paidAt" >= ${utcTimestamp(start)}`
@@ -131,9 +137,21 @@ export async function moneyReceived(db: Db, organizationId: string, timezone: st
     SELECT to_char(("paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM') AS month,
       upper(btrim(currency)) AS currency, sum(amount) AS amount, count(*)::int AS count
     FROM (
-      SELECT "paidAt", currency, amount FROM payment
-      WHERE "organizationId" = ${organizationId} AND "voidedAt" IS NULL AND "receiptId" IS NULL
-        ${since} AND "paidAt" <= ${utcTimestamp(now)}
+      SELECT p."paidAt", p.currency, p.amount - coalesce(t.amount, 0) AS amount FROM payment p
+      LEFT JOIN (
+        SELECT p.id, least(p.amount, greatest(i.amount - coalesce(sum(p.amount) OVER (
+          PARTITION BY p."invoiceId" ORDER BY p."paidAt" DESC, p.id DESC
+          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0), 0)) AS amount
+        FROM payment p
+        JOIN (
+          SELECT id, least("amountPaid", "totalGross") + least("amountCredited", "totalGross") - "totalGross" AS amount
+          FROM invoice WHERE "organizationId" = ${organizationId} AND "amountCredited" > 0
+        ) i ON i.id = p."invoiceId" AND i.amount > 0
+        WHERE p."organizationId" = ${organizationId} AND p."voidedAt" IS NULL AND p."receiptId" IS NULL
+      ) t ON t.id = p.id
+      WHERE p."organizationId" = ${organizationId} AND p."voidedAt" IS NULL AND p."receiptId" IS NULL
+        AND p.amount > coalesce(t.amount, 0)
+        ${since} AND p."paidAt" <= ${utcTimestamp(now)}
       UNION ALL
       SELECT "paidAt", currency, "netAmount" AS amount FROM settlement_receipt
       WHERE "organizationId" = ${organizationId} AND "reversedAt" IS NULL
