@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## [0.16.1](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.1)
+
+Changes since the published v0.16.0 tag, covering 4 merged PRs.
+
+- Let a second CVR lookup on the new-customer form replace the name the first one filled in.
+- Warn when the CVR lookup finds a company that is no longer active.
+- Name the customer's missing details when sending an invoice fails, with a link to edit the customer.
+- Stop a blank new invoice warning about an unsupported currency before settings load.
+
+See the [release notes](docs/releases/v0.16.1.md) for upgrade notes.
+
+[Compare with v0.16.0](https://github.com/tielemans-dev/quits-oss/compare/v0.16.0...v0.16.1).
+
 ## [0.16.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.0)
 
 Changes since the published v0.15.0 tag, covering 25 merged PRs.
