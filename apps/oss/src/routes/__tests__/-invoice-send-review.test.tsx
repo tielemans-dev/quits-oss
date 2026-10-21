@@ -28,6 +28,7 @@ vi.mock("../../components/ui/select", () => ({
 }))
 vi.mock("../../components/customer-picker", () => ({
   CustomerPicker: ({ contacts, value, onChange }: { contacts: { id: string; name: string }[]; value: string; onChange: (value: string) => void }) => <select value={value} onChange={event => onChange(event.target.value)}><option value="" />{contacts.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>,
+  pickedContactSearch: (search: Record<string, unknown>) => ({ contactId: typeof search.contactId === "string" ? search.contactId : undefined }),
 }))
 vi.mock("../../components/localized-date-field", () => ({ LocalizedDateField: ({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) => <input id={id} type="date" value={value} onChange={event => onChange(event.target.value)} /> }))
 vi.mock("../../lib/i18n/react", () => ({ useI18n: () => ({ locale: "en-US", t: translate }) }))
