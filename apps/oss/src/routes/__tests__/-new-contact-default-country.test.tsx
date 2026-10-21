@@ -11,7 +11,7 @@ const trpcMock = vi.hoisted(() => ({
   create: vi.fn(async (_input: unknown) => ({})),
 }))
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => options,
+  createFileRoute: () => (options: object) => ({ ...options, useSearch: () => ({}) }),
   useNavigate: () => vi.fn(),
 }))
 vi.mock("../../trpc/client", () => ({ trpc: {

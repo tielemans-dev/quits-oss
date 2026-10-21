@@ -90,6 +90,28 @@ test("without a policy-fixed rate: field errors, the full VAT editor, a cancella
   expect((await prisma.invoice.findFirstOrThrow({ where: { organizationId } })).status).toBe("sent")
 })
 
+test("a new organization goes from no customers to a sent invoice through the customer picker", async ({ page }) => {
+  const { organizationId } = await seed(25)
+  await prisma.contact.deleteMany({ where: { organizationId } })
+  await loginAsAdmin(page)
+  await page.goto("/invoices/new")
+  await waitForClientReady(page)
+  await page.locator("#invoice-contact").click()
+  await page.getByRole("option", { name: "Create manually" }).click()
+  await page.waitForURL(/\/contacts\/new\?returnTo=/)
+  for (const [label, value] of [["Name (required)", "Synthetic Buyer"], ["Company", "Synthetic Buyer ApS"], ["Email", "buyer@example.test"], ["Address", "Testvej 2"], ["City", "København"], ["ZIP", "1000"], ["Tax ID", "24256790"]]) await page.getByLabel(label, { exact: true }).fill(value)
+  await page.getByRole("button", { name: "Create Customer" }).click()
+  await page.waitForURL(/\/invoices\/new\?contactId=/)
+  await expect(page.locator("#invoice-contact")).toHaveText("Synthetic Buyer")
+  await fillInvoice(page)
+  await page.getByRole("button", { name: "Save & Send" }).click()
+  await page.getByRole("dialog").getByRole("button", { name: "Send invoice", exact: true }).click()
+  await page.waitForURL(savedInvoiceUrl)
+  await expect.poll(() => delivered, { timeout: 30_000 }).toBe(1)
+  const invoice = await prisma.invoice.findFirstOrThrow({ where: { organizationId }, include: { contact: true } })
+  expect([invoice.status, invoice.contact.name, invoice.contact.email]).toEqual(["sent", "Synthetic Buyer", "buyer@example.test"])
+})
+
 test("with a policy-fixed rate: plain VAT text instead of a choice, on the new form and the draft editor", async ({ page }) => {
   const { organizationId } = await seed(25)
   await loginAsAdmin(page)
