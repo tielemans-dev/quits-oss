@@ -67,6 +67,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
     fireEvent.change(screen.getByLabelText("CVR number"), { target: { value: "24256790" } })
     expect(screen.queryByRole("radio", { name: "I'm not VAT-registered" })).toBeNull()
     const priceChoice = screen.getByRole("combobox", { name: "Prices include VAT" }) as HTMLSelectElement
@@ -83,6 +84,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
     fireEvent.click(screen.getAllByRole("radio")[registered ? 0 : 1]!)
     expect((screen.getByLabelText("CVR number") as HTMLInputElement).required).toBe(true)
     fireEvent.submit(screen.getByRole("button", { name: "Create company" }).closest("form")!)
@@ -95,7 +97,7 @@ describe("production v2 seller confirmation", () => {
   })
   it.each(["", "   ", "12345678"])("rejects unsupported hosted manual CVR %j in the transport before preparation", async cvr => {
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", momsRegistered: false, cvr })
+    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", momsRegistered: false, cvr })
     await expect(createOnboardingV2Client(false, true).confirm(confirmationPayload(draft))).rejects.toThrow()
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.confirm).not.toHaveBeenCalled()
@@ -106,6 +108,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
     fireEvent.change(screen.getByLabelText("CVR number"), { target: { value: "24256790" } })
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios.every(radio => !radio.checked)).toBe(true)
@@ -140,7 +143,7 @@ describe("production v2 seller confirmation", () => {
     fireEvent.click(screen.getAllByRole("radio")[registered ? 0 : 1]!)
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
-    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "IVS" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
     fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "40486480" } })
     fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "EUR" } })
     fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "en-GB" } })
@@ -163,7 +166,7 @@ describe("production v2 seller confirmation", () => {
   })
   it("keeps the disabled extension's existing transport without preparing evidence", async () => {
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", momsRegistered: false })
+    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", momsRegistered: false })
     await createOnboardingV2Client(false).confirm(confirmationPayload(draft))
     expect(api.prepare).not.toHaveBeenCalled()
     expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: false }))
@@ -274,7 +277,7 @@ describe("unanswered CVR VAT validation (QUI-56)", () => {
 describe("review page CVR errors (QUI-39)", () => {
   async function review(locale: string, client = createOnboardingV2Client(false)) {
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", momsRegistered: true, cvr: "12345678" })
+    Object.assign(draft.values, { companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", momsRegistered: true, cvr: "12345678" })
     storeDraft(draftKey("synthetic-user", "synthetic-org"), draft)
     render(<I18nProvider locale={locale}><OnboardingV2 userId="synthetic-user" organizationId="synthetic-org" signupEmail="signup@example.test" nonVatEnabled client={client} onComplete={() => {}} /></I18nProvider>)
     const cvr = await screen.findByLabelText(translate("onboardingV2.field.cvr", locale))
@@ -300,10 +303,11 @@ describe("review page CVR errors (QUI-39)", () => {
     const { cvr, form } = await review("da-DK")
     fireEvent.change(cvr, { target: { value: "24256790" } })
     const email = screen.getByLabelText(translate("onboardingV2.field.email", "da-DK"))
-    // Marked before submitting, with a visual-only star next to its label.
+    // A filled-in field carries no star; an empty one is marked before submitting (QUI-241).
     const label = email.closest(".ob-field")!.querySelector(".ob-field-label")!
-    expect(label.querySelector("[aria-hidden=true]")?.textContent).toBe(" *")
+    expect(label.querySelector("[aria-hidden=true]")).toBeNull()
     fireEvent.change(email, { target: { value: "" } })
+    expect(label.querySelector("[aria-hidden=true]")?.textContent).toBe(" *")
     fireEvent.submit(form)
     const error = await screen.findByText("Indtast en e-mail")
     expect(email.getAttribute("aria-invalid")).toBe("true")

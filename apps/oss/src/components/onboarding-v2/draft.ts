@@ -83,7 +83,7 @@ export function newDraft(
       companyName: company?.name ?? "",
       companyAddress: company?.address ?? "",
       cvr: company?.cvr ?? "",
-      companyForm: company?.companyForm ?? "ApS",
+      companyForm: company?.companyForm ?? "",
       // Optional register contacts are dropped rather than prefilled when unusable, so they never block confirmation.
       companyEmail: company?.advertisingProtected ? email : (registryEmail(company?.email) ?? email),
       companyPhone: company?.advertisingProtected ? "" : (registryPhone(company?.phone) ?? ""),
@@ -157,7 +157,7 @@ export function confirmationPayload(draft: OnboardingDraft) {
       locale: v.locale,
       timezone: v.timezone,
       taxRate: v.momsRegistered ? v.taxRate : 0,
-      pricesIncludeTax: v.pricesIncludeTax,
+      pricesIncludeTax: v.momsRegistered ? v.pricesIncludeTax : false,
       invoicePrefix: v.invoicePrefix,
       paymentTermsDays: v.paymentTermsDays,
     },

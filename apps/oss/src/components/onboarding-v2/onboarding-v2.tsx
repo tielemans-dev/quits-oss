@@ -15,7 +15,6 @@ import {
   confirmationPayload,
   draftKey,
   newDraft,
-  registryEmail,
   restoreDraft,
   storeDraft,
   type OnboardingDraft,
@@ -38,6 +37,8 @@ type Props = {
   onComplete: () => void
 }
 const SLOW_LOOKUP_MS = 3000
+/** Manual setup asks for the legal form; sole traders are the most common Quits seller. */
+const MANUAL_COMPANY_FORMS = ["Enkeltmandsvirksomhed", "Interessentskab", "ApS", "A/S"]
 const key = (suffix: string) => `onboardingV2.${suffix}` as TranslationKey
 
 function SummaryCard({
@@ -77,14 +78,13 @@ function StateNotice({
     </div>
   )
 }
+/** `required` marks a field that still needs an answer; a valid filled-in field shows no marker. */
 function SourceField({
   label,
-  tag,
   required = false,
   children,
 }: {
   label: string
-  tag: string
   required?: boolean
   children: ReactNode
 }) {
@@ -92,7 +92,6 @@ function SourceField({
     <div className="ob-field">
       <div className="ob-field-label">
         <span>{label}{required ? <span aria-hidden="true"> *</span> : null}</span>
-        <span className="ob-tag">{tag}</span>
       </div>
       {children}
     </div>
@@ -112,6 +111,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   const [searching, setSearching] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const [selected, setSelected] = useState<CvrCompany | null>(null)
+  /** A company picked before the organization existed is loading; its screen already showed the B2B notice. */
+  const [staging, setStaging] = useState(false)
   /** The active company CVR answered with, shown filling in before the review form replaces the lookup. */
   const [revealed, setRevealed] = useState<CvrCompany | null>(null)
   const [slow, setSlow] = useState(false)
@@ -164,6 +165,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     }
     const staged = !saved ? readSelectedCompany(userId, organizationId) : null
     if (staged?.cvr) {
+      setStaging(true)
       const controller = new AbortController()
       request.current = controller
       const run = epoch.current
@@ -175,6 +177,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         clearSelectedCompany(userId, organizationId)
       }).catch(() => { /* Keep the lookup available for retry. */ }).finally(() => {
         clearTimeout(timeout)
+        if (mounted.current) setStaging(false)
         if (mounted.current && run === epoch.current) setQuery(staged.cvr)
       })
     }
@@ -279,7 +282,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               ...current,
               suggestions: suggestions ?? current.suggestions,
               suggestionsState:
-                (suggestions ?? current.suggestions)?.lines.length || (suggestions ?? current.suggestions)?.customers.length
+                (suggestions ?? current.suggestions)?.lines.length
                   ? "ready"
                   : "hidden",
             }
@@ -381,7 +384,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             values: {
               ...current.values,
               [field]: value,
-              ...(field === "momsRegistered" ? { taxRate: value ? 25 : 0 } : {}),
+              ...(field === "momsRegistered" ? { taxRate: value ? 25 : 0, ...(value === false ? { pricesIncludeTax: false } : {}) } : {}),
             },
           }
         : current,
@@ -453,7 +456,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       else setSaveFailed(true)
     }
   }
-  function remove(group: "customers" | "lines", id: string) {
+  function removeLine(id: string) {
     suggestionRequest.current?.abort()
     setDraft((current) =>
       current?.suggestions
@@ -462,7 +465,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             suggestionsState: "ready",
             suggestions: {
               ...current.suggestions,
-              [group]: current.suggestions[group].filter((row) => row.id !== id),
+              lines: current.suggestions.lines.filter((row) => row.id !== id),
             },
           }
         : current,
@@ -490,7 +493,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
       : screen === "working" || screen === "ceased" || screen === "failed" || screen === "timeout"
         ? 2
         : 1
-  const factsTag = TT(draft?.source === "manual" ? "defaultTag" : "cvrTag")
   /** The localized message under an invalid review field, so an error is visible next to the field and not only in the banner. */
   function fieldMessage(name: keyof ReviewValues) {
     const value = String(draft!.values[name] ?? "").trim()
@@ -507,7 +509,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   function field(
     name: keyof ReviewValues,
     suffix: string,
-    tag: string,
     options: {
       type?: string
       required?: boolean
@@ -519,7 +520,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   ) {
     const value = draft!.values[name]
     return (
-      <SourceField label={TT(suffix)} tag={tag} required={options.required}>
+      <SourceField label={TT(suffix)} required={options.required && (!String(value).trim() || validationErrors.includes(name))}>
         <Input
           aria-label={TT(suffix)}
           name={name}
@@ -569,7 +570,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <section className="ob-search">
           <h1>{TT("search.heading")}</h1>
           <p>{TT("search.sub")}</p>
-          <B2bNotice />
+          {staging ? null : <B2bNotice />}
           <label className="ob-search-input">
             <Search size={20} aria-hidden="true" />
             <Input
@@ -708,7 +709,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <form ref={reviewForm} noValidate onSubmit={(event) => void confirm(event)} className="ob-review">
           <h1>{TT(draft.source === "manual" ? "manual.heading" : "review.heading")}</h1>
           <p>{TT(draft.source === "manual" ? "manual.sub" : "review.sub")}</p>
-          <B2bNotice />
           {restored ? (
             <p className="ob-notice" role="status">
               {TT("restored")}
@@ -736,15 +736,14 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
           {draft.values.momsRegistered === false && draft.source === "cvr" && draft.company?.momsRegistered === false ? (
             <StateNotice>{TT("noVat.notice")}</StateNotice>
           ) : null}
-          <p className="ob-edit">{TT("review.edit")}</p>
-          <SummaryCard title={TT("company")} tag={factsTag}>
-            {field("companyName", "field.name", factsTag, { required: true, maxLength: 120 })}
-            {field("cvr", "field.cvr", factsTag, {
+          <SummaryCard title={TT("company")}>
+            {field("companyName", "field.name", { required: true, maxLength: 120 })}
+            {field("cvr", "field.cvr", {
               required: confirmationEnabled || draft.source === "cvr",
               maxLength: 8,
               pattern: "[0-9]{8}",
             })}
-            <SourceField label={TT("field.address")} tag={factsTag} required>
+            <SourceField label={TT("field.address")} required={!draft.values.companyAddress.trim() || validationErrors.includes("companyAddress")}>
               <textarea
                 aria-label={TT("field.address")}
                 aria-invalid={validationErrors.includes("companyAddress") || undefined}
@@ -758,30 +757,39 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               />
               {fieldError("companyAddress")}
             </SourceField>
-            {field("companyForm", "field.form", factsTag, { required: true, maxLength: 80 })}
+            {draft.source === "manual" ? (
+              <SourceField label={TT("field.form")} required={!draft.values.companyForm || validationErrors.includes("companyForm")}>
+                <select
+                  aria-label={TT("field.form")}
+                  name="companyForm"
+                  aria-invalid={validationErrors.includes("companyForm") || undefined}
+                  aria-describedby={validationErrors.includes("companyForm") ? "ob-companyForm-error" : undefined}
+                  value={draft.values.companyForm}
+                  disabled={busy}
+                  onChange={(e) => update("companyForm", e.target.value)}
+                >
+                  <option value="" disabled>{TT("formChoose")}</option>
+                  {MANUAL_COMPANY_FORMS.map((form) => <option key={form} value={form}>{form}</option>)}
+                </select>
+                {fieldError("companyForm")}
+              </SourceField>
+            ) : field("companyForm", "field.form", { required: true, maxLength: 80 })}
             {draft.company?.industry ? (
-              <SourceField label={TT("field.industry")} tag={factsTag}>
+              <SourceField label={TT("field.industry")}>
                 <span>{draft.company.industry}</span>
               </SourceField>
             ) : null}
             {draft.company ? (
-              <SourceField label={TT("field.status")} tag={factsTag}>
+              <SourceField label={TT("field.status")}>
                 <span>{TT(`status.${draft.company.status}`)}</span>
               </SourceField>
             ) : null}
-            {field(
-              "companyEmail",
-              "field.email",
-              registryEmail(draft.company?.email) && !draft.company?.advertisingProtected
-                ? factsTag
-                : TT("defaultTag"),
-              { type: "email", required: true },
-            )}
-            {field("companyPhone", "field.phone", factsTag)}
+            {field("companyEmail", "field.email", { type: "email", required: true })}
+            {field("companyPhone", "field.phone")}
             {draft.source === "cvr" ? <p className="ob-notice" role="note">{TT("review.contacts", { email: signupEmail })}</p> : null}
           </SummaryCard>
           <SummaryCard title={TT("vatCurrency")}>
-            <SourceField label={TT("field.country")} tag={factsTag}>
+            <SourceField label={TT("field.country")}>
               <select
                 aria-label={TT("field.country")}
                 value={draft.values.countryCode}
@@ -797,7 +805,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
               <SellerVatStatus nonVatEnabled={nonVatEnabled} value={sellerVatChoice} invalid={validationErrors.includes("momsRegistered")} aria-describedby={validationErrors.includes("momsRegistered") ? "ob-momsRegistered-error" : undefined} disabled={busy} onChange={value => update("momsRegistered", value)} />
               {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
             </div> : (
-            <SourceField label={TT("field.vat")} tag={factsTag}>
+            <SourceField label={TT("field.vat")}>
               <select
                 aria-label={TT("field.vat")}
                 name="momsRegistered"
@@ -813,15 +821,17 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 {nonVatEnabled && <option value="false">{TT("no")}</option>}
               </select>
               {validationErrors.includes("momsRegistered") ? <p id="ob-momsRegistered-error" className="ob-error" role="alert">{TT("vatRequired")}</p> : null}
+              {sellerVatChoice === false ? <p className="ob-source ob-field-note">{t("vatStatus.noHint")}</p> : null}
             </SourceField>
             )}
-            {field("taxRate", "field.rate", TT("defaultTag"), {
+            {/* A seller without VAT has no rate and no VAT-inclusive prices to choose. */}
+            {sellerVatChoice === false ? null : field("taxRate", "field.rate", {
               type: "number",
               min: 0,
               max: 100,
               required: true,
             })}
-            <SourceField label={TT("field.currency")} tag={TT("defaultTag")}>
+            <SourceField label={TT("field.currency")}>
               <select
                 aria-label={TT("field.currency")}
                 value={draft.values.defaultCurrency}
@@ -835,7 +845,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 ))}
               </select>
             </SourceField>
-            <SourceField label={TT("field.locale")} tag={TT("defaultTag")}>
+            <SourceField label={TT("field.locale")}>
               <select
                 aria-label={TT("field.locale")}
                 value={draft.values.locale}
@@ -846,8 +856,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 <option value="en-GB">{t("auth.onboarding.locale.en")}</option>
               </select>
             </SourceField>
-            {field("timezone", "field.timezone", TT("defaultTag"), { required: true })}
-            <SourceField label={TT("field.prices")} tag={TT("defaultTag")}>
+            {field("timezone", "field.timezone", { required: true })}
+            {sellerVatChoice === false ? null : <SourceField label={TT("field.prices")}>
               <select
                 aria-label={TT("field.prices")}
                 value={String(draft.values.pricesIncludeTax)}
@@ -857,15 +867,15 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 <option value="false">{TT("no")}</option>
                 <option value="true">{TT("yes")}</option>
               </select>
-            </SourceField>
+            </SourceField>}
           </SummaryCard>
-          <SummaryCard title={TT("invoices")} tag={TT("defaultTag")}>
-            {field("invoicePrefix", "field.prefix", TT("defaultTag"), {
+          <SummaryCard title={TT("invoices")}>
+            {field("invoicePrefix", "field.prefix", {
               required: true,
               maxLength: 10,
               pattern: "[A-Z0-9\\-]{1,10}",
             })}
-            {field("invoiceNextNum", "field.next", TT("defaultTag"), {
+            {field("invoiceNextNum", "field.next", {
               type: "number",
               min: 1,
               max: 2147483647,
@@ -874,7 +884,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             <output className="ob-number">
               {draft.values.invoicePrefix}-{String(draft.values.invoiceNextNum).padStart(4, "0")}
             </output>
-            {field("paymentTermsDays", "field.terms", TT("defaultTag"), {
+            {field("paymentTermsDays", "field.terms", {
               type: "number",
               min: 0,
               max: 365,
@@ -898,20 +908,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                 >
                   <p>{TT("suggestions.sub")}</p>
                   <div className="ob-suggestion-content">
-                    <h3>{TT("suggestions.customers")}</h3>
-                    {draft.suggestions.customers.map((row) => (
-                      <div className="ob-suggestion-row" key={row.id}>
-                        <span>{row.label}</span>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          aria-label={`${TT("remove")} ${row.label}`}
-                          onClick={() => remove("customers", row.id)}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
                     <h3>{TT("suggestions.lines")}</h3>
                     {draft.suggestions.lines.map((row) => (
                       <div className="ob-suggestion-row" key={row.id}>
@@ -924,18 +920,22 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
                                 ? [...current.acceptedLineIds, row.id]
                                 : current.acceptedLineIds.filter(id => id !== row.id) } : current)
                             }} />
-                          {row.description} ·{" "}
-                          {new Intl.NumberFormat(locale, {
-                            style: "currency",
-                            currency: draft.values.defaultCurrency,
-                          }).format(row.unitPrice)}{" "}
-                          {TT(row.unit)}
+                          {row.description}
+                          {/* An unpriced suggestion must not read as a 0 kr. price. */}
+                          {row.unitPrice > 0 ? <>
+                            {" "}·{" "}
+                            {new Intl.NumberFormat(locale, {
+                              style: "currency",
+                              currency: draft.values.defaultCurrency,
+                            }).format(row.unitPrice)}{" "}
+                            {TT(row.unit)}
+                          </> : null}
                         </label>
                         <button
                           type="button"
                           disabled={busy}
                           aria-label={`${TT("remove")} ${row.description}`}
-                          onClick={() => remove("lines", row.id)}
+                          onClick={() => removeLine(row.id)}
                         >
                           <X size={16} />
                         </button>
@@ -1025,10 +1025,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             </Button>
             <p className="ob-source">{TT("bank.skipNote")}</p>
           </SummaryCard>
-          <aside className="ob-unsaved">
-            <h2>{TT("unsaved.title")}</h2>
-            <p>{TT("unsaved.body")}</p>
-          </aside>
           <div className="ob-confirm">
             <span>{TT("unsaved.hint")}</span>
             <Button type="submit" disabled={busy}>

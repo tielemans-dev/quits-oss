@@ -24,6 +24,7 @@ async function createCompany(client: OnboardingV2Client, onComplete: () => void,
   fireEvent.click(screen.getByRole("button", { name: locale === "en-US" ? "Set up manually instead" : "Opsæt manuelt i stedet" }))
   fireEvent.change(screen.getByLabelText(locale === "en-US" ? "Name" : "Navn"), { target: { value: "Synthetic Seller" } })
   fireEvent.change(screen.getByLabelText(locale === "en-US" ? "Address" : "Adresse"), { target: { value: "Testvej 1" } })
+  fireEvent.change(screen.getByLabelText(locale === "en-US" ? "Company type" : "Selskabsform"), { target: { value: "ApS" } })
   fireEvent.click(screen.getByRole("button", { name: locale === "en-US" ? "Create company" : "Opret virksomhed" }))
 }
 

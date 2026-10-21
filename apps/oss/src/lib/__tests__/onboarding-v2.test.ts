@@ -33,7 +33,7 @@ describe("Danish onboarding v2", () => {
   })
   it.each([true, false])("keeps registration %s through a serialized draft and validated payload", momsRegistered => {
     const draft = newDraft(null, "signup@example.test", false)
-    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", momsRegistered })
+    Object.assign(draft.values, { companyName: "Manual company", companyAddress: "Testvej 1", companyForm: "ApS", momsRegistered })
     const restored = draftSchema.parse(JSON.parse(JSON.stringify(draft)))
     const payload = confirmOnboardingV2Schema.parse(confirmationPayload(restored))
     expect(payload).toMatchObject({ source: "manual", momsRegistered, settings: { taxRate: momsRegistered ? 25 : 0 } })

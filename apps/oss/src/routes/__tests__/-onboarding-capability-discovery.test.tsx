@@ -115,6 +115,7 @@ describe("onboarding capability discovery", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Set up manually instead" }))
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Synthetic Seller" } })
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "Testvej 1" } })
+    fireEvent.change(screen.getByLabelText("Company type"), { target: { value: "ApS" } })
     fireEvent.click(screen.getByRole("button", { name: "Create company" }))
     await waitFor(() => expect(paymentsFlow.confirm).toHaveBeenCalledOnce())
     if (enabled) {
