@@ -39,6 +39,21 @@ export const paymentVoidInputSchema = z.object({
   reason: z.string().trim().min(1).max(500),
 })
 
+/** Money paid back to the customer outside Quits after credit notes left the invoice overpaid. */
+export const paymentRefundInputSchema = z.object({
+  requestId: z.string().trim().min(1).max(100),
+  invoiceId: z.string().trim().min(1),
+  amount: paymentAmountSchema,
+  /** Calendar date (`YYYY-MM-DD`) or ISO timestamp the money left the account. Not in the future. */
+  refundedAt: paymentDateSchema,
+  note: z.string().trim().max(2000).optional(),
+})
+
+export const paymentRefundVoidInputSchema = z.object({
+  refundId: z.string().trim().min(1),
+  reason: z.string().trim().min(1).max(500),
+})
+
 export const paymentListInputSchema = z.object({
   invoiceId: z.string().trim().min(1),
 })

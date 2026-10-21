@@ -2,6 +2,8 @@ import { Effect } from "effect"
 import { z } from "zod"
 import {
   paymentRecordInputSchema,
+  paymentRefundInputSchema,
+  paymentRefundVoidInputSchema,
   paymentVoidInputSchema,
   type PaymentMethod,
   type PaymentSource,
@@ -11,11 +13,11 @@ import { formatIsoDate, startOfDayInTimeZone } from "../../lib/exports/format"
 import { appLogger } from "../../lib/observability"
 import { UNDO_WINDOW_MS } from "../../lib/undo-window"
 import { currencyFractionDigits, isExactInCurrency } from "../../lib/payments/stripe-amounts"
-import type { Actor } from "../actor"
+import { actorKey, type Actor } from "../actor"
 import { defineCommand } from "../command"
 import { lockDocument } from "../documents/locks"
 import { expireReplacedCheckoutSession } from "../documents/checkout-sessions"
-import { computeSettlement, refreshInvoiceSettlement } from "../documents/settlement"
+import { computeSettlement, owedToCustomer, refreshInvoiceSettlement } from "../documents/settlement"
 import { Forbidden, InvalidState, NotFound, ValidationFailed } from "../errors"
 import { documentRef } from "../documents/numbering"
 import { Command, Db } from "../services"
@@ -58,6 +60,7 @@ const lockInvoice = (invoiceId: string) =>
         select: {
           id: true,
           number: true,
+          contactId: true,
           status: true,
           currency: true,
           totalGross: true,
@@ -126,12 +129,7 @@ const applyPayment = (input: ApplyPaymentInput) =>
       // Settling the exact remaining balance is always allowed, so an invoice whose total was
       // computed with more precision than its currency has can still be paid off.
       if (!isExactInCurrency(input.amount, invoice.currency) && !amount.equals(before.balanceDue)) {
-        const digits = currencyFractionDigits(invoice.currency)
-        const message =
-          digits === 0
-            ? `${invoice.currency} amounts cannot have decimals`
-            : `${invoice.currency} amounts can have at most ${digits} decimals`
-        return yield* new ValidationFailed({ message, issues: [{ path: "amount", message }] })
+        return yield* inexactAmount(invoice.currency)
       }
       if (before.balanceDue.isZero()) {
         return yield* new InvalidState({
@@ -224,6 +222,13 @@ const applyPayment = (input: ApplyPaymentInput) =>
 
     return { payment, invoice: refreshed.invoice, balanceDue: refreshed.settlement.balanceDue }
   })
+
+const inexactAmount = (currency: string) => {
+  const digits = currencyFractionDigits(currency)
+  const message =
+    digits === 0 ? `${currency} amounts cannot have decimals` : `${currency} amounts can have at most ${digits} decimals`
+  return new ValidationFailed({ message, issues: [{ path: "amount", message }] })
+}
 
 const futurePaymentDate = () =>
   new ValidationFailed({
@@ -458,6 +463,16 @@ export const voidPayment = defineCommand({
           code: "payment_already_voided",
         })
       }
+      const refunds = yield* Effect.promise(() =>
+        db.paymentRefund.count({ where: { invoiceId: invoice.id, voidedAt: null } })
+      )
+      // Like a receipt with refunds: payments less refunds must keep covering what the invoice charges.
+      if (refunds > 0) {
+        return yield* new InvalidState({
+          message: "Void the recorded refund before voiding this payment",
+          code: "refund_recorded",
+        })
+      }
 
       const voided = yield* Effect.promise(() =>
         db.payment.update({
@@ -494,10 +509,109 @@ export const voidPayment = defineCommand({
     }),
 })
 
+const personOnly = () => new Forbidden({ message: "Refunds are recorded by a person" })
+
+/**
+ * Records money paid back outside Quits after credit notes left the invoice's payments above what
+ * it still charges. Received money keeps the month it arrived in; the refund is a separate outflow
+ * dated when the money left the account.
+ */
+export const refundPayment = defineCommand({
+  type: "payment.refund",
+  permission: "payment:void",
+  outwardFacing: true,
+  requiresApproval: () => Effect.fail(personOnly()),
+  input: paymentRefundInputSchema,
+  summarize: (input) => `Record a ${input.amount.toFixed(2)} refund on invoice ${input.invoiceId}`,
+  handle: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const command = yield* Command
+      if (command.actor.kind !== "user") return yield* personOnly()
+      const refundedAt = yield* parsePaidAt(input.refundedAt)
+      const invoice = yield* lockInvoice(input.invoiceId)
+      const owed = yield* owedToCustomer(invoice)
+      const amount = toAmount(input.amount)
+      if (!isExactInCurrency(input.amount, invoice.currency) && !amount.equals(owed)) {
+        return yield* inexactAmount(invoice.currency)
+      }
+      if (amount.greaterThan(owed)) {
+        return yield* new InvalidState({
+          message: `Refund of ${amount.toFixed(2)} ${invoice.currency} exceeds the ${owed.toFixed(2)} ${invoice.currency} owed to the customer`,
+          code: "refund_exceeds_owed",
+        })
+      }
+
+      const remaining = owed.minus(amount)
+      const refund = yield* Effect.promise(() =>
+        db.paymentRefund.create({
+          data: {
+            organizationId: command.organizationId, invoiceId: invoice.id, amount, currency: invoice.currency,
+            refundedAt, note: input.note || null, actorKey: actorKey(command.actor), commandId: command.commandId,
+          },
+        })
+      )
+      command.emit({
+        aggregateType: "invoice",
+        aggregateId: invoice.id,
+        type: "payment.refunded",
+        payload: {
+          refundId: refund.id, number: invoice.number, contactId: invoice.contactId,
+          amount: amount.toFixed(2), currency: invoice.currency, refundedAt: refundedAt.toISOString(),
+          note: refund.note, owedToCustomer: remaining.toFixed(2),
+        },
+      })
+      return { refund, owedToCustomer: remaining }
+    }),
+})
+
+export const voidPaymentRefund = defineCommand({
+  type: "payment.void_refund",
+  permission: "payment:void",
+  outwardFacing: true,
+  requiresApproval: () => Effect.fail(personOnly()),
+  input: paymentRefundVoidInputSchema,
+  summarize: (input) => `Void refund ${input.refundId}: ${input.reason}`,
+  handle: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const command = yield* Command
+      if (command.actor.kind !== "user") return yield* personOnly()
+      const found = yield* Effect.promise(() =>
+        db.paymentRefund.findFirst({
+          where: { id: input.refundId, organizationId: command.organizationId },
+          select: { invoiceId: true },
+        })
+      )
+      if (!found) return yield* new NotFound({ message: "Refund not found", entity: "payment_refund", id: input.refundId })
+
+      const invoice = yield* lockInvoice(found.invoiceId)
+      const refund = yield* Effect.promise(() => db.paymentRefund.findUniqueOrThrow({ where: { id: input.refundId } }))
+      if (refund.voidedAt) return yield* new InvalidState({ message: "This refund is already voided", code: "refund_already_voided" })
+      const voided = yield* Effect.promise(() =>
+        db.paymentRefund.update({ where: { id: refund.id }, data: { voidedAt: command.now, voidReason: input.reason } })
+      )
+      const owed = yield* owedToCustomer(invoice)
+      command.emit({
+        aggregateType: "invoice",
+        aggregateId: invoice.id,
+        type: "payment.refund_voided",
+        payload: {
+          refundId: refund.id, number: invoice.number, contactId: invoice.contactId,
+          amount: refund.amount.toFixed(2), currency: refund.currency, refundedAt: refund.refundedAt.toISOString(),
+          reason: input.reason, owedToCustomer: owed.toFixed(2),
+        },
+      })
+      return { refund: voided, owedToCustomer: owed }
+    }),
+})
+
 /** Owned by the payments feature. */
 export const paymentCommands = [
   recordPayment,
   recordStripeCheckoutPayment,
   recordStripeCheckoutFailure,
   voidPayment,
+  refundPayment,
+  voidPaymentRefund,
 ] as const

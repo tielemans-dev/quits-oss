@@ -30,6 +30,7 @@ export async function cleanupTestOrganizations({ where }: { where: Prisma.Organi
     await db.deliverableRebill.deleteMany({ where: { agreement: scope } })
     await db.creditNoteItem.deleteMany({ where: { creditNote: scope } })
     await db.creditNote.deleteMany({ where: scope })
+    await db.paymentRefund.deleteMany({ where: scope })
     await db.payment.deleteMany({ where: scope })
     await db.settlementRefund.deleteMany({ where: { receipt: scope } })
     await db.settlementReceipt.deleteMany({ where: scope })

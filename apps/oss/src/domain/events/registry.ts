@@ -90,6 +90,9 @@ export const eventRegistry = {
   "payment.recorded": { version: 1, schema: z.object({ paymentId: s, number: s, amount: s, currency: s, method: paymentMethodSchema, balanceDue: s, paymentStatus: s, overpaidBy: s.optional() }).strict() },
   "payment.failed": { version: 1, schema: z.object({ number: s, method: z.literal("stripe"), checkoutSessionId: s, reason: s, supersededBy: nullableString.optional() }).strict() },
   "payment.voided": { version: 1, schema: z.object({ paymentId: s, number: s, amount: s, currency: s, reason: s, balanceDue: s, paymentStatus: s, status: s }).strict() },
+  // Exact source-currency facts dated when the money left; posting them awaits a refund policy.
+  "payment.refunded": { version: 1, schema: z.object({ refundId: s, number: s, contactId: s, amount: s, currency: s, refundedAt: date, note: nullableString, owedToCustomer: s }).strict() },
+  "payment.refund_voided": { version: 1, schema: z.object({ refundId: s, number: s, contactId: s, amount: s, currency: s, refundedAt: date, reason: s, owedToCustomer: s }).strict() },
   "contact.created": { version: 1, schema: z.object({ name: s }).strict() },
   "contact.updated": { version: 1, schema: fields },
   "contact.deleted": { version: 1, schema: z.object({ name: s }).strict() },

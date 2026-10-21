@@ -110,6 +110,7 @@ model Organization {
   creditNotes             CreditNote[]
   settlementReceipts      SettlementReceipt[]
   payments                Payment[]
+  paymentRefunds          PaymentRefund[]
   recurringInvoices       RecurringInvoice[]
   domainEvents            DomainEvent[]
   eventConsumerCursors    EventConsumerCursor[]
@@ -443,6 +444,7 @@ model Invoice {
   items                   InvoiceItem[]
   rebills                 DeliverableRebill[]
   payments                Payment[]
+  refunds                 PaymentRefund[]
   creditNotes             CreditNote[]
   reminders               InvoiceReminder[]
   purpose                 InvoicePurpose    @default(sale)
@@ -733,6 +735,28 @@ model SettlementRefund {
 
   @@index([receiptId])
   @@map("settlement_refund")
+}
+
+/// Money paid back to the customer outside Quits after credit notes left an invoice overpaid.
+model PaymentRefund {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amount         Decimal      @db.Decimal(12, 2)
+  currency       String
+  refundedAt     DateTime
+  note           String?
+  actorKey       String
+  commandId      String
+  voidedAt       DateTime?
+  voidReason     String?
+  createdAt      DateTime     @default(now())
+
+  @@index([invoiceId])
+  @@index([organizationId, refundedAt])
+  @@map("payment_refund")
 }
 
 model Payment {

@@ -83,6 +83,8 @@ export const enActivityMessages = {
   "activity.event.invoice.marked_paid": "Invoice marked as paid",
   "activity.event.payment.voided": "Payment voided",
   "activity.event.payment.recorded": "Payment recorded",
+  "activity.event.payment.refunded": "Refunded {amount} {currency} to the customer",
+  "activity.event.payment.refund_voided": "Refund voided",
   "activity.event.invoice.paid": "Invoice paid",
   "activity.event.document.artifact_stored": "Document file stored",
   "activity.event.document.artifact_missing": "Document file missing",

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { Prisma } from "../../../generated/prisma/client"
+import { Prisma, type PaymentRefund } from "../../../generated/prisma/client"
 import {
   receiptRecordInputSchema,
   receiptAllocateInputSchema,
@@ -19,11 +19,13 @@ import { TRPCError } from "@trpc/server"
 import {
   paymentListInputSchema,
   paymentRecordInputSchema,
+  paymentRefundInputSchema,
+  paymentRefundVoidInputSchema,
   paymentVoidInputSchema,
 } from "@quits/contracts/payments"
 import { actorCan } from "../../domain/actor"
-import { recordPaymentWithUndo, voidPayment } from "../../domain/commands/payments"
-import { computeSettlement } from "../../domain/documents/settlement"
+import { recordPaymentWithUndo, refundPayment, voidPayment, voidPaymentRefund } from "../../domain/commands/payments"
+import { amountOwedToCustomer, computeSettlement } from "../../domain/documents/settlement"
 import { InvalidState } from "../../domain/errors"
 import { executeCommand, type CommandOutcome } from "../../domain/execute"
 import { prisma } from "../../lib/db"
@@ -83,6 +85,9 @@ export function serializePayment(payment: PaymentRow) {
     createdAt: payment.createdAt,
   }
 }
+
+const serializeRefund = ({ id, amount, currency, refundedAt, note, voidedAt, voidReason, createdAt }: PaymentRefund) =>
+  ({ id, amount: amount.toNumber(), currency, refundedAt, note, voidedAt, voidReason, createdAt })
 
 /** Owned by the payments feature. */
 export const paymentsRouter = router({
@@ -234,6 +239,7 @@ export const paymentsRouter = router({
           amountCredited: true,
           paymentStatus: true,
           payments: { orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }] },
+          refunds: { orderBy: [{ refundedAt: "desc" }, { createdAt: "desc" }] },
         },
       })
       if (!invoice) {
@@ -246,6 +252,8 @@ export const paymentsRouter = router({
       })
 
       const settlement = computeSettlement(invoice)
+      const amountRefunded = invoice.refunds.reduce((sum, refund) => refund.voidedAt ? sum : sum.plus(refund.amount), new Prisma.Decimal(0))
+      const owedToCustomer = amountOwedToCustomer({ ...invoice, amountRefunded })
       return {
         /** Calendar payment dates are stored as the start of that day in this time zone. */
         timeZone: settings?.timezone ?? "UTC",
@@ -255,6 +263,9 @@ export const paymentsRouter = router({
         amountPaid: settlement.amountPaid.toNumber(),
         amountCredited: settlement.amountCredited.toNumber(),
         balanceDue: settlement.balanceDue.toNumber(),
+        /** Paid beyond what the invoice charges after credit notes, less recorded refunds. */
+        owedToCustomer: owedToCustomer.toNumber(),
+        refunds: invoice.refunds.map(serializeRefund),
         paymentStatus: invoice.paymentStatus,
         canRecord:
           actorCan(ctx.actor, "payment:create") &&
@@ -262,6 +273,7 @@ export const paymentsRouter = router({
           invoice.status !== "credited" &&
           settlement.balanceDue.greaterThan(0),
         canVoid: actorCan(ctx.actor, "payment:void"),
+        canRefund: actorCan(ctx.actor, "payment:void") && owedToCustomer.greaterThan(0),
       }
     }),
 
@@ -280,5 +292,21 @@ export const paymentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const result = unwrapOutcome(await executeCommand(voidPayment, input, { actor: ctx.actor }))
       return { payment: serializePayment(result.payment), balanceDue: result.balanceDue.toNumber() }
+    }),
+
+  refund: authorizedProcedure("payment:void")
+    .input(paymentRefundInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const result = unwrapOutcome(
+        await executeCommand(refundPayment, input, { actor: ctx.actor, clientRequestId: `refund:${input.requestId}` })
+      )
+      return { refund: serializeRefund(result.refund), owedToCustomer: result.owedToCustomer.toNumber() }
+    }),
+
+  voidRefund: authorizedProcedure("payment:void")
+    .input(paymentRefundVoidInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const result = unwrapOutcome(await executeCommand(voidPaymentRefund, input, { actor: ctx.actor }))
+      return { refund: serializeRefund(result.refund), owedToCustomer: result.owedToCustomer.toNumber() }
     }),
 })

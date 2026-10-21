@@ -86,6 +86,8 @@ export function reconstruct(expression: { source: string; typeExpression: string
     current: optional, overpaidBy: { ...money, greaterThan: () => optional },
     applied: { payment: { id: "payment-1" } }, undoUntil: "2026-01-15T12:10:00.000Z",
     payment: { id: "payment-1", invoiceId: "invoice-1", amount: money, currency: "USD" },
+    refund: { id: "refund-1", amount: money, currency: "USD", refundedAt: instant, note: "Paid back by bank transfer" },
+    refundedAt: instant, owed: money, remaining: { toFixed: () => "0.00" },
     amount: money, refreshed: { settlement: { balanceDue: money, amountPaid: money, paymentStatus: "paid" }, invoice: record },
     priced: { totalGross: 100 }, built: { totalGross: 100 }, number: "DOC-0001", recipient: manual && ["agreements/issuance.ts", "commands/invoices.ts", "commands/quotes.ts"].includes(expression.source) ? null : "customer@example.test",
     reason: expression.source === "commands/accounting.ts" ? variant === "decline" ? "Already entered manually" : null : "paused_by_user", from: "active", to: "paused", status: expression.source === "commands/agreements.ts" && !optional ? undefined : variant === "in_progress" ? "in_progress" : "active",

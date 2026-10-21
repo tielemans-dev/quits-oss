@@ -7,7 +7,7 @@ import { resolveInvoiceEmailContext } from "../../domain/documents/invoice-email
 import { DOCUMENT_READ_PERMISSION } from "../../domain/documents/read-permission"
 import { isInvoicePastDue } from "../../domain/documents/overdue"
 import { formatCalendarDate } from "../../domain/features/recurring-dates"
-import { computeSettlement } from "../../domain/documents/settlement"
+import { amountOwedToCustomer, computeSettlement } from "../../domain/documents/settlement"
 import { formatIsoDate, startOfDayInTimeZone } from "../exports/format"
 
 import { appLogger } from "../observability"
@@ -67,6 +67,7 @@ type InvoiceRow = {
   id: string; number: string | null; customerName: string; email: string | null
   status: string; currency: string; dueDate: Date; createdAt: Date; paidAt: Date | null
   totalGross: Prisma.Decimal; amountPaid: Prisma.Decimal; amountCredited: Prisma.Decimal
+  amountRefunded: Prisma.Decimal; refundedThisMonth: Prisma.Decimal; refundsThisMonth: number
   hasValuation: boolean; reminderSlotTaken: boolean; lastEmailAttemptOutcome: string | null
 }
 
@@ -80,9 +81,11 @@ export function amountStillOwed(invoice: Parameters<typeof computeSettlement>[0]
   return computeSettlement(invoice).balanceDue
 }
 
-async function readInvoices(db: Db, organizationId: string, baseCurrency: string, now: Date) {
+async function readInvoices(db: Db, organizationId: string, baseCurrency: string, now: Date, monthStart: Date) {
   // Narrow rows, no snapshots or line items. Existing organization indexes bound this scan;
   // the reminder's unique (invoiceId, offsetDays) index serves the single joined slot.
+  // Active refunds are grouped per invoice once, with this month's split out by refund date.
+  const thisMonth = Prisma.sql`"refundedAt" >= ${utcTimestamp(monthStart)} AND "refundedAt" <= ${utcTimestamp(now)}`
   return db.$queryRaw<InvoiceRow[]>`
     SELECT i.id, i.number, i.status, i.currency, i."dueDate", i."createdAt", i."paidAt",
       i."totalGross", i."amountPaid", i."amountCredited", i."lastEmailAttemptOutcome",
@@ -90,11 +93,21 @@ async function readInvoices(db: Db, organizationId: string, baseCurrency: string
       COALESCE(i.valuation->>'rateSource' <> 'unknown'
         AND i.valuation->'base'->>'minor' IS NOT NULL
         AND i.valuation->'base'->>'currency' = ${baseCurrency}, false) AS "hasValuation",
-      (r.id IS NOT NULL AND (r.outcome IS NULL OR r.outcome IN ('sent', 'unconfirmed', 'sending'))) AS "reminderSlotTaken"
+      (r.id IS NOT NULL AND (r.outcome IS NULL OR r.outcome IN ('sent', 'unconfirmed', 'sending'))) AS "reminderSlotTaken",
+      coalesce(refunds."amountRefunded", 0) AS "amountRefunded",
+      coalesce(refunds."refundedThisMonth", 0) AS "refundedThisMonth",
+      coalesce(refunds."refundsThisMonth", 0) AS "refundsThisMonth"
     FROM invoice i
     JOIN contact c ON c.id = i."contactId" AND c."organizationId" = i."organizationId"
     LEFT JOIN invoice_reminder r ON r."invoiceId" = i.id
       AND r."offsetDays" = floor(extract(epoch FROM (${utcTimestamp(now)} - i."dueDate")) / 86400)
+    LEFT JOIN (
+      SELECT "invoiceId", sum(amount) AS "amountRefunded",
+        sum(amount) FILTER (WHERE ${thisMonth}) AS "refundedThisMonth",
+        (count(*) FILTER (WHERE ${thisMonth}))::int AS "refundsThisMonth"
+      FROM payment_refund WHERE "organizationId" = ${organizationId} AND "voidedAt" IS NULL
+      GROUP BY "invoiceId"
+    ) refunds ON refunds."invoiceId" = i.id
     WHERE i."organizationId" = ${organizationId}
   `
 }
@@ -235,7 +248,8 @@ export async function dashboardSummary(db: PrismaClient, actor: Actor, now = new
     const [year, month] = today.split("-").map(Number)
     const months = Array.from({ length: 12 }, (_, index) => new Date(Date.UTC(year!, month! - 12 + index, 1)).toISOString().slice(0, 7))
     const start = startOfDayInTimeZone(`${months[0]}-01`, timezone)
-    const invoiceRows = currencyRows(await readInvoices(tx, organizationId, baseCurrency, now), organizationId, "invoices")
+    const monthStart = startOfDayInTimeZone(`${months.at(-1)}-01`, timezone)
+    const invoiceRows = currencyRows(await readInvoices(tx, organizationId, baseCurrency, now, monthStart), organizationId, "invoices")
     const receipts = await moneyReceived(tx, organizationId, timezone, start, now)
     const quoteRows = actorCan(actor, "quote:read") ? await tx.$queryRaw<Array<{ id: string; number: string | null; customerName: string; totalGross: Prisma.Decimal; currency: string; status: string; createdAt: Date; expiryDate: Date }>>`
       SELECT q.id, q.number, c.name AS "customerName", q."totalGross", q.currency, q.status, q."createdAt", q."expiryDate"
@@ -299,15 +313,24 @@ export async function dashboardSummary(db: PrismaClient, actor: Actor, now = new
     // An uncertain submission is never labelled a bounce. This baseline has no bounce state.
     attention.push(...open.filter(invoice => !isOverdue(invoice) && ["failed", "unconfirmed"].includes(invoice.lastEmailAttemptOutcome ?? ""))
       .map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), ...invoiceDates(invoice), kind: "invoice" as const, reason: invoice.lastEmailAttemptOutcome === "failed" ? "email_failed" as const : "email_unconfirmed" as const, canRemind: false })))
+    // Like received cash, money owed back and refunds have no frozen base valuation.
+    const owedToCustomers = totals(), refundedThisMonth = totals()
+    for (const invoice of invoiceRows) {
+      const owed = amountOwedToCustomer(invoice)
+      if (owed.gt(0)) owedToCustomers.add(invoice.currency, owed, 1)
+      if (invoice.refundsThisMonth) refundedThisMonth.add(invoice.currency, invoice.refundedThisMonth, invoice.refundsThisMonth)
+    }
     const current = receivedByMonth.at(-1)!
     const outstandingTotal = outstanding.result()
     const overdueTotal = overdue.result()
-    const hasOtherCurrencies = [outstandingTotal, overdueTotal, ...receivedByMonth]
+    const owedTotal = owedToCustomers.result(), refundedTotal = refundedThisMonth.result()
+    const hasOtherCurrencies = [outstandingTotal, overdueTotal, owedTotal, refundedTotal, ...receivedByMonth]
       .some(total => [...total.buckets, ...total.unvalued].some(bucket => bucket.currency !== baseCurrency))
     return {
       asOf: now.toISOString(), timezone, baseCurrency, currencyMode: "per_currency", hasOtherCurrencies,
       outstanding: outstandingTotal, overdue: { ...overdueTotal, oldestDaysOverdue },
       paidThisMonth: { count: current.count, buckets: current.buckets, unvalued: current.unvalued },
+      owedToCustomers: owedTotal, refundedThisMonth: refundedTotal,
       receivedByMonth, streak: onTimeStreak(invoiceRows, timezone), attention: attention.slice(0, 5),
       incoming: open.slice(0, 8).map(invoice => ({ ...document(invoice, amountStillOwed(invoice)), total: money(invoice.currency, invoice.totalGross), isOverdue: isOverdue(invoice), dueDate: formatCalendarDate(invoice.dueDate), daysOverdue: daysOverdue(invoice), canRemind: canRemind(invoice) })),
       activity, drafts: draftSummary,

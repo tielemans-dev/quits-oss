@@ -77,6 +77,8 @@ export function emptySummary(overrides: Partial<Summary> = {}): Summary {
     outstanding: emptyTotal(),
     overdue: { ...emptyTotal(), oldestDaysOverdue: 0 },
     paidThisMonth: emptyTotal(),
+    owedToCustomers: emptyTotal(),
+    refundedThisMonth: emptyTotal(),
     receivedByMonth: MONTHS.map((month) => ({ month, ...emptyTotal() })),
     streak: 0,
     attention: [],

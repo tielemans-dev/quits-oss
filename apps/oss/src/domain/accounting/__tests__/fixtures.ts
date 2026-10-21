@@ -71,5 +71,5 @@ export const refusalFixtures: Array<{ name: string; code: PostingRefusalCode; ev
   { name: "sub-minor component", code: "equation_violation", event: invoice(p => { p.vatGroups[0]!.netBase = "1.001" }) },
   { name: "discharge imbalance", code: "equation_violation", event: credit(p => { p.debtorDischarge.carryingBase = "1.26" }) },
   { name: "FX bridge", code: "equation_violation", event: credit(p => { p.fxDifferenceBase = "0.01" }) },
-  ...["payment.recorded", "payment.voided", "deposit.received", "credit_note.allocations_reconciled", "fee.assessed", "unknown"].map(type => ({ name: type, code: "event_not_supported" as const, event: { type, schemaVersion: 1, payload: {} } })),
+  ...["payment.recorded", "payment.voided", "payment.refunded", "deposit.received", "credit_note.allocations_reconciled", "fee.assessed", "unknown"].map(type => ({ name: type, code: "event_not_supported" as const, event: { type, schemaVersion: 1, payload: {} } })),
 ]
