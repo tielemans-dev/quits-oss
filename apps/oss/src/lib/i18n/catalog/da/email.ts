@@ -2,6 +2,7 @@ export const daEmailMessages = {
   "email.error.email_unavailable": "Opsæt e-maillevering, før du sender e-mails. Intet blev sat i kø.",
   "email.footer.sentVia": "Sendt via quits",
   "email.invoice.greeting": "Hej {name}, her er din faktura.",
+  "email.invoice.pdfAttached": "Fakturaen er vedhæftet som PDF.",
   "email.invoice.subject": "Faktura {number} — {total} forfalder {dueDate}",
   "email.pay.heading": "Sådan betaler du",
   "email.pay.reg": "Reg.nr.",

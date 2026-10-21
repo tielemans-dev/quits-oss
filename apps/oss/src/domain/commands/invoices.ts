@@ -5,6 +5,8 @@ import { resolveCountryProfile } from "../../lib/compliance"
 import { requireInvoiceIssuancePolicy, requireResendPaymentDetails } from "../documents/issuance-policy"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import type { RenderInput } from "../documents/render-input"
+import type { StoredArtifacts } from "../documents/artifacts"
+import { storedPdfAttachment } from "../../lib/documents/pdf-attachment"
 import { formatIsoDate } from "../../lib/exports/format"
 import { invoiceDeliverableCommands } from "./invoices-from-deliverables"
 import { updateLinkedInvoice } from "../agreements/linked-invoice"
@@ -490,11 +492,16 @@ export const sendInvoice = defineCommand({
           })
         : null
       const money = frozenInput ? (frozenInput.snapshot as { money?: unknown }).money : null
+      // The candidate's PDF is the one this send issues; it is published on the invoice once delivered.
+      const issuedPdf = (candidate?.artifacts as StoredArtifacts | null | undefined)?.pdf
+      const pdf = yield* Effect.promise(() => storedPdfAttachment({ ref: issuedPdf?.ref, hash: issuedPdf?.hash, number: invoice.number,
+        log: { organizationId, documentKind: "invoice", documentId: invoice.id } }))
       const email = composeInvoiceEmail({
         invoice: { ...invoice, issuanceSnapshot: money, supplyDate: input.supplyDate ? new Date(input.supplyDate) : invoice.supplyDate, issueDate: command.issuance?.issuedAt ?? now },
         settings,
         to: recipient,
         publicPaymentUrl,
+        pdf,
       })
       const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "invoice",
@@ -512,6 +519,7 @@ export const sendInvoice = defineCommand({
         invoiceId: invoice.id,
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicPaymentUrl: Boolean(publicPaymentUrl),
+        pdfAttached: Boolean(pdf),
       })
       const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result
@@ -569,7 +577,9 @@ export const resendInvoiceEmail = defineCommand({
         })
       }
 
-      const email = composeInvoiceEmail({ invoice: asIssued(invoice), settings, to: recipient, publicPaymentUrl })
+      const pdf = yield* Effect.promise(() => storedPdfAttachment({ ref: invoice.artifactPdfRef, hash: invoice.artifactPdfHash, number: invoice.number ?? "invoice",
+        log: { organizationId: command.organizationId, documentKind: "invoice", documentId: invoice.id } }))
+      const email = composeInvoiceEmail({ invoice: asIssued(invoice), settings, to: recipient, publicPaymentUrl, pdf })
       const { document: updated, deliveryKey } = yield* queueDocumentEmail({
         kind: "invoice",
         mode: "email",
@@ -584,6 +594,7 @@ export const resendInvoiceEmail = defineCommand({
         invoiceId: invoice.id,
         usingBrandedDomain: email.usingBrandedDomain,
         hasPublicPaymentUrl: Boolean(publicPaymentUrl),
+        pdfAttached: Boolean(pdf),
       })
       const result: InvoiceSendResult = { ...updated, emailSent: false, emailPending: true, deliveryKey }
       return result

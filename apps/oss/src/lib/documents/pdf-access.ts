@@ -2,21 +2,22 @@ import { prisma } from "../db"
 import { auth } from "../auth"
 import { resolveUserActor } from "../../domain/user-actor"
 import { actorCan } from "../../domain/actor"
-import { getDocumentArtifactStore, getDocumentRenderer } from "../runtime/services"
+import { getDocumentRenderer } from "../runtime/services"
 import { runArtifactRead } from "../../application/issuance"
-import { prospectiveRenderInput, hashBytes, type RenderInput, type ArtifactDocumentKind } from "../../domain/documents/render-input"
+import { prospectiveRenderInput, type RenderInput, type ArtifactDocumentKind } from "../../domain/documents/render-input"
 import type { Permission } from "../../domain/permissions"
 import { schedulerActor } from "../../domain/commands/reminders"
 import { renderPdf } from "./render-pdf"
+import { pdfFilename, readStoredPdf } from "./pdf-attachment"
 
 const headers = (artifact: string, number: string) => ({
-  "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${number.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`,
+  "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${pdfFilename(number)}"`,
   "Cache-Control": "private, no-store", "X-Quits-Artifact": artifact,
 })
 export async function storedPdfResponse(document: { artifactPdfRef: string | null; artifactPdfHash: string | null; number: string | null }) {
   if (!document.artifactPdfRef) return null
-  const bytes = await getDocumentArtifactStore()?.get(document.artifactPdfRef)
-  if (!bytes || hashBytes(bytes) !== document.artifactPdfHash) return new Response("Stored artifact unavailable", { status: 503 })
+  const { bytes } = await readStoredPdf(document.artifactPdfRef, document.artifactPdfHash)
+  if (!bytes) return new Response("Stored artifact unavailable", { status: 503 })
   return new Response(new Uint8Array(bytes), { headers: headers("stored", document.number ?? "document") })
 }
 export async function renderPdfResponse(input: RenderInput, issued: boolean) {

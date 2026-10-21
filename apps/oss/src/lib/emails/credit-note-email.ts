@@ -51,6 +51,8 @@ export type SendCreditNoteEmailParams = {
     timezone?: string | null
   }
   contactName: string
+  /** The issued PDF goes with the email; the body then says so. */
+  pdfAttached?: boolean
 }
 
 export function buildCreditNoteEmailContent({
@@ -61,6 +63,7 @@ export function buildCreditNoteEmailContent({
   invoice,
   org,
   contactName,
+  pdfAttached = false,
 }: Omit<SendCreditNoteEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
@@ -77,10 +80,15 @@ export function buildCreditNoteEmailContent({
   const html = layout(
     `
     <h2 style="margin:0 0 4px;font-size:24px;">${t("creditNotes.pdf.title", locale)} ${escapeHtml(creditNote.number)}</h2>
-    <p style="margin:0 0 24px;color:${C.muted};">${t("creditNotes.email.greeting", locale, {
+    <p style="margin:0 0 8px;color:${C.muted};">${t("creditNotes.email.greeting", locale, {
       name: escapeHtml(contactName),
       invoiceNumber: escapeHtml(invoice.number),
     })}</p>
+    <p style="margin:0 0 24px;color:${C.muted};">${t("creditNotes.email.issued", locale, {
+      number: escapeHtml(creditNote.number),
+      date: formatDate(creditNote.issueDate, locale, timezone, { month: "long" }),
+      invoiceNumber: escapeHtml(invoice.number),
+    })}${pdfAttached ? ` ${t("creditNotes.email.pdfAttached", locale)}` : ""}</p>
 
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>

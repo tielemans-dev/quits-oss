@@ -2,6 +2,7 @@ export const enEmailMessages = {
   "email.error.email_unavailable": "Configure email delivery before sending emails. Nothing was queued.",
   "email.footer.sentVia": "Sent via quits",
   "email.invoice.greeting": "Hi {name}, please find your invoice below.",
+  "email.invoice.pdfAttached": "The invoice is attached as a PDF.",
   "email.invoice.subject": "Invoice {number} — {total} due {dueDate}",
   "email.pay.heading": "How to pay",
   "email.pay.reg": "Reg. no.",

@@ -77,6 +77,8 @@ export const enCreditNotesMessages = {
   "creditNotes.email.subject": "Credit note {number} for invoice {invoiceNumber} ({total})",
   "creditNotes.email.greeting": "Hi {name}, here is a credit note for invoice {invoiceNumber}.",
   "creditNotes.email.reference": "Credits invoice",
+  "creditNotes.email.issued": "Credit note {number} dated {date} for invoice {invoiceNumber}.",
+  "creditNotes.email.pdfAttached": "The credit note is attached as a PDF.",
   "creditNotes.email.reason": "Reason",
   "shell.request.title.creditNote": "Credit note",
   "creditNotes.request.reason.quantity": "Incorrect quantity",
