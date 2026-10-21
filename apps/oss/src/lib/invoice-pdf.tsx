@@ -202,6 +202,34 @@ const styles = StyleSheet.create({
   paymentReferenceValue: {
     fontFamily: "Helvetica-Bold",
   },
+  draftWatermark: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  draftWatermarkText: {
+    fontSize: 120,
+    fontFamily: "Helvetica-Bold",
+    color: C.tones.danger.text,
+    opacity: 0.12,
+    transform: "rotate(-40deg)",
+  },
+  draftBanner: {
+    position: "absolute",
+    top: 12,
+    left: 40,
+    right: 40,
+    paddingVertical: 4,
+    backgroundColor: C.tones.danger.tint,
+    color: C.tones.danger.text,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    textAlign: "center",
+  },
 })
 
 export type OrgSettingsForPdf = {
@@ -300,6 +328,9 @@ export function InvoicePdfDocument({
   // A draft's number is not reserved, so its PDF says where the reference will come from rather than guess it.
   const paymentReference = (invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference)?.trim()
     || (invoice.status === "draft" ? translate("pdf.paymentReferenceOnSend", locale) : null)
+  // A draft is not a valid document. Every page says so, so a forwarded draft cannot pass for an
+  // issued one. Issued documents render exactly as before: their archived bytes must stay reproducible.
+  const draft = invoice.status === "draft"
   const paymentDetails = quote ? null : buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
     paymentReference,
@@ -309,6 +340,11 @@ export function InvoicePdfDocument({
   return (
     <Document creationDate={new Date(invoice.issueDate)} modificationDate={new Date(invoice.issueDate)}>
       <Page size="A4" style={styles.page}>
+        {draft && (
+          <Text style={styles.draftBanner} fixed>
+            {translate(quote ? "pdf.draft.notValid.quote" : "pdf.draft.notValid.invoice", locale)}
+          </Text>
+        )}
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
@@ -320,8 +356,8 @@ export function InvoicePdfDocument({
             )}
             <Text style={styles.title}>
               {quote
-                ? translate(invoice.status === "draft" ? "quotes.number.draftHeading" : "quotes.detail.title", locale)
-                : translate("pdf.invoice", locale)} {invoice.number}
+                ? translate(draft ? "quotes.number.draftHeading" : "quotes.detail.title", locale)
+                : translate(draft ? "invoices.number.draftHeading" : "pdf.invoice", locale)} {invoice.number}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -440,6 +476,12 @@ export function InvoicePdfDocument({
           <View style={styles.notes}>
             <Text style={styles.sectionTitle}>{translate("pdf.notes", locale)}</Text>
             <Text style={styles.notesText}>{notes}</Text>
+          </View>
+        )}
+        {/* Drawn after the content and translucent, so no box on the page can hide it. */}
+        {draft && (
+          <View style={styles.draftWatermark} fixed>
+            <Text style={styles.draftWatermarkText}>{translate("pdf.draft.watermark", locale)}</Text>
           </View>
         )}
         <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
