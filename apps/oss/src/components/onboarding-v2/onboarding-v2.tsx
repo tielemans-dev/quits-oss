@@ -468,7 +468,9 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
     )
   }
 
-  const steps = client.payments ? ["company", "lookup", "review", "payments"] : ["company", "lookup", "review"]
+  // Only steps the user acts on; the lookup belongs to naming the company. Payments joins once
+  // available() said yes after the save: asking earlier would create settings before the confirm.
+  const steps = screen === "payments" ? ["company", "review", "payments"] : ["company", "review"]
   async function connectStripe() {
     setBusy(true)
     setConnectFailed(false)
@@ -483,10 +485,8 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
   }
   const step =
     screen === "payments"
-      ? 4
-      : screen === "review"
       ? 3
-      : screen === "working" || screen === "ceased" || screen === "failed" || screen === "timeout"
+      : screen === "review"
         ? 2
         : 1
   const factsTag = TT(draft?.source === "manual" ? "defaultTag" : "cvrTag")
@@ -549,7 +549,6 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
         <span className="ob-square" aria-hidden="true" />
       </div>
       <nav aria-label={TT("step", { x: step, n: steps.length })} className="ob-steps">
-        <span className="ob-mobile-step">{TT("step", { x: step, n: steps.length })}</span>
         <ol>
           {steps.map((label, index) => (
             <li key={label} aria-current={index + 1 === step ? "step" : undefined}>

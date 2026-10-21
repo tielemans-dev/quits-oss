@@ -15,7 +15,6 @@ export const enOnboardingV2Messages = {
   "onboardingV2.validation": "Check the highlighted fields before creating your company.",
   "onboardingV2.step": "Step {x}/{n}",
   "onboardingV2.company": "Company",
-  "onboardingV2.lookup": "Lookup",
   "onboardingV2.review": "Review",
   "onboardingV2.payments": "Payments",
   "onboardingV2.payments.heading": "Get paid by card and MobilePay",
