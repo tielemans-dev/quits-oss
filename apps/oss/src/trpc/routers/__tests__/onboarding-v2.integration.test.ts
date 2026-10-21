@@ -191,7 +191,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
     const settings = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
     expect(settings).toMatchObject({ currency: "EUR", baseCurrency: "EUR", defaultCurrency: "EUR", locale: "en-GB", timezone: "Europe/London", pricesIncludeTax: true, invoicePrefix: "TEST", paymentTermsDays: 30 })
     expect(settings.taxRate?.toString()).toBe("20")
-    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: true })
+    expect(await api.paymentDetails.firstSendReadiness()).toEqual({ bankMissing: true, onlinePayments: false, canSave: true })
   })
   it("manual fallback cannot complete without a CVR number", async () => {
     const id = await organization()

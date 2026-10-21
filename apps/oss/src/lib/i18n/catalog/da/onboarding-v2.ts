@@ -130,7 +130,8 @@ export const daOnboardingV2Messages = {
   "onboardingV2.no": "Nej",
   "onboardingV2.denmark": "Danmark",
   "onboardingV2.bankNudge.title": "Tilføj din bankkonto før din første faktura",
-  "onboardingV2.bankNudge.body": "Bankkontoen mangler stadig. Tilføj den under Indstillinger, så dine kunder ved, hvor de skal betale.",
-  "onboardingV2.bankNudge.settings": "Tilføj bankkonto",
-  "onboardingV2.bankNudge.continue": "Send uden bankkonto"
+  "onboardingV2.bankNudge.body": "Bankkontoen mangler stadig. Tilføj den her, så dine kunder ved, hvor de skal betale.",
+  "onboardingV2.bankNudge.save": "Gem og send",
+  "onboardingV2.bankNudge.continue": "Send uden bankkonto",
+  "onboardingV2.bankNudge.noPaymentMethod": "Din kunde kan ikke se, hvor de skal betale."
 } as const

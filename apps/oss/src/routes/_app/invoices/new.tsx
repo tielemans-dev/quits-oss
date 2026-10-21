@@ -360,7 +360,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
         if (onComplete) onComplete({ id: schedule.id, kind: "recurring" }); else void navigate({ to: "/recurring" })
         return
       }
-      let settingsRequested = false
+      let nudgeDeclined = false
       const target = await submitInvoice(
         {
           contactId, dueDate, taxRate, pricesIncludeTax, vatEvidence, notes, issuance, currency, baseCurrency, ...(onComplete ? { paymentMethods, remindersPaused: !reminders } : {}),
@@ -371,13 +371,13 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
           reviewedRecipient: recipientReview?.recipientVersion ?? undefined,
           beforeSend: async () => {
             if (!onComplete) setConfirmOpen(false)
-            return bankNudge.beforeSend(() => { settingsRequested = true }).then(proceed => { if (onComplete && !proceed) settingsRequested = true; return proceed })
+            return bankNudge.beforeSend().then(proceed => { if (onComplete && !proceed) nudgeDeclined = true; return proceed })
           },
           t,
         }
       )
 
-      if (settingsRequested) { if (onComplete) onComplete({ ...target, kind: "draft" }); return }
+      if (nudgeDeclined) { if (onComplete) onComplete({ ...target, kind: "draft" }); return }
       if (onComplete) { if (kind === "link" && sendImmediately && !target.sendError) { try { target.paymentUrl = (await trpc.invoices.createPaymentLink.mutate({ id: target.id })).url } catch { target.sendError = t("invoices.detail.error.paymentLinkFailed") } }; onComplete({ ...target, kind: sendImmediately ? kind : "draft" }); return }
       navigate({
         to: "/invoices/$invoiceId",
@@ -391,7 +391,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
       const changed = issues.find(issue => issue.code === "changed_since_review")
       setError(changed ? t(invoiceIssueKey(changed.code), changed.params) : t("invoiceValidation.unknown"))
       setFieldIssues(issues)
-    } finally { submitPending.current = false; setSaving(false) }
+    } finally { submitPending.current = false; setSaving(false); bankNudge.settled() }
   }
 
   return (

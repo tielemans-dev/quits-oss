@@ -130,7 +130,8 @@ export const enOnboardingV2Messages = {
   "onboardingV2.no": "No",
   "onboardingV2.denmark": "Denmark",
   "onboardingV2.bankNudge.title": "Add your bank account before your first invoice",
-  "onboardingV2.bankNudge.body": "Your bank account is still missing. Add it in Settings so your customers know where to pay.",
-  "onboardingV2.bankNudge.settings": "Add bank account",
-  "onboardingV2.bankNudge.continue": "Send without a bank account"
+  "onboardingV2.bankNudge.body": "Your bank account is still missing. Add it here so your customers know where to pay.",
+  "onboardingV2.bankNudge.save": "Save and send",
+  "onboardingV2.bankNudge.continue": "Send without a bank account",
+  "onboardingV2.bankNudge.noPaymentMethod": "Your customer won't see where to pay."
 } as const
