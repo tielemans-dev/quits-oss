@@ -7,6 +7,11 @@ export function isValidDanishCvr(value: string): boolean {
     [...value].reduce((sum, digit, index) => sum + Number(digit) * [2, 7, 6, 5, 4, 3, 2, 1][index]!, 0) % 11 === 0
 }
 
+/** The Danish number format onboarding accepts: eight digits, optionally after +45 or 0045. */
+export function isDanishPhone(value: string): boolean {
+  return /^(\+45)?\d{8}$/.test(normalizePhone(value))
+}
+
 // Schema and migration defaults are checked in apps/oss/src/lib/onboarding/__tests__/danish-defaults.test.ts.
 export const DANISH_ONBOARDING_V2_DEFAULTS = {
   countryCode: "DK",
@@ -41,7 +46,7 @@ export const confirmOnboardingV2Schema = z.object({
   // Informational client metadata only. Registry contacts are scrubbed server-side.
   reklamebeskyttet: z.boolean().optional(),
   companyEmail: z.string().trim().email().max(254).nullish(),
-  companyPhone: z.string().trim().refine(value => /^(\+45)?\d{8}$/.test(normalizePhone(value))).nullish(),
+  companyPhone: z.string().trim().refine(isDanishPhone).nullish(),
   // Editable review defaults, validated before the same confirmation transaction.
   settings: z.object({
     countryCode: z.literal("DK"),

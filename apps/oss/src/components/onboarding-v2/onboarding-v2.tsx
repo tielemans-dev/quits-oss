@@ -15,6 +15,7 @@ import {
   confirmationPayload,
   draftKey,
   newDraft,
+  registryEmail,
   restoreDraft,
   storeDraft,
   type OnboardingDraft,
@@ -771,7 +772,7 @@ export function OnboardingV2({ userId, organizationId, signupEmail, client, onCo
             {field(
               "companyEmail",
               "field.email",
-              draft.company?.email && !draft.company.advertisingProtected
+              registryEmail(draft.company?.email) && !draft.company?.advertisingProtected
                 ? factsTag
                 : TT("defaultTag"),
               { type: "email", required: true },

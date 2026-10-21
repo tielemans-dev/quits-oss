@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest"
 import { cvrCompanySchema } from "@quits/contracts/cvr"
-import { confirmationPayload, draftSchema, newDraft } from "./draft"
+import { confirmOnboardingV2Schema } from "@quits/contracts/onboarding"
+import { confirmationPayload, draftSchema, newDraft, registryEmail, registryPhone } from "./draft"
 
 afterEach(() => vi.useRealTimers())
 
@@ -44,4 +45,20 @@ it("saves only explicitly selected lines and treats older restored drafts as una
   expect(confirmationPayload({ ...draft, suggestionsState: "hidden" })).not.toHaveProperty("catalogSuggestions")
   draft.suggestions!.lines = []
   expect(confirmationPayload(draft).catalogSuggestions).toEqual([])
+})
+
+it("drops register placeholders from the prefill so optional contacts never block confirmation", () => {
+  const draft = newDraft({ ...cvrCompany, momsRegistered: false, email: "qa@example.invalid", phone: "00000000" }, "s@example.test", false)
+  expect(draft.values).toMatchObject({ companyEmail: "s@example.test", companyPhone: "" })
+  expect(confirmOnboardingV2Schema.safeParse(confirmationPayload(draft)).success).toBe(true)
+  expect(newDraft({ ...cvrCompany, momsRegistered: true, email: "kontakt@nordlys.dk", phone: "+45 98 12 34 56" }, "s@example.test", false).values)
+    .toMatchObject({ companyEmail: "kontakt@nordlys.dk", companyPhone: "+45 98 12 34 56" })
+})
+
+it.each(["qa@example.invalid", "a@example.com", "a@mail.example.org", "a@example.dk", "a@firma.test", "a@firma.example", "a@localhost", "a@x.localhost", "not-an-email"])("drops reserved or invalid register email %s", email => {
+  expect(registryEmail(email)).toBeNull()
+})
+
+it.each(["00000000", "0000 0000", "11111111", "1234", "+45 0000 0000", "004500000000", "+46 12345678"])("drops placeholder or invalid register phone %s", phone => {
+  expect(registryPhone(phone)).toBeNull()
 })
