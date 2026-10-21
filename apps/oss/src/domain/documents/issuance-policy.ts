@@ -46,6 +46,8 @@ function policyFindings(document: InvoicePolicyInput, policy: InvoiceIssuancePol
   if (policy.buyerCountries && !policy.buyerCountries.includes(toCountryCode(buyer?.country) ?? ""))
     add("customer.country.unsupported", "customer.country", `Only customers in ${policy.buyerCountries.join(", ")} are supported. Correct the customer country or use a supported invoicing service.`, { countries: policy.buyerCountries.join(", ") })
   if (policy.requireBusinessBuyer && !buyer?.company?.trim()) add("customer.businessName.required", "customer.company", "This issuance policy supports business customers only. Set the customer's business name.")
+  if (policy.requireBuyerCvr && !sellerCvr(buyer?.taxIds) && !buyer?.taxIds?.some(id => id.scheme?.trim().toLowerCase() === "se" && /^\d{8}$/.test(id.value.replace(/\s/g, ""))))
+    add("customer.cvr.required", "customer.taxId", "Set the customer's CVR or SE number before issuing.")
   if (policy.currencies && !policy.currencies.includes(document.currency)) add("currency.unsupported", "currency", `Use a supported invoice currency: ${policy.currencies.join(", ")}.`, { currencies: policy.currencies.join(", ") })
   if (policy.requireSupplyDate && !document.supplyDate) add("required", "supplyDate", "Confirm the supply date before issuing.")
   if (policy.requirePaymentDetails && document.paymentAvailable === false) add("seller.bank.required", "seller.bankAccount", "Add a bank account or a payment link before issuing.")

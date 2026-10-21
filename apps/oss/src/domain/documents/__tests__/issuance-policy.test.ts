@@ -48,6 +48,14 @@ describe("optional invoice issuance policy", () => {
       { code: "customer.businessName.required", field: "customer.company", params: {} },
     ])
   })
+  it("requires a buyer CVR or SE number only when the policy asks for one", () => {
+    const issue = { code: "customer.cvr.required", field: "customer.taxId", params: {} }
+    expect(invoicePolicyIssues(document, policy)).toEqual([])
+    expect(invoicePolicyIssues(document, { ...policy, requireBuyerCvr: true })).toEqual([issue])
+    for (const taxIds of [[{ scheme: "cvr", value: "12345674", countryCode: "DK" }], [{ scheme: "se", value: "87654321", countryCode: "DK" }]])
+      expect(invoicePolicyIssues({ ...document, buyerSnapshot: { ...document.buyerSnapshot, taxIds } }, { ...policy, requireBuyerCvr: true })).toEqual([])
+    expect(invoicePolicyIssues({ ...document, buyerSnapshot: { ...document.buyerSnapshot, taxIds: [{ scheme: "cvr", value: "123", countryCode: "DK" }] } }, { ...policy, requireBuyerCvr: true })).toEqual([issue])
+  })
   it.each(["Danmark", "Denmark", "dk"])("accepts the recognised historical country %s", country => {
     expect(invoicePolicyIssues({ ...document, buyerSnapshot: { ...document.buyerSnapshot, country } }, policy)).toEqual([])
   })

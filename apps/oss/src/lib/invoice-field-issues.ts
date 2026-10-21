@@ -12,6 +12,7 @@ const issueKeys: Record<string, TranslationKey> = {
   "cvr.invalid": "invoiceValidation.cvr.invalid",
   "prefix.conflict": "settings.validation.prefixConflict",
   "customer.businessName.required": "invoiceValidation.customer.businessName.required",
+  "customer.cvr.required": "invoiceValidation.customer.cvr.required",
   "customer.country.unsupported": "invoiceValidation.customer.country.unsupported",
   "seller.country.unsupported": "invoiceValidation.seller.country.unsupported",
   "seller.vatRegistration.required": "invoiceValidation.seller.vatRegistration.required",
