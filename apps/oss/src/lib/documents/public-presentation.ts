@@ -67,6 +67,14 @@ function usableTimeZone(value: string | null | undefined): string | null {
   }
 }
 
+/** The document's language, else its seller's. Null when neither is usable. */
+export function documentLocale(
+  document: { locale?: string | null } | null | undefined,
+  settings?: { locale?: string | null } | null
+): string | null {
+  return usableLocale(document?.locale) ?? usableLocale(settings?.locale)
+}
+
 export function resolvePublicPresentation(input: {
   /** The document's own values. */
   document: {
@@ -83,7 +91,7 @@ export function resolvePublicPresentation(input: {
   const name = document.sellerSnapshot?.companyName?.trim() || settings?.companyName?.trim() || null
 
   return {
-    locale: usableLocale(document.locale) ?? usableLocale(settings?.locale) ?? DEFAULT_PUBLIC_LOCALE,
+    locale: documentLocale(document, settings) ?? DEFAULT_PUBLIC_LOCALE,
     timezone:
       usableTimeZone(document.timezone) ??
       usableTimeZone(settings?.timezone) ??

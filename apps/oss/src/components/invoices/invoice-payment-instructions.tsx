@@ -19,7 +19,7 @@ export function InvoiceSellerDetails({ status, sellerSnapshot, issuanceSnapshot 
       <h3 className="text-sm font-medium text-muted-foreground mb-1">{t("pdf.from")}</h3>
       {seller?.companyName && <p className="font-semibold">{seller.companyName}</p>}
       {seller?.companyAddress && <p className="text-sm whitespace-pre-wrap">{seller.companyAddress}</p>}
-      {invoiceTaxIds(seller?.taxIds, "CVR-nr.").map(id => <p key={id} className="text-sm">{id}</p>)}
+      {invoiceTaxIds(seller?.taxIds, t("pdf.cvrNumber")).map(id => <p key={id} className="text-sm">{id}</p>)}
     </section>
   )
 }

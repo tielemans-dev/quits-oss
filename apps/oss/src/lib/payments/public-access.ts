@@ -1,7 +1,7 @@
 import { invoiceAllowsPayment } from "./invoice-methods"
 import { computeSettlement } from "../../domain/documents/settlement"
 import { prisma } from "../db"
-import { publicPresentationSettingsSelect } from "../documents/public-presentation"
+import { documentLocale, publicPresentationSettingsSelect } from "../documents/public-presentation"
 import {
   assessCardCheckout,
   resolveStripeCheckoutTarget,
@@ -14,6 +14,20 @@ import {
   type InvoicePaymentState,
   verifyInvoicePaymentToken,
 } from "./public"
+
+/**
+ * The language of the invoice a link was signed for, when the link no longer opens it. Null when
+ * the token is not one of ours or the invoice is gone.
+ */
+export async function loadInvalidPublicInvoiceLocale(token: string, secret: string) {
+  const payload = verifyInvoicePaymentToken(token, secret)
+  if (!payload) return null
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: payload.invoiceId },
+    select: { locale: true, organization: { select: { settings: { select: { locale: true } } } } },
+  })
+  return invoice ? documentLocale(invoice, invoice.organization.settings) : null
+}
 
 export async function loadPublicInvoiceByToken(token: string, secret: string) {
   const payload = verifyInvoicePaymentToken(token, secret)

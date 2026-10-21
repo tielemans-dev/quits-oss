@@ -13,7 +13,7 @@ import { SendConfirmation } from "../../../components/invoices/send-confirmation
 import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
-import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { sellerVatLineLabel, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
@@ -1257,7 +1257,7 @@ function InvoiceDetailPage() {
 
       <SendConfirmation open={sendConfirmation !== null} onOpenChange={open => { if (!open) setSendConfirmation(null) }}
         number={invoice.status === "draft" ? undefined : invoice.number ?? undefined} recipient={invoice.contact.email ?? invoice.contact.name}
-        amount={formatCurrency(invoice.total, invoice.currency, locale)} dueDate={formatDateIntl(toDateString(invoice.dueDate), locale)} pending={acting}
+        amount={formatCurrency(invoice.total, invoice.currency, locale)} dueDate={formatDate(toDateString(invoice.dueDate), locale, "UTC")} pending={acting}
         onConfirm={() => {
           const action = sendConfirmation
           setSendConfirmation(null)
@@ -1428,7 +1428,7 @@ function InvoiceDetailPage() {
                             price: formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale),
                           })}
                         </p>
-                        {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
+                        {sellerVatLineLabel(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineLabel(momsRegistered, item.taxRate, locale)}</p>}
                       </TableCell>
                       <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
                       <TableCell className="hidden text-right num sm:table-cell">
@@ -1489,7 +1489,7 @@ function InvoiceDetailPage() {
 
       <InvoiceLifecyclePanels
         invoice={invoice}
-        locale={orgSettings.locale}
+        locale={locale}
         onChanged={reloadInvoice}
       />
     </div>

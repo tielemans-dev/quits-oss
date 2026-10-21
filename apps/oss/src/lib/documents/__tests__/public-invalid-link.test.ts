@@ -30,4 +30,12 @@ describe("invalidLinkLocale", () => {
     expect(server.headers.get("vary")).toBe("Accept-Language")
     expect(server.headers.get("cache-control")).toBe("private, no-store")
   })
+
+  it("answers in the document's language when the link was signed for one", () => {
+    server.acceptLanguage = "en-US,en;q=0.9"
+
+    expect(invalidLinkLocale("da-DK")).toBe("da-DK")
+    expect(server.headers.has("vary")).toBe(false)
+    expect(server.headers.get("cache-control")).toBe("private, no-store")
+  })
 })
