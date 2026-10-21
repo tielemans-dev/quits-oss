@@ -22,15 +22,16 @@ const categories = [
 ] as const
 
 describe("versioned UBL", () => {
-  it.each(["zero_rated", "exempt", "out_of_scope"] as const)("requires a seller tax identifier except for frozen category O: %s", treatment => {
+  it.each(["zero_rated", "exempt", "out_of_scope"] as const)("requires a seller VAT identifier except for exempt sales (BT-32) or frozen category O: %s", treatment => {
     const doc = document([group(treatment, treatment === "exempt" ? "health" : null)])
     doc.seller = { ...doc.seller, momsRegistered: false, vatId: null }
     doc.lines = doc.lines.map(line => ({ ...line, taxRate: 0 }))
-    expect(validateEinvoice(doc).includes("seller.taxId")).toBe(treatment !== "out_of_scope")
+    expect(validateEinvoice(doc).includes("seller.taxId")).toBe(treatment === "zero_rated")
+    expect(validateEinvoice({ ...doc, seller: { ...doc.seller, legalId: null } }).includes("seller.taxId")).toBe(treatment !== "out_of_scope")
     if (treatment === "out_of_scope") expect(buildUblDocument(doc).split("</cac:AccountingSupplierParty>")[0]).not.toContain("cac:PartyTaxScheme")
   })
   it("uses frozen treatments rather than misleading nominal line rates or categories", () => {
-    const doc = document([group("exempt", "health")])
+    const doc = document([group("zero_rated")])
     doc.seller = { ...doc.seller, momsRegistered: false, vatId: null }
     doc.lines = doc.lines.map(line => ({ ...line, taxRate: 0, vatTreatment: "out_of_scope" }))
     expect(validateEinvoice(doc)).toContain("seller.taxId")

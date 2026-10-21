@@ -194,4 +194,6 @@ evidence, or gate. `onboardingV2` remains a separate hosted opt-in.
 An issuance extension may return `sellerVatStatus: registered | not_registered | unset`. Unset
 always refuses new issuance; known evidence must match the effective seller snapshot. Existing
 artifact reads and accounting behavior are unaffected. Ordinary zero-tax sales remain
-`unclassified_zero`; this contract does not invent a legal UBL classification.
+`unclassified_zero`; this contract does not invent a legal UBL classification. Only for a seller
+explicitly not VAT-registered does UBL export send them as category E, the small-business
+exemption of momsloven § 71 e.

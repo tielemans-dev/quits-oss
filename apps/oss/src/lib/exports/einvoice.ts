@@ -263,6 +263,7 @@ export async function loadEinvoiceDocument(
       calculationVersion: invoice.calculationVersion,
       frozenGroups: invoice.calculationVersion === "v2" ? frozenVatGroups(invoice) : undefined,
       lines: invoice.items.map(exportLine),
+      ...(sellerParty.momsRegistered === false ? { locale: invoice.locale } : {}),
       storedGross: invoice.totalGross,
       amountPaid: invoice.amountPaid,
     }
@@ -281,6 +282,13 @@ export async function loadEinvoiceDocument(
   if (!creditNote) throw new EinvoiceSourceNotFound(kind, id)
   const buyer = buildBuyerParty(parseBuyerSnapshot(creditNote.buyerSnapshot), creditNote.contact)
   const invoice = creditNote.invoice
+  const sellerParty = buildSellerParty({
+    snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
+    settings: seller.settings,
+    taxIds: seller.taxIds,
+    documentCountryCode: creditNote.countryCode,
+    taxRegime: creditNote.taxRegime,
+  })
 
   return {
     kind,
@@ -297,13 +305,7 @@ export async function loadEinvoiceDocument(
         ? null
         : { number: issuedNumber(invoice), issueDate: formatIsoDate(invoice.issueDate, invoice.timezone) },
     note: withNonVatStatement(withoutNonVatStatement(creditNote.reason, parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime) ?? null, sellerVatPresentationStatus(parseSellerSnapshot(creditNote.sellerSnapshot)?.momsRegistered, creditNote.taxRegime), creditNote.locale),
-    seller: buildSellerParty({
-      snapshot: parseSellerSnapshot(creditNote.sellerSnapshot),
-      settings: seller.settings,
-      taxIds: seller.taxIds,
-      documentCountryCode: creditNote.countryCode,
-      taxRegime: creditNote.taxRegime,
-    }),
+    seller: sellerParty,
     buyer,
     calculationVersion: creditNote.calculationVersion,
     frozenGroups: creditNote.calculationVersion === "v2" ? creditedGroupsSchema.parse(creditNote.creditedGroups).map((group) => ({
@@ -311,6 +313,7 @@ export async function loadEinvoiceDocument(
       netBase: group.netBase, taxBase: group.taxBase, grossBase: group.grossBase, payableRoundingBase: group.payableRoundingBase,
     })) : undefined,
     lines: creditNote.items.map(exportLine),
+    ...(sellerParty.momsRegistered === false ? { locale: creditNote.locale } : {}),
     storedGross: creditNote.totalGross,
     amountPaid: 0,
   }

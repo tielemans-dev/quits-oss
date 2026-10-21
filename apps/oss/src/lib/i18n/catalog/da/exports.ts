@@ -9,6 +9,7 @@ export const daExportsMessages = {
   "exports.einvoice.missing.title": "Tilføj disse oplysninger, før e-fakturaen kan downloades:",
   "exports.einvoice.missing.issuedTitle": "Fakturaen blev udstedt uden e-faktura, og den kan ikke tilføjes bagefter. Den manglede:",
   "exports.einvoice.unavailable": "Fakturaen har ingen gemt e-faktura, og den kan ikke tilføjes, efter fakturaen er udstedt.",
+  "exports.einvoice.vatExemption.smallBusiness": "Momsfritaget – lille virksomhed, jf. momslovens § 71 e (ikke momsregistreret)",
   "exports.einvoice.missing.document.vatUnclassified": "En momsbehandling for hver linje med 0 % moms.",
   "exports.einvoice.missing.document.notIssued": "Send eller udsted dokumentet først. Kladder kan ikke eksporteres.",
   "exports.einvoice.missing.document.lines": "Dokumentet skal have mindst én linje.",
