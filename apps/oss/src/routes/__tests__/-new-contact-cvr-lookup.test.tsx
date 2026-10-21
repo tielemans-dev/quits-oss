@@ -66,6 +66,25 @@ describe("new customer CVR lookup", () => {
     expect(value("By")).toBe("Aarhus N")
   })
 
+  it("replaces the name a previous lookup filled in, but keeps one typed over it", async () => {
+    // MOCK: a second synthetic company; 21659509 passes the CVR check digit.
+    const other = { ...company, cvr: "21659509", name: "MOCK Fjord A/S", address: "Havnegade 1, 9000 Aalborg" }
+    api.customer.mockImplementation(async ({ cvr }: { cvr: string }) => cvr === other.cvr ? other : company)
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    const lookUp = async (cvr: string, filled: string) => {
+      fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: cvr } })
+      fireEvent.click(screen.getByRole("button", { name: "Slå op" }))
+      await waitFor(() => expect(value("Virksomhed")).toBe(filled))
+    }
+    await lookUp("24256790", "MOCK Nordlys ApS")
+    expect(value(/^Navn/)).toBe("MOCK Nordlys ApS")
+    await lookUp("21659509", "MOCK Fjord A/S")
+    expect(value(/^Navn/)).toBe("MOCK Fjord A/S")
+    fireEvent.change(screen.getByLabelText(/^Navn/), { target: { value: "Fjord, att. Anna" } })
+    await lookUp("24256790", "MOCK Nordlys ApS")
+    expect(value(/^Navn/)).toBe("Fjord, att. Anna")
+  })
+
   it("explains an invalid or unknown CVR number without touching the form", async () => {
     api.customer.mockResolvedValue(null)
     render(<I18nProvider locale="en-US"><Page /></I18nProvider>)

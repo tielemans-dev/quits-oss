@@ -52,7 +52,11 @@ function NewContactPage() {
   const formRef = useRef<HTMLFormElement>(null)
   function fillFromRegistry(customer: RegistryCustomer) {
     const typedName = (formRef.current?.elements.namedItem("name") as HTMLInputElement | null)?.value.trim()
-    setPrefill(({ key }) => ({ key: key + 1, customer: { ...customer, name: typedName || customer.name } }))
+    // A name the person typed survives the lookup. A name the previous lookup filled in does not.
+    setPrefill(({ key, customer: previous }) => ({
+      key: key + 1,
+      customer: { ...customer, name: typedName && typedName !== previous?.name ? typedName : customer.name },
+    }))
   }
   useEffect(() => {
     let cancelled = false
