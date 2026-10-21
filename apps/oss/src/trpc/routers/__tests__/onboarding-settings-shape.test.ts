@@ -29,7 +29,7 @@ vi.mock("../../../lib/distribution", () => ({ get isCloudDistribution() { return
 vi.mock("../../../lib/runtime/extensions", () => ({ getRuntimeExtensions: () => [], isNonVatRegistrationAllowed: () => mocks.nonVatAllowed, getRuntimeCapabilities: () => ({ onboardingV2: { enabled: mocks.v2 }, onboardingAi: { enabled: true }, payments: { enabled: false, managed: false, provider: null } }) }))
 vi.mock("../../../lib/runtime/services", () => ({ getCvrLookupProvider: () => ({ get: mocks.cvrGet }), getOnboardingAiService: () => ({ suggestPatch: async (input: { currentValues: Record<string, unknown> }) => { mocks.suggestedValues = input.currentValues; return { patch: { companyName: "Suggested ApS" }, rationale: "Company name only", confidence: 0.9, followupQuestions: [] } } }) }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
-vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false }))
+vi.mock("../../../domain/documents/base-currency", () => ({ resolveBaseCurrency: async () => { if (!mocks.settings) throw new Error("Currency resolution needs a saved settings row"); return mocks.baseCurrency }, hasIssuedDocuments: async () => false, hasNumberedDocuments: async () => false }))
 vi.mock("../../../lib/db", () => {
   // Independent schema keys catch invalid create fields even when upsert updates an existing row.
   const schema = readFileSync(new URL("../../../../prisma/schema.prisma", import.meta.url), "utf8")

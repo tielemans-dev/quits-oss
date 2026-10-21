@@ -42,7 +42,7 @@ const db = vi.hoisted(() => {
 })
 vi.mock("../../../lib/db", () => ({ prisma: { ...db.tx, $transaction: async (run: (tx: typeof db.tx) => Promise<unknown>) => run(db.tx) } }))
 vi.mock("../../../lib/billing", () => ({ billingProvider: {} }))
-vi.mock("../../../domain/documents/base-currency", () => ({ hasIssuedDocuments: async () => false }))
+vi.mock("../../../domain/documents/base-currency", () => ({ hasIssuedDocuments: async () => false, hasNumberedDocuments: async () => false }))
 vi.mock("../../../lib/runtime/company-lookup", () => ({ lookupOnboardingCompany: vi.fn() }))
 vi.mock("../../init", async () => {
   const { initTRPC } = await import("@trpc/server")

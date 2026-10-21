@@ -1394,7 +1394,9 @@ function SettingsPage() {
                   title={t("settings.prefix.title")}
                   placeholder="INV"
                   defaultValue={settings.invoicePrefix}
+                  aria-invalid={fieldIssues.some(issue => issue.field === "invoicePrefix")}
                 />
+                {fieldIssues.filter(issue => issue.field === "invoicePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
               </div>
               <div className="grid gap-2">
                 <Label>{t("settings.nextInvoiceNumber.label")}</Label>
@@ -1436,7 +1438,9 @@ function SettingsPage() {
                   title={t("creditNotes.validation.invalidPrefix")}
                   placeholder="CN"
                   defaultValue={settings.creditNotePrefix}
+                  aria-invalid={fieldIssues.some(issue => issue.field === "creditNotePrefix")}
                 />
+                {fieldIssues.filter(issue => issue.field === "creditNotePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
               </div>
               <div className="grid gap-2">
                 <Label>{t("creditNotes.settings.nextNumber.label")}</Label>

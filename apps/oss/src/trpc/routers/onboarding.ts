@@ -5,7 +5,8 @@ import { actorCan } from "../../domain/actor"
 import { getRuntimeCapabilities } from "../../lib/runtime/extensions"
 import { confirmOnboardingV2 } from "../../lib/onboarding/confirm-v2"
 import { DANISH_ONBOARDING_V2_DEFAULTS, confirmOnboardingV2Schema, confirmOnboardingV2WithVatConfirmationSchema } from "@quits/contracts/onboarding"
-import { resolveBaseCurrency } from "../../domain/documents/base-currency"
+import { hasNumberedDocuments, resolveBaseCurrency } from "../../domain/documents/base-currency"
+import { assertDistinctDocumentPrefixes } from "../document-prefixes"
 import { assertSettingsCurrency } from "../currency"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -101,6 +102,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       invoiceNextNum: true,
       quotePrefix: true,
       quoteNextNum: true,
+      creditNotePrefix: true,
       bankRegNumber: true,
       bankAccountNumber: true,
       bankIban: true,
@@ -117,6 +119,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
       onboardingInvoicingIdentity: null,
       onboardingVersion: null,
       onboardingCompletedAt: null,
+      creditNotePrefix: "CN",
       companyName: null,
       companyAddress: null,
       companyEmail: null,
@@ -177,6 +180,7 @@ async function loadOnboardingSnapshot(organizationId: string, db: Prisma.Transac
   return {
     cloudState,
     readiness,
+    creditNotePrefix: settings.creditNotePrefix,
     bankMissing: !(settings.bankIban || (settings.bankRegNumber && settings.bankAccountNumber)),
     values: {
       companyName: settings.companyName,
@@ -219,13 +223,16 @@ function assertOnboardingV2Enabled() {
   }
 }
 
-/** Use confirmation's lock order, including organizations without a settings row. */
+/**
+ * Use confirmation's lock order, including organizations without a settings row. A finished
+ * onboarding is final: v2 always, and a legacy completion once its readiness holds.
+ */
 async function legacyOnboardingWrite(organizationId: string, write: (tx: Prisma.TransactionClient, snapshot: OnboardingSnapshot) => Promise<void>) {
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "organization" WHERE id = ${organizationId} FOR NO KEY UPDATE`
     await tx.$queryRaw`SELECT id FROM "org_settings" WHERE "organizationId" = ${organizationId} FOR UPDATE`
     const snapshot = await loadOnboardingSnapshot(organizationId, tx)
-    if (snapshot.cloudState.version === 2 && snapshot.cloudState.status === "complete") {
+    if ((snapshot.cloudState.version === 2 && snapshot.cloudState.status === "complete") || snapshot.cloudState.isComplete) {
       return toOnboardingResponse(snapshot)
     }
     await write(tx, snapshot)
@@ -323,6 +330,13 @@ export const onboardingRouter = router({
       if ("quoteNextNum" in input) settingsUpdateData.quoteNextNum = input.quoteNextNum
 
       return legacyOnboardingWrite(ctx.organizationId, async (tx, snapshot) => {
+        assertDistinctDocumentPrefixes({ ...snapshot.values, creditNotePrefix: snapshot.creditNotePrefix },
+          { invoicePrefix: input.invoicePrefix }, input.locale ?? snapshot.values.locale)
+        // A used numbering book keeps its counters; the rest of the draft still saves.
+        if (("invoiceNextNum" in input || "quoteNextNum" in input) && await hasNumberedDocuments(tx, ctx.organizationId)) {
+          delete settingsUpdateData.invoiceNextNum
+          delete settingsUpdateData.quoteNextNum
+        }
         if (input.countryCode && input.countryCode !== snapshot.values.countryCode) {
           settingsUpdateData.taxRate = input.countryCode === "DK" ? 25 : null
         }

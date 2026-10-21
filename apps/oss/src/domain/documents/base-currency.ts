@@ -28,6 +28,17 @@ export async function hasIssuedDocuments(tx: Prisma.TransactionClient, organizat
   return row?.issued === true
 }
 
+/**
+ * Whether the numbering book is in use: an issued document, or a draft numbered before
+ * issuance-time numbering (those migrations deliberately kept their numbers). Once true, the
+ * counters must not be reset.
+ */
+export async function hasNumberedDocuments(tx: Prisma.TransactionClient, organizationId: string) {
+  const numberedDrafts = await tx.invoice.count({ where: { organizationId, status: "draft", number: { not: null } } }) +
+    await tx.quote.count({ where: { organizationId, status: "draft", number: { not: null } } })
+  return numberedDrafts > 0 || await hasIssuedDocuments(tx, organizationId)
+}
+
 /** Same organization lock as issuance. Country changes only default books before issuance. */
 export async function resolveBaseCurrency(tx: Prisma.TransactionClient, organizationId: string, input: { countryCode?: string; baseCurrency?: string }) {
   await lockArtifactOrganization(tx, organizationId)
