@@ -81,3 +81,17 @@ it("offers only the customer list and the manual path without a CVR lookup", asy
   fireEvent.click(screen.getByRole("option", { name: "Opret manuelt" }))
   expect(api.navigate).toHaveBeenCalledWith({ to: "/contacts/new", search: { returnTo: "/invoices/new" } })
 })
+it("stops searching with an error when the register never answers", async () => {
+  // MOCK: the 15 s client deadline fires at once; the lookup only settles when it is aborted.
+  const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => AbortSignal.abort(new DOMException("timed out", "TimeoutError")))
+  api.lookup.mockImplementation((_input: unknown, { signal }: { signal: AbortSignal }) => new Promise((_resolve, reject) => {
+    if (signal.aborted) reject(signal.reason)
+    signal.addEventListener("abort", () => reject(signal.reason))
+  }))
+  open()
+  await screen.findByPlaceholderText("Firmanavn eller CVR-nummer")
+  type("24256790")
+  await screen.findByText("Kunne ikke hente virksomheden. Prøv igen.")
+  expect(screen.queryByText("Søger i CVR-registret …")).toBeNull()
+  timeout.mockRestore()
+})

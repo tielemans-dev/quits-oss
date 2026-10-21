@@ -4,7 +4,7 @@ import type { ComponentType, ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const aiFixture = vi.hoisted(() => ({ enabled: false }))
-const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), readiness: vi.fn(), create: vi.fn(), send: vi.fn(), resend: vi.fn(), get: vi.fn(), update: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), currency: "DKK" }))
+const api = vi.hoisted(() => ({ bankReadiness: vi.fn(), readiness: vi.fn(), create: vi.fn(), send: vi.fn(), resend: vi.fn(), get: vi.fn(), update: vi.fn(), settings: vi.fn(), contacts: vi.fn(), navigate: vi.fn(), generate: vi.fn(), currency: "DKK", currencyLoaded: true }))
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ ...options, useParams: () => ({ invoiceId: "synthetic-invoice" }), useSearch: () => ({}) }),
   Link: ({ children, to, params, onClick }: { children: ReactNode; to: string; params?: Record<string, string>; onClick?: () => void }) => <a href={to} onClick={event => { event.preventDefault(); onClick?.(); api.navigate(params ? { to, params } : { to }) }}>{children}</a>,
@@ -17,7 +17,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   ai: { generateInvoiceDraft: { mutate: api.generate } },
   runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: aiFixture.enabled, byok: aiFixture.enabled } }) } }, settings: { get: { query: api.settings } },
 } }))
-vi.mock("../../hooks/use-org-currency", () => ({ useOrgCurrency: () => api.currency, useOrgCurrencyState: () => ({ currency: api.currency, loaded: true }) }))
+vi.mock("../../hooks/use-org-currency", () => ({ useOrgCurrency: () => api.currency, useOrgCurrencyState: () => ({ currency: api.currency, loaded: api.currencyLoaded }) }))
 vi.mock("../../lib/auth-client", () => ({ useSession: () => ({ data: { session: { activeOrganizationId: "synthetic-org" } }, isPending: false }) }))
 vi.mock("../../components/invoices/panels", () => ({ InvoiceLifecyclePanels: () => null }))
 vi.mock("../../components/ui/select", () => ({
@@ -59,6 +59,7 @@ import { handledMutationError, notifyMutation } from "../../lib/query-refresh"
 beforeEach(() => {
   sessionStorage.clear()
   api.currency = "DKK"
+  api.currencyLoaded = true
   resetRequestOrganizationForTesting()
   initializeRequestOrganizationId("synthetic-org")
   api.bankReadiness.mockResolvedValue({ bankMissing: false })
@@ -741,6 +742,19 @@ describe("new invoice valuation across the bank nudge", () => {
 })
 
 
+
+describe("amounts before the organization's currency loads", () => {
+  it("shows no amount in the fallback currency, then the organization's", async () => {
+    api.currency = "USD"; api.currencyLoaded = false
+    const view = render(<NewInvoicePage />)
+    await screen.findByLabelText("docForm.column.description")
+    expect(document.body.textContent).not.toContain("$")
+    api.currency = "DKK"; api.currencyLoaded = true
+    view.rerender(<NewInvoicePage />)
+    await waitFor(() => expect(document.body.textContent).toContain("DKK"))
+    expect(document.body.textContent).not.toContain("$")
+  })
+})
 
 describe("readiness gaps on the new invoice form", () => {
   it("shows an unsupported invoice currency reported by the readiness check", async () => {

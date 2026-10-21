@@ -28,6 +28,7 @@ type Props = {
 export const pickedContactSearch = (search: Record<string, unknown>): { contactId?: string } => ({ contactId: typeof search.contactId === "string" ? search.contactId : undefined })
 const cvrDigits = (value: string) => value.replace(/^DK\s*/i, "").replace(/\s/g, "")
 const emailSchema = z.string().trim().email()
+const LOOKUP_TIMEOUT_MS = 15_000
 
 /**
  * Picks an existing customer or adds one from the CVR register, with the search onboarding uses.
@@ -68,13 +69,16 @@ export function CustomerPicker({ id, contacts, value, invalid, onChange, onCreat
     const controller = new AbortController(), { signal } = controller
     const timer = setTimeout(() => {
       setSearching(true)
-      const request = byNumber ? trpc.cvr.customer.query({ cvr }, { signal }).then(company => (company ? [company] : [])) : trpc.cvr.customerSearch.query({ q }, { signal })
+      // The server gives up on the register after 10 s; a request that never answers fails here instead of searching forever.
+      const deadline = AbortSignal.any([signal, AbortSignal.timeout(LOOKUP_TIMEOUT_MS)])
+      const request = byNumber ? trpc.cvr.customer.query({ cvr }, { signal: deadline }).then(company => (company ? [company] : [])) : trpc.cvr.customerSearch.query({ q }, { signal: deadline })
       request
         .then(result => { if (!signal.aborted) { setMatches(result); setSearched(true) } })
         .catch((err: { data?: { code?: string } }) => { if (!signal.aborted) setLookupError(err.data?.code === "NOT_IMPLEMENTED" ? "shell.request.customer.unavailable" : "shell.request.customer.lookupError") })
         .finally(() => { if (!signal.aborted) setSearching(false) })
     }, 250)
-    return () => { clearTimeout(timer); controller.abort() }
+    // A cancelled lookup never answers, so it must not leave the picker searching.
+    return () => { clearTimeout(timer); controller.abort(); setSearching(false) }
   }, [query, available])
 
   // Start fresh on open, so the closing popover does not switch views while it fades out.
