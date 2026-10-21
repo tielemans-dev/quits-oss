@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { assetRecoveryScript, assetRecoverySource } from "../asset-recovery"
+import { assetRecoveryScript, assetRecoverySource, markAppStarted } from "../asset-recovery"
 
 const ORIGIN = "https://app.example.test"
 
@@ -11,6 +11,7 @@ function fakeWindow(storage: Storage = window.sessionStorage) {
   const target = new EventTarget()
   const reload = vi.fn()
   const win = Object.assign(target, {
+    document: window.document,
     location: { href: `${ORIGIN}/invoices/inv_1`, origin: ORIGIN, reload },
     sessionStorage: storage,
     setTimeout: (callback: () => void, delay: number) => setTimeout(callback, delay),
@@ -39,6 +40,7 @@ function nextPageLoad() {
 beforeEach(() => {
   vi.useFakeTimers()
   window.sessionStorage.clear()
+  document.documentElement.removeAttribute("data-app-started")
 })
 
 afterEach(() => {
@@ -109,6 +111,29 @@ describe("asset recovery", () => {
       vi.advanceTimersByTime(10_000)
     }
     vi.advanceTimersByTime(121_000)
+    const { win, reload } = nextPageLoad()
+    failedLoad(win, { src: "/assets/main-CPd3SUEe.js" })
+    vi.advanceTimersByTime(1000)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it("leaves failures to the app once it has started, so unsaved input is never lost", () => {
+    const { win, reload } = fakeWindow()
+    markAppStarted()
+    failedLoad(win, { src: "/assets/dialog-Bs_EIRgn.js" })
+    rejectedImport(win, `Failed to fetch dynamically imported module: ${ORIGIN}/assets/download-Cw6HVjQH.js`)
+    vi.advanceTimersByTime(60_000)
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  it("gives the next deploy every attempt once a page has started", () => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { win } = nextPageLoad()
+      failedLoad(win, { src: "/assets/main-O3ov44AI.js" })
+      vi.advanceTimersByTime(10_000)
+    }
+    markAppStarted()
+    document.documentElement.removeAttribute("data-app-started")
     const { win, reload } = nextPageLoad()
     failedLoad(win, { src: "/assets/main-CPd3SUEe.js" })
     vi.advanceTimersByTime(1000)

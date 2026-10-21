@@ -12,7 +12,7 @@ import { SETUP_DEFAULT_LOCALE } from '../lib/setup-locale'
 import { parseUiLanguage, readUiLanguage, saveUiLanguage, uiLocale, type UiLanguage } from '../lib/i18n/ui-language'
 import { shouldRedirectToSetup } from '../lib/setup-guard'
 import { themeInitScript } from '../lib/theme'
-import { assetRecoveryScript } from '../lib/asset-recovery'
+import { assetRecoveryScript, markAppStarted } from '../lib/asset-recovery'
 
 import appCss from '../styles.css?url'
 import geistFontUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
@@ -119,6 +119,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     rememberInstallationStatus(installation)
   }, [installation])
+  useEffect(() => {
+    markAppStarted()
+  }, [])
 
   return (
     // The head script puts the theme's `dark` class on <html> before React hydrates.
