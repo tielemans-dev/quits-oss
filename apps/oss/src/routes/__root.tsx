@@ -72,7 +72,8 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon-32.png', type: 'image/png', sizes: '32x32' },
       { rel: 'icon', href: '/favicon-16.png', type: 'image/png', sizes: '16x16' },
       { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-      { rel: 'manifest', href: '/site.webmanifest' },
+      // With credentials, so an access proxy in front of the app lets the manifest through.
+      { rel: 'manifest', href: '/site.webmanifest', crossOrigin: 'use-credentials' },
     ],
   }),
   shellComponent: RootDocument,

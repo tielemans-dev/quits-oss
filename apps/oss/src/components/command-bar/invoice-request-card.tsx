@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { useInvoiceDueDate } from "../../hooks/use-invoice-due-date"
 import { useLearnedPaymentTerms } from "../../hooks/use-learned-payment-terms"
-import { useOrgCurrency } from "../../hooks/use-org-currency"
+import { useOrgCurrencyState } from "../../hooks/use-org-currency"
 import type { CatalogItemOption } from "../../lib/catalog"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
@@ -48,7 +48,7 @@ type Readiness = Awaited<ReturnType<typeof trpc.invoices.sendReadiness.query>>
 export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: RequestCardProps & { initialContactId?: string }) {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
-  const currency = useOrgCurrency()
+  const { currency, loaded: currencyLoaded } = useOrgCurrencyState()
   // Coming back from the form brings the edited invoice with it; otherwise the request is all there is.
   const [back] = useState(() => readHandoff("card"))
   useEffect(clearHandoff, [])
@@ -98,11 +98,12 @@ export function InvoiceRequestCard({ intent, onDismiss, initialContactId }: Requ
   useEffect(() => {
     if (!known) return
     let cancelled = false
-    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency })
+    // Before settings load, let the server use the organization's currency instead of the fallback.
+    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency: currencyLoaded ? currency : undefined })
       .then(state => { if (!cancelled) setReadiness(state) })
       .catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
     return () => { cancelled = true }
-  }, [known, contactId, currency, t])
+  }, [known, contactId, currency, currencyLoaded, t])
 
   // Coming back from the form brings its own lines.
   useEffect(() => {

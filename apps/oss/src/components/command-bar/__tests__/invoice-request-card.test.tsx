@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const api = vi.hoisted(() => ({ readiness: vi.fn(), create: vi.fn(), send: vi.fn(), later: vi.fn(), held: vi.fn(), navigate: vi.fn(), learned: vi.fn(), clear: vi.fn(), restore: vi.fn() }))
+const api = vi.hoisted(() => ({ currencyLoaded: true, readiness: vi.fn(), create: vi.fn(), send: vi.fn(), later: vi.fn(), held: vi.fn(), navigate: vi.fn(), learned: vi.fn(), clear: vi.fn(), restore: vi.fn() }))
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => api.navigate }))
 vi.mock("../../../trpc/client", () => ({
   trpc: {
@@ -16,7 +16,7 @@ vi.mock("../../../trpc/client", () => ({
     jobs: { sendInvoiceLater: { mutate: api.later }, held: { query: api.held } },
   },
 }))
-vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" }))
+vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK", useOrgCurrencyState: () => ({ currency: api.currencyLoaded ? "DKK" : "USD", loaded: api.currencyLoaded }) }))
 vi.mock("../../../hooks/use-invoice-due-date", async importActual => ({ ...await importActual<typeof import("../../../hooks/use-invoice-due-date")>(), useInvoiceDueDate: () => ["2026-11-14", () => {}] }))
 vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ timezone: "UTC" }) }))
 
@@ -29,7 +29,7 @@ import { resetRequestDataForTesting } from "../request-data"
 import { handledMutationError } from "../../../lib/query-refresh"
 
 // Cards share their reads for a few seconds; every test starts without them.
-beforeEach(() => resetRequestDataForTesting())
+beforeEach(() => { resetRequestDataForTesting(); api.currencyLoaded = true })
 
 const ready = { issues: [], recipientVersion: "v1", taxRate: "25", pricesIncludeTax: false, baseCurrency: "DKK" }
 const text = () => (document.body.textContent ?? "").replace(/ /g, " ")
@@ -67,6 +67,13 @@ afterEach(() => {
 })
 
 describe("invoice request card", () => {
+  it("leaves the currency to the server until the organization's settings load", async () => {
+    api.currencyLoaded = false
+    renderCard("faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent")
+    await waitFor(() => expect(api.readiness).toHaveBeenCalled())
+    expect(api.readiness).toHaveBeenCalledWith(expect.objectContaining({ currency: undefined }))
+    expect(api.readiness).not.toHaveBeenCalledWith(expect.objectContaining({ currency: "USD" }))
+  })
   it("fills in the invoice from the request with the form's totals, and creates nothing by itself", async () => {
     renderCard("faktura til Havbrise Logistik A/S 10 timer à 850 kr. konsulent")
 

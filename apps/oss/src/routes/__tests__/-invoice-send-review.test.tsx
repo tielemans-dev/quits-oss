@@ -17,7 +17,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
   ai: { generateInvoiceDraft: { mutate: api.generate } },
   runtime: { capabilities: { query: async () => ({ aiInvoiceDraft: { enabled: aiFixture.enabled, byok: aiFixture.enabled } }) } }, settings: { get: { query: api.settings } },
 } }))
-vi.mock("../../hooks/use-org-currency", () => ({ useOrgCurrency: () => api.currency }))
+vi.mock("../../hooks/use-org-currency", () => ({ useOrgCurrency: () => api.currency, useOrgCurrencyState: () => ({ currency: api.currency, loaded: true }) }))
 vi.mock("../../lib/auth-client", () => ({ useSession: () => ({ data: { session: { activeOrganizationId: "synthetic-org" } }, isPending: false }) }))
 vi.mock("../../components/invoices/panels", () => ({ InvoiceLifecyclePanels: () => null }))
 vi.mock("../../components/ui/select", () => ({
