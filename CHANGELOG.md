@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [0.16.2](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.2)
+
+Changes since the published v0.16.1 tag, covering 2 merged PRs.
+
+- Create an e-invoice (UBL) for Danish sellers who are not VAT-registered, marked as exempt under momsloven § 71 e.
+- Explain why an issued invoice has no e-invoice, in the interface language.
+- Reload a page by itself when a deploy replaced its built files before the app started.
+
+See the [release notes](docs/releases/v0.16.2.md) for upgrade notes.
+
+[Compare with v0.16.1](https://github.com/tielemans-dev/quits-oss/compare/v0.16.1...v0.16.2).
+
 ## [0.16.1](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.1)
 
 Changes since the published v0.16.0 tag, covering 4 merged PRs.
