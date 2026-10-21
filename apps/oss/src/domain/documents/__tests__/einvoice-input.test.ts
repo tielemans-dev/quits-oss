@@ -17,6 +17,8 @@ const line = (treatment: string, reasonCode: string | null, lineNet: string) => 
 function issued(momsRegistered: boolean | null, options: { locale?: string; groups?: FrozenVatGroup[]; lines?: ReturnType<typeof line>[] } = {}) {
   const groups = options.groups ?? [zero]
   const net = groups.reduce((sum, group) => sum + Number(group.net), 0).toFixed(2)
+  const tax = groups.reduce((sum, group) => sum + Number(group.tax), 0).toFixed(2)
+  const gross = (Number(net) + Number(tax)).toFixed(2)
   return frozenEinvoiceInput({
     kind: "invoice", taxRegime: "eu_vat", countryCode: "DK", locale: options.locale ?? "da-DK", dueDate: "2026-11-04", orderReference: null, billingReference: null, note: null,
     money: {
@@ -24,7 +26,7 @@ function issued(momsRegistered: boolean | null, options: { locale?: string; grou
       seller: { companyName: "Synthetic Enkeltmand", companyAddress: "Testvej 1\n9000 Aalborg", countryCode: "DK", momsRegistered, taxIds: [{ scheme: "cvr", value: "12345674", countryCode: "DK" }] },
       buyer: { name: "Synthetic Buyer", company: "Synthetic Buyer ApS", address: "Testvej 2", city: "Aalborg", zip: "9000", country: "DK", taxIds: [{ scheme: "cvr", value: "87654328", countryCode: "DK" }] },
       calculation: { version: "v2", roundingMode: "half_up", pricesIncludeTax: false, exponent: 2, baseExponent: 2 },
-      vatGroups: groups, totals: { net, tax: "0.00", gross: net, payableRounding: "0.00", netBase: net, taxBase: "0.00", grossBase: net, payableRoundingBase: "0.00" },
+      vatGroups: groups, totals: { net, tax, gross, payableRounding: "0.00", netBase: net, taxBase: tax, grossBase: gross, payableRoundingBase: "0.00" },
     } as never,
     contact: { name: "Synthetic Buyer", email: null, company: "Synthetic Buyer ApS", address: "Testvej 2", city: "Aalborg", state: null, zip: "9000", country: "DK", taxId: null, taxIds: [], peppolEndpointId: null, peppolEndpointScheme: null } as never,
     lines: options.lines ?? [line("unclassified_zero", null, "8500")],
@@ -102,6 +104,26 @@ describe("frozen e-invoice input", () => {
   it("still needs a registration number to stand in for the seller VAT identifier (BR-E-02)", () => {
     const document = { ...issued(false), seller: { ...issued(false).seller, legalId: null } }
     expect(validateEinvoice(document)).toEqual(expect.arrayContaining(["seller.taxId", "seller.legalId"]))
+  })
+  it("keeps a VAT-registered seller's lines at standard 25 % in one breakdown, with the seller VAT ID (BT-31)", () => {
+    const standard: FrozenVatGroup = { ...group("standard", null, "1300.00"), key: vatGroupKey({ treatment: "standard", country: null, reasonCode: null, rate: "0.25" }),
+      rate: "0.25", tax: "325.00", gross: "1625.00", taxBase: "325.00", grossBase: "1625.00" }
+    const standardLine = (lineNet: string) => ({ ...line("standard", null, lineNet), taxRate: "25", vatRateInput: "0.25" })
+    const document = issued(true, { groups: [standard, group("exempt", "health", "500.00")],
+      lines: [standardLine("1000"), standardLine("200"), standardLine("100"), line("exempt", "health", "500")] })
+    expect(validateEinvoice(document)).toEqual([])
+    const xml = buildUblDocument(document)
+    const { violations, seller, taxSchemes } = exemptRuleViolations(xml)
+    expect(violations).toEqual([])
+    expect(taxSchemes(seller, true).map(scheme => text(scheme, "cbc:CompanyID"))).toEqual(["DK12345674"])
+    expect(taxSchemes(seller, false)).toEqual([])
+    const root = new DOMParser().parseFromString(xml, "application/xml").documentElement
+    const taxTotal = kid(root, "cac:TaxTotal")!
+    expect(kids(taxTotal, "cac:TaxSubtotal").map(subtotal => [text(subtotal, "cac:TaxCategory", "cbc:ID"), text(subtotal, "cac:TaxCategory", "cbc:Percent"),
+      amount(subtotal, "cbc:TaxableAmount"), amount(subtotal, "cbc:TaxAmount")])).toEqual([["S", "25", 1300, 325], ["E", "0", 500, 0]])
+    expect(amount(taxTotal, "cbc:TaxAmount")).toBe(325)
+    expect(kids(root, "cac:InvoiceLine").map(invoiceLine => text(invoiceLine, "cac:Item", "cac:ClassifiedTaxCategory", "cbc:ID"))).toEqual(["S", "S", "S", "E"])
+    expect(amount(kid(root, "cac:LegalMonetaryTotal")!, "cbc:TaxInclusiveAmount")).toBe(2125)
   })
   it.each([true, null])("still has no UBL category for unclassified zero when registration is %s", momsRegistered => {
     expect(isEinvoiceVatClassified(issued(momsRegistered))).toBe(false)

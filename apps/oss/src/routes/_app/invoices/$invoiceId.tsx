@@ -13,7 +13,7 @@ import { SendConfirmation } from "../../../components/invoices/send-confirmation
 import { invoiceFieldIssues, invoiceIssueKey } from "../../../lib/invoice-field-issues"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
-import { sellerVatLineLabel, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { useFirstInvoiceBankNudge } from "../../../components/onboarding-v2/bank-nudge"
 import { InvoiceSellerDetails, InvoicePaymentInstructions } from "../../../components/invoices/invoice-payment-instructions"
 import { IssuanceFields, initialIssuanceValues, issuanceInput } from "../../../components/invoices/issuance-fields"
@@ -1424,7 +1424,7 @@ function InvoiceDetailPage() {
                             price: formatCurrency(item.displayUnitPrice ?? item.unitPrice, invoice.currency, locale),
                           })}
                         </p>
-                        {sellerVatLineLabel(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineLabel(momsRegistered, item.taxRate, locale)}</p>}
+                        {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
                       </TableCell>
                       <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
                       <TableCell className="hidden text-right num sm:table-cell">

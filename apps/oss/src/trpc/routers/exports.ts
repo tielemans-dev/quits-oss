@@ -7,7 +7,7 @@ import { actorCan } from "../../domain/actor"
 import { exportAccounting } from "../../lib/exports/accounting"
 import { vatOverview } from "../../lib/exports/vat-overview"
 import { prisma } from "../../lib/db"
-import { EinvoiceSourceNotFound, EinvoiceArtifactUnavailable, exportEinvoice } from "../../lib/exports/einvoice"
+import { EinvoiceSourceNotFound, EinvoiceArtifactUnavailable, exportEinvoice, issuedEinvoiceStatus } from "../../lib/exports/einvoice"
 import { authorizedProcedure, orgProcedure, router } from "../init"
 
 export const exportsRouter = router({
@@ -42,6 +42,20 @@ export const exportsRouter = router({
       if (error instanceof EinvoiceVatError) {
         throw new TRPCError({ code: "BAD_REQUEST", message: error.message, cause: error })
       }
+      throw error
+    }
+  }),
+
+  /** Whether an issued invoice or credit note has a stored e-invoice, or what it lacked when issued. */
+  einvoiceStatus: orgProcedure.input(einvoiceExportInputSchema).query(async ({ ctx, input }) => {
+    const permission = input.kind === "invoice" ? "invoice:read" : "creditNote:read"
+    if (!actorCan(ctx.actor, permission)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: `Your role does not allow ${permission}` })
+    }
+    try {
+      return await issuedEinvoiceStatus(ctx.organizationId, input.kind, input.id)
+    } catch (error) {
+      if (error instanceof EinvoiceSourceNotFound) throw new TRPCError({ code: "NOT_FOUND", message: error.message })
       throw error
     }
   }),

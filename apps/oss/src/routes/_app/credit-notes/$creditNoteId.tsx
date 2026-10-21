@@ -1,6 +1,6 @@
 import { useQueryRevision } from "../../../hooks/use-query-refresh"
 import { QueryError, QuerySkeleton } from "../../../components/query-state"
-import { sellerVatLineLabel, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
+import { sellerVatLineText, sellerVatPresentationStatus } from "../../../lib/documents/seller-vat"
 import { nonVatStatement } from "../../../lib/documents/non-vat-note"
 import { withoutNonVatStatement } from "../../../lib/documents/non-vat-presentation"
 import { createFileRoute, Link } from "@tanstack/react-router"
@@ -347,7 +347,7 @@ function CreditNoteDetailPage() {
                       <p className="num mt-1 text-xs text-muted-foreground sm:hidden">
                         {t("public.document.lineQuantity", { quantity: localizeInvoiceQuantity(String(item.quantity), locale), price: money(item.displayUnitPrice ?? item.unitPrice) })}
                       </p>
-                      {sellerVatLineLabel(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineLabel(momsRegistered, item.taxRate, locale)}</p>}
+                      {sellerVatLineText(momsRegistered, item.taxRate, locale) && <p className="mt-1 text-xs text-muted-foreground">{sellerVatLineText(momsRegistered, item.taxRate, locale)}</p>}
                     </TableCell>
                     <TableCell className="hidden text-right num sm:table-cell">{item.quantity}</TableCell>
                     <TableCell className="hidden text-right num sm:table-cell">{money(item.displayUnitPrice ?? item.unitPrice)}</TableCell>

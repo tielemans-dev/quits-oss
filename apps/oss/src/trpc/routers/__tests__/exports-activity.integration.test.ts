@@ -135,6 +135,7 @@ describeIfDatabase("exports and activity routers", () => {
     const admin = callerFor(org.organizationId, org.actors.admin.userId)
 
     await expect(admin.exports.einvoice({ kind: "invoice", id: invoiceId })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" })
+    await expect(admin.exports.einvoiceStatus({ kind: "invoice", id: invoiceId })).resolves.toEqual({ stored: true })
   })
 
   it("explains why an issued invoice carries no UBL", async () => {
@@ -150,6 +151,14 @@ describeIfDatabase("exports and activity routers", () => {
       missing: ["buyer.electronicAddress"],
       issued: true,
     })
+    await expect(admin.exports.einvoiceStatus({ kind: "invoice", id: invoiceId })).resolves.toEqual({ stored: false, missing: ["buyer.electronicAddress"] })
+  })
+
+  it("reports no status for a draft and not found for an unknown document", async () => {
+    const { org, invoiceId } = await setup()
+    const accountant = callerFor(org.organizationId, org.actors.accountant.userId)
+    await expect(accountant.exports.einvoiceStatus({ kind: "invoice", id: invoiceId })).resolves.toBeNull()
+    await expect(accountant.exports.einvoiceStatus({ kind: "invoice", id: "missing" })).rejects.toMatchObject({ code: "NOT_FOUND" })
   })
 
   it("exports accounting CSVs for a date range", async () => {
