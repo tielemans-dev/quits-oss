@@ -80,7 +80,7 @@ vi.mock("../../lib/i18n/react", async () => {
   const { translate } = await import("../../lib/i18n/translate")
   const i18n = {
     get locale() { return displayLanguage.locale },
-    t: (key: string) => key === "auth.onboarding.primary.dkLabel" || key === "auth.onboarding.primary.dkHelp"
+    t: (key: string) => key === "auth.onboarding.primary.dkLabel" || key === "auth.onboarding.primary.dkHelp" || key === "settings.seNumber.label" || key === "settings.seNumber.help"
       ? translate(key, displayLanguage.locale)
       :
       (
@@ -559,7 +559,7 @@ describe("Settings VAT status after upstream integration", () => {
     runtimeState.selfhost = selfhost
     hostedFlag.enabled = !selfhost
     await renderDanishSettings(true, { seNumber: "00123456" })
-    const input = screen.getByLabelText("settings.seNumber.label") as HTMLInputElement
+    const input = screen.getByLabelText("SE-nr.") as HTMLInputElement
     expect(input.value).toBe("00123456")
     fireEvent.change(input, { target: { value: "1234567" } })
     expect(input.checkValidity()).toBe(false)
@@ -741,6 +741,29 @@ describe("Settings company details and save results", () => {
     expect(screen.getAllByRole("status")).toHaveLength(1)
     expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxId: "12345674" }))
     expect(within(cvrRow).getByText("12345674")).toBeTruthy()
+  })
+
+  it("shows the CVR and an explained SE field for a hosted non-VAT sole trader", async () => {
+    runtimeState.selfhost = false
+    hostedFlag.enabled = true
+    await renderDanishSettings(false, { onboardingInvoicingIdentity: "individual" })
+    // Company details and invoicing both show the CVR, not only for VAT-registered businesses.
+    const cvrRow = row(screen.getByRole("button", { name: "settings.row.edit settings.vatStatus.cvrLabel" }))
+    expect(within(cvrRow).getByText("24256790")).toBeTruthy()
+    expect(screen.getAllByLabelText<HTMLInputElement>("settings.vatStatus.cvrLabel").map(input => input.value)).toEqual(["24256790", "24256790"])
+    expect(screen.queryByText("No tax ID required for this tax setup.")).toBeNull()
+    expect(screen.getByLabelText("SE-nr.")).toBeTruthy()
+    expect(screen.getByText("Kun hvis dit SE-nr. er et andet end dit CVR-nr. Ellers lad feltet stå tomt.")).toBeTruthy()
+  })
+
+  it("hides the Danish SE field for a seller outside Denmark", async () => {
+    initializeRequestOrganizationId("org_1")
+    useSessionMock.mockReturnValue({ data: { user: { id: "user_1" }, session: { activeOrganizationId: "org_1" } } })
+    getFullOrganization.mockResolvedValue({ data: { members: [], invitations: [] } })
+    settingsGetQuery.mockResolvedValue(buildSettingsData())
+    render(<RouteComponent />)
+    await screen.findByText("No tax ID required for this tax setup.")
+    expect(screen.queryByLabelText("SE-nr.")).toBeNull()
   })
 
   it("puts the stored CVR back on Cancel", async () => {

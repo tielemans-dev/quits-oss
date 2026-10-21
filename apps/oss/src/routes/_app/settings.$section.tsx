@@ -351,21 +351,24 @@ function SettingsPage() {
     () => currencyPickerOptions(CURRENCY_CODES, settings?.countryCode, displayLocale, (code) => `${t(`auth.onboarding.currency.${code}`)} (${code})`),
     [settings?.countryCode, displayLocale, t]
   )
-  const showVatStatus = normalizeCountryCode(countryCode) === "DK" && taxRegime === "eu_vat"
+  const danishSeller = normalizeCountryCode(countryCode) === "DK"
+  const showVatStatus = danishSeller && taxRegime === "eu_vat"
   const nonVatDanishSeller = showVatStatus && momsRegistered === false
   const taxRules = getOnboardingRules({
     countryCode,
     invoicingIdentity,
     taxRegime,
   })
+  // Every Danish seller invoices under its CVR, including sole traders and non-VAT sellers.
+  const showSellerTaxId = taxRules.showPrimaryTaxId || danishSeller
   const primaryTaxIdLabel = nonVatDanishSeller
     ? t("settings.vatStatus.cvrLabel")
-    : normalizeCountryCode(countryCode) === "DK"
+    : danishSeller
       ? t("auth.onboarding.primary.dkLabel")
       : taxRules.primaryTaxIdCopy.label
   const primaryTaxIdHelp = nonVatDanishSeller
     ? t("settings.vatStatus.cvrHelp")
-    : normalizeCountryCode(countryCode) === "DK"
+    : danishSeller
       ? t("auth.onboarding.primary.dkHelp")
       : taxRules.primaryTaxIdCopy.help
 
@@ -1045,7 +1048,7 @@ function SettingsPage() {
               onChange={clearSellerVatReview}
             />
           </SettingsRow>
-          {taxRules.showPrimaryTaxId ? (
+          {showSellerTaxId ? (
             // The same tax ID as on the invoicing page, so it is checked and saved the same way.
             <SettingsRow label={primaryTaxIdLabel} value={settings.primaryTaxId || <SettingsEmpty />} formId={settingsFormId} savedVersion={savedVersion}
               origin="primaryTaxId" result={saveResult("primaryTaxId")} onCancel={() => setPrimaryTaxId(settings.primaryTaxId ?? "")}>
@@ -1258,7 +1261,7 @@ function SettingsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                {taxRules.showPrimaryTaxId ? (
+                {showSellerTaxId ? (
                   <>
                     <Label htmlFor="primaryTaxId">{primaryTaxIdLabel}</Label>
                     <Input
@@ -1285,12 +1288,15 @@ function SettingsPage() {
                   </>
                 )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="seNumber">{t("settings.seNumber.label")}</Label>
-                <Input id="seNumber" name="seNumber" inputMode="numeric" pattern="[0-9]{8}" maxLength={8}
-                  title={t("settings.seNumber.help")} defaultValue={settings.seNumber ?? ""} />
-                <p className="text-xs text-muted-foreground">{t("settings.seNumber.help")}</p>
-              </div>
+              {/* SE numbers are Danish; a stored one stays visible so it can be cleared. */}
+              {danishSeller || settings.seNumber ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="seNumber">{t("settings.seNumber.label")}</Label>
+                  <Input id="seNumber" name="seNumber" inputMode="numeric" pattern="[0-9]{8}" maxLength={8}
+                    title={t("settings.seNumber.help")} defaultValue={settings.seNumber ?? ""} />
+                  <p className="text-xs text-muted-foreground">{t("settings.seNumber.help")}</p>
+                </div>
+              ) : null}
               {taxRules.showPrimaryTaxId && (countryCode !== "DK" || sellerVatConfirmationEnabled) ? (
                 <div className="grid gap-2">
                   <Label htmlFor="primaryTaxIdScheme">{t("settings.primaryTaxIdScheme.label")}</Label>
