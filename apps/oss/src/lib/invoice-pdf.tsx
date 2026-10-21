@@ -21,6 +21,7 @@ import { buildPaymentDetailsBlock } from "./payment-details-block"
 import { lineColumnKeys, priceBasis, type VatRow } from "./documents/line-amounts"
 import { buildTotals } from "./documents/totals"
 import { documentColors as C } from "./brand/document-colors"
+import { DraftWatermark } from "./documents/draft-watermark"
 
 const styles = StyleSheet.create({
   page: {
@@ -202,6 +203,18 @@ const styles = StyleSheet.create({
   paymentReferenceValue: {
     fontFamily: "Helvetica-Bold",
   },
+  draftBanner: {
+    position: "absolute",
+    top: 12,
+    left: 40,
+    right: 40,
+    paddingVertical: 4,
+    backgroundColor: C.tones.danger.tint,
+    color: C.tones.danger.text,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    textAlign: "center",
+  },
 })
 
 export type OrgSettingsForPdf = {
@@ -300,6 +313,9 @@ export function InvoicePdfDocument({
   // A draft's number is not reserved, so its PDF says where the reference will come from rather than guess it.
   const paymentReference = (invoice.paymentReference === undefined ? invoice.number : invoice.paymentReference)?.trim()
     || (invoice.status === "draft" ? translate("pdf.paymentReferenceOnSend", locale) : null)
+  // A draft is not a valid document. Every page says so, so a forwarded draft cannot pass for an
+  // issued one. Issued documents render exactly as before: their archived bytes must stay reproducible.
+  const draft = invoice.status === "draft"
   const paymentDetails = quote ? null : buildPaymentDetailsBlock(
     { bankAccount: invoice.bankAccount, note: withoutNonVatStatement(invoice.paymentNote, momsRegistered, invoice.taxRegime) },
     paymentReference,
@@ -309,6 +325,11 @@ export function InvoicePdfDocument({
   return (
     <Document creationDate={new Date(invoice.issueDate)} modificationDate={new Date(invoice.issueDate)}>
       <Page size="A4" style={styles.page}>
+        {draft && (
+          <Text style={styles.draftBanner} fixed>
+            {translate(quote ? "pdf.draft.notValid.quote" : "pdf.draft.notValid.invoice", locale)}
+          </Text>
+        )}
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
@@ -320,8 +341,8 @@ export function InvoicePdfDocument({
             )}
             <Text style={styles.title}>
               {quote
-                ? translate(invoice.status === "draft" ? "quotes.number.draftHeading" : "quotes.detail.title", locale)
-                : translate("pdf.invoice", locale)} {invoice.number}
+                ? translate(draft ? "quotes.number.draftHeading" : "quotes.detail.title", locale)
+                : translate(draft ? "invoices.number.draftHeading" : "pdf.invoice", locale)} {invoice.number}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -442,6 +463,8 @@ export function InvoicePdfDocument({
             <Text style={styles.notesText}>{notes}</Text>
           </View>
         )}
+        {/* Drawn after the content and translucent, so no box on the page can hide it. */}
+        {draft && <DraftWatermark word={translate("pdf.draft.watermark", locale)} />}
         <View style={[styles.footer, { right: 40, flexDirection: "row", justifyContent: "space-between" }]} fixed>
           <Text style={{ flex: 1, paddingRight: 12 }}>{[fromName, org.companyAddress, ...formatTaxIds(sellerPresentationTaxIds(org.taxIds, momsRegistered), locale, contact.country ?? "DK", momsRegistered, org.cvrLabel), org.companyEmail].filter(Boolean).join(" · ")}</Text>
           <Text render={({ pageNumber, totalPages }) => translate("pdf.pageNumber", locale, { page: pageNumber, total: totalPages })} />
