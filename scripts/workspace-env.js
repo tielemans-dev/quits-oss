@@ -42,6 +42,16 @@ export function discoverWorkspaceEnvFile({
   return null
 }
 
+/** True when `envFile` belongs to another checkout, as when a worktree falls back to the main `.env`. */
+export function isBorrowedWorkspaceEnvFile(envFile, { cwd = process.cwd(), exec = execFileSync } = {}) {
+  try {
+    const root = normalizeGitPath(cwd, exec("git", ["rev-parse", "--show-toplevel"], { cwd, encoding: "utf8" }))
+    return dirname(envFile) !== root
+  } catch {
+    return false
+  }
+}
+
 export function discoverWorkspaceEnvDir(input) {
   const envFile = discoverWorkspaceEnvFile(input)
   return envFile ? dirname(envFile) : null

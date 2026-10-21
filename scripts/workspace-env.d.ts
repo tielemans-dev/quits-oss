@@ -15,3 +15,8 @@ export function discoverWorkspaceEnvFile(
 export function discoverWorkspaceEnvDir(
   input?: WorkspaceEnvDiscoveryOptions
 ): string | null
+
+export function isBorrowedWorkspaceEnvFile(
+  envFile: string,
+  input?: Omit<WorkspaceEnvDiscoveryOptions, "exists">
+): boolean

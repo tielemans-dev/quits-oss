@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { discoverWorkspaceEnvFile } = (await import("../workspace-env.js")) as {
+const { discoverWorkspaceEnvFile, isBorrowedWorkspaceEnvFile } = (await import("../workspace-env.js")) as {
   discoverWorkspaceEnvFile: (input?: {
     cwd?: string
     exec?: (
@@ -10,6 +10,7 @@ const { discoverWorkspaceEnvFile } = (await import("../workspace-env.js")) as {
     ) => string
     exists?: (path: string) => boolean
   }) => string | null
+  isBorrowedWorkspaceEnvFile: (envFile: string, input?: { cwd?: string; exec?: () => string }) => boolean
 }
 
 describe("discoverWorkspaceEnvFile", () => {
@@ -61,5 +62,18 @@ describe("discoverWorkspaceEnvFile", () => {
     })
 
     expect(envFile).toBeNull()
+  })
+})
+
+describe("isBorrowedWorkspaceEnvFile", () => {
+  const worktree = { cwd: "/repo/.worktrees/feature/apps/oss", exec: () => "/repo/.worktrees/feature\n" }
+
+  it("flags the main checkout's .env when used from a worktree", () => {
+    expect(isBorrowedWorkspaceEnvFile("/repo/.env", worktree)).toBe(true)
+  })
+
+  it("accepts the checkout's own .env", () => {
+    expect(isBorrowedWorkspaceEnvFile("/repo/.worktrees/feature/.env", worktree)).toBe(false)
+    expect(isBorrowedWorkspaceEnvFile("/repo/.env", { cwd: "/repo/apps/oss", exec: () => "/repo\n" })).toBe(false)
   })
 })

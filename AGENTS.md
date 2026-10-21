@@ -73,11 +73,12 @@ behavior on those entries. Coverage does not require unrelated tests.
 - Before running `bun run dev` from the repository root, require an isolated local
   database configured through `DATABASE_URL`. The predev hook generates Prisma and
   applies migrations to `DATABASE_URL` via `scripts/predev-bootstrap.mjs` before
-  starting the self-hosted app on port 3000. Worktrees can inherit the main
-  checkout's environment file via `scripts/workspace-env.js`; a separate worktree
-  does not isolate the database. Never start against a shared or live database.
-  Avoid ports used by another task. Stop only processes you started, using the
-  PIDs you tracked.
+  starting the self-hosted app on port 3000. Never start against a shared or live
+  database. Avoid ports used by another task. Stop only processes you started,
+  using the PIDs you tracked.
+- A worktree needs its own `DATABASE_URL`. When it borrows the main checkout's `.env`,
+  `scripts/run-with-workspace-env.mjs` and `prisma.config.ts` drop that file's
+  `DATABASE_URL`; worktree dev gets its own from `scripts/slot.mjs`.
 - Reuse existing UI components. When a task requires adding a shadcn component,
   follow its current CLI instructions within the authorized dependency scope.
 
@@ -89,9 +90,13 @@ suites. Do not run a full suite or build to prove a small change.
 - For docs-only changes, run `git diff --check` and inspect the complete diff,
   pointers, required sections, and changed-line budget. No runtime checks needed.
 - For behavior changes, run the smallest relevant failing test first, then only
-  touched tests. From `apps/oss`, use `node ../../scripts/run-with-workspace-env.mjs
-  bunx --no-install vp test run -c vitest.config.ts <test-file> --maxWorkers=1`. Use
-  `vitest.global.config.ts` instead when that config owns the test.
+  touched tests. From `apps/oss`, run `bunx --no-install vp test run -c
+  vitest.config.ts <test-file>`. That unit config blanks `DATABASE_URL`, so Prisma
+  throws there. A test that needs PostgreSQL is named `*.integration.test.ts` and
+  runs with `-c vitest.integration.config.ts` (or `vitest.global.config.ts` for
+  `*.global.*`) against your own database, set explicitly in `DATABASE_URL`.
+- Test cleanups delete only rows the test created, by id or a unique per-run value,
+  never by a shared name.
 - Direct `bunx --no-install vp test` needs the generated Prisma client. Run
   `bun run prisma:generate` from the root first. T3 worktree setup also
   generates the client.
