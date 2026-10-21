@@ -306,4 +306,19 @@ describeIfDatabase("Danish VAT Settings invariants", () => {
       await expect(caller.settings.update({ momsRegistered: false, primaryTaxId: "123", primaryTaxIdScheme: "cvr" })).rejects.toMatchObject(refusal)
     } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
   })
+  it("keeps the Firmaprofil phone across saves and stores a Danish number as E.164", async () => {
+    const { orgId, caller } = await createOrgWithCaller()
+    try {
+      await caller.settings.update({ countryCode: "DK", taxRegime: "eu_vat", companyPhone: "+45 12345678" })
+      expect((await caller.settings.get()).companyPhone).toBe("+4512345678")
+      await caller.settings.update({ companyPhone: "12 34 56 78" })
+      expect((await caller.settings.get()).companyPhone).toBe("+4512345678")
+      // A save of other rows submits no phone and keeps the stored one.
+      await caller.settings.update({ companyName: "Nordlys ApS" })
+      expect((await caller.settings.get()).companyPhone).toBe("+4512345678")
+      // An emptied field clears the phone instead of keeping the old one.
+      await caller.settings.update({ companyPhone: "" })
+      expect((await caller.settings.get()).companyPhone).toBeNull()
+    } finally { await cleanupTestOrganizations({ where: { id: orgId } }) }
+  })
 })

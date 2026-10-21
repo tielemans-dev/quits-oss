@@ -547,14 +547,14 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(get).toHaveBeenCalledWith("24256790", expect.objectContaining({ userId: `qui56-${id}`, organizationId: id }))
     expect(get).toHaveBeenCalledOnce()
     expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject(kept
-      ? { companyEmail: "public@example.test", companyPhone: "40486480" }
+      ? { companyEmail: "public@example.test", companyPhone: "+4540486480" }
       : { companyEmail: "signup@example.test", companyPhone: null })
   })
   it("allows manually entered contacts", async () => {
     const id = await organization()
     const api = await caller(id)
     await api.onboarding.confirmV2({ ...summary(), source: "manual", reklamebeskyttet: false, companyEmail: "public@example.test", companyPhone: "12345678" })
-    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "public@example.test", companyPhone: "12345678" })
+    expect(await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })).toMatchObject({ companyEmail: "public@example.test", companyPhone: "+4512345678" })
   })
   it("confirms when the runtime trial hook is absent", async () => {
     const id = await organization()

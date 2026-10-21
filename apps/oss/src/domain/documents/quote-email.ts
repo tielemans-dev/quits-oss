@@ -1,4 +1,4 @@
-import { parseSellerSnapshot } from "@quits/contracts/documents"
+import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { buildQuoteEmailContent, composeMessage } from "../../lib/email"
 import { documentEmailOrg, resolveInvoiceEmailContext } from "./invoice-email"
 import { lineAmounts, priceBasis } from "../../lib/documents/line-amounts"
@@ -22,11 +22,12 @@ export type QuoteForEmail = {
   currency: string
   notes: string | null
   sellerSnapshot?: unknown
+  buyerSnapshot?: unknown
   subtotalNet: Decimalish
   totalTax: Decimalish
   totalGross: Decimalish
   pricesIncludeTax: boolean
-  contact: { name: string; email: string | null }
+  contact: { name: string; email: string | null; country?: string | null }
   items: Array<{
     description: string
     quantity: Decimalish
@@ -67,6 +68,7 @@ export function composeQuoteEmail(input: {
     quote: {
       ...quote,
       momsRegistered: seller?.momsRegistered,
+      buyerCountry: parseBuyerSnapshot(quote.buyerSnapshot)?.country ?? quote.contact.country,
       subtotal: quote.subtotalNet.toNumber(),
       taxAmount: quote.totalTax.toNumber(),
       total: quote.totalGross.toNumber(),
@@ -84,7 +86,7 @@ export function composeQuoteEmail(input: {
       }),
     },
     org: { ...documentEmailOrg(quote, input.settings),
-      ...(seller ? { companyName: seller.companyName, companyEmail: seller.companyEmail } : {}),
+      ...(seller ? { companyName: seller.companyName, companyEmail: seller.companyEmail, companyAddress: seller.companyAddress, taxIds: seller.taxIds } : {}),
     },
     contactName: quote.contact.name,
     publicQuoteUrl: input.publicQuoteUrl,

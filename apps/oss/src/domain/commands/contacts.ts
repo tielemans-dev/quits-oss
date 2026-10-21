@@ -11,7 +11,7 @@ import {
 import { peppolEndpointIssue } from "@quits/contracts/exports"
 import {
   normalizeCountryCode,
-  normalizePhone,
+  storedPhone,
   validateLocalizedFields,
 } from "../../lib/validation/localization"
 import { defineCommand } from "../command"
@@ -100,12 +100,10 @@ export const createContact = defineCommand({
       }
       const orgCountry = yield* loadOrgCountry
 
-      yield* validateLocalized(
-        normalizeCountryCode(
-          (input.country?.trim().length === 2 ? input.country : undefined) || orgCountry
-        ),
-        input
+      const countryCode = normalizeCountryCode(
+        (input.country?.trim().length === 2 ? input.country : undefined) || orgCountry
       )
+      yield* validateLocalized(countryCode, input)
       yield* validatePeppolEndpoint({
         id: input.peppolEndpointId ?? null,
         scheme: input.peppolEndpointScheme ?? null,
@@ -115,7 +113,7 @@ export const createContact = defineCommand({
         db.contact.create({
           data: {
             ...fields,
-            ...(fields.phone !== undefined ? { phone: normalizePhone(fields.phone) } : {}),
+            ...(fields.phone !== undefined ? { phone: storedPhone(fields.phone, countryCode) } : {}),
             email: input.email || null,
             country: normalizeCountry(input.country),
             organizationId: command.organizationId,
@@ -161,12 +159,12 @@ export const updateContact = defineCommand({
       }
 
       const orgCountry = yield* loadOrgCountry
-      yield* validateLocalized(
-        normalizeCountryCode(
-          (input.country?.trim().length === 2 ? input.country : undefined) ||
-            (existing.country?.trim().length === 2 ? existing.country : undefined) ||
-            orgCountry
-        ),
+      const countryCode = normalizeCountryCode(
+        (input.country?.trim().length === 2 ? input.country : undefined) ||
+          (existing.country?.trim().length === 2 ? existing.country : undefined) ||
+          orgCountry
+      )
+      yield* validateLocalized(countryCode,
         {
           phone: input.phone ?? existing.phone,
           zip: input.zip ?? existing.zip,
@@ -186,7 +184,7 @@ export const updateContact = defineCommand({
           data: {
             ...data,
             ...(data.email !== undefined ? { email: data.email || null } : {}),
-            ...(data.phone !== undefined ? { phone: normalizePhone(data.phone) } : {}),
+            ...(data.phone !== undefined ? { phone: storedPhone(data.phone, countryCode) } : {}),
             ...(data.country !== undefined ? { country: normalizeCountry(data.country) } : {}),
           },
         })

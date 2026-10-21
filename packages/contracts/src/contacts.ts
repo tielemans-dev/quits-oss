@@ -16,6 +16,19 @@ export function normalizePhone(value: string) {
   return compact.startsWith("00") ? `+${compact.slice(2)}` : compact
 }
 
+/** The form saved for a phone in `countryCode`: a bare eight-digit Danish number gains +45, so "12 34 56 78" is "+4512345678". */
+export function storedPhone(value: string, countryCode: string | null | undefined) {
+  const phone = normalizePhone(value)
+  return countryCode?.trim().toUpperCase() === "DK" && /^\d{8}$/.test(phone) ? `+45${phone}` : phone
+}
+
+/** A phone as people read it: a Danish number in pairs, "+45 12 34 56 78". Other numbers are shown as entered. */
+export function displayPhone(value: string | null | undefined, countryCode: string | null | undefined) {
+  if (!value?.trim()) return ""
+  const danish = /^\+45(\d{8})$/.exec(storedPhone(value, countryCode))
+  return danish ? `+45 ${danish[1]!.match(/\d{2}/g)!.join(" ")}` : value.trim()
+}
+
 const contactFields = {
   email: z.string().trim().email().optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional(),

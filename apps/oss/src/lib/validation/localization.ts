@@ -1,4 +1,4 @@
-import { normalizePhone } from "@quits/contracts/contacts"
+import { normalizePhone, storedPhone } from "@quits/contracts/contacts"
 import { findCountryModule, normalizeCountryCode } from "../compliance/registry"
 
 // Countries without a module are checked against these loose formats only.
@@ -10,7 +10,7 @@ function stripSpaces(value: string) {
   return value.replace(/\s+/g, "")
 }
 
-export { normalizeCountryCode, normalizePhone }
+export { normalizeCountryCode, normalizePhone, storedPhone }
 
 export function isValidPhoneForCountry(countryCode: string | null, phone: string) {
   const normalized = normalizePhone(phone)

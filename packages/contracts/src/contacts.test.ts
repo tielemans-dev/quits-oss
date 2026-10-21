@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { contactCreateInputSchema, contactUpdateInputSchema, normalizePhone } from "./contacts"
+import { contactCreateInputSchema, contactUpdateInputSchema, displayPhone, normalizePhone, storedPhone } from "./contacts"
 
 describe("normalizePhone", () => {
   it.each([
@@ -12,6 +12,33 @@ describe("normalizePhone", () => {
     ["", ""],
   ])("normalizes %j to %j", (input, expected) => {
     expect(normalizePhone(input)).toBe(expected)
+  })
+})
+
+describe("storedPhone", () => {
+  it.each([
+    ["12 34 56 78", "DK", "+4512345678"],
+    ["+45 12345678", "DK", "+4512345678"],
+    ["0045 12 34 56 78", "dk", "+4512345678"],
+    ["12 34 56 78", "SE", "12345678"],
+    ["12 34 56 78", null, "12345678"],
+    ["", "DK", ""],
+  ])("stores %j in %j as %j", (input, country, expected) => {
+    expect(storedPhone(input, country)).toBe(expected)
+  })
+})
+
+describe("displayPhone", () => {
+  it.each([
+    ["+4512345678", "DK", "+45 12 34 56 78"],
+    // Values saved before numbers were stored as E.164 are shown the same way; nothing is rewritten.
+    ["12345678", "DK", "+45 12 34 56 78"],
+    ["+4512345678", "SE", "+45 12 34 56 78"],
+    ["12345678", null, "12345678"],
+    ["+46 8 123 456 78", "SE", "+46 8 123 456 78"],
+    [null, "DK", ""],
+  ])("shows %j in %j as %j", (input, country, expected) => {
+    expect(displayPhone(input, country)).toBe(expected)
   })
 })
 

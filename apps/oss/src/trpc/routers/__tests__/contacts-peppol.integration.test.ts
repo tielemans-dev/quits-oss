@@ -58,4 +58,13 @@ describeIfDatabase("contact Peppol endpoints", () => {
       /both/
     )
   })
+
+  it("stores a Danish customer's phone as E.164 and leaves other countries' numbers as entered", async () => {
+    const caller = await adminCaller()
+    const danish = await caller.contacts.create({ name: "Fjord Design", country: "DK", phone: "12 34 56 78" })
+    expect(danish.phone).toBe("+4512345678")
+    expect((await caller.contacts.update({ id: danish.id, phone: "87 65 43 21" })).phone).toBe("+4587654321")
+    const swedish = await caller.contacts.create({ name: "Kund AB", country: "SE", phone: "08 123 456 78" })
+    expect(swedish.phone).toBe("0812345678")
+  })
 })
