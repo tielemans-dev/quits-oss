@@ -45,6 +45,7 @@ export const enDocFormMessages = {
   "invoiceValidation.cvr.invalid": "A CVR number has 8 digits",
   "invoiceValidation.unknown": "Check this field and try again",
   "invoiceValidation.customer.businessName.required": "Enter the customer's business name",
+  "invoiceValidation.customer.cvr.required": "Enter the customer's CVR or SE number",
   "invoiceValidation.customer.country.unsupported": "For now you can only invoice customers in: {countries}",
   "invoiceValidation.seller.companyName.required": "Add your company name",
   "invoiceValidation.seller.companyAddress.required": "Add your company's postal address",

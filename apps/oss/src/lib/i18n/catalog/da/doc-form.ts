@@ -45,6 +45,7 @@ export const daDocFormMessages = {
   "invoiceValidation.cvr.invalid": "Et CVR-nummer har 8 cifre",
   "invoiceValidation.unknown": "Tjek feltet og prøv igen",
   "invoiceValidation.customer.businessName.required": "Indtast kundens firmanavn",
+  "invoiceValidation.customer.cvr.required": "Indtast kundens CVR- eller SE-nummer",
   "invoiceValidation.customer.country.unsupported": "Lige nu kan du kun fakturere kunder i: {countries}",
   "invoiceValidation.seller.companyName.required": "Tilføj dit firmanavn",
   "invoiceValidation.seller.companyAddress.required": "Tilføj dit firmas postadresse",

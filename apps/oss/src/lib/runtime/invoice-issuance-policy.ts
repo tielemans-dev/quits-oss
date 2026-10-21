@@ -13,6 +13,8 @@ export type InvoiceIssuancePolicy = {
   sellerVatStatus?: "registered" | "not_registered" | "unset"
   requireCvr?: boolean
   requireBusinessBuyer?: boolean
+  /** Require the buyer's Danish CVR or SE number, which bookkeeping rules expect on a voucher. Off by default. */
+  requireBuyerCvr?: boolean
   requireIdentity?: boolean
   requireSupplyDate?: boolean
   /** Refuse to send while neither bank details nor an online payment method can be shown to the customer. Off by default: self-hosters may be paid by other means. */

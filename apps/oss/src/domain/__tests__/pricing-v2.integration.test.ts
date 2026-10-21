@@ -184,12 +184,13 @@ describe.skipIf(!hasTestDatabase)("v2 producer and editor parity", () => {
     expect(await executeIssuanceCommand(sendInvoice, { id: created.result.id, allowSendWithoutEmail: true }, options)).toMatchObject({ status: "failed", error: { code: "invalid_document_equation" } })
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: created.result.id } })).totalGross.toString()).toBe("126")
   })
-  it("issues an intra-community draft using the VAT scheme written by settings", async () => {
+  // The buyer's number may sit in the tax ID list or only in the contact's single tax ID field.
+  it.each(["list", "field"])("issues an intra-community draft using the VAT scheme written by settings, buyer number in the %s", async (storage) => {
     const { org, contactId, options } = await setup()
     await prisma.organizationTaxId.create({ data: { organizationId: org.organizationId, value: "DK12345678", scheme: "vat", countryCode: "DK" } })
-    await prisma.contact.update({ where: { id: contactId }, data: { country: "DE" } })
+    await prisma.contact.update({ where: { id: contactId }, data: { country: "DE", ...(storage === "field" ? { taxId: "DE123456789" } : {}) } })
     const evidence = { buyerVatId: "DE123456789", statementText: "Reverse charge", viesCheck: { result: "valid", at: "2026-10-07T00:00:00Z" } }
-    await prisma.contactTaxId.create({ data: { contactId, scheme: "VAT", value: "DE123456789" } })
+    if (storage === "list") await prisma.contactTaxId.create({ data: { contactId, scheme: "VAT", value: "DE123456789" } })
     const created = await executeIssuanceCommand(createInvoiceDraft, { contactId, dueDate: "2026-12-01", vatEvidence: evidence, items: [{ description: "Goods", quantity: "1", unitPrice: "100", vat: { treatment: "intra_community", reasonCode: "goods", country: "DE" } }] }, options)
     if (created.status !== "completed") throw new Error(JSON.stringify(created))
     expect(await executeIssuanceCommand(sendInvoice, { id: created.result.id, allowSendWithoutEmail: true }, options)).toMatchObject({ status: "completed", result: { status: "sent" } })

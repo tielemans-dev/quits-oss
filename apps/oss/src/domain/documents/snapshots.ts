@@ -6,6 +6,7 @@ import { parseSellerSnapshot, type BuyerSnapshot, type SellerSnapshot } from "@q
 import { isNationalRegistrationScheme } from "../../lib/compliance"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
+import { toCountryCode } from "../../lib/exports/parties"
 
 export function buildSellerSnapshot(
   settings: { seNumber?: string | null; momsRegistered?: boolean | null; countryCode?: string | null; companyName: string | null; companyEmail: string | null; companyAddress: string | null },
@@ -81,8 +82,22 @@ export function buildBuyerSnapshot(contact: {
     state: contact.state ?? null,
     zip: contact.zip ?? null,
     country: contact.country ?? null,
-    taxIds: contact.taxIds?.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode })) ?? (contact.taxId ? [{ scheme: "VAT", value: contact.taxId, countryCode: contact.country }] : []),
+    taxIds: contact.taxIds?.length
+      ? contact.taxIds.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode }))
+      : contact.taxId?.trim() ? [contactTaxId(contact.taxId.trim(), contact.country)] : [],
   }
+}
+
+/**
+ * A contact's single tax ID field, as a CVR lookup or the customer form fills it. A Danish
+ * customer's 8-digit number is their CVR; any other number is kept as a VAT number.
+ */
+function contactTaxId(value: string, country: string | null): TaxId {
+  const countryCode = toCountryCode(country)
+  const cvr = value.replace(/[\s.\-/]/g, "").toUpperCase().replace(/^DK/, "")
+  return countryCode === "DK" && /^\d{8}$/.test(cvr)
+    ? { scheme: "cvr", value: cvr, countryCode }
+    : { scheme: "VAT", value, countryCode: countryCode ?? country }
 }
 
 export const buyerContactSelect = {

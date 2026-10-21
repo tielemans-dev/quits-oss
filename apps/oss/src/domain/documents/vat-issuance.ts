@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import { parseBuyerSnapshot, parseSellerSnapshot } from "@quits/contracts/documents"
 import { validateVatIssuance, percentageToFraction, assertStoredDocumentEquation } from "@quits/shared/pricing"
-import { vatIdentifier } from "../../lib/exports/parties"
+import { toCountryCode, vatIdentifier } from "../../lib/exports/parties"
 import { isVatNumberScheme } from "../../lib/compliance"
 import { toDecimal } from "../../lib/exports/format"
 import { InvalidState } from "../errors"
@@ -93,8 +93,11 @@ export function requireVatIssuance(document: {
       issues.push("A VAT-bearing linked invoice requires a VAT identifier in its agreed seller identity")
     }
     const evidence = document.vatEvidence as { buyerVatId?: string } | null
+    // The checked VAT number may carry a country prefix or spacing the stored number lacks.
+    const checkedVatId = evidence?.buyerVatId?.replace(/[\s.\-/]/g, "").toUpperCase()
     if (document.items.some(item => item.vatTreatment === "intra_community") &&
-        !buyer?.taxIds?.some(id => id.value === evidence?.buyerVatId)) issues.push("Buyer VAT evidence must match the buyer tax id refreshed at issuance")
+        !buyer?.taxIds?.some(id => id.value === evidence?.buyerVatId ||
+          (checkedVatId && vatIdentifier([id], toCountryCode(buyer.country)) === checkedVatId))) issues.push("Buyer VAT evidence must match the buyer tax id refreshed at issuance")
     return yield* (issues.length
       ? Effect.fail(new InvalidState({ code: "evidence_incomplete", message: issues.join("; ") }))
       : Effect.try({
