@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## [0.16.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.0)
+
+Changes since the published v0.15.0 tag, covering 25 merged PRs.
+
+- Attach the issued PDF to invoice and credit-note emails, and mark draft invoice and quote PDFs as not valid on every page.
+- Record refunds when more has been paid than an invoice charges, and show money owed back to customers on the invoice and on Overblik. Adds one database migration.
+- Keep invoice and credit-note prefixes distinct, stop onboarding rewinding counters, and date converted quotes by payment terms.
+- Print a Danish buyer's CVR from the contact's tax ID field. Hosts can require a buyer CVR with `requireBuyerCvr`.
+- Pick or add the customer from the invoice form, with a CVR search where the runtime has one.
+- State the VAT side of every agreement amount, and show progress while creating draft invoices.
+- Simplify onboarding and signup: VAT fields only for VAT sellers, real steps only, no placeholder CVR contacts, and bank details saved inline on the first send.
+- Separate unit and integration tests so unit runs never touch a real database.
+
+See the [release notes](docs/releases/v0.16.0.md) for upgrade notes.
+
+[Compare with v0.15.0](https://github.com/tielemans-dev/quits-oss/compare/v0.15.0...v0.16.0).
+
 ## [0.15.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.15.0)
 
 Changes since the published v0.14.0 tag, covering 36 merged PRs.
