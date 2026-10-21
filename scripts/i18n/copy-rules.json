@@ -29,6 +29,8 @@
       { "value": "Start", "reason": "Same word in Danish" },
       { "value": "Status", "reason": "Same word in Danish" },
       { "value": "Stripe", "reason": "Product name" },
+      { "value": "Stripe publishable key", "reason": "Stripe's own key name, as shown in the Stripe dashboard" },
+      { "value": "Stripe secret key", "reason": "Stripe's own key name, as shown in the Stripe dashboard" },
       { "value": "Subtotal", "reason": "Same word in Danish" },
       { "value": "System", "reason": "Same word in Danish" },
       { "value": "Total", "reason": "Same word in Danish" },
