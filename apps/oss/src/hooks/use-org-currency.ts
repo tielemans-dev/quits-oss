@@ -12,5 +12,11 @@ export function resolveOrgCurrency(settings?: CurrencySettings | null): string {
 
 /** The organization's currency, with the fallback currency until its settings load. */
 export function useOrgCurrency() {
-  return resolveOrgCurrency(useOrgSettings())
+  return useOrgCurrencyState().currency
+}
+
+/** Like useOrgCurrency, and says whether the currency came from loaded settings or is the fallback. */
+export function useOrgCurrencyState() {
+  const settings = useOrgSettings()
+  return { currency: resolveOrgCurrency(settings), loaded: settings !== null }
 }

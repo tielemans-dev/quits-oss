@@ -35,7 +35,7 @@ import { clearHandoff, handOff, readHandoff } from "../../../lib/request-handoff
 import { submitInvoice } from "../../../lib/submit-invoice"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
 import { formatDate, formatCurrency as formatCurrencyIntl } from "../../../lib/i18n/format"
-import { useOrgCurrency } from "../../../hooks/use-org-currency"
+import { useOrgCurrencyState } from "../../../hooks/use-org-currency"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import { Button } from "../../../components/ui/button"
 import { Label } from "../../../components/ui/label"
@@ -73,7 +73,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
   // Opened from the request card with its invoice; "Tilbage til forslaget" takes the edited invoice back.
   const [handed] = useState(() => readHandoff("form"))
   useEffect(clearHandoff, [])
-  const currency = useOrgCurrency()
+  const { currency, loaded: currencyLoaded } = useOrgCurrencyState()
   const [issuance, setIssuance] = useState(() => handed?.issuance ?? initialIssuanceValues())
   const [baseCurrency, setBaseCurrency] = useState<string>()
   const [pricesIncludeTax, setPricesIncludeTax] = useState(handed?.pricesIncludeTax ?? false)
@@ -175,7 +175,8 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
 
   useEffect(() => {
     let cancelled = false
-    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency }).then(state => {
+    // Before settings load, let the server use the organization's currency instead of the fallback.
+    trpc.invoices.sendReadiness.query({ contactId: contactId || undefined, currency: currencyLoaded ? currency : undefined }).then(state => {
       if (cancelled) return
       setReadiness(state)
       setBaseCurrency(state.baseCurrency)
@@ -188,7 +189,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
       if (!priceBasisEdited.current) setPricesIncludeTax(state.standardVatRate != null ? false : state.pricesIncludeTax)
     }).catch(() => { if (!cancelled) setError(t("invoiceValidation.unknown")) })
     return () => { cancelled = true }
-  }, [contactId, currency, t])
+  }, [contactId, currency, currencyLoaded, t])
 
   function selectContact(id: string) {
     setContactId(id)

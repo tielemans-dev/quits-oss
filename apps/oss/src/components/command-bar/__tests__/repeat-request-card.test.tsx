@@ -16,7 +16,7 @@ vi.mock("../../../trpc/client", () => ({
     },
   },
 }))
-vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK" }))
+vi.mock("../../../hooks/use-org-currency", () => ({ useOrgCurrency: () => "DKK", useOrgCurrencyState: () => ({ currency: "DKK", loaded: true }) }))
 vi.mock("../../../hooks/use-invoice-due-date", async importActual => ({ ...await importActual<typeof import("../../../hooks/use-invoice-due-date")>(), useInvoiceDueDate: () => ["2026-10-29", () => {}] }))
 vi.mock("../../../lib/organization-settings-query", () => ({ loadOrganizationSettings: async () => ({ timezone: "UTC" }) }))
 
