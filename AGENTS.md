@@ -64,6 +64,13 @@ behavior on those entries. Coverage does not require unrelated tests.
 - Reverse states; when adding a way in, provide a way out and a way to see the
   current state. Check cancellation, failure, retry, and empty states as relevant.
 
+## Interface copy
+
+- Less is more: read Jakub Krehel's [Less is more, more or less](https://jakub.kr/writing/less-is-more).
+  Every element and line of text earns its place by helping the user understand or
+  act. A heading stands on its own, with no eyebrow label above it. Before adding
+  text, a badge or a decoration, say what it makes better; if you can't, leave it out.
+
 ## Dev
 
 - Use `README.md` for prerequisites and environment variable definitions, and
