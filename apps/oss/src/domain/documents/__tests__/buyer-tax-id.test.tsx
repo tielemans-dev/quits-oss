@@ -23,7 +23,7 @@ const german = { ...danish, company: "Synthetic Käufer GmbH", address: "Teststr
 
 function invoicePdf(contact: typeof danish, locale: string) {
   const invoice: InvoiceForPdf = { number: "SYNTHETIC-0001", status: "sent", issueDate: "2026-10-09T12:00:00Z", dueDate: "2026-11-09", subtotal: 100, taxAmount: 25, total: 125, currency: "DKK", notes: null, pricesIncludeTax: false,
-    contact: buildBuyerSnapshot(contact), items: [{ description: "Synthetic consulting", quantity: 1, unitPrice: 100, total: 100 }] }
+    contact: { ...buildBuyerSnapshot(contact), name: contact.name }, items: [{ description: "Synthetic consulting", quantity: 1, unitPrice: 100, total: 100 }] }
   return pdfText(InvoicePdfDocument({ invoice, org: { companyName: "Synthetic Seller ApS", locale } })).join(" ")
 }
 function creditNotePdf(contact: typeof danish, locale: string) {
