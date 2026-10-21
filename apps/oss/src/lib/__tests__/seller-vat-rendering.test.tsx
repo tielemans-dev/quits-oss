@@ -15,7 +15,7 @@ import { formatCurrency } from "../i18n/format"
 import { buildDkPresets } from "../onboarding/dk-presets"
 import { nonVatStatement } from "../documents/non-vat-note"
 import { withoutNonVatStatement } from "../documents/non-vat-presentation"
-import { sellerVatLineText } from "../documents/seller-vat"
+import { sellerVatLineLabel, sellerVatLineText } from "../documents/seller-vat"
 
 const invoice: InvoiceForPdf = {
   number: "SYNTHETIC-0042", status: "sent", issueDate: "2026-10-11T12:00:00Z", dueDate: "2026-11-09", subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", notes: null, pricesIncludeTax: false,
@@ -146,6 +146,9 @@ describe("seller VAT presentation", () => {
   })
   it("does not label other registered rates as 25 %%", () => {
     expect(sellerVatLineText(true, 20, "en-US")).toBeNull()
+  })
+  it("keeps the old line label export working for code built against earlier releases", () => {
+    expect(sellerVatLineLabel).toBe(sellerVatLineText)
   })
   it.each(["da-DK", "en-US"])("never labels a stored 25 %% line as no VAT in %s", locale => {
     for (const output of outputs(locale, false, { taxAmount: 25, total: 125, vatRows: [{ ratePercent: "25", net: "100", tax: "25", gross: "125" }], items: [{ ...invoice.items[0]!, taxRate: 25 }] })) {

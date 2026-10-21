@@ -11,3 +11,9 @@ export function sellerVatLineText(momsRegistered: boolean | null | undefined, ta
   if (momsRegistered === false && taxRate === 0) return translate("line.noVat", locale)
   return momsRegistered != null && taxRate === 25 ? translate("invoiceVat.hosted", locale, { rate: formatNumber(taxRate, locale) }) : null
 }
+
+/**
+ * @deprecated App screens and documents now share one wording; use `sellerVatLineText`. Kept so
+ * code written against earlier releases, such as CI's baseline screenshot pages, still loads.
+ */
+export const sellerVatLineLabel = sellerVatLineText
