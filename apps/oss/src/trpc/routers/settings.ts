@@ -11,7 +11,7 @@ import { resolveBaseCurrency, hasIssuedDocuments } from "../../domain/documents/
 import { InvalidState } from "../../domain/errors"
 import { isUniqueViolation } from "../../domain/execute"
 import { assertSettingsCurrency } from "../currency"
-import { assertDistinctDocumentPrefixes } from "../document-prefixes"
+import { assertDistinctDocumentPrefixes, assertDocumentPrefixesUnused } from "../document-prefixes"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, authorizedProcedure } from "../init"
@@ -448,6 +448,7 @@ export const settingsRouter = router({
           },
         })
         assertDistinctDocumentPrefixes(current ?? {}, settingsInput, settingsInput.locale ?? current?.locale)
+        await assertDocumentPrefixesUnused(tx, ctx.organizationId, current ?? {}, settingsInput, settingsInput.locale ?? current?.locale)
         assertStripeByokWritable({
           stripePublishableKey,
           stripeSecretKey,

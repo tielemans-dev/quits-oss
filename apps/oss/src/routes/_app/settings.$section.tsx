@@ -79,6 +79,7 @@ import { invalidateAppLayoutSession, seedAppLayoutSession } from "../../lib/app-
 import { getCloudOnboardingState } from "../../lib/cloud-onboarding"
 import { StripePaymentsSection, stripeByokUpdate } from "../../components/settings/stripe-payments-section"
 import { SettingsEmpty, SettingsRow, SettingsRows, SettingsRowsSkeleton } from "../../components/settings/settings-row"
+import { conflictingDocumentPrefixes, type DocumentPrefixes } from "../../lib/document-prefixes"
 
 const settingsValidationMessages: Record<SettingsFormValidationError, TranslationKey> = {
   invalid_timezone: "settings.validation.invalidTimezone",
@@ -295,6 +296,8 @@ function SettingsPage() {
   const [paymentTermsDaysInput, setPaymentTermsDaysInput] = useState("14")
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false)
   const [fieldIssues, setFieldIssues] = useState<FieldIssue[]>([])
+  // The prefixes as typed, so equal invoice and credit-note prefixes are refused before saving.
+  const [prefixDraft, setPrefixDraft] = useState<DocumentPrefixes>({})
   const [primaryTaxId, setPrimaryTaxId] = useState("")
   const [primaryTaxIdScheme, setPrimaryTaxIdScheme] = useState("vat")
   const [companyLogo, setCompanyLogo] = useState("")
@@ -1011,6 +1014,17 @@ function SettingsPage() {
     )
   }
 
+  const prefixConflicts = conflictingDocumentPrefixes(settings, prefixDraft)
+  // A refused save's prefix error no longer applies once either prefix is edited; the inline check takes over.
+  const changePrefix = (field: keyof DocumentPrefixes, value: string) => {
+    setPrefixDraft(draft => ({ ...draft, [field]: value }))
+    setFieldIssues(issues => issues.filter(issue => issue.code !== "prefix.conflict"))
+  }
+  const prefixIssues = (field: keyof DocumentPrefixes): FieldIssue[] => {
+    const issues = fieldIssues.filter(issue => issue.field === field)
+    return issues.length || !prefixConflicts.includes(field) ? issues : [{ code: "prefix.conflict", field, params: {} }]
+  }
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t(`settings.nav.${section}`)}</h1>
@@ -1101,7 +1115,7 @@ function SettingsPage() {
                   aria-describedby={settings.momsRegistered == null ? vatUnansweredId : undefined} />
                 {sellerVatConfirmationEnabled && <Button type="button" variant="outline" disabled={saving} onClick={() => { setSellerVatChoice(null); setMomsRegistered(null); setWithdrawSellerVatEvidence(true) }}>{t("vatStatus.withdraw")}</Button>}
                 {/* Saving the choice shown also confirms it, so this is offered even without a change. */}
-                <Button type="submit" form={settingsFormId} size="sm" className="justify-self-start" disabled={saving}>
+                <Button type="submit" form={settingsFormId} size="sm" className="justify-self-start" disabled={saving || prefixConflicts.length > 0}>
                   {saving ? t("settings.action.saving") : t("settings.action.save")}
                 </Button>
               </div>
@@ -1397,9 +1411,10 @@ function SettingsPage() {
                   title={t("settings.prefix.title")}
                   placeholder="INV"
                   defaultValue={settings.invoicePrefix}
-                  aria-invalid={fieldIssues.some(issue => issue.field === "invoicePrefix")}
+                  onChange={event => changePrefix("invoicePrefix", event.target.value)}
+                  aria-invalid={prefixIssues("invoicePrefix").length > 0}
                 />
-                {fieldIssues.filter(issue => issue.field === "invoicePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+                {prefixIssues("invoicePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
               </div>
               <div className="grid gap-2">
                 <Label>{t("settings.nextInvoiceNumber.label")}</Label>
@@ -1441,9 +1456,10 @@ function SettingsPage() {
                   title={t("creditNotes.validation.invalidPrefix")}
                   placeholder="CN"
                   defaultValue={settings.creditNotePrefix}
-                  aria-invalid={fieldIssues.some(issue => issue.field === "creditNotePrefix")}
+                  onChange={event => changePrefix("creditNotePrefix", event.target.value)}
+                  aria-invalid={prefixIssues("creditNotePrefix").length > 0}
                 />
-                {fieldIssues.filter(issue => issue.field === "creditNotePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
+                {prefixIssues("creditNotePrefix").map(issue => <p key={issue.field} role="alert" className="text-sm text-destructive">{t(invoiceIssueKey(issue.code), issue.params)}</p>)}
               </div>
               <div className="grid gap-2">
                 <Label>{t("creditNotes.settings.nextNumber.label")}</Label>
@@ -1817,7 +1833,7 @@ function SettingsPage() {
 
         {/* Save */}
         <div className={FORM_SECTIONS.includes(section) ? "grid justify-items-end gap-2" : "hidden"}>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || prefixConflicts.length > 0}>
             {saving ? t("settings.action.saving") : t("settings.action.save")}
           </Button>
           {saveResult("form")}
