@@ -350,6 +350,23 @@ export async function exportEinvoice(
   }
 }
 
+/**
+ * Whether an issued document carries a stored e-invoice, and if not, what kept it from having one,
+ * so it can be explained before anyone asks to download it. Drafts have no status yet.
+ */
+export async function issuedEinvoiceStatus(
+  organizationId: string,
+  kind: EinvoiceDocumentKind,
+  id: string
+): Promise<{ stored: true } | { stored: false; missing: EinvoiceMissingField[] } | null> {
+  const select = { status: true, artifactUblRef: true }
+  const row = kind === "invoice" ? await prisma.invoice.findFirst({ where: { id, organizationId }, select }) : await prisma.creditNote.findFirst({ where: { id, organizationId }, select })
+  if (!row) throw new EinvoiceSourceNotFound(kind, id)
+  if (row.status === "draft") return null
+  if (row.artifactUblRef) return { stored: true }
+  return { stored: false, missing: await issuedEinvoiceGaps(organizationId, kind, id) }
+}
+
 async function issuedEinvoiceGaps(organizationId: string, kind: EinvoiceDocumentKind, id: string): Promise<EinvoiceMissingField[]> {
   const document = await loadEinvoiceDocument(organizationId, kind, id)
   try { return validateEinvoice(document) }

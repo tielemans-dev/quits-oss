@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import type { EinvoiceMissingField } from "@quits/contracts/exports"
 import { AlertTriangle, Download } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { downloadTextFile } from "../../../lib/exports/download"
 import { useI18n } from "../../../lib/i18n/react"
 import { trpc } from "../../../trpc/client"
@@ -16,8 +16,23 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
   const [missing, setMissing] = useState<EinvoiceMissingField[]>([])
   const [issued, setIssued] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unavailable, setUnavailable] = useState(false)
+  const draft = invoice.status === "draft"
 
-  if (invoice.status === "draft") {
+  // An issued invoice either carries its stored e-invoice or never will, so say which before anyone clicks.
+  useEffect(() => {
+    if (draft) return
+    let current = true
+    trpc.exports.einvoiceStatus.query({ kind: "invoice", id: invoice.id }).then((status) => {
+      if (!current || !status || status.stored) return
+      setMissing(status.missing)
+      setIssued(true)
+      setUnavailable(status.missing.length === 0)
+    }, () => {})
+    return () => { current = false }
+  }, [draft, invoice.id])
+
+  if (draft) {
     return null
   }
 
@@ -51,12 +66,15 @@ export function InvoiceExportsPanel({ invoice }: InvoicePanelProps) {
         <CardDescription>{t("exports.einvoice.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div>
-          <Button type="button" variant="outline" onClick={handleDownload} disabled={busy}>
-            <Download className="size-4" />
-            {busy ? t("exports.einvoice.preparing") : t("exports.einvoice.download")}
-          </Button>
-        </div>
+        {issued ? null : (
+          <div>
+            <Button type="button" variant="outline" onClick={handleDownload} disabled={busy}>
+              <Download className="size-4" />
+              {busy ? t("exports.einvoice.preparing") : t("exports.einvoice.download")}
+            </Button>
+          </div>
+        )}
+        {unavailable ? <p className="text-sm text-muted-foreground">{t("exports.einvoice.unavailable")}</p> : null}
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

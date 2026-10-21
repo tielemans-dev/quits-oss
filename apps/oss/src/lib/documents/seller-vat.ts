@@ -9,14 +9,11 @@ export function sellerVatPresentationStatus(momsRegistered: boolean | null | und
 /** Historic documents with no registration snapshot keep their original presentation. */
 export function sellerVatLineText(momsRegistered: boolean | null | undefined, taxRate: number | undefined, locale?: string | null): string | null {
   if (momsRegistered === false && taxRate === 0) return translate("line.noVat", locale)
-  return momsRegistered != null && taxRate === 25 ? "25 % moms" : null
+  return momsRegistered != null && taxRate === 25 ? translate("invoiceVat.hosted", locale, { rate: formatNumber(taxRate, locale) }) : null
 }
 
 /**
- * The same line note on an app screen, in the interface's language. The document keeps its
- * own wording: PDFs, emails and public pages use `sellerVatLineText`.
+ * @deprecated App screens and documents now share one wording; use `sellerVatLineText`. Kept so
+ * code written against earlier releases, such as CI's baseline screenshot pages, still loads.
  */
-export function sellerVatLineLabel(momsRegistered: boolean | null | undefined, taxRate: number | undefined, locale?: string | null): string | null {
-  if (momsRegistered != null && taxRate === 25) return translate("invoiceVat.hosted", locale, { rate: formatNumber(taxRate, locale) })
-  return sellerVatLineText(momsRegistered, taxRate, locale)
-}
+export const sellerVatLineLabel = sellerVatLineText

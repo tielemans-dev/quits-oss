@@ -13,5 +13,5 @@ export const enSellerVatMessages = {
   "onboardingV2.reviewTitle": "Review company",
   "onboardingV2.companyForm": "Company form",
   "vatStatus.withdraw": "Withdraw all seller confirmations",
-  "line.noVat": "No moms",
+  "line.noVat": "No VAT",
 } as const

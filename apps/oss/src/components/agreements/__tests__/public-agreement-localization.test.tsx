@@ -239,7 +239,7 @@ describe("frozen agreement VAT presentation", () => {
         settings: { companyName: "Changed seller", companyEmail: "billing@example.test", locale: "en-US", documentSendingDomain: null, documentSendingDomainStatus: null } as never }).html,
     ]
     for (const output of outputs(offer)) {
-      expect(output).toContain(locale === "da-DK" ? "Ingen moms" : "No moms")
+      expect(output).toContain(locale === "da-DK" ? "Ingen moms" : "No VAT")
       expect(output.split(nonVatStatement(locale))).toHaveLength(2)
       expect(output).not.toMatch(/ekskl. moms|eksklusive moms|excluding VAT|including VAT/)
     }

@@ -320,7 +320,7 @@ describe("PublicQuotePage", () => {
       expect(html).toContain("Synthetic instructions")
       expect(textOf(html)).toContain(formatCurrency(1250, "USD", locale))
       if (taxRate === 0) expect(html).toContain(translate("line.noVat", locale))
-      else { expect(html).toContain("25 % moms"); expect(html).not.toContain(translate("line.noVat", locale)) }
+      else { expect(html).toContain(translate("invoiceVat.hosted", locale, { rate: "25" })); expect(html).not.toContain(`>${translate("line.noVat", locale)}<`) }
     }
   })
   it.each([null, undefined, true])("does not infer non-registration for legacy/registered quotes %s", momsRegistered => {
@@ -328,7 +328,7 @@ describe("PublicQuotePage", () => {
       quote: { ...baseQuote, sellerSnapshot: { ...baseQuote.sellerSnapshot, momsRegistered }, items: baseQuote.items.map(item => ({ ...item, taxRate: 0 })) },
     }} />)
     expect(html).not.toContain(nonVatStatement("en"))
-    expect(html).not.toContain("No moms")
+    expect(html).not.toContain(`>${translate("line.noVat", "en-US")}<`)
   })
 
   it.each(["America/New_York", "Pacific/Pago_Pago", "Europe/Copenhagen"])(

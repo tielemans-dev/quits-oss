@@ -367,7 +367,7 @@ async function setup(momsRegistered: boolean | null, taxRate = 25) {
     expect(publicQuote.totalGross).toBe(100)
     const html = composeQuoteEmail({ quote: { ...sent, number: sent.number! }, settings, to: "buyer@example.test", publicQuoteUrl: "https://example.test/q/synthetic" }).message.html
     expect(html.split(nonVatStatement(locale))).toHaveLength(2)
-    expect(html).toContain(locale === "da-DK" ? "Ingen moms" : "No moms")
+    expect(html).toContain(locale === "da-DK" ? "Ingen moms" : "No VAT")
     expect(html).toContain("Synthetic instructions")
     expect(html).toContain("Frozen synthetic seller")
     expect(html).not.toContain("Changed synthetic seller")

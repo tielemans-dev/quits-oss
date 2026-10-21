@@ -15,7 +15,7 @@ import { formatCurrency } from "../i18n/format"
 import { buildDkPresets } from "../onboarding/dk-presets"
 import { nonVatStatement } from "../documents/non-vat-note"
 import { withoutNonVatStatement } from "../documents/non-vat-presentation"
-import { sellerVatLineText } from "../documents/seller-vat"
+import { sellerVatLineLabel, sellerVatLineText } from "../documents/seller-vat"
 
 const invoice: InvoiceForPdf = {
   number: "SYNTHETIC-0042", status: "sent", issueDate: "2026-10-11T12:00:00Z", dueDate: "2026-11-09", subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", notes: null, pricesIncludeTax: false,
@@ -42,6 +42,7 @@ function outputs(locale: string, momsRegistered?: boolean | null, overrides: Par
     } }} /></LocalizedDocument>),
   ]
 }
+const registeredLine = (locale: string) => locale.startsWith("da") ? "25 % moms" : "25 % VAT"
 describe("seller VAT presentation", () => {
   it.each(["da-DK", "en-US"])("prints optional SE beside CVR across invoice, credit PDF, email and pay in %s", locale => {
     const label = locale === "da-DK" ? "SE-nr." : "SE no."
@@ -78,7 +79,7 @@ describe("seller VAT presentation", () => {
 
   it.each([
     ["da-DK", "Ingen moms", "Der er ikke beregnet moms, da sælger ikke er momsregistreret.", "Betalingsoplysninger"],
-    ["en-US", "No moms", "No VAT charged – the seller is not VAT-registered.", "Payment details"],
+    ["en-US", "No VAT", "No VAT charged – the seller is not VAT-registered.", "Payment details"],
   ])("renders the exact %s note and plain line text before payment", (locale, line, note, paymentTitle) => {
     const [pdf, email, pay] = outputs(locale, false)
     for (const output of [pdf!, email!, pay!]) {
@@ -89,9 +90,9 @@ describe("seller VAT presentation", () => {
     expect(pay!.indexOf(note)).toBeLessThan(pay!.indexOf(paymentTitle))
     expect(email!.indexOf(note)).toBeLessThan(email!.indexOf("https://example.test/pay/test"))
   })
-  it.each(["da-DK", "en-US"])("keeps registered 25 %% moms text and omits the non-registration note in %s", locale => {
+  it.each(["da-DK", "en-US"])("keeps registered 25 %% VAT text and omits the non-registration note in %s", locale => {
     for (const output of outputs(locale, true)) {
-      expect(output).toContain("25 % moms")
+      expect(output).toContain(registeredLine(locale))
       expect(output).not.toContain(nonVatStatement(locale))
     }
   })
@@ -100,7 +101,7 @@ describe("seller VAT presentation", () => {
     const paymentNote = `Synthetic transfer instructions\n${preset.paymentNote}\n${nonVatStatement("en")}`
     const notes = `Synthetic document instructions\n${nonVatStatement(locale)}`
     for (const output of outputs(locale, true, { taxRegime: "eu_vat", paymentNote, notes })) {
-      expect(output).toContain("25 % moms")
+      expect(output).toContain(registeredLine(locale))
       expect(output).not.toContain(nonVatStatement(locale))
       expect(output).toContain(formatCurrency(125, "DKK", locale))
     }
@@ -113,7 +114,7 @@ describe("seller VAT presentation", () => {
       expect(output.split(nonVatStatement(locale))).toHaveLength(2)
       expect(output).toContain(translate("line.noVat", locale))
       expect(output).toContain(formatCurrency(100, "DKK", locale))
-      expect(output).not.toContain("25 % moms")
+      expect(output).not.toContain(registeredLine(locale))
     }
     expect(withoutNonVatStatement("Synthetic custom instructions", true, "eu_vat")).toBe("Synthetic custom instructions")
     expect(withoutNonVatStatement(preset.paymentNote, true, "eu_vat")).toBeNull()
@@ -121,7 +122,7 @@ describe("seller VAT presentation", () => {
     expect(preset.taxRate).toBe(0)
   })
   it.each([null, undefined])("keeps historic documents without a status unchanged: %s", status => {
-    for (const output of outputs("en-US", status)) expect(output).not.toMatch(/No moms|The company is not VAT registered|25 % moms/)
+    for (const output of outputs("en-US", status)) expect(output).not.toMatch(/No moms|No VAT\b(?! charged)|The company is not VAT registered|25 % (moms|VAT)/)
   })
   it.each(["custom", "us_sales_tax"])("preserves 25 percent custom tax without VAT-specific presentation under %s", taxRegime => {
     for (const output of outputs("en-US", false, { taxRegime, notes: `Synthetic instructions\n${nonVatStatement("en")}`, paymentNote: `Synthetic transfer instructions\n${nonVatStatement("en")}`, taxAmount: 25, total: 125,
@@ -130,7 +131,7 @@ describe("seller VAT presentation", () => {
         quote: { number: "Synthetic quote", issueDate: invoice.issueDate, expiryDate: "2099-12-01", subtotal: 100, taxAmount: 25, total: 125, currency: "DKK", momsRegistered: false, taxRegime, items: [{ ...invoice.items[0]!, taxRate: 25 }] },
         org: { locale: "en-US" }, contactName: "Synthetic buyer",
       }).html)) {
-      expect(output).not.toMatch(/25 % moms|No moms|Ingen moms|The company is not VAT registered/)
+      expect(output).not.toMatch(/25 % (moms|VAT)|No moms|No VAT\b(?! charged)|Ingen moms|The company is not VAT registered/)
       expect(output).toContain(formatCurrency(125, "DKK", "en-US"))
       expect(output).toContain(formatCurrency(25, "DKK", "en-US"))
     }
@@ -146,9 +147,12 @@ describe("seller VAT presentation", () => {
   it("does not label other registered rates as 25 %%", () => {
     expect(sellerVatLineText(true, 20, "en-US")).toBeNull()
   })
+  it("keeps the old line label export working for code built against earlier releases", () => {
+    expect(sellerVatLineLabel).toBe(sellerVatLineText)
+  })
   it.each(["da-DK", "en-US"])("never labels a stored 25 %% line as no VAT in %s", locale => {
     for (const output of outputs(locale, false, { taxAmount: 25, total: 125, vatRows: [{ ratePercent: "25", net: "100", tax: "25", gross: "125" }], items: [{ ...invoice.items[0]!, taxRate: 25 }] })) {
-      expect(output).toContain("25 % moms")
+      expect(output).toContain(registeredLine(locale))
       expect(output).toContain(formatCurrency(125, "DKK", locale))
       expect(output).toContain(translate("pdf.taxRate", locale, { rate: "25" }))
       expect(output).not.toMatch(/Ingen moms|No moms/)
@@ -175,7 +179,7 @@ describe("seller VAT presentation", () => {
   it.each(["da-DK", "en-US"])("keeps a non-registered zero VAT document without a VAT breakdown in %s", locale => {
     for (const output of outputs(locale, false, { vatRows: [{ ratePercent: "0", net: "100", tax: "0", gross: "100" }] })) {
       expect(output).not.toContain(translate("pdf.taxRate", locale, { rate: "0" }))
-      expect(output).not.toContain("25 % moms")
+      expect(output).not.toContain(registeredLine(locale))
       expect(output).toContain(formatCurrency(100, "DKK", locale))
       expect(output).toContain(nonVatStatement(locale))
     }
