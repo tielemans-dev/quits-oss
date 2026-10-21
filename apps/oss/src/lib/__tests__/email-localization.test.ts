@@ -103,3 +103,17 @@ describe("document email calendar dates", () => {
     }
   )
 })
+
+describe("invoice email PDF line", () => {
+  it.each([["da-DK", "Fakturaen er vedhæftet som PDF."], ["en-US", "The invoice is attached as a PDF."]])(
+    "says the PDF is attached in %s only when it is", (locale, line) => {
+      const input = {
+        invoice: { number: "INV-0001", issueDate: "2026-10-01T00:00:00.000Z", dueDate: "2026-10-15T00:00:00.000Z",
+          subtotal: 100, taxAmount: 0, total: 100, currency: "DKK", items: [] },
+        org: { companyName: "Seller", locale }, contactName: "Buyer",
+      }
+      expect(buildInvoiceEmailContent(input).html).not.toContain(line)
+      expect(buildInvoiceEmailContent({ ...input, pdfAttached: true }).html).toContain(line)
+    }
+  )
+})

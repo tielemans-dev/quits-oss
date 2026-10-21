@@ -48,4 +48,14 @@ describe("credit note email", () => {
     expect(reduced).toContain(locale === "da-DK" ? "5 % moms" : "5% tax")
   })
 
+  it.each([
+    ["da-DK", "Kreditnota CN-0001 af 6. oktober 2026 til faktura INV-0001.", "Kreditnotaen er vedhæftet som PDF."],
+    ["en-US", "Credit note CN-0001 dated October 6, 2026 for invoice INV-0001.", "The credit note is attached as a PDF."],
+  ])("shows the credit note's own number and issue date in %s, and the PDF only when attached", (locale, issued, attached) => {
+    const without = buildCreditNoteEmailContent({ ...params, org: { locale, timezone: "UTC" } })
+    expect(without.html).toContain(issued)
+    expect(without.html).not.toContain(attached)
+    expect(buildCreditNoteEmailContent({ ...params, org: { locale, timezone: "UTC" }, pdfAttached: true }).html).toContain(`${issued} ${attached}`)
+  })
+
 })

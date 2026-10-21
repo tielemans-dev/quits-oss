@@ -17,6 +17,7 @@ import { buildTotals } from "./documents/totals"
 import { selectedEmailProvider, readSmtpConfiguration, type EmailProvider, type EmailEnvironment } from "./email-provider-config"
 import { getRuntimePlatform, getRuntimeEnv } from "./runtime/platform"
 import { formatSenderAddress } from "./email-sender"
+import type { PdfAttachment } from "./documents/pdf-attachment"
 
 let _resend: Resend | null = null
 
@@ -90,14 +91,15 @@ export type EmailContent = {
   replyTo: string | null
 }
 
-/** The provider message for rendered content. */
-export function composeMessage(to: string, content: EmailContent) {
+/** The provider message for rendered content, with the issued document PDF when there is one. */
+export function composeMessage(to: string, content: EmailContent, pdf?: PdfAttachment | null) {
   return {
     from: content.fromAddress,
     to,
     subject: content.subject,
     html: content.html,
     ...(content.replyTo ? { replyTo: content.replyTo } : {}),
+    ...(pdf ? { attachments: [pdf] } : {}),
   }
 }
 
@@ -345,6 +347,8 @@ export type SendInvoiceEmailParams = {
   }
   contactName: string
   publicPaymentUrl?: string | null
+  /** The issued PDF goes with the email; the body then says so. */
+  pdfAttached?: boolean
 }
 
 export function buildInvoiceEmailContent({
@@ -355,6 +359,7 @@ export function buildInvoiceEmailContent({
   org,
   contactName,
   publicPaymentUrl,
+  pdfAttached = false,
 }: Omit<SendInvoiceEmailParams, "to">) {
   const safeFromName = sanitizeHeader(fromName ?? org.companyName ?? "Quits")
   const safeFromEmail = sanitizeHeader(fromEmail ?? fromAddress())
@@ -369,7 +374,7 @@ export function buildInvoiceEmailContent({
   const showPaymentInstructions = balanceDue > 0 && (hasTransferDetails || Boolean(publicPaymentUrl))
   const html = layout(`
     <h2 style="margin:0 0 4px;font-size:24px;">${t("pdf.invoice", locale)} ${safeInvoiceNumber}</h2>
-    <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}</p>
+    <p style="margin:0 0 24px;color:${C.muted};">${t("email.invoice.greeting", locale, { name: safeContactName })}${pdfAttached ? ` ${t("email.invoice.pdfAttached", locale)}` : ""}</p>
 
     <div class="invoice-parties" style="display:flex;gap:24px;justify-content:space-between;margin-bottom:8px;">
       ${sellerBlock(org.companyName ?? "", org, locale, invoice.buyer?.country, momsRegistered)}

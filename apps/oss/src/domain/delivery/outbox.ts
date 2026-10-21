@@ -101,6 +101,8 @@ const storedMessageSchema = z.object({
   html: z.string(),
   replyTo: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
+  /** Base64 content, so a replay sends the identical bytes. Only the issued document PDF. */
+  attachments: z.array(z.object({ filename: z.string(), content: z.string(), contentType: z.string() })).optional(),
 })
 export type StoredEmailMessage = z.infer<typeof storedMessageSchema>
 
@@ -193,6 +195,7 @@ export const enqueueEmailDelivery = (input: {
       html: input.message.html,
       ...(input.message.replyTo ? { replyTo: input.message.replyTo } : {}),
       ...(input.message.headers ? { headers: input.message.headers } : {}),
+      ...(input.message.attachments?.length ? { attachments: input.message.attachments } : {}),
     }
     const db = yield* Db
     const locale = input.reminderUnsubscribeLocale

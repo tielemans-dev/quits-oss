@@ -10,6 +10,7 @@ import {
   resolveDocumentEmailEnvelope,
 } from "../../lib/document-email-sending"
 import { buildInvoiceEmailContent, composeMessage } from "../../lib/email"
+import type { PdfAttachment } from "../../lib/documents/pdf-attachment"
 import { getEmailDeliveryRuntimeStatus } from "../../lib/email-delivery"
 import type { StripeAccountStatus } from "@quits/contracts/payments"
 import { getStripePaymentConfigurationState } from "../../lib/payments/stripe"
@@ -140,6 +141,8 @@ export function composeInvoiceEmail(input: {
   settings: OrgEmailSettings
   to: string
   publicPaymentUrl: string | null
+  /** The stored, issued PDF; never a fresh render. */
+  pdf?: PdfAttachment | null
 }) {
   const { envelope } = resolveInvoiceEmailContext(input.settings)
   const { invoice } = input
@@ -188,6 +191,7 @@ export function composeInvoiceEmail(input: {
     },
     contactName: buyer?.name ?? "",
     publicPaymentUrl: input.publicPaymentUrl,
+    pdfAttached: Boolean(input.pdf),
   })
-  return { message: composeMessage(input.to, content), usingBrandedDomain: envelope.usingBrandedDomain }
+  return { message: composeMessage(input.to, content, input.pdf), usingBrandedDomain: envelope.usingBrandedDomain }
 }

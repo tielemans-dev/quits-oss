@@ -6,6 +6,7 @@ import { creditNoteIssueInputSchema, creditNoteSendInputSchema, type CreditNoteI
 import { Prisma } from "../../../generated/prisma/client"
 import { composeMessage } from "../../lib/email"
 import { buildCreditNoteEmailContent } from "../../lib/emails/credit-note-email"
+import { storedPdfAttachment } from "../../lib/documents/pdf-attachment"
 import { appLogger } from "../../lib/observability"
 import type { AnyCommandDefinition } from "../command"
 import { defineCommand } from "../command"
@@ -208,6 +209,8 @@ export const sendCreditNote = defineCommand({
         orderBy: { createdAt: "desc" }, select: { renderInput: true },
       }))
       const frozen = (candidate?.renderInput as Extract<RenderInput, { kind: "creditNote" }> | undefined)?.pdf?.creditNote
+      const pdf = yield* Effect.promise(() => storedPdfAttachment({ ref: creditNote.artifactPdfRef, hash: creditNote.artifactPdfHash, number: creditNote.number,
+        log: { organizationId, documentKind: "creditNote", documentId: creditNote.id } }))
       const content = buildCreditNoteEmailContent({
         fromName: envelope.fromName,
         fromEmail: envelope.fromEmail,
@@ -247,6 +250,7 @@ export const sendCreditNote = defineCommand({
           timezone: creditNote.timezone,
         },
         contactName: creditNote.contact.name,
+        pdfAttached: Boolean(pdf),
       })
       // Recorded as sent once the provider accepts the queued email; see `delivery/outbox.ts`.
       const { document: updated, deliveryKey } = yield* queueDocumentEmail({
@@ -254,7 +258,7 @@ export const sendCreditNote = defineCommand({
         mode: "email",
         document: creditNote,
         recipient,
-        message: composeMessage(recipient, content),
+        message: composeMessage(recipient, content, pdf),
         idempotencyKey: `credit-note-send:${command.commandId}`,
         markSending: (data) => db.creditNote.update({ where: { id: creditNote.id }, data }),
       })
@@ -262,6 +266,7 @@ export const sendCreditNote = defineCommand({
         organizationId,
         creditNoteId: creditNote.id,
         usingBrandedDomain: envelope.usingBrandedDomain,
+        pdfAttached: Boolean(pdf),
       })
       return { ...updated, emailSent: false, emailPending: true, deliveryKey, recipient }
     }),
