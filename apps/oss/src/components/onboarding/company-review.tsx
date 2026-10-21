@@ -2,6 +2,7 @@ import { useState } from "react"
 import { confirmOnboardingV2Schema, isValidDanishCvr, type ConfirmOnboardingV2Input } from "@quits/contracts/onboarding"
 import { useI18n } from "../../lib/i18n/react"
 import { translateCvrError } from "../../lib/i18n/cvr-error"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { SellerVatStatus } from "../seller-vat-status"
 import { Button } from "../ui/button"
@@ -33,8 +34,8 @@ export function CompanyReview({ company, confirmationEnabled, nonVatEnabled = fa
       const summary = confirmOnboardingV2Schema.parse({ ...values, cvr: cvr.trim(), idempotencyKey: key, source: company ? "cvr" : "manual",
         momsRegistered: registered, ...(registered ? { vatId: `DK${cvr.trim()}` } : {}) })
       const { token } = await trpc.runtime.prepareSellerVatConfirmation.mutate({ companyName: summary.companyName,
-        companyAddress: summary.companyAddress, countryCode: "DK", cvr: summary.cvr, vatId: summary.vatId })
-      const result = await trpc.onboarding.confirmV2.mutate({ ...summary, sellerVatConfirmationToken: token })
+        companyAddress: summary.companyAddress, countryCode: "DK", cvr: summary.cvr, vatId: summary.vatId }, handledMutationError)
+      const result = await trpc.onboarding.confirmV2.mutate({ ...summary, sellerVatConfirmationToken: token }, handledMutationError)
       if (result.status === "complete" || result.status === "already_complete") onComplete()
     } catch (cause) {
       setError(cause instanceof Error ? translateCvrError(cause.message, t) : t("settings.error.saveFailed"))

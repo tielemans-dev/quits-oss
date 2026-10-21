@@ -7,6 +7,7 @@ import type {
   ReceiptAllocateInput,
   ReceiptRecordInput,
 } from "@quits/contracts/payments"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { useI18n } from "../../../lib/i18n/react"
 import { LocalizedDateField } from "../../localized-date-field"
@@ -309,7 +310,7 @@ function RecordReceiptDialog({
               ...(Number(form.feeAmount) > 0
                 ? { feeEvidence: { reason: feeReason, evidence: feeEvidence } }
                 : {}),
-            })
+            }, handledMutationError)
             await onChanged()
             onClose()
           } catch (err) {
@@ -481,7 +482,7 @@ function AllocateDialog({
               await trpc.payments.allocateReceipt.mutate({
                 ...input,
                 previewToken: preview.previewToken,
-              })
+              }, handledMutationError)
               await onChanged()
               onClose()
             }
@@ -664,7 +665,7 @@ function ChangeDialog({
               await trpc.payments.changeReceipt.mutate({
                 ...input,
                 previewToken: preview.previewToken,
-              })
+              }, handledMutationError)
               await onChanged()
               onClose()
             }

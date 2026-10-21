@@ -5,6 +5,7 @@ import type { InvoiceReminderRecord } from "@quits/contracts/reminders"
 import { useActiveOrganizationId } from "../../../lib/active-organization"
 import { formatDate } from "../../../lib/i18n/format"
 import { useI18n } from "../../../lib/i18n/react"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { describeReminderOffset } from "../../settings/reminder-policy-card"
 import { StatusBadge } from "../../status-badge"
@@ -110,7 +111,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
     setBusy("send")
     setMessage(null)
     try {
-      const result = await trpc.reminders.sendNow.mutate({ invoiceId: invoice.id })
+      const result = await trpc.reminders.sendNow.mutate({ invoiceId: invoice.id }, handledMutationError)
       const { delivery } = result
       setMessage(
         delivery === "pending"
@@ -185,7 +186,7 @@ export function InvoiceRemindersPanel({ invoice, locale, onChanged }: InvoicePan
                 onChange={(event) => {
                   const paused = event.target.checked
                   void run("pause", () =>
-                    trpc.reminders.setPaused.mutate({ invoiceId: invoice.id, paused })
+                    trpc.reminders.setPaused.mutate({ invoiceId: invoice.id, paused }, handledMutationError)
                   )
                 }}
               />

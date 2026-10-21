@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { CompanyReview } from "../onboarding/company-review"
 import { I18nProvider } from "../../lib/i18n/react"
 import { requiredLabel } from "../../test-utils/required-label"
+import { handledMutationError } from "../../lib/query-refresh"
 const api = vi.hoisted(() => ({ prepare: vi.fn(async () => ({ token: "signed" })), confirm: vi.fn(async () => ({ status: "complete" })) }))
 vi.mock("../../trpc/client", () => ({ trpc: { runtime: { prepareSellerVatConfirmation: { mutate: api.prepare } }, onboarding: { confirmV2: { mutate: api.confirm } } } }))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -67,7 +68,7 @@ describe("onboarding company review after lookup", () => {
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith({ companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, vatId: registered ? "DK24256790" : undefined, countryCode: "DK" })
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: "signed", source: "cvr", ...(registered ? { vatId: "DK24256790" } : {}) }))
+    expect(api.prepare).toHaveBeenCalledWith({ companyName: company.companyName, companyAddress: company.companyAddress, cvr: company.cvr, vatId: registered ? "DK24256790" : undefined, countryCode: "DK" }, handledMutationError)
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: "signed", source: "cvr", ...(registered ? { vatId: "DK24256790" } : {}) }), handledMutationError)
   })
 })

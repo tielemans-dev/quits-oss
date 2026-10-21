@@ -29,6 +29,7 @@ vi.mock("../../../lib/i18n/react", () => ({
 
 import { translate as catalogTranslate } from "../../../lib/i18n/translate"
 import { describeReminderOffset, ReminderPolicyCard } from "../reminder-policy-card"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 // A stable translate function, as the real i18n context provides.
 function translate(key: string) {
@@ -182,6 +183,6 @@ describe("reminder schedule copy", () => {
     expect(screen.getByRole("button", { name: "reminder.onDue" })).toBeTruthy()
     fireEvent.click(screen.getAllByRole("button", { name: "reminder.remove" })[1]!)
     fireEvent.click(screen.getByRole("button", { name: "reminder.save" }))
-    await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith({ enabled: true, offsetsDays: [-1, 0] }))
+    await waitFor(() => expect(api.updatePolicy).toHaveBeenCalledWith({ enabled: true, offsetsDays: [-1, 0] }, handledMutationError))
   })
 })

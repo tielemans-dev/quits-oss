@@ -185,6 +185,7 @@ vi.mock("../../trpc/client", () => ({
 import { Route } from "../_app/settings.$section"
 import { RuntimeUiProvider, type SettingsCompanyDetailsProps } from "../../lib/runtime/ui"
 import { initializeRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
+import { handledMutationError } from "../../lib/query-refresh"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -319,7 +320,7 @@ describe("Settings tax relevance", () => {
     const { container } = render(<RouteComponent />)
     await screen.findByRole("radio", { name: "vatStatus.no" })
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError))
     expect(screen.queryByRole("button", { name: "settings.capabilities.retry" })).toBeNull()
     expect(prepareConfirmation).not.toHaveBeenCalled()
   })
@@ -339,12 +340,12 @@ describe("Settings tax relevance", () => {
     const email = container.querySelector('[name="companyEmail"]')! as HTMLInputElement
     fireEvent.change(email, { target: { value: "edited@example.test" } })
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyEmail: "edited@example.test", momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ companyEmail: "edited@example.test", momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError))
     reject(new Error("unavailable"))
     const retry = await screen.findByRole("button", { name: "settings.capabilities.retry" })
     settingsUpdate.mockClear()
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError))
     fireEvent.click(retry)
     await screen.findByRole("radio", { name: "vatStatus.yes" })
     expect(email.value).toBe("edited@example.test")
@@ -354,12 +355,12 @@ describe("Settings tax relevance", () => {
     // Once hosted confirmation is known, Save confirms the displayed stored choice.
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining(stored === null
       ? { momsRegistered: undefined, sellerVatConfirmationToken: undefined }
-      : { momsRegistered: stored, sellerVatConfirmationToken: "signed" })))
+      : { momsRegistered: stored, sellerVatConfirmationToken: "signed" }), handledMutationError))
     await waitFor(() => expect(screen.getByRole("radio", { name: "vatStatus.yes" }).matches(":disabled")).toBe(false))
     if (stored === true) fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
     fireEvent.click(screen.getByRole("radio", { name: "vatStatus.yes" }))
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true, sellerVatConfirmationToken: "signed" })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true, sellerVatConfirmationToken: "signed" }), handledMutationError))
   })
 
   it.each([[false, true, false], [false, true, true], [true, false, false]])("honors non-VAT capability for selfhost %s, confirmation %s, nonVAT %s", async (selfhost, enabled, nonVatEnabled) => {
@@ -392,8 +393,8 @@ describe("Settings tax relevance", () => {
     if (confirmationEnabled && registered) fireEvent.click(radios[1]!)
     fireEvent.click(radios[registered ? 0 : 1]!)
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: confirmationEnabled ? "signed" : undefined, taxRate: registered ? 25 : 0 })))
-    if (confirmationEnabled) expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme LLC", cvr: "24256790", countryCode: "DK" }))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: registered, sellerVatConfirmationToken: confirmationEnabled ? "signed" : undefined, taxRate: registered ? 25 : 0 }), handledMutationError))
+    if (confirmationEnabled) expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme LLC", cvr: "24256790", countryCode: "DK" }), handledMutationError)
     else expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
@@ -419,11 +420,11 @@ describe("Settings tax relevance", () => {
     fireEvent.click(screen.getByRole("button", { name: "vatStatus.withdraw" }))
     edit()
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError))
     expect(prepareConfirmation).not.toHaveBeenCalled()
     fireEvent.click(radios[0]!)
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxIdScheme: "vat" })))
+    await waitFor(() => expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxIdScheme: "vat" }), handledMutationError))
   })
 
   it("preserves the disabled hosted confirmation flag", async () => {
@@ -452,7 +453,7 @@ describe("Settings tax relevance", () => {
     expect(screen.queryByRole("radio", { name: "vatStatus.no" })).toBeNull()
     fireEvent.change(taxInput, { target: { value: taxRate } })
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ countryCode, taxRegime, momsRegistered: null, taxRate: Number(taxRate) })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ countryCode, taxRegime, momsRegistered: null, taxRate: Number(taxRate) }), handledMutationError))
     await waitFor(() => expect(taxInput.value).toBe(taxRate))
   })
   it.each(["eu_vat", "custom"])("shows the returned %s tax default immediately after saving", async taxRegime => {
@@ -565,12 +566,12 @@ describe("Settings VAT status after upstream integration", () => {
     expect(input.checkValidity()).toBe(false)
     fireEvent.change(input, { target: { value: "87654321" } })
     submitSettingsForm()
-    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ seNumber: "87654321" })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ seNumber: "87654321" }), handledMutationError))
     await waitFor(() => expect(input.form?.querySelector('[type="submit"]')?.hasAttribute("disabled")).toBe(false))
     fireEvent.change(input, { target: { value: "" } })
     expect(input.checkValidity()).toBe(true)
     submitSettingsForm()
-    await waitFor(() => expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ seNumber: "" })))
+    await waitFor(() => expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ seNumber: "" }), handledMutationError))
   })
   it.each([true, false, null])("preserves saved status %s without inventing a choice", async status => {
     await renderDanishSettings(status)
@@ -628,8 +629,8 @@ describe("Settings hosted VAT persistence", () => {
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
     expectChoice(status)
     expect(prepareConfirmation).toHaveBeenCalledTimes(1)
-    expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ registered: status, companyName: "Acme LLC", cvr: "24256790" }))
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: status, sellerVatConfirmationToken: "signed" }))
+    expect(prepareConfirmation).toHaveBeenCalledWith(expect.objectContaining({ registered: status, companyName: "Acme LLC", cvr: "24256790" }), handledMutationError)
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: status, sellerVatConfirmationToken: "signed" }), handledMutationError)
   })
 
   it("confirms nothing on Save when no stored choice is displayed", async () => {
@@ -638,7 +639,7 @@ describe("Settings hosted VAT persistence", () => {
     expectChoice(null)
     submitSettingsForm()
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError)
     expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
@@ -651,7 +652,7 @@ describe("Settings hosted VAT persistence", () => {
     expectChoice(status)
     submitSettingsForm()
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: undefined, sellerVatConfirmationToken: undefined }), handledMutationError)
     expect(prepareConfirmation).not.toHaveBeenCalled()
   })
 
@@ -663,7 +664,7 @@ describe("Settings hosted VAT persistence", () => {
     submitSettingsForm()
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
     expectChoice(status)
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: status, sellerVatConfirmationToken: "signed" }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: status, sellerVatConfirmationToken: "signed" }), handledMutationError)
     submitSettingsForm()
     await waitFor(() => expect(settingsUpdate).toHaveBeenCalledTimes(2))
     // The redisplayed saved choice is confirmed again; hosted evidence for an unchanged choice is kept.
@@ -688,7 +689,7 @@ describe("Settings hosted VAT persistence", () => {
     expectChoice(false)
     expect(prepareConfirmation).toHaveBeenCalledTimes(2)
     expect(settingsUpdate).toHaveBeenCalledTimes(failure === "prepare" ? 1 : 2)
-    expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: "signed" }))
+    expect(settingsUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ momsRegistered: false, sellerVatConfirmationToken: "signed" }), handledMutationError)
   })
 
   it("renders prefix patterns that enforce HTML Unicode-set validation", async () => {
@@ -739,7 +740,7 @@ describe("Settings company details and save results", () => {
     fireEvent.click(within(cvrRow).getByRole("button", { name: "settings.row.save" }))
     expect((await within(cvrRow).findByRole("status")).textContent).toBe("settings.success.saved")
     expect(screen.getAllByRole("status")).toHaveLength(1)
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxId: "12345674" }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ primaryTaxId: "12345674" }), handledMutationError)
     expect(within(cvrRow).getByText("12345674")).toBeTruthy()
   })
 
@@ -795,7 +796,7 @@ describe("Settings company details and save results", () => {
     fireEvent.click(within(vatRow).getByRole("button", { name: "settings.action.save" }))
     expect((await within(vatRow).findByRole(role)).textContent).toBe(text)
     expect(screen.getAllByRole(role)).toHaveLength(1)
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ momsRegistered: true }), handledMutationError)
   })
 
   it("reports under the shared Save, also for Enter through a Save hidden on another page", async () => {
@@ -890,7 +891,7 @@ describe("Settings UI extension", () => {
       companyName: "Updated company",
       companyAddress: "Main St 1",
       companyEmail: "billing@acme.example",
-    })))
+    }), handledMutationError))
   })
 
   it("passes the active organization and display locale immediately after company details, outside the save form", async () => {
@@ -941,6 +942,6 @@ describe("Settings stored payment terms", () => {
     else fireEvent.click(screen.getByRole("radio", { name: "vatStatus.no" }))
     submitSettingsForm()
     expect((await screen.findByRole("status")).textContent).toBe("settings.success.saved")
-    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ paymentTermsDays: 30 }))
+    expect(settingsUpdate).toHaveBeenCalledWith(expect.objectContaining({ paymentTermsDays: 30 }), handledMutationError)
   })
 })

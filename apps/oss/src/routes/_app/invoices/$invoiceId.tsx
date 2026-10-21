@@ -509,7 +509,7 @@ function InvoiceDetailPage() {
           unitPrice: item.unitPrice,
           vat: item.vat,
         })),
-      })
+      }, handledMutationError)
       if (!isCurrent()) return
       setInvoice(updated as unknown as Invoice)
       setIssuance(current => ({ ...current, supplyDate: editSupplyDate || initialIssuanceValues().supplyDate }))
@@ -559,7 +559,7 @@ function InvoiceDetailPage() {
       retainDraftValuation(invoice.id, invoice.currency, orgSettings.baseCurrency, issuance)
       // Review the persisted date, including drafts converted from quotes without one.
       if (invoice.supplyDate !== undefined && issuance.supplyDate !== (invoice.supplyDate ? new Date(invoice.supplyDate).toISOString().slice(0, 10) : "")) {
-        const updated = await trpc.invoices.updateV2.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, supplyDate: issuance.supplyDate })
+        const updated = await trpc.invoices.updateV2.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, supplyDate: issuance.supplyDate }, handledMutationError)
         setInvoice(updated as unknown as Invoice)
         reviewedVersion = updated.reviewedVersion
       }
@@ -651,11 +651,11 @@ function InvoiceDetailPage() {
     setActing(true)
     try {
       const invoiceId = invoice.id
-      const { paymentId } = await trpc.invoices.markPaid.mutate({ invoiceId, requestId: crypto.randomUUID() })
+      const { paymentId } = await trpc.invoices.markPaid.mutate({ invoiceId, requestId: crypto.randomUUID() }, handledMutationError)
       showUndo({
         kind: "paid",
         undo: async () => {
-          await trpc.invoices.undoMarkPaid.mutate({ invoiceId, paymentId, requestId: crypto.randomUUID() })
+          await trpc.invoices.undoMarkPaid.mutate({ invoiceId, paymentId, requestId: crypto.randomUUID() }, handledMutationError)
           await reloadInvoice()
         },
       })
@@ -675,7 +675,7 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setActing(true)
     try {
-      const result = await trpc.invoices.createPaymentLink.mutate({ id: invoice.id })
+      const result = await trpc.invoices.createPaymentLink.mutate({ id: invoice.id }, handledMutationError)
       setPaymentLinkUrl(result.url)
     } catch (err) {
       setError(
@@ -692,7 +692,7 @@ function InvoiceDetailPage() {
     if (!invoice) return
     setActing(true)
     try {
-      await trpc.invoices.delete.mutate({ id: invoice.id })
+      await trpc.invoices.delete.mutate({ id: invoice.id }, handledMutationError)
       navigate({ to: "/invoices" })
     } catch (err) {
       setError(
@@ -1121,7 +1121,7 @@ function InvoiceDetailPage() {
         <p className="text-sm text-muted-foreground">{t("invoices.aconto.help")}</p>
         <Button className="w-fit" disabled={acting} onClick={async () => {
           setActing(true)
-          try { await trpc.invoices.deductDeposits.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, ...(acontoAmount.trim() ? { amountGross: acontoAmount.trim() } : {}) }); await reloadInvoice() }
+          try { await trpc.invoices.deductDeposits.mutate({ id: invoice.id, expectedRevision: invoice.editRevision, ...(acontoAmount.trim() ? { amountGross: acontoAmount.trim() } : {}) }, handledMutationError); await reloadInvoice() }
           catch (failure) { setError(failure instanceof Error ? failure.message : t("agreements.error")) }
           finally { setActing(false) }
         }}>{t("invoices.aconto.apply")}</Button>
@@ -1132,7 +1132,7 @@ function InvoiceDetailPage() {
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{t("agreements.convertSchedule")}</AlertDialogTitle><AlertDialogDescription>{t("agreements.convertScheduleConfirm")}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>{t("agreements.cancel")}</AlertDialogCancel><AlertDialogAction onClick={async () => {
             setActing(true)
-            try { await trpc.invoices.scheduleAsSale.mutate({ id: invoice.id, confirmed: true }); await reloadInvoice() }
+            try { await trpc.invoices.scheduleAsSale.mutate({ id: invoice.id, confirmed: true }, handledMutationError); await reloadInvoice() }
             catch (failure) { setError(failure instanceof Error ? failure.message : t("agreements.error")) }
             finally { setActing(false) }
           }}>{t("agreements.convertSchedule")}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>

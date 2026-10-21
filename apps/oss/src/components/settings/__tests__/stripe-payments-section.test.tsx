@@ -25,6 +25,7 @@ vi.mock("../../../lib/i18n/react", () => ({
 }))
 
 import { StripePaymentsSection, stripeByokUpdate } from "../stripe-payments-section"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 const noop = () => {}
 
@@ -181,7 +182,7 @@ describe("StripePaymentsSection", () => {
     })
     expect(screen.queryByText("settings.payments.connect.status.active")).toBeNull()
     expect(screen.queryByText("acct_test")).toBeNull()
-    expect(api.run).toHaveBeenCalledWith({ action: "disconnect" })
+    expect(api.run).toHaveBeenCalledWith({ action: "disconnect" }, handledMutationError)
     expect(done).toHaveBeenCalledWith("disconnect")
     expect(api.get).toHaveBeenCalledOnce()
     expect((screen.getByRole("button", { name: actionFor.none }) as HTMLButtonElement).disabled).toBe(false)
@@ -195,7 +196,7 @@ describe("StripePaymentsSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "settings.payments.connect.action.open" }))
 
     await waitFor(() => expect(follow).toHaveBeenCalledWith("https://dashboard.stripe.com/"))
-    expect(api.run).toHaveBeenCalledWith({ action: "dashboard" })
+    expect(api.run).toHaveBeenCalledWith({ action: "dashboard" }, handledMutationError)
     follow.mockRestore()
   })
 

@@ -9,6 +9,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
 } }))
 import { I18nProvider } from "../../lib/i18n/react"
 import { CustomerPicker } from "../customer-picker"
+import { handledMutationError } from "../../lib/query-refresh"
 const firma = { cvr: "24256790", name: "Firma ApS", address: "Gade 1, 8000 Aarhus C", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: true, email: "faktura@firma.test" }
 const andet = { ...firma, cvr: "10150817", name: "Andet A/S", email: null }
 const props = { id: "contact", value: "", onChange: vi.fn(), onCreated: vi.fn() }
@@ -47,7 +48,7 @@ it("asks a new user for a name, then adds the register's company with a required
   await waitFor(() => expect(props.onCreated).toHaveBeenCalledWith("new"))
   expect(api.create).toHaveBeenCalledWith({
     name: firma.name, company: firma.name, address: "Gade 1", zip: "8000", city: "Aarhus C", country: "DK", taxId: firma.cvr, email: "bogholderi@firma.test", reuseCvr: true,
-  })
+  }, handledMutationError)
 })
 it("looks eight digits up by CVR number and keeps an email the person typed", async () => {
   open()

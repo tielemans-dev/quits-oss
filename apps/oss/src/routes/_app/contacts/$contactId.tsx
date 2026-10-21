@@ -84,7 +84,7 @@ function ContactPage() {
     setResuming(true)
     setError(null)
     try {
-      await trpc.contacts.resumeReminders.mutate({ id: contactId })
+      await trpc.contacts.resumeReminders.mutate({ id: contactId }, handledMutationError)
       setContact(await trpc.contacts.get.query({ id: contactId }))
     } catch {
       setError(t("contacts.reminders.error"))

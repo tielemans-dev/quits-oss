@@ -11,6 +11,7 @@ import { Textarea } from "../ui/textarea"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { useI18n } from "../../lib/i18n/react"
 import { translateCvrError } from "../../lib/i18n/cvr-error"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 
 type AiAssistantPanelProps = {
@@ -50,7 +51,7 @@ export function AiAssistantPanel({
         userMessage: prompt,
         currentValues: values,
         missing,
-      })
+      }, handledMutationError)
       setSuggestion(nextSuggestion)
     } catch (cause) {
       setError(cause instanceof Error ? translateCvrError(cause.message, t) : t("auth.onboarding.ai.suggestError"))
@@ -68,7 +69,7 @@ export function AiAssistantPanel({
       const applied = await trpc.onboardingAi.applyOnboardingPatch.mutate({
         source: "ai",
         patch: suggestion.patch,
-      })
+      }, handledMutationError)
       onApplied({
         ...applied,
         values: onboardingValuesSchema.parse(applied.values),

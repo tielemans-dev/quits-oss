@@ -84,6 +84,7 @@ import { invalidateAppLayoutSession, reuseAppLayoutSession } from "../../lib/app
 import { trpc } from "../../trpc/client"
 import { Route } from "../_app/onboarding"
 import { stageSelectedCompany, readSelectedCompany } from "../../lib/onboarding/selected-company"
+import { handledMutationError } from "../../lib/query-refresh"
 
 const RouteComponent = (Route as unknown as { component: ComponentType }).component
 
@@ -245,7 +246,7 @@ describe("OnboardingPage cloud flow", () => {
     stageSelectedCompany("user_1", "org_1", { name: "Selected ApS", address: "Testvej 12A, 1. tv.\n9000 Aalborg", cvr: "24256790" })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Selected ApS", companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr" }, missing: [] } as never)
     render(<RouteComponent />)
-    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", locale: "en-US" }))
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Selected ApS", companyAddress: "Testvej 12A, 1. tv.\n9000 Aalborg", countryCode: "DK", primaryTaxId: "24256790", primaryTaxIdScheme: "cvr", locale: "en-US" }, handledMutationError))
     expect(await screen.findByDisplayValue("Selected ApS")).toBeTruthy()
     // The registry's street and postal lines stay apart instead of running together.
     expect((screen.getByLabelText(requiredLabel("Company address")) as HTMLTextAreaElement).value).toBe("Testvej 12A, 1. tv.\n9000 Aalborg")
@@ -261,7 +262,7 @@ describe("OnboardingPage cloud flow", () => {
     stageSelectedCompany("user_1", "org_1", { name: "Nordic Advisory" })
     vi.mocked(trpc.onboarding.saveDraft.mutate).mockResolvedValue({ isComplete: false, values: { companyName: "Nordic Advisory", locale: "en-US", countryCode: "DK" }, missing: ["companyAddress"] } as never)
     render(<RouteComponent />)
-    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Nordic Advisory", primaryTaxId: null, locale: "en-US" }))
+    await waitFor(() => expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith({ companyName: "Nordic Advisory", primaryTaxId: null, locale: "en-US" }, handledMutationError))
     expect(await screen.findByDisplayValue("Nordic Advisory")).toBeTruthy()
     expect((screen.getByLabelText("Locale") as HTMLSelectElement).value).toBe("en-US")
     expect(screen.getByText("Finish organization setup")).toBeTruthy()
@@ -458,7 +459,7 @@ describe.each([
     expect(screen.queryByRole("alert")).toBeNull()
     fireEvent.submit(screen.getByRole("button", { name: label("Finish onboarding") }).closest("form")!)
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }))
-    expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith(expect.objectContaining({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", locale }))
+    expect(trpc.onboarding.saveDraft.mutate).toHaveBeenCalledWith(expect.objectContaining({ countryCode: "DK", defaultCurrency: "DKK", taxRegime: "eu_vat", locale }), handledMutationError)
   })
 
   it("preserves explicit saved and edited jurisdiction/currency/regime choices", async () => {

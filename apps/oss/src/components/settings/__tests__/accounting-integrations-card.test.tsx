@@ -18,6 +18,7 @@ vi.mock("../../../lib/i18n/react", async () => {
 })
 
 import { AccountingIntegrationsCard, describeAccountingError } from "../accounting-integrations-card"
+import { handledMutationError } from "../../../lib/query-refresh"
 
 const idle = [
   { provider: "economic", status: "not_connected", remoteAccountId: null, delivery: null },
@@ -54,7 +55,7 @@ describe("AccountingIntegrationsCard", () => {
     expect((screen.getByLabelText("Revenue account") as HTMLInputElement).value).toBe("1000")
     fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
     await waitFor(() => expect(api.saveMappings).toHaveBeenCalledTimes(2))
-    expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ provider, generation: "g", mappingRevision: "1", mappings: expect.objectContaining({ rows: [expect.objectContaining({ revenueAccount: 1000, vatCode: "U25" })] }) }))
+    expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ provider, generation: "g", mappingRevision: "1", mappings: expect.objectContaining({ rows: [expect.objectContaining({ revenueAccount: 1000, vatCode: "U25" })] }) }), handledMutationError)
   })
   it("rejects duplicate VAT groups before saving and lets readers view mappings", async () => {
     const { defaultMappings } = await import("../../../domain/accounting/mappings")
@@ -93,7 +94,7 @@ describe("AccountingIntegrationsCard", () => {
     expect(api.retry).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole("button", { name: "Retry delivery" }))
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Retry delivery" }))
-    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1", confirmReconnect: true }))
+    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1", confirmReconnect: true }, handledMutationError))
   })
   it.each(["source_review_required", "payload_totals_mismatch", "provider_totals_mismatch"])("offers only Skip for %s", async lastErrorCode => {
     load(dinero({ ...failed, lastErrorCode }, "error"))
@@ -120,14 +121,14 @@ describe("AccountingIntegrationsCard", () => {
     fireEvent.click(reload)
     await waitFor(() => expect((screen.getByLabelText("Payment account") as HTMLInputElement).value).toBe("55000"))
     fireEvent.click(screen.getByRole("button", { name: "Save mappings" }))
-    await waitFor(() => expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ mappingRevision: "current" })))
+    await waitFor(() => expect(api.saveMappings).toHaveBeenLastCalledWith(expect.objectContaining({ mappingRevision: "current" }), handledMutationError))
   })
   it("retries the earliest failure and refreshes the card", async () => {
     load(dinero(failed, "error"))
     api.retry.mockResolvedValue({ providers: dinero(clean), canDisconnect: true })
     render(<AccountingIntegrationsCard />)
     fireEvent.click(await screen.findByRole("button", { name: "Retry delivery" }))
-    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1" }))
+    await waitFor(() => expect(api.retry).toHaveBeenCalledWith({ deliveryId: "delivery-1" }, handledMutationError))
     expect(await screen.findByText("Connected")).toBeTruthy()
   })
   it("requires a reason to skip and preserves the failure when the action fails", async () => {
@@ -139,7 +140,7 @@ describe("AccountingIntegrationsCard", () => {
     expect(confirm.disabled).toBe(true)
     fireEvent.change(dialog.getByLabelText("Reason for skipping"), { target: { value: "Already entered" } })
     fireEvent.click(confirm)
-    await waitFor(() => expect(api.skip).toHaveBeenCalledWith({ deliveryId: "delivery-1", reason: "Already entered" }))
+    await waitFor(() => expect(api.skip).toHaveBeenCalledWith({ deliveryId: "delivery-1", reason: "Already entered" }, handledMutationError))
     expect((await screen.findByRole("alert")).textContent).toBe("Could not update the delivery. Try again.")
     expect(screen.getByText("Failed deliveries: 1")).toBeTruthy()
   })

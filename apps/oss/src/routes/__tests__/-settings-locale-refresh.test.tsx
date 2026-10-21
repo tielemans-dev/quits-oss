@@ -70,7 +70,7 @@ import { Route as AppRoute } from "../_app"
 import { Route as SettingsRoute } from "../_app/settings.$section"
 import { I18nProvider, useI18n } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
-import { notifyMutation } from "../../lib/query-refresh"
+import { notifyMutation, handledMutationError } from "../../lib/query-refresh"
 import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 import { getRequestOrganizationId, resetRequestOrganizationForTesting } from "../../lib/active-organization"
 
@@ -313,7 +313,7 @@ describe("saving the Settings language", () => {
     fireEvent.change(languageSelect(container), { target: { value: "en-US" } })
     expectLanguage("da")
     fireEvent.submit(container.querySelector("form")!)
-    await waitFor(() => expect(state.updateSettings).toHaveBeenCalledWith(expect.objectContaining({ locale: "en-US" })))
+    await waitFor(() => expect(state.updateSettings).toHaveBeenCalledWith(expect.objectContaining({ locale: "en-US" }), handledMutationError))
     expectLanguage("da")
     await act(async () => reject(new Error("Save rejected")))
     expect(await screen.findByText("Save rejected")).toBeTruthy()

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { I18nProvider } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { useFirstInvoiceBankNudge } from "./bank-nudge"
 const { readiness, get, update, sent } = vi.hoisted(() => ({ readiness: vi.fn(), get: vi.fn(), update: vi.fn(), sent: vi.fn() }))
 vi.mock("../../trpc/client", () => ({
@@ -55,7 +56,7 @@ it("saves the bank account, keeps the note, then continues the send", async () =
   expect(update).toHaveBeenCalledWith({
     bankAccount: { accountHolder: null, bankName: null, regNumber: "1234", accountNumber: "0012345678", iban: null, bic: null },
     note: "MobilePay 12345",
-  })
+  }, handledMutationError)
   finishSend()
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   expect(sent).toHaveBeenCalledOnce()

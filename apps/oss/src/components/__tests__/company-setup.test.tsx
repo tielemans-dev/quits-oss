@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { CompanySetup } from "../onboarding/company-setup"
 import { I18nProvider } from "../../lib/i18n/react"
 import { requiredLabel } from "../../test-utils/required-label"
+import { handledMutationError } from "../../lib/query-refresh"
 const api = vi.hoisted(() => ({ lookup: vi.fn(), prepare: vi.fn(async () => ({ token: "signed" })), confirm: vi.fn(async () => ({ status: "complete" })) }))
 vi.mock("../../trpc/client", () => ({ trpc: { runtime: { lookupOnboardingCompany: { mutate: api.lookup }, prepareSellerVatConfirmation: { mutate: api.prepare } }, onboarding: { confirmV2: { mutate: api.confirm } } } }))
 const facts = { cvr: "24256790", companyName: "Synthetic Seller", companyAddress: "Testvej 1", companyForm: "ApS", statusText: "NORMAL", presetsAllowed: true }
@@ -28,8 +29,8 @@ describe("lookup to existing onboarding review", () => {
     fireEvent.click(screen.getByRole("radio", { name: registered ? "I'm VAT-registered" : "I'm not VAT-registered" }))
     fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Edited Seller", cvr: facts.cvr }))
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ source: "cvr", companyName: "Edited Seller", momsRegistered: registered }))
+    expect(api.prepare).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Edited Seller", cvr: facts.cvr }), handledMutationError)
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ source: "cvr", companyName: "Edited Seller", momsRegistered: registered }), handledMutationError)
   })
   it.each([undefined, false])("hides unsupported non-VAT choice with capability %s after lookup", async nonVatEnabled => {
     api.lookup.mockResolvedValue({ companies: [facts], unavailable: false })
@@ -46,8 +47,8 @@ describe("lookup to existing onboarding review", () => {
     fireEvent.click(registered)
     fireEvent.click(screen.getByRole("button", { name: "Save Settings" }))
     await waitFor(() => expect(done).toHaveBeenCalledOnce())
-    expect(api.prepare).toHaveBeenCalledWith(expect.objectContaining({ companyName: facts.companyName, cvr: facts.cvr }))
-    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ source: "cvr", momsRegistered: true }))
+    expect(api.prepare).toHaveBeenCalledWith(expect.objectContaining({ companyName: facts.companyName, cvr: facts.cvr }), handledMutationError)
+    expect(api.confirm).toHaveBeenCalledWith(expect.objectContaining({ source: "cvr", momsRegistered: true }), handledMutationError)
   })
   it("shows unknown legal facts without automatic presets and keeps manual review available", async () => {
     api.lookup.mockResolvedValue({ companies: [{ ...facts, statusText: "UKENDT", presetsAllowed: false }], unavailable: false })

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { AccountingProviderStatus } from "../../domain/accounting/status"
 import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { formatDateTime } from "../agents/format"
 import {
@@ -121,7 +122,7 @@ export function AccountingIntegrationsCard() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => void runAction(() => trpc.accounting.disconnect.mutate(), t("accounting.disconnect.error"))}>{t("accounting.disconnect.confirm")}</AlertDialogAction>
+                          <AlertDialogAction onClick={() => void runAction(() => trpc.accounting.disconnect.mutate(undefined, handledMutationError), t("accounting.disconnect.error"))}>{t("accounting.disconnect.confirm")}</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -153,11 +154,11 @@ export function AccountingIntegrationsCard() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, confirmReconnect: true }), t("accounting.action.error"))}>{t("accounting.retry")}</AlertDialogAction>
+                            <AlertDialogAction disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId!, confirmReconnect: true }, handledMutationError), t("accounting.action.error"))}>{t("accounting.retry")}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog> : !["source_review_required", "payload_totals_mismatch", "provider_totals_mismatch"].includes(delivery.lastErrorCode ?? "") ?
-                        <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId! }), t("accounting.action.error"))}>{t("accounting.retry")}</Button> : null}
+                        <Button size="sm" variant="outline" disabled={disconnecting} onClick={() => void runAction(() => trpc.accounting.retry.mutate({ deliveryId: delivery.failedDeliveryId! }, handledMutationError), t("accounting.action.error"))}>{t("accounting.retry")}</Button> : null}
                       <AlertDialog onOpenChange={() => setSkipReason("")}>
                         <AlertDialogTrigger asChild><Button size="sm" variant="outline" disabled={disconnecting}>{t("accounting.skip")}</Button></AlertDialogTrigger>
                         <AlertDialogContent>
@@ -170,7 +171,7 @@ export function AccountingIntegrationsCard() {
                           </label>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t("accounting.disconnect.cancel")}</AlertDialogCancel>
-                            <AlertDialogAction disabled={disconnecting || !skipReason.trim()} onClick={() => void runAction(() => trpc.accounting.skip.mutate({ deliveryId: delivery.failedDeliveryId!, reason: skipReason }), t("accounting.action.error"))}>{t("accounting.skip")}</AlertDialogAction>
+                            <AlertDialogAction disabled={disconnecting || !skipReason.trim()} onClick={() => void runAction(() => trpc.accounting.skip.mutate({ deliveryId: delivery.failedDeliveryId!, reason: skipReason }, handledMutationError), t("accounting.action.error"))}>{t("accounting.skip")}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -180,7 +181,7 @@ export function AccountingIntegrationsCard() {
               ) : null}
               {item.mappingsInvalid ? <p role="alert" className="text-sm text-destructive">{t("accounting.mappings.storedInvalid")}</p> : null}
               {item.mappings ? <AccountingMappingsEditor key={`${organizationId}:${item.generation}:${reload}`} invalidRows={item.invalidMappingRows} provider={item.provider} config={item.mappings} canEdit={canDisconnect} busy={disconnecting}
-                save={mappings => runAction(() => trpc.accounting.saveMappings.mutate({ provider: item.provider, generation: item.generation!, mappingRevision: item.mappingRevision!, mappings }), t("accounting.mappings.error"))} /> : null}
+                save={mappings => runAction(() => trpc.accounting.saveMappings.mutate({ provider: item.provider, generation: item.generation!, mappingRevision: item.mappingRevision!, mappings }, handledMutationError), t("accounting.mappings.error"))} /> : null}
             </div>
           )
         })}

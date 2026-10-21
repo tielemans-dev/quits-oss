@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import type { ComponentType } from "react"
 import { afterEach, expect, it, vi } from "vitest"
-import { notifyMutation } from "../../lib/query-refresh"
+import { notifyMutation, handledMutationError } from "../../lib/query-refresh"
 import { I18nProvider } from "../../lib/i18n/react"
 import { translate } from "../../lib/i18n/translate"
 
@@ -33,7 +33,7 @@ it.each(["da-DK", "en-US"])("requires confirmation and permits cancellation befo
   expect(api.resume).not.toHaveBeenCalled()
   fireEvent.click(resume)
   fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: t("contacts.reminders.resume") }))
-  await waitFor(() => expect(api.resume).toHaveBeenCalledExactlyOnceWith({ id: "buyer" }))
+  await waitFor(() => expect(api.resume).toHaveBeenCalledExactlyOnceWith({ id: "buyer" }, handledMutationError))
   await waitFor(() => expect(screen.getByRole("status").textContent).toBe(t("contacts.reminders.active")))
 })
 

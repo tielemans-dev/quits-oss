@@ -14,6 +14,7 @@ import {
   type OrganizationAccessState,
   type OrganizationSummary,
 } from '../../lib/organization-access'
+import { handledMutationError } from '../../lib/query-refresh'
 import { trpc } from '../../trpc/client'
 import { Button } from '../../components/ui/button'
 import {
@@ -325,7 +326,7 @@ function OnboardingPageContent() {
                 companyName: selected.name,
                 primaryTaxId: null,
                 locale: uiOrganizationLocale,
-              })
+              }, handledMutationError)
           if (cancelled) return
           clearSelectedCompany(session!.user.id, session!.session.activeOrganizationId!)
           status = draft
@@ -624,7 +625,7 @@ function OnboardingPageContent() {
         primaryTaxIdScheme: values.primaryTaxIdScheme,
         invoicePrefix: values.invoicePrefix,
         quotePrefix: values.quotePrefix,
-      })
+      }, handledMutationError)
 
       setMissingFields(Array.isArray(draft.missing) ? draft.missing : [])
 
@@ -633,7 +634,7 @@ function OnboardingPageContent() {
         return
       }
 
-      await trpc.onboarding.completeManual.mutate({ method })
+      await trpc.onboarding.completeManual.mutate({ method }, handledMutationError)
       // The layout must see onboarding as complete now, not after its reuse window.
       invalidateAppLayoutSession()
       if (target || search.lang) loadPage(returnDestination)

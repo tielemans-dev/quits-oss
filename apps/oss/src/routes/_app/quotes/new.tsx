@@ -8,6 +8,7 @@ import { useDocumentTaxRate } from "../../../hooks/use-document-tax-rate"
 import { useOrgPricingSettings } from "../../../hooks/use-org-pricing-settings"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { trpc } from "../../../trpc/client"
 import { createThenSend } from "../../../lib/create-and-send"
 import { applyCatalogItemToLineItem, type CatalogItemOption } from "../../../lib/catalog"
@@ -145,8 +146,8 @@ function NewQuotePage() {
               unitPrice: String(item.unitPrice),
               vat: item.vat,
             })),
-          }),
-        send: (id) => trpc.quotes.send.mutate({ id }),
+          }, handledMutationError),
+        send: (id) => trpc.quotes.send.mutate({ id }, handledMutationError),
         sendImmediately,
         sendFailedMessage: t("quotes.detail.error.sendFailed"),
       })

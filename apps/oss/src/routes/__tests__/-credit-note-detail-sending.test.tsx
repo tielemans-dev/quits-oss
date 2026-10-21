@@ -39,7 +39,7 @@ vi.mock("../../lib/i18n/react", () => ({
   useI18n: () => ({ locale: "en-US", t: translate }),
 }))
 
-import { notifyMutation } from "../../lib/query-refresh"
+import { notifyMutation, handledMutationError } from "../../lib/query-refresh"
 import { Route } from "../_app/credit-notes/$creditNoteId"
 
 /** The key, followed by the document number where one is shown (to tell credit notes apart). */
@@ -192,7 +192,7 @@ describe("credit note detail while the email is being delivered", () => {
     await act(async () => {
       send.click()
     })
-    expect(api.send).toHaveBeenCalledWith({ id: "cn_1" })
+    expect(api.send).toHaveBeenCalledWith({ id: "cn_1" }, handledMutationError)
 
     // Navigate to another credit note while the first one is still being sent.
     api.creditNoteId = "cn_2"

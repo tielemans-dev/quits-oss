@@ -12,6 +12,7 @@ import { useActiveOrganizationId } from "../../lib/active-organization"
 import { useI18n } from "../../lib/i18n/react"
 import type { TranslationKey } from "../../lib/i18n/messages"
 import { buildPaymentDetailsBlock } from "../../lib/payment-details-block"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
@@ -274,7 +275,7 @@ export function PaymentDetailsCard({ locale }: { locale?: string | null }) {
     setSaving(true)
     setMessage(null)
     try {
-      const state = await trpc.paymentDetails.update.mutate(parsed.data)
+      const state = await trpc.paymentDetails.update.mutate(parsed.data, handledMutationError)
       if (!stillCurrent()) return
       const next = toValues(state)
       setValues(next)

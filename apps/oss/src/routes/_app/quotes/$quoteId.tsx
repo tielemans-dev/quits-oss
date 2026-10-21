@@ -319,7 +319,7 @@ function QuoteDetailPage() {
           unitPrice: item.unitPrice,
           vat: item.vat,
         })),
-      })
+      }, handledMutationError)
       if (!isCurrent()) return
       setQuote(updated as unknown as Quote)
       setEditing(false)
@@ -387,7 +387,7 @@ function QuoteDetailPage() {
     if (!quote) return
     setActing(true)
     try {
-      await trpc.quotes.reject.mutate({ id: quote.id })
+      await trpc.quotes.reject.mutate({ id: quote.id }, handledMutationError)
       const updated = await trpc.quotes.get.query({ id: quoteId })
       setQuote(updated as unknown as Quote)
     } catch (err) {
@@ -408,7 +408,7 @@ function QuoteDetailPage() {
     setActing(true)
     setError(null)
     try {
-      const agreement = await trpc.agreements.createDraftDecimal.mutate({ sourceQuoteId: quote.id, validUntil: agreementValidUntil })
+      const agreement = await trpc.agreements.createDraftDecimal.mutate({ sourceQuoteId: quote.id, validUntil: agreementValidUntil }, handledMutationError)
       await navigate({ to: "/agreements/$agreementId/edit", params: { agreementId: agreement.id } })
     } catch (err) {
       setError(err instanceof Error ? err.message : t("agreements.error"))
@@ -420,7 +420,7 @@ function QuoteDetailPage() {
     if (!quote) return
     setActing(true)
     try {
-      const invoice = await trpc.quotes.convertToInvoice.mutate({ id: quote.id })
+      const invoice = await trpc.quotes.convertToInvoice.mutate({ id: quote.id }, handledMutationError)
       navigate({ to: "/invoices/$invoiceId", params: { invoiceId: invoice.id }, search: { emailWarning: undefined } })
     } catch (err) {
       setError(
@@ -436,7 +436,7 @@ function QuoteDetailPage() {
     if (!quote) return
     setActing(true)
     try {
-      await trpc.quotes.delete.mutate({ id: quote.id })
+      await trpc.quotes.delete.mutate({ id: quote.id }, handledMutationError)
       navigate({ to: "/quotes" })
     } catch (err) {
       setError(
