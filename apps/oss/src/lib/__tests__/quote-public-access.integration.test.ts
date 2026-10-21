@@ -12,10 +12,12 @@ import {
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL)
 const describeIfDatabase = hasDatabaseUrl ? describe : describe.skip
 const secret = "quote-public-test-secret"
+const organizationIds: string[] = []
 
 // MOCK: synthetic organization, contact and financial quote fixture in the test database only.
 async function seedPublicQuote() {
   const orgId = randomUUID()
+  organizationIds.push(orgId)
   const contactId = randomUUID()
   const slug = `quote-public-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`
 
@@ -96,11 +98,7 @@ describeIfDatabase("quote public access", () => {
     expect(decided.quote.vatRows).toEqual(rows)
   })
   afterEach(async () => {
-    await cleanupTestOrganizations({
-      where: {
-        name: "Public Quote Org",
-      },
-    })
+    await cleanupTestOrganizations({ where: { id: { in: organizationIds.splice(0) } } })
   })
 
   it("loads a sent quote from a valid public token and returns pending decision state", async () => {

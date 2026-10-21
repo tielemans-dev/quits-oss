@@ -66,9 +66,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.quality.json && tsc --noEmit -p tsconfig.json",
     "pretypecheck:app": "[ \"$QUITS_PRISMA_PREGENERATED\" = 1 ] || bun run prisma:generate",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
-    "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.global.config.ts",
+    "test": "bun run i18n:check && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.integration.config.ts && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.global.config.ts",
     "pretest:integration": "bun run prisma:generate",
-    "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.config.ts src/trpc/routers/__tests__/*.integration.test.ts && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.global.config.ts",
+    "test:integration": "node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.integration.config.ts src/trpc/routers/__tests__/*.integration.test.ts && node ../../scripts/run-with-workspace-env.mjs bunx --no-install vp test run -c vitest.global.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:shared": "node e2e/run.mjs"
   },

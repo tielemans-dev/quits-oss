@@ -2,7 +2,8 @@
 
 import dotenv from "dotenv"
 import { spawnSync } from "node:child_process"
-import { discoverWorkspaceEnvFile } from "./workspace-env.js"
+import { readFileSync } from "node:fs"
+import { discoverWorkspaceEnvFile, isBorrowedWorkspaceEnvFile } from "./workspace-env.js"
 import { worktreeEnvironment } from "./slot.mjs"
 
 const input = process.argv.slice(2)
@@ -22,10 +23,11 @@ if (worktree) process.env.QUITS_WORKTREE_ENV = "1"
 const envFile = discoverWorkspaceEnvFile()
 
 if (envFile) {
-  dotenv.config({
-    path: envFile,
-    processEnv: env,
-  })
+  const values = dotenv.parse(readFileSync(envFile))
+  // A worktree may borrow the main checkout's `.env`, but never its database: tests and builds run
+  // from the worktree would write to it. Give the worktree its own DATABASE_URL instead.
+  if (isBorrowedWorkspaceEnvFile(envFile)) delete values.DATABASE_URL
+  dotenv.populate(env, values)
 }
 
 if (dev) {
