@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [0.17.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.17.0)
+
+Changes since the published v0.16.3 tag, covering 8 merged PRs.
+
+- Keep a CVR customer's register identity, the CVR number, legal name and registered address, beside its editable billing address. Adds two database migrations.
+- Lock a CVR customer's name and number in the forms, and add "Opdater fra CVR" to refresh them from the register.
+- Let a CVR customer be invoiced under one of its registered secondary names (binavne). The CVR lookup contract gains an optional `secondaryNames`.
+- Take register facts only from the server's own lookup, never from an agent request.
+- Prune low-signal tests and shorten two slow ones.
+
+See the [release notes](docs/releases/v0.17.0.md) for upgrade notes.
+
+[Compare with v0.16.3](https://github.com/tielemans-dev/quits-oss/compare/v0.16.3...v0.17.0).
+
 ## [0.16.3](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.16.3)
 
 Changes since the published v0.16.2 tag, covering 4 merged PRs.
