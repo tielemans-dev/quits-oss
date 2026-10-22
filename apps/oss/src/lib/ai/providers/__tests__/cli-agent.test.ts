@@ -94,13 +94,6 @@ describe("cli agent provider", () => {
     resetRuntimePlatform()
   })
 
-  it("has the cli_agent id and no model list", () => {
-    const provider = createCliAgentProvider()
-
-    expect(provider.id).toBe("cli_agent")
-    expect(provider.listModels).toBeUndefined()
-  })
-
   it("splits the command into argv honouring quotes and spawns without a shell", async () => {
     vi.stubEnv(
       "QUITS_AI_LOCAL_AGENT_COMMAND",

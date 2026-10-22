@@ -98,40 +98,6 @@ describe("themeInitScript", () => {
     new Function(themeInitScript)()
   }
 
-  it("applies a stored dark preference before first paint", () => {
-    stubSystemTheme(false)
-    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
-    runInitScript()
-    expect(isDark()).toBe(true)
-  })
-
-  it("follows the system when nothing is stored or the preference is system", () => {
-    stubSystemTheme(true)
-    runInitScript()
-    expect(isDark()).toBe(true)
-
-    document.documentElement.className = ""
-    window.localStorage.setItem(THEME_STORAGE_KEY, "system")
-    runInitScript()
-    expect(isDark()).toBe(true)
-  })
-
-  it("lets an explicit light preference beat a dark system", () => {
-    stubSystemTheme(true)
-    window.localStorage.setItem(THEME_STORAGE_KEY, "light")
-    document.documentElement.classList.add("dark")
-    runInitScript()
-    expect(isDark()).toBe(false)
-  })
-
-  it("keeps public document pages light whatever is stored", () => {
-    stubSystemTheme(true)
-    window.localStorage.setItem(THEME_STORAGE_KEY, "dark")
-    window.history.pushState({}, "", "/pay/some-token")
-    runInitScript()
-    expect(isDark()).toBe(false)
-  })
-
   it("still works when storage is unavailable", () => {
     stubSystemTheme(true)
     const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {

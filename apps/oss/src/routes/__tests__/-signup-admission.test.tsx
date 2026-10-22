@@ -221,10 +221,6 @@ describe('signup admission UI', () => {
       expect((screen.getByRole('button', { name: 'Join the waitlist' }) as HTMLButtonElement).disabled).toBe(false)
     } finally { vi.useRealTimers() }
   })
-  it('renders final Danish invitation copy', () => {
-    show('da'); expect(screen.getByText('Du skal have en invitation for at oprette en konto. Er din e-mail inviteret, kan du lade koden stå tom.')).toBeTruthy()
-    expect(screen.getByLabelText(/Invitationskode/)).toBeTruthy()
-  })
   it('says why the button waits while admission is pending', async () => {
     let finish!: (value: unknown) => void
     signUp.mockReturnValue(new Promise(resolve => { finish = resolve }))

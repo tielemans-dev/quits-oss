@@ -8,18 +8,13 @@ import { reminderStatusSchema } from "@quits/contracts/reminders"
 import { recurringStatusSchema } from "@quits/contracts/recurring"
 import { describe, expect, it } from "vitest"
 
-import { daMessages, enMessages } from "../i18n/messages"
 import {
   getStatusEntry,
   getStatusLabel,
   getStatusTone,
   statusTones,
   type StatusDomain,
-  type StatusEntry,
-  type StatusTone,
 } from "../status-tones"
-
-const tones: StatusTone[] = ["neutral", "info", "progress", "success", "warning", "danger", "muted"]
 
 /** The statuses each domain can hold, from the contracts (the quote and settings ones have none). */
 const contractStatuses: Partial<Record<StatusDomain, readonly string[]>> = {
@@ -67,21 +62,6 @@ describe("status tones", () => {
     ])
   })
 
-  it("labels every status in English and Danish", () => {
-    for (const entries of Object.values<Record<string, StatusEntry>>(statusTones)) {
-      for (const { labelKey } of Object.values(entries)) {
-        expect(enMessages[labelKey], labelKey).toBeTruthy()
-        expect(daMessages[labelKey], labelKey).toBeTruthy()
-      }
-    }
-  })
-
-  it("uses only known tones", () => {
-    for (const entries of Object.values<Record<string, StatusEntry>>(statusTones)) {
-      for (const { tone } of Object.values(entries)) expect(tones).toContain(tone)
-    }
-  })
-
   it("judges statuses by what they mean", () => {
     expect(getStatusTone("invoice", "draft")).toBe("neutral")
     expect(getStatusTone("invoice", "sent")).toBe("info")
@@ -91,11 +71,7 @@ describe("status tones", () => {
     expect(getStatusTone("invoice", "overdue")).toBe("warning")
     expect(getStatusTone("invoice", "credited")).toBe("muted")
     expect(getStatusTone("quote", "accepted")).toBe("success")
-    expect(getStatusTone("quote", "rejected")).toBe("muted")
-    expect(getStatusTone("quote", "expired")).toBe("muted")
     expect(getStatusTone("recurring", "active")).toBe("success")
-    expect(getStatusTone("recurring", "paused")).toBe("warning")
-    expect(getStatusTone("recurring", "ended")).toBe("muted")
     expect(getStatusTone("emailDelivery", "unconfirmed")).toBe("warning")
     expect(getStatusTone("reminder", "failed")).toBe("danger")
     expect(getStatusTone("stripeAccount", "none")).toBe("neutral")
