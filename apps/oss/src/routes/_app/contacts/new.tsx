@@ -101,7 +101,7 @@ function NewContactPage() {
         // The server takes the legal name, CVR number and registered address from its own lookup.
         registryCvr: prefill.customer?.taxId,
       }, handledMutationError)
-      navigate(returnTo ? { to: returnTo, search: { contactId: contact.id } } : { to: "/contacts" })
+      navigate(returnTo ? { to: returnTo, search: { contactId: contact.id } } : { to: "/contacts/$contactId", params: { contactId: contact.id }, search: {} })
     } catch (err) {
       const lookupError = prefill.customer?.taxId ? cvrSaveLookupError(err) : null
       setError(lookupError ? t(lookupError) : contactSaveError(err, t, "contacts.new.error.createFailed"))

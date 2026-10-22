@@ -22,6 +22,8 @@ export const daContactsMessages = {
   "contacts.cvr.inactiveUndated": "CVR-status: {status}. Tjek, at det er den rigtige kunde.",
   "contacts.cvr.refresh": "Opdater fra CVR",
   "contacts.cvr.refreshing": "Opdaterer…",
+  "contacts.cvr.refreshed": "Opdateret fra CVR-registret.",
+  "contacts.cvr.unchanged": "Kunden er allerede opdateret. Intet er ændret i CVR-registret.",
   "contacts.registry.locked": "Navn og CVR-nummer følger CVR-registret.",
   "contacts.registry.lockedNames": "Vælg det juridiske navn eller et binavn fra CVR-registret. CVR-nummeret følger registret.",
   "contacts.billing.useRegistered": "Brug registreret adresse",

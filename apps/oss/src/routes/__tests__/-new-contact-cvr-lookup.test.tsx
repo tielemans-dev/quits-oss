@@ -50,6 +50,15 @@ describe("new customer CVR lookup", () => {
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/invoices/new", search: { contactId: "new" } }))
   })
 
+  it("opens the new customer's page when the form was opened on its own", async () => {
+    api.create.mockResolvedValue({ id: "new" })
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    fireEvent.change(screen.getByLabelText(/^Navn/), { target: { value: "Anna Jensen" } })
+    await waitFor(() => expect((screen.getByRole("button", { name: "Opret kunde" }) as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
+    await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/contacts/$contactId", params: { contactId: "new" }, search: {} }))
+  })
+
   it("fills the customer from the register, locks its identity and keeps a name already typed", async () => {
     api.customer.mockResolvedValue(company)
     api.create.mockResolvedValue({ id: "new" })

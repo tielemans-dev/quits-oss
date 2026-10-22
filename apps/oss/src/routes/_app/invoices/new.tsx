@@ -57,7 +57,7 @@ export const Route = createFileRoute("/_app/invoices/new")({
   component: () => <NewInvoicePage initialContactId={Route.useSearch().contactId} />,
 })
 
-type Contact = { id: string; name: string; email?: string | null; taxId?: string | null; country?: string | null }
+type Contact = { id: string; name: string; email: string | null; company: string | null; address: string | null; city: string | null; state: string | null; zip: string | null; country: string | null; taxId?: string | null }
 
 type LineItem = {
   description: string
@@ -562,7 +562,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
           </Button>
         </CardFooter>
       </Card>
-      {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
+      {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} sellerCountry={readiness?.countryCode} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
       {confirmOpen && onComplete && <div className="invoice-review-bar flex flex-wrap items-center justify-end gap-3 border-t bg-panel p-4">
         <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
         {kind !== "recurring" && <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>}

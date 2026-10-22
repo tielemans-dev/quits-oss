@@ -30,15 +30,38 @@ const customer = {
   registeredAddress: "Vestergade 5", registeredZip: "8000", registeredCity: "Aarhus C",
 }
 
-it("refreshes a CVR customer from the register and shows its registered address beside billing", async () => {
+it("refreshes a CVR customer from the register, shows the new facts at once and says so", async () => {
   api.available.mockResolvedValue({ enabled: true })
   api.get.mockResolvedValue(customer)
-  api.refresh.mockImplementation(async () => { api.get.mockResolvedValue({ ...customer, company: "MOCK Nordlys A/S" }) })
+  // The page is not asked to refetch: the refreshed customer comes back from the mutation.
+  api.refresh.mockResolvedValue({ ...customer, company: "MOCK Nordlys A/S", registeredAddress: "Østergade 1" })
   render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
   expect(await screen.findByText("Registreret adresse")).toBeTruthy()
   fireEvent.click(await screen.findByRole("button", { name: "Opdater fra CVR" }))
   await waitFor(() => expect(api.refresh).toHaveBeenCalledExactlyOnceWith({ id: "buyer" }, handledMutationError))
-  expect((await screen.findAllByText("MOCK Nordlys A/S")).length).toBeGreaterThan(0)
+  expect((await screen.findByRole("status")).textContent).toBe("Opdateret fra CVR-registret.")
+  expect(screen.getAllByText("MOCK Nordlys A/S").length).toBeGreaterThan(0)
+  expect(screen.getByText("Østergade 1")).toBeTruthy()
+  expect(api.get).toHaveBeenCalledOnce()
+})
+
+it("says a customer is already up to date when the register has nothing new", async () => {
+  api.available.mockResolvedValue({ enabled: true })
+  api.get.mockResolvedValue(customer)
+  api.refresh.mockResolvedValue({ ...customer, registryCheckedAt: new Date() })
+  render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
+  fireEvent.click(await screen.findByRole("button", { name: "Update from CVR" }))
+  await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Already up to date. Nothing has changed in the CVR register."))
+})
+
+it("shows why a refresh failed instead of returning quietly", async () => {
+  api.available.mockResolvedValue({ enabled: true })
+  api.get.mockResolvedValue(customer)
+  api.refresh.mockRejectedValue(new Error("network down"))
+  render(<I18nProvider locale="en-US"><Page /></I18nProvider>)
+  fireEvent.click(await screen.findByRole("button", { name: "Update from CVR" }))
+  expect((await screen.findByRole("alert")).textContent).toBe("Could not load the company. Try again.")
+  expect(screen.getByRole("status").textContent).toBe("")
 })
 
 it("locks a CVR customer's name and number and keeps its own billing address editable", async () => {

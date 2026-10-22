@@ -2,11 +2,10 @@ import { invoiceAllowsPayment } from "../../lib/payments/invoice-methods"
 import { Effect } from "effect"
 import { InvalidState } from "../errors"
 import { localizedNonVatPaymentNote } from "../../lib/documents/non-vat-note"
-import { parseSellerSnapshot, type BuyerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
+import { parseSellerSnapshot, type SellerSnapshot } from "@quits/contracts/documents"
 import { isNationalRegistrationScheme } from "../../lib/compliance"
 import type { TaxId } from "../../lib/compliance"
 import { paymentSnapshotFromColumns, type PaymentDetailsColumns } from "../../lib/payment-details"
-import { toCountryCode } from "../../lib/exports/parties"
 
 export function buildSellerSnapshot(
   settings: { seNumber?: string | null; momsRegistered?: boolean | null; countryCode?: string | null; companyName: string | null; companyEmail: string | null; companyAddress: string | null },
@@ -61,44 +60,8 @@ export function withoutPaymentDetails<T>(snapshot: T): T {
   return rest as T
 }
 
-export function buildBuyerSnapshot(contact: {
-  name: string
-  email: string | null
-  company: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  country: string | null
-  taxIds?: TaxId[]
-  taxId?: string | null
-}): BuyerSnapshot {
-  return {
-    name: contact.name,
-    email: contact.email ?? null,
-    company: contact.company ?? null,
-    address: contact.address ?? null,
-    city: contact.city ?? null,
-    state: contact.state ?? null,
-    zip: contact.zip ?? null,
-    country: contact.country ?? null,
-    taxIds: contact.taxIds?.length
-      ? contact.taxIds.map(({ scheme, value, countryCode }) => ({ scheme, value, countryCode }))
-      : contact.taxId?.trim() ? [contactTaxId(contact.taxId.trim(), contact.country)] : [],
-  }
-}
-
-/**
- * A contact's single tax ID field, as a CVR lookup or the customer form fills it. A Danish
- * customer's 8-digit number is their CVR; any other number is kept as a VAT number.
- */
-function contactTaxId(value: string, country: string | null): TaxId {
-  const countryCode = toCountryCode(country)
-  const cvr = value.replace(/[\s.\-/]/g, "").toUpperCase().replace(/^DK/, "")
-  return countryCode === "DK" && /^\d{8}$/.test(cvr)
-    ? { scheme: "cvr", value: cvr, countryCode }
-    : { scheme: "VAT", value, countryCode: countryCode ?? country }
-}
+// Kept free of effect so client components can import it; server callers keep this path.
+export { buildBuyerSnapshot } from "../../lib/documents/buyer-snapshot"
 
 export const buyerContactSelect = {
   id: true,

@@ -36,15 +36,24 @@ export function useCvrLookupAvailable() {
 
 export { cvrLookupError }
 
+/** The customer as the refresh saved it. */
+export type RegistryRefresh = Awaited<ReturnType<typeof trpc.contacts.refreshFromCvr.mutate>>
+/** The fields a refresh from the register can change. */
+const refreshedFields = ["company", "taxId", "legalName", "registrySecondaryNames", "registeredAddress", "registeredZip", "registeredCity", "address", "zip", "city", "country"] as const
+
+/** Whether the register's answer changed anything on file, so the page can say "already up to date" instead. */
+export function registryRefreshChanged(before: Partial<Record<(typeof refreshedFields)[number], unknown>>, after: RegistryRefresh) {
+  return refreshedFields.some((field) => JSON.stringify(before[field] ?? null) !== JSON.stringify(after[field] ?? null))
+}
+
 /** Refreshes a CVR customer's legal name, CVR number and registered address from the register. */
-export function CvrRefreshButton({ contactId, onRefreshed, onError }: { contactId: string; onRefreshed: () => void; onError: (key: TranslationKey) => void }) {
+export function CvrRefreshButton({ contactId, onRefreshed, onError }: { contactId: string; onRefreshed: (contact: RegistryRefresh) => void; onError: (key: TranslationKey) => void }) {
   const { t } = useI18n()
   const [pending, setPending] = useState(false)
   async function refresh() {
     setPending(true)
     try {
-      await trpc.contacts.refreshFromCvr.mutate({ id: contactId }, handledMutationError)
-      onRefreshed()
+      onRefreshed(await trpc.contacts.refreshFromCvr.mutate({ id: contactId }, handledMutationError))
     } catch (err) {
       onError(cvrLookupError(err))
     } finally {

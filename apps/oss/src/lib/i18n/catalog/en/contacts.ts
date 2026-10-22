@@ -22,6 +22,8 @@ export const enContactsMessages = {
   "contacts.cvr.inactiveUndated": "CVR status: {status}. Check that this is the right customer.",
   "contacts.cvr.refresh": "Update from CVR",
   "contacts.cvr.refreshing": "Updating…",
+  "contacts.cvr.refreshed": "Updated from the CVR register.",
+  "contacts.cvr.unchanged": "Already up to date. Nothing has changed in the CVR register.",
   "contacts.registry.locked": "The name and CVR number follow the CVR register.",
   "contacts.registry.lockedNames": "Choose the legal name or a secondary name from the CVR register. The CVR number follows the register.",
   "contacts.billing.useRegistered": "Use registered address",
