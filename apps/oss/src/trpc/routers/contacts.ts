@@ -5,7 +5,7 @@ import {
   contactCreateInputSchema,
   contactUpdateInputSchema,
 } from "@quits/contracts/contacts"
-import { createContact, deleteContact, refreshContactFromRegistry, resumeContactReminders, updateContact, undoCreateContact } from "../../domain/commands/contacts"
+import { createContact, createContactFromRegistry, deleteContact, refreshContactFromRegistry, resumeContactReminders, updateContact, undoCreateContact } from "../../domain/commands/contacts"
 import { cvrDigits, registryFacts } from "../../lib/contacts/registry"
 import { getCvrLookupProvider } from "../../lib/runtime/services"
 import type { Context } from "../init"
@@ -59,8 +59,9 @@ export const contactsRouter = router({
     .input(contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional(), registryCvr: z.string().regex(/^\d{8}$/).optional() })))
     .mutation(async ({ ctx, input, signal }) => {
       const { registryCvr, ...fields } = input
-      const registry = registryCvr ? await lookupRegistry(ctx, registryCvr, signal) : undefined
-      return unwrapOutcome(await executeCommand(createContact, { ...fields, registry }, { actor: ctx.actor }))
+      if (!registryCvr) return unwrapOutcome(await executeCommand(createContact, fields, { actor: ctx.actor }))
+      const registry = await lookupRegistry(ctx, registryCvr, signal)
+      return unwrapOutcome(await executeCommand(createContactFromRegistry, { ...fields, registry }, { actor: ctx.actor }))
     }),
 
   refreshFromCvr: authorizedProcedure("contact:update")

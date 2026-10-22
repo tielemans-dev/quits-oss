@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { ComponentType } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { I18nProvider } from "../../lib/i18n/react"
+import { translate } from "../../lib/i18n/translate"
+import type { TranslationKey } from "../../lib/i18n/messages"
 
 const api = vi.hoisted(() => ({
   available: vi.fn(async () => ({ enabled: true })),
@@ -156,10 +158,32 @@ describe("secondary names from the register", () => {
     render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
     fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: "24256790" } })
     fireEvent.click(screen.getByRole("button", { name: "Slå op" }))
-    const name = await screen.findByRole("combobox", { name: "Virksomhed" }) as HTMLSelectElement
-    expect([...name.options].map((option) => option.value)).toEqual(["MOCK Nordlys ApS", "MOCK Nordlys Café"])
-    fireEvent.change(name, { target: { value: "MOCK Nordlys Café" } })
+    // MOCK: Radix Select measures and scrolls in ways jsdom lacks.
+    window.HTMLElement.prototype.scrollIntoView = () => undefined
+    window.HTMLElement.prototype.hasPointerCapture = () => false
+    window.HTMLElement.prototype.releasePointerCapture = () => undefined
+    fireEvent.keyDown(await screen.findByRole("combobox", { name: "Virksomhed" }), { key: "Enter" })
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["MOCK Nordlys ApS", "MOCK Nordlys Café"])
+    fireEvent.click(screen.getByRole("option", { name: "MOCK Nordlys Café" }))
     fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
     await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ company: "MOCK Nordlys Café", registryCvr: "24256790" }), expect.anything()))
+  })
+})
+
+describe("a failed lookup when the customer is saved", () => {
+  it.each([
+    ["NOT_FOUND", "shell.request.customer.notFound"],
+    ["NOT_IMPLEMENTED", "shell.request.customer.unavailable"],
+    ["INTERNAL_SERVER_ERROR", "shell.request.customer.lookupError"],
+  ])("shows the lookup message for %s, not the server's text", async (code, key) => {
+    api.customer.mockResolvedValue(company)
+    api.create.mockRejectedValue(Object.assign(new Error("MOCK upstream detail"), { data: { code } }))
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: "24256790" } })
+    fireEvent.click(screen.getByRole("button", { name: "Slå op" }))
+    await screen.findByText("Udfyldt fra CVR-registret. Tjek felterne, før du opretter kunden.")
+    fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
+    expect(await screen.findByText(translate(key as TranslationKey, "da-DK"))).toBeTruthy()
+    expect(screen.queryByText("MOCK upstream detail")).toBeNull()
   })
 })

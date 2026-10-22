@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { useI18n } from "../../../lib/i18n/react"
 
 /**
@@ -17,9 +18,10 @@ export function CompanyField({ businessOnly, defaultValue, placeholder, locked =
     <div className="grid gap-2">
       <Label htmlFor="company">{t("contacts.field.company")}</Label>
       {locked && names.length > 1 ? (
-        <select id="company" name="company" defaultValue={defaultValue} aria-describedby="registry-help" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-          {names.map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
+        <Select name="company" defaultValue={defaultValue}>
+          <SelectTrigger id="company" aria-describedby="registry-help" className="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>{names.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
+        </Select>
       ) : <Input
         id="company"
         aria-describedby={hint ? "company-help" : locked ? "registry-help" : undefined}

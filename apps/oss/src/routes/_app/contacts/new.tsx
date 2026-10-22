@@ -17,6 +17,7 @@ import { useI18n } from "../../../lib/i18n/react"
 import { PEPPOL_EAS_CODES } from "@quits/contracts/exports"
 import { readPeppolEndpoint } from "./-peppol-endpoint"
 import { contactSaveError } from "./-contact-save-error"
+import { cvrSaveLookupError } from "../../../lib/contacts/cvr-errors"
 import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
 import { CvrLookup, type RegistryCustomer } from "./-cvr-lookup"
@@ -102,7 +103,8 @@ function NewContactPage() {
       }, handledMutationError)
       navigate(returnTo ? { to: returnTo, search: { contactId: contact.id } } : { to: "/contacts" })
     } catch (err) {
-      setError(contactSaveError(err, t, "contacts.new.error.createFailed"))
+      const lookupError = prefill.customer?.taxId ? cvrSaveLookupError(err) : null
+      setError(lookupError ? t(lookupError) : contactSaveError(err, t, "contacts.new.error.createFailed"))
       setSaving(false)
     }
   }

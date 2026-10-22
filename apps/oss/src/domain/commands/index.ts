@@ -16,6 +16,8 @@ import { billingAllocationCommands } from "./billing-allocation"
  *
  * `organization.update_payment_details` is deliberately absent: changing where customers send money
  * is a person's decision in settings, never something an approved agent request may dispatch.
+ * Nor are the contact commands that take facts the server looked up in the CVR register: a stored
+ * request could carry made-up facts, so only the server's own lookup reaches them.
  */
 export const allCommands: readonly AnyCommandDefinition[] = [
   ...contactCommands,
