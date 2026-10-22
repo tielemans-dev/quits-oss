@@ -54,6 +54,8 @@ type ContactData = {
   peppolEndpointScheme: string | null
   notes: string | null
   registrySource: string | null
+  legalName: string | null
+  registrySecondaryNames: string[]
   registeredAddress: string | null
   registeredZip: string | null
   registeredCity: string | null
@@ -298,7 +300,7 @@ function ContactPage() {
               </div>
             </div>
 
-            <CompanyField businessOnly={businessOnly} defaultValue={contact.company ?? ""} locked={registry} />
+            <CompanyField businessOnly={businessOnly} defaultValue={contact.company ?? ""} locked={registry} names={[contact.legalName ?? contact.company ?? "", ...(contact.registrySecondaryNames ?? [])].filter(Boolean)} />
 
             <BillingAddressFields billing={contact} registered={registered} />
 

@@ -148,3 +148,18 @@ describe("new customer CVR lookup", () => {
     expect(screen.getByText("Kunder skal være virksomheder.")).toBeTruthy()
   })
 })
+
+describe("secondary names from the register", () => {
+  it("lets the customer be invoiced under a registered binavn, chosen from the register's list", async () => {
+    api.customer.mockResolvedValue({ ...company, secondaryNames: ["MOCK Nordlys Café"] })
+    api.create.mockResolvedValue({ id: "new" })
+    render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
+    fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: "24256790" } })
+    fireEvent.click(screen.getByRole("button", { name: "Slå op" }))
+    const name = await screen.findByRole("combobox", { name: "Virksomhed" }) as HTMLSelectElement
+    expect([...name.options].map((option) => option.value)).toEqual(["MOCK Nordlys ApS", "MOCK Nordlys Café"])
+    fireEvent.change(name, { target: { value: "MOCK Nordlys Café" } })
+    fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ company: "MOCK Nordlys Café", registryCvr: "24256790" }), expect.anything()))
+  })
+})

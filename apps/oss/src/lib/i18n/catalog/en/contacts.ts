@@ -23,6 +23,7 @@ export const enContactsMessages = {
   "contacts.cvr.refresh": "Update from CVR",
   "contacts.cvr.refreshing": "Updating…",
   "contacts.registry.locked": "The name and CVR number follow the CVR register.",
+  "contacts.registry.lockedNames": "Choose the legal name or a secondary name from the CVR register. The CVR number follows the register.",
   "contacts.billing.useRegistered": "Use registered address",
   "contacts.field.registeredAddress": "Registered address",
   "contacts.placeholder.name": "John Doe",

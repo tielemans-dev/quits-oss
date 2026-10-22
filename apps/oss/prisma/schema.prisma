@@ -321,8 +321,9 @@ model Contact {
   /// register, and address, zip, city and country hold the editable billing address. Null for manual customers.
   registrySource       String?
   registryCheckedAt    DateTime?
-  /// The register's legal name. `company` is this name, or (later) one of the register's secondary names.
+  /// The register's legal name. `company` is this name or one of `registrySecondaryNames` (binavne).
   legalName            String?
+  registrySecondaryNames String[]        @default([])
   registeredAddress    String?
   registeredZip        String?
   registeredCity       String?

@@ -20,7 +20,7 @@ import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
 import { InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
-import { cvrDigits, registryFactsSchema, type RegistryFacts } from "../../lib/contacts/registry"
+import { cvrDigits, registryFactsSchema, registryName, type RegistryFacts } from "../../lib/contacts/registry"
 
 function normalizeCountry(country: string | undefined) {
   return country?.trim().length === 2 ? country.toUpperCase() : country || null
@@ -74,16 +74,17 @@ function validatePeppolEndpoint(endpoint: { id: string | null; scheme: string | 
 }
 
 /**
- * A customer from a CVR lookup takes its CVR number and legal name from the register, whatever the
- * input says. Its billing address is the registered address unless it has one of its own.
+ * A customer from a CVR lookup takes its CVR number and name from the register: the legal name, or a
+ * secondary name (binavn) the register lists. Its billing address is the registered address unless it has one of its own.
  */
-function registryContactFields(registry: RegistryFacts, ownBilling: boolean) {
+function registryContactFields(registry: RegistryFacts, ownBilling: boolean, wantedName?: string | null) {
   const registered = { address: registry.address || null, zip: registry.zip || null, city: registry.city || null }
   return {
     registrySource: "cvr",
     taxId: registry.cvr,
-    company: registry.legalName,
+    company: registryName(registry, wantedName),
     legalName: registry.legalName,
+    registrySecondaryNames: registry.secondaryNames,
     registeredAddress: registered.address,
     registeredZip: registered.zip,
     registeredCity: registered.city,
@@ -91,17 +92,17 @@ function registryContactFields(registry: RegistryFacts, ownBilling: boolean) {
   }
 }
 
-/** A CVR customer's number and legal name follow the register; another number means a new lookup. */
+/** A CVR customer's number and name follow the register; another number means a new lookup. */
 function validateRegistryIdentity(
-  existing: { taxId: string | null; company: string | null; legalName: string | null },
+  existing: { taxId: string | null; company: string | null; legalName: string | null; registrySecondaryNames: string[] },
   input: { taxId?: string; company?: string }
 ) {
   const issues = [
     ...(input.taxId !== undefined && cvrDigits(input.taxId) !== cvrDigits(existing.taxId)
       ? [{ path: "taxId", message: "The CVR number comes from the register. Look up the new number as a new customer." }]
       : []),
-    ...(input.company !== undefined && input.company !== existing.company && input.company !== existing.legalName
-      ? [{ path: "company", message: "The legal name comes from the register. Update the customer from CVR to refresh it." }]
+    ...(input.company !== undefined && input.company !== existing.company && input.company !== existing.legalName && !existing.registrySecondaryNames.includes(input.company)
+      ? [{ path: "company", message: "The name comes from the register: its legal name or one of its secondary names. Update the customer from CVR to refresh them." }]
       : []),
   ]
   return issues.length
@@ -130,7 +131,7 @@ export const createContact = defineCommand({
       const command = yield* Command
       // Commands already hold the organization lock, so concurrent CVR requests reuse one customer.
       const { reuseCvr, registry, ...given } = input
-      const fields = registry ? { ...given, ...registryContactFields(registry, Boolean(given.address || given.zip || given.city)), registryCheckedAt: command.now } : given
+      const fields = registry ? { ...given, ...registryContactFields(registry, Boolean(given.address || given.zip || given.city), given.company), registryCheckedAt: command.now } : given
       if (reuseCvr && fields.country === "DK" && /^\d{8}$/.test(fields.taxId ?? "")) {
         const contacts = yield* Effect.promise(() => db.contact.findMany({ where: { organizationId: command.organizationId, taxId: { not: null } } }))
         const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === fields.taxId)
@@ -192,6 +193,7 @@ export const updateContact = defineCommand({
             registrySource: true,
             company: true,
             legalName: true,
+            registrySecondaryNames: true,
           },
         })
       )
@@ -272,7 +274,7 @@ export const refreshContactFromRegistry = defineCommand({
       const contact = yield* Effect.promise(() =>
         db.contact.update({
           where: { id: existing.id, organizationId: command.organizationId },
-          data: { ...registryContactFields(input.registry, !followsRegistered), registryCheckedAt: command.now },
+          data: { ...registryContactFields(input.registry, !followsRegistered, existing.company), registryCheckedAt: command.now },
         })
       )
       command.emit({

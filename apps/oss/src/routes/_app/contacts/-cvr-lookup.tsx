@@ -14,7 +14,7 @@ import { cn } from "../../../lib/utils"
 import { trpc } from "../../../trpc/client"
 
 /** The customer fields the CVR register answers for. */
-export type RegistryCustomer = { name: string; company: string; address: string; zip: string; city: string; country: string; taxId: string }
+export type RegistryCustomer = { name: string; company: string; address: string; zip: string; city: string; country: string; taxId: string; secondaryNames?: string[] }
 
 /** "Vestergade 5, 8000 Aarhus C" becomes the street, postnr and by fields of the customer form. */
 export function registryCustomer(company: CvrCompany): RegistryCustomer {
@@ -23,6 +23,7 @@ export function registryCustomer(company: CvrCompany): RegistryCustomer {
   return {
     name: company.name, company: company.name, address: street,
     zip: postal?.[1] ?? "", city: postal?.[2] ?? place, country: "DK", taxId: company.cvr,
+    secondaryNames: company.secondaryNames ?? [],
   }
 }
 

@@ -23,6 +23,7 @@ export const daContactsMessages = {
   "contacts.cvr.refresh": "Opdater fra CVR",
   "contacts.cvr.refreshing": "Opdaterer…",
   "contacts.registry.locked": "Navn og CVR-nummer følger CVR-registret.",
+  "contacts.registry.lockedNames": "Vælg det juridiske navn eller et binavn fra CVR-registret. CVR-nummeret følger registret.",
   "contacts.billing.useRegistered": "Brug registreret adresse",
   "contacts.field.registeredAddress": "Registreret adresse",
   "contacts.placeholder.name": "John Doe",
