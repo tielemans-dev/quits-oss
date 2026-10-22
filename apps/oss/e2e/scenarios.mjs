@@ -28,7 +28,9 @@ export function registerProductScenarios(test, expect, options = {}) {
     await page.getByLabel('Name (required)', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
     await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
-    await expect(page).toHaveURL(new URL('/contacts', entryURL).href)
+    // Creating a customer opens it; the list then shows it.
+    await expect(page).toHaveURL(/\/contacts\/(?!new$)[^/]+$/)
+    await page.goto(new URL('/contacts', entryURL).href)
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
   }
 
@@ -202,7 +204,9 @@ export function registerProductScenarios(test, expect, options = {}) {
     await page.getByLabel('Name (required)', { exact: true }).fill(name)
     await page.getByLabel('Email', { exact: true }).fill('customer@example.invalid')
     await page.getByRole('button', { name: 'Create Customer', exact: true }).click()
-    await expect(page).toHaveURL(new URL('/contacts', entryURL).href)
+    // Creating a customer opens it; the list then shows it.
+    await expect(page).toHaveURL(/\/contacts\/(?!new$)[^/]+$/)
+    await page.goto(new URL('/contacts', entryURL).href)
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible()
