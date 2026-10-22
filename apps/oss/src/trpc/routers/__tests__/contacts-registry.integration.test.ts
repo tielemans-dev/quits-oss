@@ -48,7 +48,19 @@ describeIfDatabase("customers from the CVR register", () => {
     const billed = await api.contacts.update({ id: contact.id, name: "Bogholderiet", email: "faktura@example.com", address: "Postboks 12", zip: "8100", city: "Aarhus C", taxId: "DK 24256790", company: "Register A/S" })
     expect(billed).toMatchObject({ address: "Postboks 12", registeredAddress: "Vestergade 5", email: "faktura@example.com" })
     await expect(api.contacts.update({ id: contact.id, taxId: "11111111" })).rejects.toThrow(/CVR number comes from the register/)
-    await expect(api.contacts.update({ id: contact.id, company: "Another name" })).rejects.toThrow(/legal name comes from the register/)
+    await expect(api.contacts.update({ id: contact.id, company: "Another name" })).rejects.toThrow(/name comes from the register/)
+  })
+
+  it("invoices under a secondary name only when the register lists it, and keeps it through a refresh", async () => {
+    answer = company({ secondaryNames: ["Nordlys Café", "Nordlys Bageri"] })
+    const api = await caller()
+    const contact = await api.contacts.create({ name: "A", company: "Nordlys Café", registryCvr: "24256790" })
+    expect(contact).toMatchObject({ company: "Nordlys Café", legalName: "Register A/S", registrySecondaryNames: ["Nordlys Café", "Nordlys Bageri"] })
+    expect(await api.contacts.update({ id: contact.id, company: "Nordlys Bageri" })).toMatchObject({ company: "Nordlys Bageri" })
+    await expect(api.contacts.update({ id: contact.id, company: "Nordlys Bar" })).rejects.toThrow(/name comes from the register/)
+    expect(await api.contacts.refreshFromCvr({ id: contact.id })).toMatchObject({ company: "Nordlys Bageri" })
+    answer = company({ secondaryNames: ["Nordlys Café"] })
+    expect(await api.contacts.refreshFromCvr({ id: contact.id })).toMatchObject({ company: "Register A/S", registrySecondaryNames: ["Nordlys Café"] })
   })
 
   it("leaves manual customers fully editable", async () => {

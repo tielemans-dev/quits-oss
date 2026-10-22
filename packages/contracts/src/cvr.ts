@@ -5,6 +5,8 @@ export const cvrCompanySchema = z
   .object({
     cvr: z.string().regex(/^\d{8}$/),
     name: z.string().min(1).max(120),
+    /** The company's current registered secondary names (binavne). A customer may be invoiced under one. */
+    secondaryNames: z.array(z.string().min(1).max(120)).max(20).optional(),
     address: z.string().max(240),
     companyForm: z.string().max(80),
     industry: z.string().max(160).optional(),

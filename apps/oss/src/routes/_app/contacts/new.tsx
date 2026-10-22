@@ -164,6 +164,7 @@ function NewContactPage() {
               defaultValue={prefill.customer?.company}
               placeholder={t("contacts.placeholder.company")}
               locked={Boolean(prefill.customer)}
+              names={prefill.customer ? [prefill.customer.company, ...(prefill.customer.secondaryNames ?? [])] : []}
             />
 
             <BillingAddressFields

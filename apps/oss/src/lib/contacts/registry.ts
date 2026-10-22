@@ -5,6 +5,7 @@ import type { CvrCompany } from "@quits/contracts/cvr"
 export const registryFactsSchema = z.object({
   cvr: z.string().regex(/^\d{8}$/),
   legalName: z.string().min(1).max(120),
+  secondaryNames: z.array(z.string().min(1).max(120)).max(20).default([]),
   address: z.string().max(240),
   zip: z.string().max(20),
   city: z.string().max(120),
@@ -18,7 +19,12 @@ export const addressLines = (address: string) =>
 export function registryFacts(company: CvrCompany): RegistryFacts {
   const [street = "", place = ""] = addressLines(company.address)
   const postal = /^(\d{4})\s+(.+)$/.exec(place)
-  return { cvr: company.cvr, legalName: company.name, address: street, zip: postal?.[1] ?? "", city: postal?.[2] ?? place }
+  return { cvr: company.cvr, legalName: company.name, secondaryNames: company.secondaryNames ?? [], address: street, zip: postal?.[1] ?? "", city: postal?.[2] ?? place }
+}
+
+/** The name a CVR customer is invoiced under: `wanted` when it is one of the register's names, else the legal name. */
+export function registryName(registry: { legalName: string; secondaryNames: readonly string[] }, wanted: string | null | undefined) {
+  return wanted && registry.secondaryNames.includes(wanted) ? wanted : registry.legalName
 }
 
 /** A stored CVR as its eight digits: "DK 24 25 67 90" is "24256790". */
