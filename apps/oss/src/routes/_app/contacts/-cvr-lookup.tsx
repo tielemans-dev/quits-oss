@@ -1,7 +1,9 @@
 import type { CvrCompany } from "@quits/contracts/cvr"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { useEffect, useState } from "react"
-import { addressLines } from "../../../components/onboarding-v2/lookup-preview"
+import { RefreshCw } from "lucide-react"
+import { addressLines } from "../../../lib/contacts/registry"
+import { handledMutationError } from "../../../lib/query-refresh"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
@@ -24,22 +26,57 @@ export function registryCustomer(company: CvrCompany): RegistryCustomer {
   }
 }
 
+/** Whether the runtime supplies a CVR lookup (hosted). Self-hosted installs have none. */
+export function useCvrLookupAvailable() {
+  const [available, setAvailable] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void Promise.resolve().then(() => trpc.cvr.customerAvailable.query()).then((state) => { if (!cancelled) setAvailable(state.enabled) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+  return available
+}
+
+/** The message for a failed register lookup: no such company, no lookup here, or the lookup failed. */
+export function cvrLookupError(err: unknown): TranslationKey {
+  const code = (err as { data?: { code?: string } }).data?.code
+  return code === "NOT_FOUND" ? "shell.request.customer.notFound" : code === "NOT_IMPLEMENTED" ? "shell.request.customer.unavailable" : "shell.request.customer.lookupError"
+}
+
+/** Refreshes a CVR customer's legal name, CVR number and registered address from the register. */
+export function CvrRefreshButton({ contactId, onRefreshed, onError }: { contactId: string; onRefreshed: () => void; onError: (key: TranslationKey) => void }) {
+  const { t } = useI18n()
+  const [pending, setPending] = useState(false)
+  async function refresh() {
+    setPending(true)
+    try {
+      await trpc.contacts.refreshFromCvr.mutate({ id: contactId }, handledMutationError)
+      onRefreshed()
+    } catch (err) {
+      onError(cvrLookupError(err))
+    } finally {
+      setPending(false)
+    }
+  }
+  return (
+    <Button type="button" variant="outline" disabled={pending} onClick={() => void refresh()}>
+      <RefreshCw />
+      {t(pending ? "contacts.cvr.refreshing" : "contacts.cvr.refresh")}
+    </Button>
+  )
+}
+
 /**
  * Fills the customer form from the CVR register, with the lookup onboarding and the command bar use.
- * Renders nothing unless the runtime supplies a lookup (hosted); the fields stay editable either way.
+ * Renders nothing unless the runtime supplies a lookup (hosted). The register's name and CVR number
+ * then stay locked; the rest of the form stays editable.
  */
 export function CvrLookup({ onFound }: { onFound: (customer: RegistryCustomer) => void }) {
   const { t, locale } = useI18n()
-  const [available, setAvailable] = useState(false)
+  const available = useCvrLookupAvailable()
   const [cvr, setCvr] = useState("")
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<{ key: TranslationKey; error: boolean; vars?: Record<string, string> } | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    trpc.cvr.customerAvailable.query().then((state) => { if (!cancelled) setAvailable(state.enabled) }).catch(() => {})
-    return () => { cancelled = true }
-  }, [])
 
   if (!available) return null
 
@@ -65,8 +102,7 @@ export function CvrLookup({ onFound }: { onFound: (customer: RegistryCustomer) =
         })
       }
     } catch (err) {
-      const unavailable = (err as { data?: { code?: string } }).data?.code === "NOT_IMPLEMENTED"
-      setMessage({ key: unavailable ? "shell.request.customer.unavailable" : "shell.request.customer.lookupError", error: true })
+      setMessage({ key: cvrLookupError(err), error: true })
     } finally {
       setPending(false)
     }
