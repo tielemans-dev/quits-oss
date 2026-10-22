@@ -32,6 +32,8 @@ const company = {
   status: "active", statusClass: "active", momsRegistered: true,
 }
 
+// MOCK: jsdom has no ResizeObserver, which the billing address switch uses.
+vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
 beforeEach(() => { vi.clearAllMocks(); api.search = {}; api.businessOnly = false; api.available.mockResolvedValue({ enabled: true }) })
 afterEach(cleanup)
 describe("new customer CVR lookup", () => {
@@ -46,8 +48,9 @@ describe("new customer CVR lookup", () => {
     await waitFor(() => expect(api.navigate).toHaveBeenCalledWith({ to: "/invoices/new", search: { contactId: "new" } }))
   })
 
-  it("fills the customer from the register and keeps a name already typed", async () => {
+  it("fills the customer from the register, locks its identity and keeps a name already typed", async () => {
     api.customer.mockResolvedValue(company)
+    api.create.mockResolvedValue({ id: "new" })
     render(<I18nProvider locale="da-DK"><Page /></I18nProvider>)
     fireEvent.change(screen.getByLabelText(/^Navn/), { target: { value: "Anna Jensen" } })
     fireEvent.change(await screen.findByLabelText("Slå op i CVR"), { target: { value: "DK 2425 6790" } })
@@ -56,14 +59,20 @@ describe("new customer CVR lookup", () => {
     expect(api.customer).toHaveBeenCalledWith({ cvr: "24256790" })
     expect(value(/^Navn/)).toBe("Anna Jensen")
     expect(value("Virksomhed")).toBe("MOCK Nordlys ApS")
+    expect(value("CVR/momsnummer")).toBe("24256790")
+    expect((screen.getByLabelText("Virksomhed") as HTMLInputElement).readOnly).toBe(true)
+    expect((screen.getByLabelText("CVR/momsnummer") as HTMLInputElement).readOnly).toBe(true)
+    // Billing uses the registered address until it is switched off; then it is editable.
+    expect(screen.getByText("Vestergade 5, 8000 Aarhus C")).toBeTruthy()
+    fireEvent.click(screen.getByRole("switch", { name: "Brug registreret adresse" }))
     expect(value("Adresse")).toBe("Vestergade 5")
     expect(value("Postnr.")).toBe("8000")
-    expect(value("By")).toBe("Aarhus C")
-    expect(value("CVR/momsnummer")).toBe("24256790")
     expect((screen.getByLabelText("Land") as HTMLSelectElement).value).toBe("DK")
-    // Everything stays editable after the lookup.
     fireEvent.change(screen.getByLabelText("By"), { target: { value: "Aarhus N" } })
-    expect(value("By")).toBe("Aarhus N")
+    fireEvent.click(screen.getByRole("button", { name: "Opret kunde" }))
+    await waitFor(() => expect(api.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Anna Jensen", city: "Aarhus N", registryCvr: "24256790" }), expect.anything(),
+    ))
   })
 
   it("replaces the name a previous lookup filled in, but keeps one typed over it", async () => {

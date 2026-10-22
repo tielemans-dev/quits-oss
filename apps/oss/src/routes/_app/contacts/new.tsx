@@ -1,5 +1,4 @@
 import { useBusinessBuyersOnly } from "../../../hooks/use-business-buyers-only"
-import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import { trpc } from "../../../trpc/client"
@@ -21,6 +20,7 @@ import { contactSaveError } from "./-contact-save-error"
 import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
 import { CvrLookup, type RegistryCustomer } from "./-cvr-lookup"
+import { BillingAddressFields } from "./-billing-address"
 
 /** The forms that send people here from their customer picker. */
 const returnPaths = ["/invoices/new"] as const
@@ -97,6 +97,8 @@ function NewContactPage() {
         peppolEndpointId: peppol.peppolEndpointId ?? undefined,
         peppolEndpointScheme: peppol.peppolEndpointScheme ?? undefined,
         notes: (form.get("notes") as string) || undefined,
+        // The server takes the legal name, CVR number and registered address from its own lookup.
+        registryCvr: prefill.customer?.taxId,
       }, handledMutationError)
       navigate(returnTo ? { to: returnTo, search: { contactId: contact.id } } : { to: "/contacts" })
     } catch (err) {
@@ -161,38 +163,16 @@ function NewContactPage() {
               businessOnly={businessOnly}
               defaultValue={prefill.customer?.company}
               placeholder={t("contacts.placeholder.company")}
+              locked={Boolean(prefill.customer)}
             />
 
-            <div className="grid gap-2">
-              <Label htmlFor="address">{t("contacts.field.address")}</Label>
-              <Input
-                key={`address-${prefill.key}`}
-                id="address"
-                name="address"
-                defaultValue={prefill.customer?.address}
-                maxLength={240}
-                placeholder={t("contacts.placeholder.address")}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="city">{t("contacts.field.city")}</Label>
-                <Input key={`city-${prefill.key}`} id="city" name="city" defaultValue={prefill.customer?.city} maxLength={120} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="state">{t("contacts.field.state")}</Label>
-                <Input id="state" name="state" maxLength={120} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="zip">{t("contacts.field.zip")}</Label>
-                <Input key={`zip-${prefill.key}`} id="zip" name="zip" defaultValue={prefill.customer?.zip} maxLength={20} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <CountrySelect key={`country-${prefill.key}`} id="country" name="country" defaultCountry={prefill.customer?.country ?? organizationCountry} />
-              </div>
-            </div>
+            <BillingAddressFields
+              key={`billing-${prefill.key}`}
+              billing={prefill.customer ?? {}}
+              registered={prefill.customer}
+              defaultCountry={organizationCountry}
+              placeholder={t("contacts.placeholder.address")}
+            />
 
             <div className="grid gap-2">
               <Label htmlFor="taxId">{t("contacts.field.taxId")}</Label>
@@ -201,6 +181,8 @@ function NewContactPage() {
                 id="taxId"
                 name="taxId"
                 defaultValue={prefill.customer?.taxId}
+                readOnly={Boolean(prefill.customer)}
+                aria-describedby={prefill.customer ? "registry-help" : undefined}
                 maxLength={40}
                 placeholder={t("contacts.placeholder.taxId")}
               />

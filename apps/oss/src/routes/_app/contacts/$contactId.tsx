@@ -1,7 +1,6 @@
 import { useQueryRevision } from "../../../hooks/use-query-refresh"
 import { QueryError, QuerySkeleton } from "../../../components/query-state"
 import { useBusinessBuyersOnly } from "../../../hooks/use-business-buyers-only"
-import { CountrySelect } from "../../../components/country-select"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect, type ReactNode } from "react"
 import { trpc } from "../../../trpc/client"
@@ -27,6 +26,10 @@ import { readPeppolEndpoint } from "./-peppol-endpoint"
 import { contactSaveError } from "./-contact-save-error"
 import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
+import { BillingAddressFields } from "./-billing-address"
+import { CvrRefreshButton, useCvrLookupAvailable } from "./-cvr-lookup"
+import { isValidDanishCvr } from "@quits/contracts/onboarding"
+import { cvrDigits } from "../../../lib/contacts/registry"
 
 export const Route = createFileRoute("/_app/contacts/$contactId")({
   // `?edit=true` opens the form directly, for links that send someone to fix the customer.
@@ -50,6 +53,10 @@ type ContactData = {
   peppolEndpointId: string | null
   peppolEndpointScheme: string | null
   notes: string | null
+  registrySource: string | null
+  registeredAddress: string | null
+  registeredZip: string | null
+  registeredCity: string | null
   reminderUnsubscribedAt: Date | string | null
   canResumeReminders: boolean
 }
@@ -67,6 +74,7 @@ function ContactPage() {
   const [saving, setSaving] = useState(false)
   const [resuming, setResuming] = useState(false)
   const businessOnly = useBusinessBuyersOnly()
+  const lookupAvailable = useCvrLookupAvailable()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -166,6 +174,11 @@ function ContactPage() {
 
   const place = [[contact.zip, contact.city].filter(Boolean).join(" "), contact.state].filter(Boolean).join(", ")
   const address = [contact.address, place, contact.country ? countryName(contact.country, locale) : null].filter(Boolean)
+  // A CVR customer's name and number follow the register; any Danish CVR can be refreshed from it.
+  const registry = contact.registrySource === "cvr"
+  const registered = registry ? { address: contact.registeredAddress ?? "", zip: contact.registeredZip ?? "", city: contact.registeredCity ?? "" } : null
+  const registeredLines = registered ? [registered.address, [registered.zip, registered.city].filter(Boolean).join(" ")].filter(Boolean) : []
+  const ownBillingAddress = registered !== null && [contact.address ?? "", contact.zip ?? "", contact.city ?? ""].join("\n") !== [registered.address, registered.zip, registered.city].join("\n")
   const peppol = contact.peppolEndpointId ? [contact.peppolEndpointScheme, contact.peppolEndpointId].filter(Boolean).join(":") : null
 
   if (!edit) return (
@@ -176,12 +189,21 @@ function ContactPage() {
         title={contact.name}
         subtitle={contact.company && contact.company !== contact.name ? contact.company : undefined}
         actions={
-          <Button asChild>
-            <Link to="/contacts/$contactId" params={{ contactId }} search={{ edit: true }}>
-              <Pencil />
-              {t("contacts.action.edit")}
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            {lookupAvailable && isValidDanishCvr(cvrDigits(contact.taxId)) && (
+              <CvrRefreshButton
+                contactId={contactId}
+                onRefreshed={() => { setError(null); query.refresh() }}
+                onError={(key) => setError(t(key))}
+              />
+            )}
+            <Button asChild>
+              <Link to="/contacts/$contactId" params={{ contactId }} search={{ edit: true }}>
+                <Pencil />
+                {t("contacts.action.edit")}
+              </Link>
+            </Button>
+          </div>
         }
       />
       {loadError ? <QueryError error={loadError} retry={query.refresh} /> : null}
@@ -192,6 +214,7 @@ function ContactPage() {
         <Fact label={t("contacts.field.email")}>{contact.email}</Fact>
         <Fact label={t("contacts.field.phone")}>{displayPhone(contact.phone, contact.country)}</Fact>
         <Fact label={t("contacts.field.address")}>{address.length ? address.map((line) => <span key={line} className="block">{line}</span>) : null}</Fact>
+        {ownBillingAddress && <Fact label={t("contacts.field.registeredAddress")}>{registeredLines.map((line) => <span key={line} className="block">{line}</span>)}</Fact>}
         <Fact label={t("contacts.field.taxId")}>{contact.taxId}</Fact>
         <Fact label={t("exports.contact.peppolEndpointId")}>{peppol}</Fact>
         <Fact label={t("contacts.field.notes")}>{contact.notes ? <span className="whitespace-pre-line">{contact.notes}</span> : null}</Fact>
@@ -275,51 +298,9 @@ function ContactPage() {
               </div>
             </div>
 
-            <CompanyField businessOnly={businessOnly} defaultValue={contact.company ?? ""} />
+            <CompanyField businessOnly={businessOnly} defaultValue={contact.company ?? ""} locked={registry} />
 
-            <div className="grid gap-2">
-              <Label htmlFor="address">{t("contacts.field.address")}</Label>
-              <Input
-                id="address"
-                name="address"
-                maxLength={240}
-                defaultValue={contact.address ?? ""}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="city">{t("contacts.field.city")}</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  maxLength={120}
-                  defaultValue={contact.city ?? ""}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="state">{t("contacts.field.state")}</Label>
-                <Input
-                  id="state"
-                  name="state"
-                  maxLength={120}
-                  defaultValue={contact.state ?? ""}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="zip">{t("contacts.field.zip")}</Label>
-                <Input
-                  id="zip"
-                  name="zip"
-                  maxLength={20}
-                  defaultValue={contact.zip ?? ""}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="country">{t("contacts.field.country")}</Label>
-                <CountrySelect id="country" name="country" value={contact.country} />
-              </div>
-            </div>
+            <BillingAddressFields billing={contact} registered={registered} />
 
             <div className="grid gap-2">
               <Label htmlFor="taxId">{t("contacts.field.taxId")}</Label>
@@ -328,6 +309,8 @@ function ContactPage() {
                 name="taxId"
                 maxLength={40}
                 defaultValue={contact.taxId ?? ""}
+                readOnly={registry}
+                aria-describedby={registry ? "registry-help" : undefined}
               />
             </div>
 

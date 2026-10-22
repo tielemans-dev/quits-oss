@@ -4,7 +4,6 @@ import { useNavigate } from "@tanstack/react-router"
 import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
-import { registryCustomer } from "../routes/_app/contacts/-cvr-lookup"
 import type { TranslationKey } from "../lib/i18n/messages"
 import { useI18n } from "../lib/i18n/react"
 import { handledMutationError } from "../lib/query-refresh"
@@ -98,7 +97,7 @@ export function CustomerPicker({ id, contacts, value, invalid, onChange, onCreat
     if (!emailSchema.safeParse(email).success) { setError("docForm.customer.emailInvalid"); return }
     setPending(true); setError(null)
     try {
-      const contact = await trpc.contacts.create.mutate({ ...registryCustomer(chosen), email: email.trim(), reuseCvr: true }, handledMutationError)
+      const contact = await trpc.contacts.create.mutate({ name: chosen.name, email: email.trim(), reuseCvr: true, registryCvr: chosen.cvr }, handledMutationError)
       setCreated({ id: contact.id, name: contact.name })
       onCreated(contact.id)
       close()

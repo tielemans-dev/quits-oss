@@ -47,7 +47,8 @@ it("asks a new user for a name, then adds the register's company with a required
   fireEvent.click(screen.getByRole("button", { name: "Tilføj kunde" }))
   await waitFor(() => expect(props.onCreated).toHaveBeenCalledWith("new"))
   expect(api.create).toHaveBeenCalledWith({
-    name: firma.name, company: firma.name, address: "Gade 1", zip: "8000", city: "Aarhus C", country: "DK", taxId: firma.cvr, email: "bogholderi@firma.test", reuseCvr: true,
+    // The server takes the legal name, CVR number and registered address from its own lookup.
+    name: firma.name, email: "bogholderi@firma.test", reuseCvr: true, registryCvr: firma.cvr,
   }, handledMutationError)
 })
 it("looks eight digits up by CVR number and keeps an email the person typed", async () => {
