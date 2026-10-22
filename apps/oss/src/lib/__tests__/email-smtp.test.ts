@@ -12,6 +12,7 @@ import { formatSenderAddress } from "../email-sender"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 import { withSmtpDisconnect, withUntrustedSmtpTls } from "../../test-utils/__tests__/smtp"
+import nodemailer from "nodemailer"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -341,10 +342,19 @@ describe("real SMTP transport", () => {
   })
 
   it("reports a greeting timeout as definitely not submitted", async () => {
-    await withRelay("greeting-timeout", async (bodies) => {
-      await expect(deliver(message)).rejects.toMatchObject({ name: "EmailSendError", providerCode: "smtp_unavailable" })
-      expect(bodies).toHaveLength(0)
-    })
+    // Keep Nodemailer's real greeting timer, but shorten it so the test does not wait 15 seconds.
+    const createTransport = nodemailer.createTransport.bind(nodemailer)
+    const spy = vi.spyOn(nodemailer, "createTransport").mockImplementation(((options: object) =>
+      createTransport({ ...options, greetingTimeout: 200 })) as typeof nodemailer.createTransport)
+    try {
+      await withRelay("greeting-timeout", async (bodies) => {
+        await expect(deliver(message)).rejects.toMatchObject({ name: "EmailSendError", providerCode: "smtp_unavailable" })
+        expect(bodies).toHaveLength(0)
+      })
+      expect(spy).toHaveBeenCalledOnce()
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it("uses the independent auth environment for the provider, relay, and invitation sender", async () => {
