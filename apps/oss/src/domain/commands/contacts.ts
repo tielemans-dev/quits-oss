@@ -20,6 +20,7 @@ import { fingerprint } from "../approval-contexts"
 import { lockDocument } from "../documents/locks"
 import { InvalidState, NotFound, ValidationFailed } from "../errors"
 import { Command, Db } from "../services"
+import { cvrDigits, registryFactsSchema, type RegistryFacts } from "../../lib/contacts/registry"
 
 function normalizeCountry(country: string | undefined) {
   return country?.trim().length === 2 ? country.toUpperCase() : country || null
@@ -72,6 +73,42 @@ function validatePeppolEndpoint(endpoint: { id: string | null; scheme: string | 
   return Effect.void
 }
 
+/**
+ * A customer from a CVR lookup takes its CVR number and legal name from the register, whatever the
+ * input says. Its billing address is the registered address unless it has one of its own.
+ */
+function registryContactFields(registry: RegistryFacts, ownBilling: boolean) {
+  const registered = { address: registry.address || null, zip: registry.zip || null, city: registry.city || null }
+  return {
+    registrySource: "cvr",
+    taxId: registry.cvr,
+    company: registry.legalName,
+    legalName: registry.legalName,
+    registeredAddress: registered.address,
+    registeredZip: registered.zip,
+    registeredCity: registered.city,
+    ...(ownBilling ? {} : { ...registered, country: "DK" }),
+  }
+}
+
+/** A CVR customer's number and legal name follow the register; another number means a new lookup. */
+function validateRegistryIdentity(
+  existing: { taxId: string | null; company: string | null; legalName: string | null },
+  input: { taxId?: string; company?: string }
+) {
+  const issues = [
+    ...(input.taxId !== undefined && cvrDigits(input.taxId) !== cvrDigits(existing.taxId)
+      ? [{ path: "taxId", message: "The CVR number comes from the register. Look up the new number as a new customer." }]
+      : []),
+    ...(input.company !== undefined && input.company !== existing.company && input.company !== existing.legalName
+      ? [{ path: "company", message: "The legal name comes from the register. Update the customer from CVR to refresh it." }]
+      : []),
+  ]
+  return issues.length
+    ? Effect.fail(new ValidationFailed({ message: issues.map(issue => issue.message).join(" "), issues }))
+    : Effect.void
+}
+
 const loadOrgCountry = Effect.gen(function* () {
   const db = yield* Db
   const { organizationId } = yield* Command
@@ -85,28 +122,29 @@ export const createContact = defineCommand({
   type: "contact.create",
   permission: "contact:create",
   outwardFacing: false,
-  input: contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional() })),
+  input: contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional(), registry: registryFactsSchema.optional() })),
   summarize: (input) => `Create contact ${input.name}`,
   handle: (input) =>
     Effect.gen(function* () {
       const db = yield* Db
       const command = yield* Command
       // Commands already hold the organization lock, so concurrent CVR requests reuse one customer.
-      const { reuseCvr, ...fields } = input
-      if (reuseCvr && input.country === "DK" && /^\d{8}$/.test(input.taxId ?? "")) {
+      const { reuseCvr, registry, ...given } = input
+      const fields = registry ? { ...given, ...registryContactFields(registry, Boolean(given.address || given.zip || given.city)), registryCheckedAt: command.now } : given
+      if (reuseCvr && fields.country === "DK" && /^\d{8}$/.test(fields.taxId ?? "")) {
         const contacts = yield* Effect.promise(() => db.contact.findMany({ where: { organizationId: command.organizationId, taxId: { not: null } } }))
-        const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === input.taxId)
+        const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === fields.taxId)
         if (existing) return { ...existing, reused: true }
       }
       const orgCountry = yield* loadOrgCountry
 
       const countryCode = normalizeCountryCode(
-        (input.country?.trim().length === 2 ? input.country : undefined) || orgCountry
+        (fields.country?.trim().length === 2 ? fields.country : undefined) || orgCountry
       )
-      yield* validateLocalized(countryCode, input)
+      yield* validateLocalized(countryCode, fields)
       yield* validatePeppolEndpoint({
-        id: input.peppolEndpointId ?? null,
-        scheme: input.peppolEndpointScheme ?? null,
+        id: fields.peppolEndpointId ?? null,
+        scheme: fields.peppolEndpointScheme ?? null,
       })
 
       const contact = yield* Effect.promise(() =>
@@ -114,8 +152,8 @@ export const createContact = defineCommand({
           data: {
             ...fields,
             ...(fields.phone !== undefined ? { phone: storedPhone(fields.phone, countryCode) } : {}),
-            email: input.email || null,
-            country: normalizeCountry(input.country),
+            email: fields.email || null,
+            country: normalizeCountry(fields.country ?? undefined),
             organizationId: command.organizationId,
           },
         })
@@ -151,12 +189,16 @@ export const updateContact = defineCommand({
             country: true,
             peppolEndpointId: true,
             peppolEndpointScheme: true,
+            registrySource: true,
+            company: true,
+            legalName: true,
           },
         })
       )
       if (!existing) {
         return yield* new NotFound({ message: "Contact not found", entity: "contact", id: input.id })
       }
+      if (existing.registrySource === "cvr") yield* validateRegistryIdentity(existing, input)
 
       const orgCountry = yield* loadOrgCountry
       const countryCode = normalizeCountryCode(
@@ -195,6 +237,49 @@ export const updateContact = defineCommand({
         aggregateId: contact.id,
         type: "contact.updated",
         payload: { fields: Object.keys(data) },
+      })
+      return contact
+    }),
+})
+
+/**
+ * Refreshes a customer's CVR number, legal name and registered address from the register, with facts
+ * the caller looked up for the customer's stored CVR. A manual Danish customer becomes a CVR customer.
+ */
+export const refreshContactFromRegistry = defineCommand({
+  type: "contact.registry_refresh",
+  permission: "contact:update",
+  outwardFacing: false,
+  input: z.object({ id: z.string().min(1), registry: registryFactsSchema }),
+  summarize: (input) => `Update contact ${input.id} from CVR`,
+  handle: (input) =>
+    Effect.gen(function* () {
+      const db = yield* Db
+      const command = yield* Command
+      const existing = yield* Effect.promise(() =>
+        db.contact.findFirst({ where: { id: input.id, organizationId: command.organizationId } })
+      )
+      if (!existing) {
+        return yield* new NotFound({ message: "Contact not found", entity: "contact", id: input.id })
+      }
+      if (cvrDigits(existing.taxId) !== input.registry.cvr) {
+        return yield* new InvalidState({ code: "registry_cvr_mismatch", message: "The register answered for a different CVR number" })
+      }
+      // A billing address that still follows the registered one moves with it; one of its own stays.
+      const followsRegistered = existing.registrySource === "cvr"
+        ? existing.address === existing.registeredAddress && existing.zip === existing.registeredZip && existing.city === existing.registeredCity
+        : !existing.address && !existing.zip && !existing.city
+      const contact = yield* Effect.promise(() =>
+        db.contact.update({
+          where: { id: existing.id, organizationId: command.organizationId },
+          data: { ...registryContactFields(input.registry, !followsRegistered), registryCheckedAt: command.now },
+        })
+      )
+      command.emit({
+        aggregateType: "contact",
+        aggregateId: contact.id,
+        type: "contact.updated",
+        payload: { fields: ["registry"] },
       })
       return contact
     }),
@@ -302,4 +387,4 @@ export const undoCreateContact = defineCommand({
   }),
 })
 
-export const contactCommands = [createContact, updateContact, deleteContact, resumeContactReminders, undoCreateContact] as const
+export const contactCommands = [createContact, updateContact, refreshContactFromRegistry, deleteContact, resumeContactReminders, undoCreateContact] as const
