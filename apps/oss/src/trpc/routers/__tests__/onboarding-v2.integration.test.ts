@@ -414,6 +414,16 @@ async function caller(id: string, requestedOrganizationId?: string) {
     await prisma.orgSettings.create({ data: { organizationId: id, companyName: "Original incomplete", onboardingStatus: "in_progress", onboardingVersion: 1 } })
     const before = await prisma.orgSettings.findUniqueOrThrow({ where: { organizationId: id } })
     const { setRuntimeServices } = await import("../../../lib/runtime/services")
+    // Keep Prisma's real deadline, but shorten the first confirmation's so the test does not
+    // wait 60 seconds. The retry keeps the production deadline.
+    const client = (globalThis as { __prisma?: typeof prisma }).__prisma!
+    const transaction = client.$transaction.bind(client)
+    const deadlines: unknown[] = []
+    vi.spyOn(client, "$transaction").mockImplementation(((run: unknown, options?: { timeout?: number }) => {
+      deadlines.push(options?.timeout)
+      const shorten = typeof run === "function" && deadlines.length === 1
+      return transaction(run as never, shorten ? { ...options, timeout: 2_000 } : options)
+    }) as typeof client.$transaction)
     // MOCK: a durable provider provision succeeds once, but its first response exceeds
     // the real PostgreSQL/Prisma confirmation deadline. No external billing requests run.
     const provisioned = new Set<string>()
@@ -422,7 +432,7 @@ async function caller(id: string, requestedOrganizationId?: string) {
       if (!provisioned.has(organizationId)) {
         provisioned.add(organizationId)
         provision(organizationId)
-        await new Promise(resolve => setTimeout(resolve, 60_050))
+        await new Promise(resolve => setTimeout(resolve, 2_050))
       }
     })
     setRuntimeServices({ billingProvider: { startTrial, getSubscription: async () => ({ status: "trialing", organizationAccess: { state: "trial", daysLeft: 14, trialStart: 1, trialEnd: 2, progress: 0 }, priceId: null, access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }), assertInvoiceCreationAllowed: async () => {} } })
@@ -434,7 +444,9 @@ async function caller(id: string, requestedOrganizationId?: string) {
     expect(await api.onboarding.confirmV2(input)).toMatchObject({ status: "complete" })
     expect(startTrial).toHaveBeenCalledTimes(2)
     expect(provision).toHaveBeenCalledTimes(1)
-  }, 75_000)
+    // Both confirmations asked for the production 60 second deadline.
+    expect(deadlines).toEqual([60_000, 60_000])
+  })
   it.each(["saveDraft", "complete", "completeManual"].flatMap(mutation => [false, true].map(existing => [mutation, existing] as const)))("serializes %s behind v2 with existing settings %s and preserves identifiers", async (mutation, existing) => {
     const id = await organization()
     const api = await caller(id)
