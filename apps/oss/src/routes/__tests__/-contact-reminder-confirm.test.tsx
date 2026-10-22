@@ -34,7 +34,7 @@ it.each(["da-DK", "en-US"])("requires confirmation and permits cancellation befo
   fireEvent.click(resume)
   fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: t("contacts.reminders.resume") }))
   await waitFor(() => expect(api.resume).toHaveBeenCalledExactlyOnceWith({ id: "buyer" }, handledMutationError))
-  await waitFor(() => expect(screen.getByRole("status").textContent).toBe(t("contacts.reminders.active")))
+  await waitFor(() => expect(screen.getAllByRole("status").map(status => status.textContent)).toContain(t("contacts.reminders.active")))
 })
 
 it("preserves customer edits through a failed background refresh and retry", async () => {

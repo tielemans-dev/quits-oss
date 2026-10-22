@@ -3,7 +3,7 @@ import { useI18n } from "../../lib/i18n/react"
 import { formatCurrency, formatDate } from "../../lib/i18n/format"
 import { Button } from "../ui/button"
 import { BuyerDetails } from "../documents/buyer-details"
-import { buildBuyerSnapshot } from "../../domain/documents/snapshots"
+import { buildBuyerSnapshot } from "../../lib/documents/buyer-snapshot"
 
 export type FlowPreviewProps = {
   customer?: Parameters<typeof buildBuyerSnapshot>[0]

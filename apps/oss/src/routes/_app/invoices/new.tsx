@@ -57,7 +57,7 @@ export const Route = createFileRoute("/_app/invoices/new")({
   component: () => <NewInvoicePage initialContactId={Route.useSearch().contactId} />,
 })
 
-type Contact = { id: string; name: string; email?: string | null; taxId?: string | null; country?: string | null }
+type Contact = { id: string; name: string; email: string | null; company: string | null; address: string | null; city: string | null; state: string | null; zip: string | null; country: string | null; taxId?: string | null }
 
 type LineItem = {
   description: string
