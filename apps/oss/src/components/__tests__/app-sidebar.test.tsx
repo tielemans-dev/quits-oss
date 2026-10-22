@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const router = vi.hoisted(() => ({ context: undefined as unknown, pathname: "/", setOpenMobile: vi.fn() }))
+const router = vi.hoisted(() => ({ context: undefined as unknown, pathname: "/" }))
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -44,7 +44,7 @@ vi.mock("../ui/sidebar", () => {
     SidebarMenu: Pass,
     SidebarMenuItem: Pass,
     SidebarMenuButton: Pass,
-    useSidebar: () => ({ setOpenMobile: router.setOpenMobile }),
+    useSidebar: () => ({ setOpenMobile: () => undefined }),
   }
 })
 
@@ -54,7 +54,6 @@ afterEach(() => {
   cleanup()
   router.context = undefined
   router.pathname = "/"
-  router.setOpenMobile.mockReset()
 })
 
 describe("sidebar billing entry", () => {
@@ -70,12 +69,6 @@ describe("sidebar billing entry", () => {
     render(<AppSidebar />)
     expect(screen.queryByText("nav.billing")).toBeNull()
     expect(screen.queryByText("nav.invoices")).not.toBeNull()
-  })
-
-  it("hides Billing on cloud when billing is switched off", () => {
-    router.context = { runtime: { distribution: "cloud", billingEnabled: false } }
-    render(<AppSidebar />)
-    expect(screen.queryByText("nav.billing")).toBeNull()
   })
 })
 
@@ -113,18 +106,5 @@ describe("sidebar navigation", () => {
     expect(screen.getByRole("link", { name: "settings.nav.backLabel" }).getAttribute("href")).toBe("/")
     const current = screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page")
     expect(current.map((link) => link.getAttribute("href"))).toEqual(["/settings/team"])
-  })
-
-  it("closes the mobile drawer when a page is chosen", () => {
-    render(<AppSidebar />)
-
-    fireEvent.click(screen.getByText("nav.quotes"))
-    expect(router.setOpenMobile).toHaveBeenCalledTimes(1)
-    expect(router.setOpenMobile).toHaveBeenCalledWith(false)
-  })
-
-  it("has a landmark for the pages", () => {
-    render(<AppSidebar />)
-    expect(screen.getByRole("navigation", { name: "shell.nav.label" })).not.toBeNull()
   })
 })

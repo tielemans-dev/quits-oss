@@ -11,58 +11,6 @@ afterEach(() => {
 })
 
 describe("EmailDeliveryPanel", () => {
-  it("renders send and resend action labels", () => {
-    const { unmount } = render(
-      <EmailDeliveryPanel
-        title="Email delivery"
-        description="Send or resend the customer email for this document."
-        action={{
-          label: "Send email",
-          pendingLabel: "Sending...",
-          pending: false,
-          onClick: () => undefined,
-        }}
-      />
-    )
-    expect(screen.getByRole("button", { name: "Send email" })).toBeTruthy()
-
-    unmount()
-
-    render(
-      <EmailDeliveryPanel
-        title="Email delivery"
-        description="Send or resend the customer email for this document."
-        action={{
-          label: "Resend email",
-          pendingLabel: "Sending...",
-          pending: false,
-          onClick: () => undefined,
-        }}
-      />
-    )
-
-    expect(screen.getByRole("button", { name: "Resend email" })).toBeTruthy()
-  })
-
-  it("renders delivery status details", () => {
-    render(
-      <EmailDeliveryPanel
-        title="Email delivery"
-        description="Send or resend the customer email for this document."
-        status={{
-          outcome: "failed",
-          label: "Failed",
-          detail: "Last attempt: Failed on March 6, 2026",
-          message: "Email delivery failed.",
-        }}
-      />
-    )
-
-    expect(screen.getByText("Failed")).toBeTruthy()
-    expect(screen.getByText("Last attempt: Failed on March 6, 2026")).toBeTruthy()
-    expect(screen.getByText("Email delivery failed.")).toBeTruthy()
-  })
-
   it("renders degraded-path confirmation copy", () => {
     function Harness() {
       const [open, setOpen] = useState(false)

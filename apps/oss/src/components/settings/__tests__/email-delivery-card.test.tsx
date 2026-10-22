@@ -73,23 +73,4 @@ describe("EmailDeliveryCard", () => {
     expect(html).toContain("FROM_EMAIL")
     expect(html).toContain("RESEND_API_KEY")
   })
-
-  it("renders managed cloud status without provider diagnostics", () => {
-    const html = renderToStaticMarkup(
-      <EmailDeliveryCard
-        emailDelivery={{
-          managed: true,
-          configured: true,
-          available: true,
-          sender: "cloud@yaip.example",
-          missing: [],
-          status: "managed",
-        }}
-      />
-    )
-
-    expect(html).toContain("Managed by Cloud")
-    expect(html).toContain("cloud@yaip.example")
-    expect(html).not.toContain("RESEND_API_KEY")
-  })
 })

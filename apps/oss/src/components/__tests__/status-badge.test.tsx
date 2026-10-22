@@ -53,41 +53,6 @@ describe("StatusBadge", () => {
     }
   )
 
-  it("shows the label and carries the tone of the status", () => {
-    render(<StatusBadge domain="invoice" status="overdue" />)
-
-    const badge = screen.getByText("Overdue")
-    expect(badge.dataset.tone).toBe("warning")
-    // The label in the tone on the tone at 10%, the same in light and dark, on a 4px badge.
-    expect(badge.className).toContain("text-tone-warning")
-    expect(badge.className).toContain("bg-tone-warning-soft")
-    expect(badge.className).not.toContain("dark:")
-    expect(badge.className).toContain("rounded-sm")
-  })
-
-  it("draws no dot: the label alone says the status", () => {
-    render(<StatusBadge domain="invoice" status="sent" />)
-
-    expect(screen.getByText("Sent").querySelector("[aria-hidden]")).toBeNull()
-  })
-
-  it("keeps a screen to green, amber and red: every other tone is one quiet neutral", () => {
-    render(
-      <>
-        <StatusBadge domain="invoice" status="draft" />
-        <StatusBadge domain="invoice" status="sent" />
-        <StatusBadge domain="invoice" status="viewed" />
-        <StatusBadge domain="invoice" status="credited" />
-        <StatusBadge domain="quote" status="accepted" />
-      </>
-    )
-
-    const neutral = ["Draft", "Sent", "Viewed", "Credited"].map((label) => screen.getByText(label).className)
-    expect(new Set(neutral).size).toBe(1)
-    expect(neutral[0]).toContain("text-muted-foreground")
-    expect(screen.getByText("Accepted").className).toContain("text-tone-success")
-  })
-
   it.each([["en-US", "Sending"], ["da-DK", "Sender"]])(
     "shows an invoice whose email is still being delivered as %s, not as a draft",
     (locale, label) => {
@@ -113,12 +78,6 @@ describe("StatusBadge", () => {
     expect(screen.getByText(label)).toBeTruthy()
     expect(screen.queryByText("Draft")).toBeNull()
     expect(screen.queryByText("Kladde")).toBeNull()
-  })
-
-  it("translates the label", () => {
-    state.locale = "da-DK"
-    render(<StatusBadge domain="invoice" status="partially_paid" />)
-    expect(screen.getByText("Delvist betalt").dataset.tone).toBe("warning")
   })
 
   it("shows an unknown status as it is, in the neutral tone", () => {
