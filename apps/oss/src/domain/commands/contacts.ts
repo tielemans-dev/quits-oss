@@ -119,55 +119,71 @@ const loadOrgCountry = Effect.gen(function* () {
   return settings?.countryCode
 })
 
+const contactCreateCommandInputSchema = contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional() }))
+type ContactCreateCommandInput = z.infer<typeof contactCreateCommandInputSchema>
+
+function createContactWith(input: ContactCreateCommandInput, registry?: RegistryFacts) {
+  return Effect.gen(function* () {
+    const db = yield* Db
+    const command = yield* Command
+    // Commands already hold the organization lock, so concurrent CVR requests reuse one customer.
+    const { reuseCvr, ...given } = input
+    const fields = registry ? { ...given, ...registryContactFields(registry, Boolean(given.address || given.zip || given.city), given.company), registryCheckedAt: command.now } : given
+    if (reuseCvr && fields.country === "DK" && /^\d{8}$/.test(fields.taxId ?? "")) {
+      const contacts = yield* Effect.promise(() => db.contact.findMany({ where: { organizationId: command.organizationId, taxId: { not: null } } }))
+      const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === fields.taxId)
+      if (existing) return { ...existing, reused: true }
+    }
+    const orgCountry = yield* loadOrgCountry
+
+    const countryCode = normalizeCountryCode(
+      (fields.country?.trim().length === 2 ? fields.country : undefined) || orgCountry
+    )
+    yield* validateLocalized(countryCode, fields)
+    yield* validatePeppolEndpoint({
+      id: fields.peppolEndpointId ?? null,
+      scheme: fields.peppolEndpointScheme ?? null,
+    })
+
+    const contact = yield* Effect.promise(() =>
+      db.contact.create({
+        data: {
+          ...fields,
+          ...(fields.phone !== undefined ? { phone: storedPhone(fields.phone, countryCode) } : {}),
+          email: fields.email || null,
+          country: normalizeCountry(fields.country ?? undefined),
+          organizationId: command.organizationId,
+        },
+      })
+    )
+
+    command.emit({
+      aggregateType: "contact",
+      aggregateId: contact.id,
+      type: "contact.created",
+      payload: { name: contact.name },
+    })
+    return { ...contact, reused: false }
+  })
+}
+
 export const createContact = defineCommand({
   type: "contact.create",
   permission: "contact:create",
   outwardFacing: false,
-  input: contactCreateInputSchema.and(z.object({ reuseCvr: z.boolean().optional(), registry: registryFactsSchema.optional() })),
+  input: contactCreateCommandInputSchema,
   summarize: (input) => `Create contact ${input.name}`,
-  handle: (input) =>
-    Effect.gen(function* () {
-      const db = yield* Db
-      const command = yield* Command
-      // Commands already hold the organization lock, so concurrent CVR requests reuse one customer.
-      const { reuseCvr, registry, ...given } = input
-      const fields = registry ? { ...given, ...registryContactFields(registry, Boolean(given.address || given.zip || given.city), given.company), registryCheckedAt: command.now } : given
-      if (reuseCvr && fields.country === "DK" && /^\d{8}$/.test(fields.taxId ?? "")) {
-        const contacts = yield* Effect.promise(() => db.contact.findMany({ where: { organizationId: command.organizationId, taxId: { not: null } } }))
-        const existing = contacts.find(contact => contact.taxId?.replace(/^DK\s*/i, "").replace(/\s/g, "") === fields.taxId)
-        if (existing) return { ...existing, reused: true }
-      }
-      const orgCountry = yield* loadOrgCountry
+  handle: (input) => createContactWith(input),
+})
 
-      const countryCode = normalizeCountryCode(
-        (fields.country?.trim().length === 2 ? fields.country : undefined) || orgCountry
-      )
-      yield* validateLocalized(countryCode, fields)
-      yield* validatePeppolEndpoint({
-        id: fields.peppolEndpointId ?? null,
-        scheme: fields.peppolEndpointScheme ?? null,
-      })
-
-      const contact = yield* Effect.promise(() =>
-        db.contact.create({
-          data: {
-            ...fields,
-            ...(fields.phone !== undefined ? { phone: storedPhone(fields.phone, countryCode) } : {}),
-            email: fields.email || null,
-            country: normalizeCountry(fields.country ?? undefined),
-            organizationId: command.organizationId,
-          },
-        })
-      )
-
-      command.emit({
-        aggregateType: "contact",
-        aggregateId: contact.id,
-        type: "contact.created",
-        payload: { name: contact.name },
-      })
-      return { ...contact, reused: false }
-    }),
+/**
+ * `contact.create` for a customer from the CVR register, with the facts the server looked up itself.
+ * It is kept out of `allCommands`, so an approved agent request can never dispatch made-up facts.
+ */
+export const createContactFromRegistry = defineCommand({
+  ...createContact,
+  input: contactCreateCommandInputSchema.and(z.object({ registry: registryFactsSchema })),
+  handle: ({ registry, ...input }) => createContactWith(input, registry),
 })
 
 export const updateContact = defineCommand({
@@ -246,7 +262,8 @@ export const updateContact = defineCommand({
 
 /**
  * Refreshes a customer's CVR number, legal name and registered address from the register, with facts
- * the caller looked up for the customer's stored CVR. A manual Danish customer becomes a CVR customer.
+ * the server looked up for the customer's stored CVR. A manual Danish customer becomes a CVR customer.
+ * Like `createContactFromRegistry`, it is kept out of `allCommands`.
  */
 export const refreshContactFromRegistry = defineCommand({
   type: "contact.registry_refresh",
@@ -389,4 +406,4 @@ export const undoCreateContact = defineCommand({
   }),
 })
 
-export const contactCommands = [createContact, updateContact, refreshContactFromRegistry, deleteContact, resumeContactReminders, undoCreateContact] as const
+export const contactCommands = [createContact, updateContact, deleteContact, resumeContactReminders, undoCreateContact] as const

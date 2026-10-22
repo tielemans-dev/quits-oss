@@ -2,7 +2,8 @@ import type { CvrCompany } from "@quits/contracts/cvr"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { useEffect, useState } from "react"
 import { RefreshCw } from "lucide-react"
-import { addressLines } from "../../../lib/contacts/registry"
+import { cvrLookupError } from "../../../lib/contacts/cvr-errors"
+import { registryFacts } from "../../../lib/contacts/registry"
 import { handledMutationError } from "../../../lib/query-refresh"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -18,13 +19,8 @@ export type RegistryCustomer = { name: string; company: string; address: string;
 
 /** "Vestergade 5, 8000 Aarhus C" becomes the street, postnr and by fields of the customer form. */
 export function registryCustomer(company: CvrCompany): RegistryCustomer {
-  const [street = "", place = ""] = addressLines(company.address)
-  const postal = /^(\d{4})\s+(.+)$/.exec(place)
-  return {
-    name: company.name, company: company.name, address: street,
-    zip: postal?.[1] ?? "", city: postal?.[2] ?? place, country: "DK", taxId: company.cvr,
-    secondaryNames: company.secondaryNames ?? [],
-  }
+  const { cvr, legalName, secondaryNames, address, zip, city } = registryFacts(company)
+  return { name: legalName, company: legalName, address, zip, city, country: "DK", taxId: cvr, secondaryNames }
 }
 
 /** Whether the runtime supplies a CVR lookup (hosted). Self-hosted installs have none. */
@@ -38,11 +34,7 @@ export function useCvrLookupAvailable() {
   return available
 }
 
-/** The message for a failed register lookup: no such company, no lookup here, or the lookup failed. */
-export function cvrLookupError(err: unknown): TranslationKey {
-  const code = (err as { data?: { code?: string } }).data?.code
-  return code === "NOT_FOUND" ? "shell.request.customer.notFound" : code === "NOT_IMPLEMENTED" ? "shell.request.customer.unavailable" : "shell.request.customer.lookupError"
-}
+export { cvrLookupError }
 
 /** Refreshes a CVR customer's legal name, CVR number and registered address from the register. */
 export function CvrRefreshButton({ contactId, onRefreshed, onError }: { contactId: string; onRefreshed: () => void; onError: (key: TranslationKey) => void }) {

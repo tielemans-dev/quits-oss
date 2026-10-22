@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
+import { cvrSaveLookupError } from "../lib/contacts/cvr-errors"
 import type { TranslationKey } from "../lib/i18n/messages"
 import { useI18n } from "../lib/i18n/react"
 import { handledMutationError } from "../lib/query-refresh"
@@ -101,7 +102,7 @@ export function CustomerPicker({ id, contacts, value, invalid, onChange, onCreat
       setCreated({ id: contact.id, name: contact.name })
       onCreated(contact.id)
       close()
-    } catch { setError("contacts.new.error.createFailed") } finally { setPending(false) }
+    } catch (err) { setError(cvrSaveLookupError(err) ?? "contacts.new.error.createFailed") } finally { setPending(false) }
   }
 
   const q = query.trim().toLowerCase()

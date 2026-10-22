@@ -10,6 +10,7 @@ vi.mock("../../trpc/client", () => ({ trpc: {
 import { I18nProvider } from "../../lib/i18n/react"
 import { CustomerPicker } from "../customer-picker"
 import { handledMutationError } from "../../lib/query-refresh"
+import { translate } from "../../lib/i18n/translate"
 const firma = { cvr: "24256790", name: "Firma ApS", address: "Gade 1, 8000 Aarhus C", companyForm: "ApS", status: "active", statusClass: "active", momsRegistered: true, email: "faktura@firma.test" }
 const andet = { ...firma, cvr: "10150817", name: "Andet A/S", email: null }
 const props = { id: "contact", value: "", onChange: vi.fn(), onCreated: vi.fn() }
@@ -95,4 +96,13 @@ it("stops searching with an error when the register never answers", async () => 
   await screen.findByText("Kunne ikke hente virksomheden. Prøv igen.")
   expect(screen.queryByText("Søger i CVR-registret …")).toBeNull()
   timeout.mockRestore()
+})
+it("shows the lookup message when the server's own lookup fails as the customer is added", async () => {
+  api.create.mockRejectedValue(Object.assign(new Error("MOCK upstream detail"), { data: { code: "NOT_FOUND" } }))
+  open()
+  type("Firma")
+  fireEvent.click(await screen.findByRole("option", { name: /Firma ApS/ }))
+  fireEvent.click(screen.getByRole("button", { name: "Tilføj kunde" }))
+  expect(await screen.findByText(translate("shell.request.customer.notFound", "da-DK"))).toBeTruthy()
+  expect(props.onCreated).not.toHaveBeenCalled()
 })
