@@ -562,7 +562,7 @@ export function NewInvoicePage({ onCancel, onComplete, kind = "invoice", initial
           </Button>
         </CardFooter>
       </Card>
-      {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
+      {onComplete && <div ref={previewSurface} className="invoice-preview-side"><FlowPreview customer={contacts.find(contact => contact.id === contactId)} company={settings?.companyName} sellerCountry={readiness?.countryCode} dueDate={dueDate} currency={currency} items={items} total={preview.result?.gross ?? null} paymentMethods={paymentMethods} /></div>}
       {confirmOpen && onComplete && <div className="invoice-review-bar flex flex-wrap items-center justify-end gap-3 border-t bg-panel p-4">
         <span className="mr-auto text-sm">{recipientReview?.recipient}</span>
         {kind !== "recurring" && <label className="flex items-center gap-2 text-sm">{t("invoices.flow.reminders")}<Switch checked={reminders} onCheckedChange={setReminders} /></label>}

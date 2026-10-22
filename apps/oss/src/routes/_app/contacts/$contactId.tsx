@@ -27,7 +27,8 @@ import { contactSaveError } from "./-contact-save-error"
 import { handledMutationError } from "../../../lib/query-refresh"
 import { CompanyField } from "./-company-field"
 import { BillingAddressFields } from "./-billing-address"
-import { CvrRefreshButton, useCvrLookupAvailable } from "./-cvr-lookup"
+import { CvrRefreshButton, registryRefreshChanged, useCvrLookupAvailable } from "./-cvr-lookup"
+import type { TranslationKey } from "../../../lib/i18n/messages"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { cvrDigits } from "../../../lib/contacts/registry"
 
@@ -78,6 +79,9 @@ function ContactPage() {
   const businessOnly = useBusinessBuyersOnly()
   const lookupAvailable = useCvrLookupAvailable()
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<TranslationKey | null>(null)
+  // Not with the loader below: the refetch every contact mutation triggers would clear it at once.
+  useEffect(() => setNotice(null), [contactId])
 
   useEffect(() => {
     let current = true
@@ -195,8 +199,13 @@ function ContactPage() {
             {lookupAvailable && isValidDanishCvr(cvrDigits(contact.taxId)) && (
               <CvrRefreshButton
                 contactId={contactId}
-                onRefreshed={() => { setError(null); query.refresh() }}
-                onError={(key) => setError(t(key))}
+                onRefreshed={(updated) => {
+                  // The register often answers with what is already on file, which would otherwise look like nothing happened.
+                  setError(null)
+                  setNotice(registryRefreshChanged(contact, updated) ? "contacts.cvr.refreshed" : "contacts.cvr.unchanged")
+                  setContact((current) => current && { ...current, ...updated })
+                }}
+                onError={(key) => { setNotice(null); setError(t(key)) }}
               />
             )}
             <Button asChild>
@@ -210,6 +219,7 @@ function ContactPage() {
       />
       {loadError ? <QueryError error={loadError} retry={query.refresh} /> : null}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+      <p role="status" className="text-sm text-tone-success empty:hidden">{notice ? t(notice) : null}</p>
 
       <dl className="border-hairline grid border-t sm:grid-cols-[12rem_minmax(0,1fr)]">
         <Fact label={t("contacts.field.company")}>{contact.company}</Fact>

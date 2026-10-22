@@ -34,8 +34,7 @@ import {
 } from "../../../lib/email-delivery"
 import { LocalizedDateField } from "../../../components/localized-date-field"
 import type { DocumentTaxId } from "@quits/contracts/documents"
-import { detailBuyerAddress } from "../../../lib/documents/buyer-address"
-import { distinctCompany, formatTaxIds } from "../../../lib/documents/tax-ids"
+import { BuyerDetails } from "../../../components/documents/buyer-details"
 import { EmailDeliveryPanel } from "../../../components/documents/email-delivery-panel"
 import { ReloadRequiredNotice } from "../../../components/documents/reload-required-notice"
 import { EmailSendFailureNotice } from "../../../components/invoices/email-send-failure-notice"
@@ -1395,13 +1394,7 @@ function InvoiceDetailPage() {
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   {t("pdf.billTo")}
                 </h3>
-                <p className="font-semibold">{contact.name}</p>
-                {distinctCompany(contact) && <p className="text-sm">{distinctCompany(contact)}</p>}
-                {formatTaxIds(invoice.buyerTaxIds, locale).map(id => <p key={id} className="text-sm">{id}</p>)}
-                {contact.email && (
-                  <p className="text-sm text-muted-foreground">{contact.email}</p>
-                )}
-                {detailBuyerAddress(contact, invoice.countryCode, locale).map((line, index) => <p key={index} className="text-sm">{line}</p>)}
+                <BuyerDetails buyer={contact} taxIds={invoice.buyerTaxIds} sellerCountry={invoice.countryCode} />
               </div>
             </div>
 
