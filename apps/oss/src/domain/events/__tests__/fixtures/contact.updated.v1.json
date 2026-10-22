@@ -24,6 +24,17 @@
           "reminderUnsubscribedAt"
         ]
       }
+    },
+    {
+      "source": "commands/contacts.ts",
+      "typeExpression": "\"contact.updated\"",
+      "payloadExpression": "{ fields: [\"registry\"] }",
+      "variant": "default",
+      "payload": {
+        "fields": [
+          "registry"
+        ]
+      }
     }
   ]
 }

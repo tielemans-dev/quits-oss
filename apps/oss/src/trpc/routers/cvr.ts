@@ -7,7 +7,7 @@ import { getCvrLookupProvider } from "../../lib/runtime/services"
 import { researchCompany } from "../../lib/onboarding/company-research"
 import { authorizedProcedure, protectedProcedure, router } from "../init"
 
-function lookupSignal(...signals: (AbortSignal | undefined)[]) {
+export function lookupSignal(...signals: (AbortSignal | undefined)[]) {
   const combined = AbortSignal.any([...signals.filter((signal): signal is AbortSignal => Boolean(signal)), AbortSignal.timeout(10_000)])
   combined.throwIfAborted()
   return combined

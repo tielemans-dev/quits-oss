@@ -4,6 +4,7 @@ import type { CvrCompany } from "@quits/contracts/cvr"
 import { DURATION, STAGGER_STEP, prefersReducedMotion } from "../../lib/motion"
 import { useI18n } from "../../lib/i18n/react"
 import { FillSlot } from "../ui/fill-slot"
+import { addressLines } from "../../lib/contacts/registry"
 
 /** The skeleton shows at least this long, so a fast answer does not flash. */
 export const SKELETON_MIN_MS = 300
@@ -17,9 +18,7 @@ const CHECK_SLOT = INVOICE_START + 4
 export const settleMs = () =>
   prefersReducedMotion() ? DURATION.fade + HOLD_MS : CHECK_SLOT * STAGGER_STEP + DURATION.base + HOLD_MS
 
-/** "Vestergade 1, 2100 København Ø" or the same over two lines: street first, then postnr and by. */
-export const addressLines = (address: string) =>
-  address.split(/\n|,\s*(?=\d{4}\s)/).map((line) => line.trim()).filter(Boolean)
+export { addressLines }
 
 type Props = {
   /** null while the lookup is pending. */
