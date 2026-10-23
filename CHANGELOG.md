@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [0.17.1](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.17.1)
+
+Changes since the published v0.17.0 tag, covering 1 merged PR.
+
+- Confirm that "Opdater fra CVR" updated the customer, or say it was already up to date, and show the refreshed fields straight away.
+- Open a new customer created on its own page.
+- Show the full buyer block in the live preview of a new invoice, the same as on the saved draft.
+
+See the [release notes](docs/releases/v0.17.1.md) for upgrade notes.
+
+[Compare with v0.17.0](https://github.com/tielemans-dev/quits-oss/compare/v0.17.0...v0.17.1).
+
 ## [0.17.0](https://github.com/tielemans-dev/quits-oss/releases/tag/v0.17.0)
 
 Changes since the published v0.16.3 tag, covering 8 merged PRs.
