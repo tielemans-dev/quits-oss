@@ -102,7 +102,8 @@ export function buildQuitsAuthOptions(input: {
   const organizationPlugin = organization({
     ac,
     roles: { admin, member, accountant },
-    // Organization deletion must not remove financial records or their evidence.
+    // Better Auth would delete only some rows. Settings deletes through `requestOrganizationDeletion`,
+    // which ends in `purgeOrganization`, so this endpoint stays closed.
     disableOrganizationDeletion: true,
     allowUserToCreateOrganization: true,
     organizationHooks: {

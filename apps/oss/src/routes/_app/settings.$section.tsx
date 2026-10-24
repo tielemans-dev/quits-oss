@@ -71,6 +71,8 @@ import type { VatPeriod } from "../../lib/vat-deadline"
 import { AccountingIntegrationsCard } from "../../components/settings/accounting-integrations-card"
 import { AgentKeysCard } from "../../components/settings/agent-keys-card"
 import { AuditLogCard } from "../../components/settings/audit-log-card"
+import { DeleteOrganizationCard } from "../../components/settings/delete-organization-card"
+import { parseOrganizationRoles } from "../../domain/permissions"
 import { PaymentDetailsCard } from "../../components/settings/payment-details-card"
 import { ReminderPolicyCard } from "../../components/settings/reminder-policy-card"
 import { useRuntimeUi } from "../../lib/runtime/ui"
@@ -282,6 +284,7 @@ function SettingsPage() {
   const [sellerVatChoiceReviewed, setSellerVatChoiceReviewed] = useState(false)
   const [withdrawSellerVatEvidence, setWithdrawSellerVatEvidence] = useState(false)
   const [nonVatEnabled, setNonVatEnabled] = useState(false)
+  const [organizationDeletionEnabled, setOrganizationDeletionEnabled] = useState(false)
   const [sellerVatConfirmationEnabled, setSellerVatConfirmationEnabled] = useState<boolean | null>(null)
   const [capabilitiesFailed, setCapabilitiesFailed] = useState(false)
   const [capabilitiesAttempt, setCapabilitiesAttempt] = useState(0)
@@ -331,6 +334,7 @@ function SettingsPage() {
   // Team members state
   const [organizationSlug, setOrganizationSlug] = useState("")
   const [savedOrganizationSlug, setSavedOrganizationSlug] = useState<string | null>(null)
+  const [organizationName, setOrganizationName] = useState("")
   const [slugSaving, setSlugSaving] = useState(false)
   const [slugSaved, setSlugSaved] = useState(false)
   const [slugError, setSlugError] = useState<string | null>(null)
@@ -454,6 +458,7 @@ function SettingsPage() {
         setAiCapabilities((data as Pick<RuntimeCapabilities, "aiInvoiceDraft">).aiInvoiceDraft)
         setSellerVatConfirmationEnabled(data.sellerVatConfirmation?.enabled === true)
         setNonVatEnabled(data.onboardingV2?.nonVatEnabled === true)
+        setOrganizationDeletionEnabled(data.organizationDeletion?.enabled === true)
       })
       .catch(() => setCapabilitiesFailed(true))
       .finally(() => setLoadingAiCapabilities(false))
@@ -514,6 +519,7 @@ function SettingsPage() {
           const slug = typeof org.data.slug === "string" ? org.data.slug : ""
           setOrganizationSlug(slug)
           setSavedOrganizationSlug(slug)
+          setOrganizationName(org.data.name)
           setMembers((org.data.members ?? []) as OrgMember[])
           setInvitations(
             ((org.data.invitations ?? []) as OrgInvitation[]).filter(
@@ -1174,6 +1180,9 @@ function SettingsPage() {
             organizationId={organizationId}
             locale={displayLocale}
           />
+        )}
+        {organizationDeletionEnabled && organizationName && parseOrganizationRoles(members.find(m => m.user.id === session?.user.id)?.role).includes("admin") && (
+          <DeleteOrganizationCard organizationName={organizationName} />
         )}
         </SettingsPane>
 
