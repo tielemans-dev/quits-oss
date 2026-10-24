@@ -389,7 +389,7 @@ const events = (ctx: Ctx, type: string) => prisma.domainEvent.count({ where: { o
     refused(await executeIssuanceCommand(authorizeDeliverableRebill, { ...rebill, creditNoteId: amount.id }, { actor: ctx.actor }), "credit_note_mismatch")
     expect((await ctx.line()).billingStatus).toBe("invoiced")
     expect((await ctx.line()).billingGeneration).toBe(0)
-    expect(await prisma.deliverableRebill.count()).toBe(0)
+    expect(await prisma.deliverableRebill.count({ where: { agreementId: ctx.agreement.id } })).toBe(0)
     await expectConsistentAllocations(ctx)
   })
 
