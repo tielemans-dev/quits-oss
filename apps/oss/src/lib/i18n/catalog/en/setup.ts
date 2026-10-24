@@ -35,7 +35,7 @@ export const enSetupMessages = {
   "setup.placeholder.organizationSlug": "acme-inc",
   "setup.placeholder.adminName": "Jane Doe",
   "setup.placeholder.adminEmail": "admin@example.com",
-  "setup.placeholder.adminPassword": "At least 8 characters",
+  "setup.placeholder.adminPassword": "At least {min} characters",
   "setup.step.auth.title": "Authentication mode",
   "setup.step.auth.description": "Choose local authentication now. OAuth can be enabled later from environment settings.",
   "setup.auth.localOnly.title": "Local only",

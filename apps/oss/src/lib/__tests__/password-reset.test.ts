@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { betterAuth } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 import { buildQuitsAuthOptions, type AuthHooks } from "../runtime/auth-config"
+import { hashPassword } from "better-auth/crypto"
 import { PASSWORD_RESET_EXPIRES_IN } from "../auth/password-policy"
 
 let clientNumber = 0
@@ -189,11 +190,21 @@ describe("Better Auth password recovery", () => {
     } finally { logged.mockRestore() }
   })
 
+  it("rejects new passwords under 12 characters but still signs in with an older shorter one", async () => {
+    const f = fixture()
+    expect((await f.post("/sign-up/email", { name: "Short User", email: "short@example.com", password: "x".repeat(11) })).status).toBe(400)
+    expect(f.database.user).toHaveLength(0)
+    const createdAt = new Date()
+    f.database.user.push({ id: "legacy-user", name: "Legacy User", email: "legacy@example.com", emailVerified: false, createdAt, updatedAt: createdAt })
+    f.database.account.push({ id: "legacy-account", userId: "legacy-user", accountId: "legacy-user", providerId: "credential", password: await hashPassword("eightchr"), createdAt, updatedAt: createdAt })
+    expect((await f.post("/sign-in/email", { email: "legacy@example.com", password: "eightchr" })).status).toBe(200)
+  })
+
   it("rejects expired links and passwords outside the server policy", async () => {
     const f = fixture()
     await f.signup()
     await f.requestReset()
-    for (const newPassword of ["short", "x".repeat(129)]) {
+    for (const newPassword of ["short", "x".repeat(11), "x".repeat(129)]) {
       expect((await f.post("/reset-password", { token: f.resetToken(), newPassword })).status).toBe(400)
     }
     f.database.verification[0]!.expiresAt = new Date(Date.now() - 1000)

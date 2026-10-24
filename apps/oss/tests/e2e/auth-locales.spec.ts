@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { PASSWORD_MIN_LENGTH } from '../../src/lib/auth/password-policy'
 import { resetDatabase, seedCompletedSetup, waitForClientReady } from './support'
 
 for (const lang of ['da', 'en'] as const) {
@@ -21,7 +22,7 @@ for (const lang of ['da', 'en'] as const) {
       await back.click()
       await page.getByRole('link', { name: lang === 'da' ? 'Opret konto' : 'Sign up', exact: true }).click()
       await expect(page.getByRole('button', { name: lang === 'da' ? 'Opret konto' : 'Create account', exact: true })).toBeVisible()
-      await expect(page.getByLabel(lang === 'da' ? 'Adgangskode' : 'Password', { exact: true })).toHaveAttribute('minlength', '8')
+      await expect(page.getByLabel(lang === 'da' ? 'Adgangskode' : 'Password', { exact: true })).toHaveAttribute('minlength', String(PASSWORD_MIN_LENGTH))
       await expect(page.getByLabel(lang === 'da' ? 'Adgangskode' : 'Password', { exact: true })).toHaveAttribute('maxlength', '128')
       await page.goto('/reset-password?token=synthetic-unused-token&lang=' + lang + '&redirect=' + encodeURIComponent(redirect))
       await waitForClientReady(page)

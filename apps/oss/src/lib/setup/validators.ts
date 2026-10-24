@@ -2,6 +2,7 @@ import { z } from "zod"
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { localeSchema } from "../compliance/countries"
 import { isCountryCode } from "../compliance/registry"
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../auth/password-policy"
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const currencyRegex = /^[A-Z]{3}$/
@@ -19,7 +20,7 @@ export const setupInitializeSchema = z.object({
   admin: z.object({
     name: z.string().trim().min(2).max(120),
     email: z.string().trim().email(),
-    password: z.string().min(8).max(128),
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
   }),
   auth: z.object({
     mode: authModeSchema,

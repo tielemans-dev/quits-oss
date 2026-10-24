@@ -35,7 +35,7 @@ export const daSetupMessages = {
   "setup.placeholder.organizationSlug": "acme-aps",
   "setup.placeholder.adminName": "Jane Doe",
   "setup.placeholder.adminEmail": "admin@eksempel.dk",
-  "setup.placeholder.adminPassword": "Mindst 8 tegn",
+  "setup.placeholder.adminPassword": "Mindst {min} tegn",
   "setup.step.auth.title": "Godkendelsestilstand",
   "setup.step.auth.description": "Vælg lokal godkendelse nu. OAuth kan aktiveres senere via miljøindstillinger.",
   "setup.auth.localOnly.title": "Kun lokal",

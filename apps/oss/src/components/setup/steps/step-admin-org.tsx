@@ -1,6 +1,7 @@
 import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { Input } from "../../ui/input"
 import { Label } from "../../ui/label"
+import { PASSWORD_MIN_LENGTH } from "../../../lib/auth/password-policy"
 import { useI18n } from "../../../lib/i18n/react"
 
 type AdminOrgStepProps = {
@@ -101,9 +102,9 @@ export function AdminOrgStep({
             id="setup-admin-password"
             value={adminPassword}
             onChange={(event) => onAdminPasswordChange(event.target.value)}
-            placeholder={t("setup.placeholder.adminPassword")}
+            placeholder={t("setup.placeholder.adminPassword", { min: PASSWORD_MIN_LENGTH })}
             type="password"
-            minLength={8}
+            minLength={PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             required
           />
