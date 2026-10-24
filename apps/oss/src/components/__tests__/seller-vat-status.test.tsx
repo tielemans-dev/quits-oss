@@ -13,7 +13,7 @@ function Choice({ locale, initial = null }: { locale: string; initial?: boolean 
 describe("seller VAT choice", () => {
   it.each([
     ["da-DK", "Er du momsregistreret?", "Jeg er momsregistreret", "Jeg er ikke momsregistreret", "Du fakturerer uden moms. Bliv momsregistreret, når du sælger for mere end 50.000 kr. på 12 måneder."],
-    ["en-US", "Are you VAT-registered?", "I'm VAT-registered", "I'm not VAT-registered", "You invoice without moms. Register for VAT once you sell more than 50,000 kr. in 12 months."],
+    ["en-US", "Are you VAT-registered?", "I'm VAT-registered", "I'm not VAT-registered", "You invoice without VAT. Register for VAT once you sell more than 50,000 kr. in 12 months."],
   ])("starts unselected and uses the approved %s copy", (locale, question, yes, no, hint) => {
     render(<Choice locale={locale} />)
     expect(screen.getByRole("group", { name: question })).toBeTruthy()
@@ -42,7 +42,7 @@ describe("seller VAT choice", () => {
     const radios = screen.getAllByRole("radio") as HTMLInputElement[]
     expect(radios[0]!.checked).toBe(initial)
     expect(radios[1]!.checked).toBe(!initial)
-    expect(screen.queryByText("You invoice without moms. Register for VAT once you sell more than 50,000 kr. in 12 months.") !== null).toBe(initial === false)
+    expect(screen.queryByText("You invoice without VAT. Register for VAT once you sell more than 50,000 kr. in 12 months.") !== null).toBe(initial === false)
   })
   it("hides the hint when an explicit nonregistered choice is withdrawn", () => {
     const onChange = () => {}

@@ -18,9 +18,9 @@ export const enDashboardMessages = {
   "dashboard.morning.drafts.more": "{names} +{more}",
   "dashboard.morning.drafts.action": "Review drafts",
   "dashboard.morning.drafts.empty": "No drafts ready to send",
-  "dashboard.morning.vat.title.one": "Moms for {period} is due in 1 day",
-  "dashboard.morning.vat.title.other": "Moms for {period} is due in {count} days",
-  "dashboard.morning.vat.today": "Moms for {period} is due today",
+  "dashboard.morning.vat.title.one": "VAT return for {period} is due in 1 day",
+  "dashboard.morning.vat.title.other": "VAT return for {period} is due in {count} days",
+  "dashboard.morning.vat.today": "VAT return for {period} is due today",
   "dashboard.morning.vat.detail": "Deadline {date}",
   "dashboard.commandBar.placeholder": "Search, ask quits, or type a task …",
 
