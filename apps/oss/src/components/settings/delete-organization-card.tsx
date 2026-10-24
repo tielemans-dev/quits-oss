@@ -6,6 +6,7 @@ import { invalidateAppLayoutSession } from "../../lib/app-layout-session"
 import { formatDate } from "../../lib/i18n/format"
 import { useI18n } from "../../lib/i18n/react"
 import { loadPage } from "../../lib/page-navigation"
+import { handledMutationError } from "../../lib/query-refresh"
 import { trpc } from "../../trpc/client"
 import {
   AlertDialog,
@@ -34,7 +35,7 @@ export function DeleteOrganizationCard({ organizationName }: { organizationName:
     setBusy(true)
     setError(null)
     try {
-      const outcome = await trpc.settings.deleteOrganization.mutate({ confirmName })
+      const outcome = await trpc.settings.deleteOrganization.mutate({ confirmName }, handledMutationError)
       if (outcome.status === "scheduled") {
         setScheduledFor(outcome.deleteAfter)
         setBusy(false)
