@@ -37,6 +37,7 @@ import { encryptSecret } from "../../lib/secrets"
 import { getStripePaymentConfigurationState, resolveStripeCheckoutTarget, stripeByokConfigured, usesStripeConnectCheckout } from "../../lib/payments/stripe"
 import { appLogger } from "../../lib/observability"
 import { actorCan } from "../../domain/actor"
+import { requestOrganizationDeletion } from "../../domain/organization-deletion"
 import { getRuntimeCapabilities, isNonVatRegistrationAllowed } from "../../lib/runtime/extensions"
 import { getRuntimeEnv, getRuntimePlatform } from "../../lib/runtime/platform"
 import {
@@ -830,6 +831,26 @@ export const settingsRouter = router({
         appLogger.warn("settings.stripe_connect_action_failed", { organizationId: ctx.organizationId, action: input.action, error })
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not update Stripe Connect. Please try again." })
       }
+    }),
+
+  /**
+   * "Delete organisation". Only a signed-in admin, never an agent key, and only after typing the
+   * organization's name. Returns where the user goes next when the organization is already gone.
+   */
+  deleteOrganization: authorizedProcedure("settings:update")
+    .input(z.object({ confirmName: z.string().max(200) }).strict())
+    .mutation(async ({ ctx, input }) => {
+      if (!getRuntimeCapabilities().organizationDeletion.enabled || ctx.actor.kind !== "user") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Organization deletion is not available" })
+      }
+      const organization = await prisma.organization.findUniqueOrThrow({ where: { id: ctx.organizationId }, select: { name: true } })
+      if (input.confirmName.trim() !== organization.name.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "The name does not match the organization" })
+      }
+      const outcome = await requestOrganizationDeletion({ organizationId: ctx.organizationId, userId: ctx.user.id })
+      if (outcome.status !== "deleted") return { ...outcome, nextOrganizationId: null }
+      const next = await prisma.member.findFirst({ where: { userId: ctx.user.id }, orderBy: { createdAt: "asc" }, select: { organizationId: true } })
+      return { ...outcome, nextOrganizationId: next?.organizationId ?? null }
     }),
 })
 

@@ -36,6 +36,14 @@ export type OrganizationPurgeContext = {
   userIds: readonly string[]
 }
 
+export type OrganizationDeletionRequest = {
+  organizationId: string
+  /** The admin who confirmed the deletion by typing the organization's name. */
+  userId: string
+}
+/** `deleted`: the organization is gone now. `scheduled`: it will be deleted at `deleteAfter`. */
+export type OrganizationDeletionOutcome = { status: "deleted" } | { status: "scheduled"; deleteAfter: Date }
+
 export type RuntimeExtension = {
   id: string
   /** Hosted runtimes opt in after resolving existing duplicate CVRs. Ignored by self-host. */
@@ -76,6 +84,13 @@ export type RuntimeExtension = {
    * Self-hosted runtimes leave this unset.
    */
   onOrganizationPurge?: (tx: OrganizationPurgeTransaction, context: OrganizationPurgeContext) => Promise<void>
+  /**
+   * Decides what "Delete organisation" in Settings does, after the app has checked that the user is
+   * an admin and typed the organization's name. The first extension that sets this replaces the
+   * self-hosted default, which purges at once. A scheduled deletion must still end in
+   * `purgeOrganization`. Self-hosted runtimes leave this unset.
+   */
+  requestOrganizationDeletion?: (request: OrganizationDeletionRequest) => Promise<OrganizationDeletionOutcome>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000
@@ -91,6 +106,7 @@ function mergeCapabilities(
 
   return {
     sellerVatConfirmation: { enabled: base.sellerVatConfirmation?.enabled ?? false, ...patch.sellerVatConfirmation },
+    organizationDeletion: { enabled: base.organizationDeletion?.enabled ?? false, ...patch.organizationDeletion },
     documents: { ...base.documents, ...patch.documents },
     agreements: { ...base.agreements, ...patch.agreements },
     aiInvoiceDraft: {
@@ -142,6 +158,8 @@ function readDefaultCapabilities(
   return {
     onboardingV2: { enabled: false, nonVatEnabled: false },
     sellerVatConfirmation: { enabled: false },
+    // Hosted turns it on once its extension decides what deletion does there.
+    organizationDeletion: { enabled: !isCloud },
     documents: { artifactsRequired: true },
     agreements: { depositsEnabled: readBooleanEnv(readProductEnv(env, "DEPOSITS_ENABLED"), true) },
     aiInvoiceDraft: {

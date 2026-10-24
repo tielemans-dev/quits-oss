@@ -46,6 +46,9 @@ export const documentsCapabilitiesSchema = z.object({ artifactsRequired: z.boole
 
 export const agreementCapabilitiesSchema = z.object({ depositsEnabled: z.boolean() }).strict()
 
+/** Whether admins see "Delete organisation" in Settings. On for self-host; a distribution can change it. */
+export const organizationDeletionCapabilitiesSchema = z.object({ enabled: z.boolean() }).strict()
+
 export const runtimeCapabilitiesSchema = z
   .object({
     documents: documentsCapabilitiesSchema,
@@ -54,6 +57,7 @@ export const runtimeCapabilitiesSchema = z
     onboardingAi: onboardingAiCapabilitiesSchema,
     onboardingV2: z.object({ enabled: z.boolean(), nonVatEnabled: z.boolean().optional() }).strict().optional(),
     sellerVatConfirmation: z.object({ enabled: z.boolean() }).strict().default({ enabled: false }),
+    organizationDeletion: organizationDeletionCapabilitiesSchema.default({ enabled: false }),
     payments: paymentsCapabilitiesSchema,
     emailDelivery: emailDeliveryCapabilitiesSchema,
   })
@@ -67,6 +71,7 @@ export const runtimeCapabilityPatchSchema = z
     onboardingAi: onboardingAiCapabilitiesSchema.partial().optional(),
     onboardingV2: z.object({ enabled: z.boolean().optional(), nonVatEnabled: z.boolean().optional() }).strict().optional(),
     sellerVatConfirmation: z.object({ enabled: z.boolean().optional() }).strict().optional(),
+    organizationDeletion: organizationDeletionCapabilitiesSchema.partial().optional(),
     payments: paymentsCapabilitiesSchema.partial().optional(),
     emailDelivery: emailDeliveryCapabilitiesSchema.partial().optional(),
   })

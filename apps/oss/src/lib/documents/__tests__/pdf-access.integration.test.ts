@@ -7,6 +7,9 @@ import { setRuntimeServices, resetRuntimeServices, type RenderInput } from "../.
 import { privateDocumentPdf, publicInvoicePdf } from "../pdf-access"
 import { issueDocument } from "../../../application/issuance"
 import { signInvoicePaymentToken } from "../../payments/public"
+import { loadPublicInvoiceByToken } from "../../payments/public-access"
+import { billingProvider } from "../../billing"
+import { exportAccounting } from "../../exports/accounting"
 
 const cleanups: Array<() => Promise<void>> = []
 const bytes = new Map<string, Uint8Array>()
@@ -85,5 +88,23 @@ const request = new Request("http://quits.test/download")
     expect((await publicInvoicePdf("invalid")).status).toBe(404)
     await prisma.invoice.update({ where: { id: invoice.id }, data: { publicPaymentKeyVersion: { increment: 1 } } })
     expect((await publicInvoicePdf(token)).status).toBe(404)
+  })
+  it("keeps PDFs, public links and exports available while the organization is read-only", async () => {
+    const { org, invoice } = await setup()
+    const sent = await issueDocument({ kind: "invoice", actor: org.actors.admin, commandInput: { id: invoice.id, allowSendWithoutEmail: true }, clientRequestId: "read-only" })
+    expect(sent, JSON.stringify(sent)).toMatchObject({ status: "completed" })
+    const issued = await prisma.invoice.update({ where: { id: invoice.id }, data: { publicPaymentIssuedAt: new Date() } })
+    setRuntimeServices({ billingProvider: {
+      getSubscription: async () => ({ status: "canceled", priceId: null, organizationAccess: { state: "read_only", reason: "canceled" },
+        access: { paidOnly: false, hasSubscription: false, checkoutAvailable: false, portalAvailable: false } }),
+      assertInvoiceCreationAllowed: async () => {},
+    } })
+    await expect(billingProvider.assertInvoiceCreationAllowed(org.organizationId)).rejects.toMatchObject({ code: "FORBIDDEN" })
+    expect((await privateDocumentPdf(request, "invoice", invoice.id)).headers.get("X-Quits-Artifact")).toBe("stored")
+    const token = signInvoicePaymentToken({ invoiceId: invoice.id, keyVersion: issued.publicPaymentKeyVersion, scope: "invoice_payment" }, "synthetic-download-link-secret")
+    expect((await publicInvoicePdf(token)).headers.get("X-Quits-Artifact")).toBe("stored")
+    expect(await loadPublicInvoiceByToken(token, "synthetic-download-link-secret")).toMatchObject({ invoice: { id: invoice.id } })
+    const today = new Date().toISOString().slice(0, 10)
+    expect((await exportAccounting(org.organizationId, { dataset: "invoices", from: today, to: today })).csv).toContain(issued.number!)
   })
 })
