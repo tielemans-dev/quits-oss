@@ -1,5 +1,5 @@
 import { buildUblDocument, validateEinvoice } from "../lib/exports/ubl"
-import { mkdir, readFile, writeFile, rename, unlink } from "node:fs/promises"
+import { mkdir, readFile, writeFile, rename, rm, unlink } from "node:fs/promises"
 import { resolve, dirname, relative, isAbsolute } from "node:path"
 import { randomUUID } from "node:crypto"
 import { createElement } from "react"
@@ -26,6 +26,10 @@ export const selfhostDocumentRenderer: DocumentRenderer = {
 }
 
 const absent = (error: unknown) => (error as { code?: string }).code === "ENOENT"
+const segment = (value: string) => {
+  if (!/^[a-zA-Z0-9_-]+$/.test(value)) throw new Error("Invalid artifact identity")
+  return value
+}
 /** Content-addressed immutable bytes. Ref paths cannot escape the configured root. */
 export function localDiskArtifactStore(root: string): DocumentArtifactStore {
   const directory = resolve(root)
@@ -48,10 +52,6 @@ export function localDiskArtifactStore(root: string): DocumentArtifactStore {
   return {
     async put(bytes, meta) {
       if (hashBytes(bytes) !== meta.hash || bytes.byteLength !== meta.size) throw new Error("Artifact metadata does not match bytes")
-      const segment = (value: string) => {
-        if (!/^[a-zA-Z0-9_-]+$/.test(value)) throw new Error("Invalid artifact identity")
-        return value
-      }
       const ref = `${segment(meta.organizationId)}/${segment(meta.documentKind)}/${segment(meta.documentId)}/${meta.hash}.${meta.format === "pdf" ? "pdf" : "xml"}`
       await atomicWrite(path(ref), bytes)
       await atomicWrite(path(`${ref}.meta.json`), JSON.stringify(meta))
@@ -71,6 +71,10 @@ export function localDiskArtifactStore(root: string): DocumentArtifactStore {
       for (const name of [ref, `${ref}.meta.json`]) {
         await unlink(path(name)).catch(error => { if (!absent(error)) throw error })
       }
+    },
+    // Refs start with the organization id as a whole path segment, so its directory holds only its files.
+    async deleteOrganization(organizationId) {
+      await rm(path(segment(organizationId)), { recursive: true, force: true })
     },
   }
 }

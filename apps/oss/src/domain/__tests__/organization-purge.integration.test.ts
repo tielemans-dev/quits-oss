@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, afterEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/db"
+import { getRuntimeExtensions, setRuntimeExtensions } from "../../lib/runtime/extensions"
 import type { ArtifactMeta, DocumentArtifactStore } from "../../lib/runtime/services"
 import { cleanupTestOrganizations, hasTestDatabase } from "../../test-utils/organization"
 import { purgeOrganization } from "../organization-purge"
@@ -112,6 +113,9 @@ function memoryStore(refs: string[]) {
     async get() { return null },
     async head() { return null },
     async delete(ref: string) { objects.delete(ref) },
+    async deleteOrganization(organizationId: string) {
+      for (const ref of objects) if (ref.startsWith(`${organizationId}/`)) objects.delete(ref)
+    },
   }
   return { store, objects }
 }
@@ -124,6 +128,8 @@ async function rows(table: string, { column, values }: { column: string; values:
 describe.skipIf(!hasTestDatabase)("purgeOrganization", () => {
   const created: string[] = []
   const users: string[] = []
+  const extensions = getRuntimeExtensions()
+  afterEach(() => setRuntimeExtensions(extensions))
   afterAll(async () => {
     await cleanupTestOrganizations({ where: { id: { in: created } } })
     await prisma.user.deleteMany({ where: { id: { in: users } } })
@@ -149,7 +155,8 @@ describe.skipIf(!hasTestDatabase)("purgeOrganization", () => {
 
     const before = new Map<string, unknown>()
     for (const [table, key] of other.seeded) before.set(table, await rows(table, key))
-    const { store, objects } = memoryStore([...target.refs, ...other.refs])
+    // A file no row points at, left by an interrupted render, goes with the prefix sweep.
+    const { store, objects } = memoryStore([...target.refs, `${target.organizationId}/orphan.pdf`, ...other.refs])
 
     await expect(purgeOrganization(target.organizationId, { artifactStore: store }))
       .resolves.toEqual({ purged: true, artifacts: target.refs.length, users: 1 })
@@ -176,5 +183,47 @@ describe.skipIf(!hasTestDatabase)("purgeOrganization", () => {
 
     await expect(purgeOrganization(target.organizationId, { artifactStore: null })).rejects.toThrow("artifact store")
     await expect(prisma.organization.count({ where: { id: target.organizationId } })).resolves.toBe(1)
+  })
+
+  it("runs the extension hook inside the purge transaction, before the organization is deleted", async () => {
+    const sharedId = `purge-shared-${randomUUID().slice(0, 8)}`
+    const now = new Date()
+    await prisma.user.create({ data: { id: sharedId, name: "Shared", email: `${sharedId}@test.quits.invalid`, emailVerified: true, createdAt: now, updatedAt: now } })
+    users.push(sharedId)
+    const target = await seedOrganization(sharedId)
+    created.push(target.organizationId)
+    users.push(target.userId)
+    const seen: unknown[] = []
+    setRuntimeExtensions([{ id: "hosted", async onOrganizationPurge(tx, context) {
+      const [row] = await tx.$queryRaw<Array<{ count: number }>>`
+        SELECT count(*)::int AS count FROM "organization" WHERE id = ${context.organizationId}`
+      seen.push({ ...context, userIds: [...context.userIds].sort(), organizationRows: row?.count })
+    } }])
+
+    await expect(purgeOrganization(target.organizationId, { artifactStore: memoryStore(target.refs).store }))
+      .resolves.toMatchObject({ purged: true, users: 2 })
+    // Here the shared user has no other membership, so both users go with the organization.
+    expect(seen).toEqual([{ organizationId: target.organizationId, userIds: [sharedId, target.userId].sort(), organizationRows: 1 }])
+  })
+
+  it("rolls the purge back when the extension hook throws", async () => {
+    const sharedId = `purge-shared-${randomUUID().slice(0, 8)}`
+    const now = new Date()
+    await prisma.user.create({ data: { id: sharedId, name: "Shared", email: `${sharedId}@test.quits.invalid`, emailVerified: true, createdAt: now, updatedAt: now } })
+    users.push(sharedId)
+    const target = await seedOrganization(sharedId)
+    created.push(target.organizationId)
+    users.push(target.userId)
+    setRuntimeExtensions([{ id: "hosted", async onOrganizationPurge(tx, { organizationId }) {
+      // A write the hook made before failing must roll back with the purge.
+      await tx.$executeRaw`UPDATE "organization" SET name = 'Changed' WHERE id = ${organizationId}`
+      throw new Error("hosted cleanup failed")
+    } }])
+
+    await expect(purgeOrganization(target.organizationId, { artifactStore: memoryStore(target.refs).store }))
+      .rejects.toThrow("hosted cleanup failed")
+    await expect(prisma.organization.findUnique({ where: { id: target.organizationId } })).resolves.toMatchObject({ name: "Purge" })
+    await expect(prisma.user.count({ where: { id: target.userId } })).resolves.toBe(1)
+    await expect(prisma.invoice.count({ where: { organizationId: target.organizationId } })).resolves.toBe(1)
   })
 })

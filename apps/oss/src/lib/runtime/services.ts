@@ -87,6 +87,11 @@ export type DocumentArtifactStore = {
   get(ref: ArtifactRef): Promise<Uint8Array | null>
   head(ref: ArtifactRef): Promise<ArtifactMeta | null>
   delete(ref: ArtifactRef): Promise<void>
+  /**
+   * Deletes every file stored under the organization, including files no row points at.
+   * Must never touch another organization's files, even one whose id starts with this id.
+   */
+  deleteOrganization?(organizationId: string): Promise<void>
 }
 
 /** Cloud supplies a server-side registry proxy. Self-host has no lookup provider. */

@@ -13,6 +13,7 @@ import { readBooleanEnv, readProductEnv } from "@quits/shared/runtimeEnv"
 import { getEmailDeliveryRuntimeStatus } from "../email-delivery"
 import { getRuntimeEnv, getRuntimePlatform } from "./platform"
 import type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
+import type { Prisma } from "../../../generated/prisma/client"
 export type { StripeCheckoutTarget, StripeCheckoutTargetContext } from "./stripe-checkout-target"
 
 /** Released distributions can require the factual company lookup/review contract. */
@@ -25,6 +26,14 @@ export const COMPANY_LOOKUP_CONTRACT_VERSION = 1
 export type StripeConnectWebhookVerifier = {
   webhookSecret: string
   resolveOrganizationId: (stripeAccountId: string) => string | null | Promise<string | null>
+}
+
+/** Raw SQL only: an extension deletes its own tables, never the app's. */
+export type OrganizationPurgeTransaction = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">
+export type OrganizationPurgeContext = {
+  organizationId: string
+  /** Users deleted with the organization because it was their only membership. */
+  userIds: readonly string[]
 }
 
 export type RuntimeExtension = {
@@ -61,6 +70,12 @@ export type RuntimeExtension = {
   resolveStripeCheckoutExpiryTargets?: (
     context: StripeCheckoutTargetContext
   ) => readonly StripeCheckoutTarget[] | null | undefined | Promise<readonly StripeCheckoutTarget[] | null | undefined>
+  /**
+   * Runs inside the purge transaction, before the organization's rows and users are deleted, so a
+   * distribution can delete its own rows that reference them. Throwing rolls the purge back.
+   * Self-hosted runtimes leave this unset.
+   */
+  onOrganizationPurge?: (tx: OrganizationPurgeTransaction, context: OrganizationPurgeContext) => Promise<void>
 }
 
 const DEFAULT_MAX_PROMPT_CHARS = 4000

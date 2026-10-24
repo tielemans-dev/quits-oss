@@ -1,7 +1,9 @@
 import type { Prisma } from "../../generated/prisma/client"
 import { prisma } from "../lib/db"
+import { getRuntimeExtensions } from "../lib/runtime/extensions"
 import { getDocumentArtifactStore, type DocumentArtifactStore } from "../lib/runtime/services"
 import type { StoredArtifacts } from "./documents/artifacts"
+export type { OrganizationPurgeContext, OrganizationPurgeTransaction } from "../lib/runtime/extensions"
 
 const storedRefs = (artifacts: unknown) => {
   const value = artifacts as StoredArtifacts | null
@@ -80,6 +82,7 @@ export type OrganizationPurgeResult = { purged: boolean; artifacts: number; user
  *
  * Safe to re-run after a failure. Files go first so a later run can still find their refs; a file
  * that is already gone counts as deleted. A purge of an organization that no longer exists does nothing.
+ * Runtime extensions delete their own rows through `onOrganizationPurge` in the same transaction.
  */
 export async function purgeOrganization(
   organizationId: string,
@@ -91,6 +94,8 @@ export async function purgeOrganization(
   const refs = await artifactRefs(prisma, { organizationId: { in: [organizationId] } })
   if (refs.length && !artifactStore) throw new Error("Organization purge requires the document artifact store")
   for (const ref of refs) await artifactStore!.delete(ref)
+  // Also catches files an interrupted render stored before any row pointed at them.
+  await artifactStore?.deleteOrganization?.(organizationId)
 
   return prisma.$transaction(async db => {
     // Serializes concurrent purges; the second one finds nothing left to delete.
@@ -104,6 +109,9 @@ export async function purgeOrganization(
     const kept = new Set(elsewhere.map(({ userId }) => userId))
     const soleMembers = members.map(({ userId }) => userId).filter(userId => !kept.has(userId))
 
+    for (const extension of getRuntimeExtensions()) {
+      await extension.onOrganizationPurge?.(db, { organizationId, userIds: soleMembers })
+    }
     await deleteOrganizationRows(db, [organizationId])
     await db.session.updateMany({ where: { activeOrganizationId: organizationId }, data: { activeOrganizationId: null } })
     // Sessions, accounts and invitations they sent cascade with the user.
