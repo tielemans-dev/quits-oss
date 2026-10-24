@@ -30,6 +30,7 @@
     "./onboarding/dk-presets": "./src/lib/onboarding/dk-presets.ts",
     "./onboarding/ai-contract": "./src/lib/onboarding/ai-contract.ts",
     "./onboarding/ai-fallback": "./src/lib/onboarding/ai-fallback.ts",
+    "./organization-purge": "./src/domain/organization-purge.ts",
     "./permissions": "./src/lib/permissions.ts",
     "./redirect-target": "./src/lib/redirect-target.ts",
     "./runtime": "./src/lib/runtime/bootstrap.ts",
