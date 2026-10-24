@@ -40,7 +40,7 @@ describe('auth locale rendering and admission', () => {
     const danish = lang === 'da'
     fireEvent.change(screen.getByLabelText(danish ? 'Navn' : 'Name'), { target: { value: 'Synthetic Person' } })
     fireEvent.change(screen.getByLabelText(danish ? 'E-mail' : 'Email'), { target: { value: 'allowed@example.test' } })
-    fireEvent.change(screen.getByLabelText(danish ? 'Adgangskode' : 'Password'), { target: { value: '12345678' } })
+    fireEvent.change(screen.getByLabelText(danish ? 'Adgangskode' : 'Password'), { target: { value: '123456789012' } })
     fireEvent.submit(screen.getByRole('button', { name: danish ? 'Opret konto' : 'Create account' }).closest('form')!)
     await waitFor(() => expect(loadPage).toHaveBeenCalledWith(lang ? `/onboarding?lang=${lang}` : '/onboarding'))
   })
@@ -56,7 +56,7 @@ describe('auth locale rendering and admission', () => {
     render(<I18nProvider><SignupPage /></I18nProvider>)
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Synthetic Person' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'allowed@example.test' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '12345678' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '123456789012' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
     await waitFor(() => expect(loadPage).toHaveBeenCalledWith(destination))
   })
@@ -81,7 +81,7 @@ describe('auth locale rendering and admission', () => {
     expect(screen.getByText("You'll find the code in your invitation.")).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Synthetic Person' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'allowed@example.test' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '12345678' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '123456789012' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
     await screen.findByRole('alert')
     expect(signUp.mock.calls[0]![1]).toEqual({ body: { inviteCode: '' } })
@@ -104,19 +104,19 @@ describe('auth locale rendering and admission', () => {
     state.search = { token: 'synthetic-token', lang: 'da', redirect: '/invoices' }
     render(<I18nProvider><ResetPage /></I18nProvider>)
     expect(screen.getByLabelText('Gentag adgangskode')).toBeTruthy()
-    expect(screen.getByText('Brug mellem 8 og 128 tegn.')).toBeTruthy()
+    expect(screen.getByText('Brug mellem 12 og 128 tegn.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'English' }).getAttribute('href')).toBe('/reset-password?token=synthetic-token&lang=en&redirect=%2Finvoices')
   })
-  it.each([7, 8, 128, 129])("uses policy bounds for signup length %s with optional code", async (length) => {
+  it.each([11, 12, 128, 129])("uses policy bounds for signup length %s with optional code", async (length) => {
     signUp.mockResolvedValue({ data: { user: {} } })
     render(<I18nProvider locale="en"><SignupPage /></I18nProvider>)
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Synthetic Person' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'allowed@example.test' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'p'.repeat(length) } })
     fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form')!)
-    if (length === 7 || length === 129) {
+    if (length === 11 || length === 129) {
       expect(signUp).not.toHaveBeenCalled()
-      expect(screen.getByRole('alert').textContent).toBe(length === 7 ? 'Use at least 8 characters' : '128 characters max')
+      expect(screen.getByRole('alert').textContent).toBe(length === 11 ? 'Use at least 12 characters' : '128 characters max')
     } else {
       await waitFor(() => expect(signUp).toHaveBeenCalledOnce())
       expect(signUp.mock.calls[0]![1]).toEqual({ body: { inviteCode: '' } })

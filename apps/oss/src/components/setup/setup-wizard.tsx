@@ -2,6 +2,7 @@ import { isValidDanishCvr } from "@quits/contracts/onboarding"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
+import { PASSWORD_MIN_LENGTH } from "../../lib/auth/password-policy"
 import { forgetInstallationStatus } from "../../lib/installation-cache"
 import { useI18n } from "../../lib/i18n/react"
 import { trpc } from "../../trpc/client"
@@ -114,7 +115,7 @@ function isStepValid(step: number, state: SetupWizardState) {
         state.organizationSlug.trim() &&
         state.adminName.trim() &&
         state.adminEmail.trim() &&
-        state.adminPassword.length >= 8
+        state.adminPassword.length >= PASSWORD_MIN_LENGTH
     )
   }
   if (step === 3) {

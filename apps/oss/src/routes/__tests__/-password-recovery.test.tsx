@@ -58,7 +58,7 @@ describe("password recovery screens", () => {
   it("checks password policy and confirmation before sending the token", async () => {
     render(<I18nProvider><ResetPage /></I18nProvider>)
     fillPasswords("short")
-    expect(screen.getByRole("alert").textContent).toContain("at least 8")
+    expect(screen.getByRole("alert").textContent).toContain("at least 12")
     fillPasswords("new-password", "different-password")
     expect(screen.getByRole("alert").textContent).toContain("need to match")
     expect(resetPassword).not.toHaveBeenCalled()
@@ -90,13 +90,13 @@ describe("password recovery screens", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("has expired or was already used"))
     expect(screen.getByRole("link", { name: "Send a new link" })).toBeTruthy()
   })
-  it.each([7, 8, 128, 129])("checks reset policy bounds at length %s", async (length) => {
+  it.each([11, 12, 128, 129])("checks reset policy bounds at length %s", async (length) => {
     resetPassword.mockResolvedValue({ data: {} })
     render(<I18nProvider locale="en"><ResetPage /></I18nProvider>)
     fillPasswords('p'.repeat(length))
-    if (length === 7 || length === 129) {
+    if (length === 11 || length === 129) {
       expect(resetPassword).not.toHaveBeenCalled()
-      expect(screen.getByRole('alert').textContent).toBe(length === 7 ? 'Use at least 8 characters' : '128 characters max')
+      expect(screen.getByRole('alert').textContent).toBe(length === 11 ? 'Use at least 12 characters' : '128 characters max')
     } else {
       await waitFor(() => expect(resetPassword).toHaveBeenCalledWith({ token: 'valid-token', newPassword: 'p'.repeat(length) }))
     }

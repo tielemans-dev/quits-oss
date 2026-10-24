@@ -11,7 +11,7 @@ describe('approved auth copy', () => {
   })
   it.each(['da', 'en'])('interpolates email and policy bounds in %s', (locale) => {
     expect(translate('auth.forgotPassword.confirmation', locale, { email: 'synthetic@example.test' })).toContain('synthetic@example.test')
-    expect(translate('auth.signup.passwordHelp', locale, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH })).toContain('8')
+    expect(translate('auth.signup.passwordHelp', locale, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH })).toContain('12')
     expect(translate('auth.resetPassword.policy', locale, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH })).toContain('128')
   })
 })

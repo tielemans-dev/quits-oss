@@ -17,6 +17,10 @@ describe("setupInitializeSchema", () => {
     expect(setupInitializeSchema.safeParse({ ...input("GB"), organization: { ...input("GB").organization, cvr: "12345678" } }).success).toBe(false)
   })
 
+  it.each([[11, false], [12, true], [128, true], [129, false]])("applies the password policy to the admin password at length %s", (length, valid) => {
+    expect(setupInitializeSchema.safeParse({ ...input("GB"), admin: { ...input("GB").admin, password: "p".repeat(length) } }).success).toBe(valid)
+  })
+
   it("accepts any ISO country, including ones without a module", () => {
     expect(setupInitializeSchema.parse(input("gb")).locale.countryCode).toBe("GB")
   })
